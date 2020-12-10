@@ -1,0 +1,14 @@
+__pycache__
+*.py[co]
+*.swp
+*.pdf
+*.sh
+*.ipynb
+
+#folders 
+data
+img
+models
+scripts/tests
+scripts/examples/Makefile
+scripts/examples/.ipynb_checkpoints
