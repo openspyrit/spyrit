@@ -36,7 +36,8 @@ def dataset_meas(dataloader, model, device):
     for inputs, labels in dataloader:
         inputs = inputs.to(device)
         # with torch.no_grad():
-        net_output = model.acquire(inputs);
+        b,c,h,w = inputs.shape;
+        net_output = model.acquire(inputs, b, c, h, w);
         raw = net_output[:, 0, :];
         raw = raw.cpu().detach().numpy();
         meas.extend(raw);          
@@ -209,3 +210,5 @@ def compare_nets_unsupervised(net_list ,testloader, device):
                ssim[i]+= batch_ssim_vid(outputs, labels);
     return psnr, ssim
 
+def print_mean_std(x, tag=''):  
+    print("{}psnr = {} +/- {}".format(tag,np.mean(x),np.std(x)))
