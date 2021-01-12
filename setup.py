@@ -4,7 +4,7 @@ def readme():
     with open("README.md") as f:
         return f.read()
 
-setup(name='spyritest',
+setup(name='spyrit',
       version='1.0.0',
       description='Demo package',
       url='https://gitlab.in2p3.fr/antonio-tomas.lorente-mur/spyrit',
