@@ -10,6 +10,7 @@ data
 img
 models
 dist
+build
 spyrit.egg-info
 scripts/tests
 scripts/examples/Makefile

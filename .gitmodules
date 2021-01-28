@@ -1,0 +1,3 @@
+[submodule "spyrit/fht"]
+	path = spyrit/fht
+	url = https://github.com/nbarbey/fht.git

@@ -8,7 +8,7 @@ from torchvision import datasets, models, transforms
 import torch.nn.functional as F
 import imageio
 import cv2
-import fht
+from fht import *
 import matplotlib.pyplot as plt
 import PIL
 
@@ -23,9 +23,9 @@ def optimized_order(input_batch, mask):
         
         img= img.astype('float64')
 
-        img_had = fht.fht2(img);
+        img_had = fht2(img);
         img_had = np.multiply(img_had, msk);
-        img_out = fht.fht2(img_had);
+        img_out = fht2(img_had);
 
         output_batch[i,0,:,:] = torch.from_numpy(img_out);
     return output_batch
@@ -141,9 +141,9 @@ def optimized_order_vid(input_batch, msk):
         img = input_batch[i, 0, :, :];
         img = img.cpu().detach().numpy();
         img= img.astype('float64')
-        img_had = fht.fht2(img);
+        img_had = fht2(img);
         img_had = np.multiply(img_had, msk);
-        img_out = fht.fht2(img_had);
+        img_out = fht2(img_had);
 
         output_batch[i,0,:,:] = torch.from_numpy(img_out);
     output_batch = output_batch.view([batch_size, seq_length, c, h, w])
