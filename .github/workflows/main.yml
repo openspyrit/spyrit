@@ -1,0 +1,75 @@
+
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: [3.6, 3.7, 3.8]
+
+    steps:
+    - name: Checkout github repo
+      uses: actions/checkout@v2
+    - name: Checkout submodules
+      run: git submodule update --init --recursive
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Cache
+      id: cache_data_example
+      uses: actions/cache@v2
+      with:
+        path: data_example
+        key: data_example3
+        restore-keys: data_example3
+    - name: Create Wheel Linux
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+          if  [ ${{ matrix.python-version }} == "3.6" ]; then
+            export PYTHONFOLDER="cp36-cp36m"
+          elif [ ${{ matrix.python-version }} == "3.7" ]; then
+            export PYTHONFOLDER="cp37-cp37m"
+          elif [ ${{ matrix.python-version }} == "3.8" ]; then
+            export PYTHONFOLDER="cp38-cp38"
+          fi
+          docker run --rm -e "PYTHONFOLDER=${PYTHONFOLDER}" -v $GITHUB_WORKSPACE:/home quay.io/pypa/manylinux2014_x86_64 /home/.github/workflows/actionsCreateWheelLinux.sh
+          ls wheelhouse
+    - name: Create Wheel Mac
+      if: matrix.os == 'macos-latest'
+      run: |     
+          brew update
+          brew install ccache \
+                       libomp
+          pip install wheel delocate numpy
+          python setup.py sdist bdist_wheel
+          delocate-wheel -w wheelhouse -v dist/*.whl
+          ls wheelhouse
+          delocate-listdeps --all wheelhouse/*.whl
+    - name: Run the tests on Mac and Linux
+      if: matrix.os != 'windows-latest'
+      run: |
+          mkdir -p data_example
+          cd wheelhouse
+          pip install spyrit-*.whl
+          cd ../data_example
+          if [ -f "data/stl10_binary.tar.gz" ]; then
+              cd data
+              tar xzvf stl10_binary.tar.gz
+              cd ..
+          fi
+          python ../.github/workflows/example.py
+          rm -rf data/stl10_binary
+
