@@ -53,7 +53,7 @@ jobs:
           brew update
           brew install ccache \
                        libomp
-          pip install wheel delocate numpy
+          pip install wheel delocate numpy==1.19.3
           python setup.py sdist bdist_wheel
           delocate-wheel -w wheelhouse -v dist/*.whl
           ls wheelhouse
