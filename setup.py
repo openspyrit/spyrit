@@ -38,6 +38,8 @@ sys.path.extend('config_fc --fcompiler=gnu95 --f90flags=-fopenmp --f90exec=/usr/
 compile_args = '-fopenmp'
 if _platform == "darwin":
   compile_args = '-Xpreprocessor ' + compile_args
+if _platform == "win32":
+  compile_args = '/openmp '
 
 setup(name='spyrit',
       version='1.0.0',

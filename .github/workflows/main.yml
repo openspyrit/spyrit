@@ -47,6 +47,14 @@ jobs:
           fi
           docker run --rm -e "PYTHONFOLDER=${PYTHONFOLDER}" -v $GITHUB_WORKSPACE:/home quay.io/pypa/manylinux2014_x86_64 /home/.github/workflows/actionsCreateWheelLinux.sh
           ls wheelhouse
+    - name: Create Wheel Windows
+      if: matrix.os == 'windows-latest'
+      run: |
+          pip install wheel delocate numpy==1.19.3
+          python setup.py sdist bdist_wheel
+          mkdir wheelhouse
+          copy dist\spyrit-* wheelhouse\
+          ls wheelhouse
     - name: Create Wheel Mac
       if: matrix.os == 'macos-latest'
       run: |     
@@ -71,5 +79,20 @@ jobs:
               cd ..
           fi
           python ../.github/workflows/example.py
+          rm -rf data/stl10_binary
+    - name: Run the tests on Windows
+      if: matrix.os == 'windows-latest'
+      run: |
+          mkdir data_example
+          cd wheelhouse
+          pip install torch torchvision -f https://download.pytorch.org/whl/torch_stable.html
+          pip install --find-links=. spyrit
+          cd ..\data_example
+          if(Test-Path -path "data\stl10_binary.tar.gz") {
+              cd data
+              tar xzvf stl10_binary.tar.gz
+              cd ..
+          }
+          python ..\.github\workflows\example.py
           rm -rf data/stl10_binary
 
