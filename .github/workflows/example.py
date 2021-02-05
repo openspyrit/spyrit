@@ -65,7 +65,7 @@ transform = transforms.Compose(
 
 
 trainset = \
-    torchvision.datasets.STL10(root=data_root, split='train+unlabeled',download=True, transform=transform)
+    torchvision.datasets.STL10(root=data_root, split='train',download=True, transform=transform)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,shuffle=True)
 
 testset = \
