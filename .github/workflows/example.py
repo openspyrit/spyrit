@@ -87,7 +87,7 @@ suffix = '_N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}_reg_{}'.format(\
 model = compNet(img_size,M, Mean_had,Cov_had)
 model = model.to(device)
 title = model_root/('NET_c0mp'+ suffix)
-load_net(title, model)
+load_net(title, model, device)
 
 psnr_net_prob, psnr_prob = dataset_psnr(dataloaders['val'], model, device);
      
@@ -101,7 +101,7 @@ print('Total number of parameters: {}'.format(count_param(model)))
 model = compNet(img_size,M, Mean_had,Cov_had,2)
 model = model.to(device)
 title = model_root/('NET_pinv'+ suffix)
-load_net(title, model)
+load_net(title, model, device)
 
 psnr_net_pinv, psnr_pinv = dataset_psnr(dataloaders['val'], model, device)
 
@@ -114,7 +114,7 @@ print('Total number of parameters: {}'.format(count_param(model)))
 model = compNet(img_size,M, Mean_had,Cov_had,3)
 model = model.to(device)
 title = model_root/('NET_free'+ suffix)
-load_net(title, model)
+load_net(title, model, device)
 #    
 psnr_net_free, psnr_free = dataset_psnr(dataloaders['val'], model, device)
 
