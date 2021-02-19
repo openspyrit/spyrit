@@ -11,7 +11,7 @@ from imutils.video import FPS
 import imutils
 import cv2
 import torch
-import fht
+from fht import *
 
 def display_vid(video, fps, title ='',colormap=plt.cm.gray):
     """

@@ -9,9 +9,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Under Linux
 ```
-ssh-keygen -t rsa -b 4096
-chmod 600 ~/.ssh/id_rsa
-git clone git@gitlab.in2p3.fr:antonio-tomas.lorente-mur/spyrit.git
+git clone --recurse-submodules https://github.com/openspyrit/spyrit.git
 ```
 
 ### Prerequisites
@@ -27,7 +25,7 @@ All the necessary packages and libraries are contained within the ```setup.py ``
 - cv2 (>4.0.0)',
 - imutils (>0.5.3)',
 - pywt (>1.0.1)',
-- fht=['https://github.com/nbarbey/fht'],
+- fht=['https://github.com/nbarbey/fht'] (included as a submodule in spyrit/fht),
 
 
 ### Installing
