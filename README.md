@@ -60,6 +60,14 @@ pip install torch torchvision -f https://download.pytorch.org/whl/torch_stable.h
 pip install -e .
 ```
 
+#### Versioning
+
+To change the version of the package on [pypi](https://pypi.org/project/spyrit/), you need to:
+ - change the version in [setup.py](https://github.com/openspyrit/spyrit/blob/master/setup.py#L45) to new_version
+ - ```git commit setup.py -m "Towards new_version```
+ - ```git tag -a new_version -m "new_version"```
+ - ```git push --tags```
+
 ## Prerequisites
 
 All the necessary packages and libraries are contained within the ```setup.py ``` file.
