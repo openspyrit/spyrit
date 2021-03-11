@@ -42,7 +42,7 @@ if _platform == "win32":
   compile_args = '/openmp '
 
 setup(name='spyrit',
-      version='0.13.4',
+      version='0.13.5',
       description='Demo package',
       url='https://gitlab.in2p3.fr/antonio-tomas.lorente-mur/spyrit',
       long_description = readme(),
