@@ -22,6 +22,8 @@ pip install spyrit
 
 #### Windows
 
+On Windows you need first to install [torch](https://pytorch.org/get-started/locally/)
+
 ```
 pip install torch torchvision -f https://download.pytorch.org/whl/torch_stable.html
 pip install spyrit
@@ -47,6 +49,8 @@ pip install -e .
 ```
 
 #### Windows
+
+On Windows you need first to redo the symbolic link to fht inside the spyrit repository and then to install [torch](https://pytorch.org/get-started/locally/)
 
 ```
 cd spyrit
@@ -89,11 +93,12 @@ import torch;
 a = torch.randn(64,64);
 ```
 
-A minimal exemple can be found [here](https://github.com/openspyrit/spyrit/blob/master/.github/workflows/example.py)
+A minimal exemple can be found [here](https://github.com/openspyrit/spyrit/blob/master/.github/workflows/example.py). To run it, you can do
 
-## Running the tests
-
-Explain how to run the automated tests for this system
+```
+cd spyrit
+python .github/workflows/example.py
+```
 
 ## Contributing
 
