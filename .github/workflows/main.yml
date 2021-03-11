@@ -118,7 +118,7 @@ jobs:
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
           rm -r -fo fht
           cmd /c mklink /d fht spyrit\fht\fht
-          pip install torch torchvision -f https://download.pytorch.org/whl/torch_stable.html
+          pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
           pip install -e .
           cd data_example
           if(Test-Path -path "data\stl10_binary.tar.gz") {
@@ -190,7 +190,7 @@ jobs:
       run: |
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
           cd dist
-          pip install torch torchvision -f https://download.pytorch.org/whl/torch_stable.html
+          pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
           pip install --find-links=. spyrit
           cd ..\data_example
           if(Test-Path -path "data\stl10_binary.tar.gz") {

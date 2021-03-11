@@ -22,10 +22,10 @@ pip install spyrit
 
 #### Windows
 
-On Windows you need first to install [torch](https://pytorch.org/get-started/locally/)
+On Windows you need first to install [torch](https://pytorch.org/get-started/locally/). Here it's cpu version, adapt to your configuration.
 
 ```
-pip install torch torchvision -f https://download.pytorch.org/whl/torch_stable.html
+pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
 pip install spyrit
 ```
 
@@ -50,13 +50,13 @@ pip install -e .
 
 #### Windows
 
-On Windows you need first to redo the symbolic link to fht inside the spyrit repository and then to install [torch](https://pytorch.org/get-started/locally/)
+On Windows you need first to redo the symbolic link to fht inside the spyrit repository and then to install [torch](https://pytorch.org/get-started/locally/). Here it's cpu version, adapt to your configuration.
 
 ```
 cd spyrit
 rm -r -fo fht
 cmd /c mklink /d fht spyrit\fht\fht
-pip install torch torchvision -f https://download.pytorch.org/whl/torch_stable.html
+pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
 pip install -e .
 ```
 
@@ -75,8 +75,8 @@ All the necessary packages and libraries are contained within the ```setup.py ``
 - numpy (==1.19.3)
 - matplotlib
 - scipy
-- torch (==1.7.1)
-- torchvision (=0.8.2)
+- torch
+- torchvision
 - Pillow
 - opencv-python
 - imutils
