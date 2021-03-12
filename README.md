@@ -33,7 +33,7 @@ pip install spyrit
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
 
-First, you need to clone the repository
+First, you need to clone the repository:
 
 ```
 git clone --recurse-submodules https://github.com/openspyrit/spyrit.git
