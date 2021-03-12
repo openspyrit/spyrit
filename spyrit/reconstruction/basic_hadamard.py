@@ -1,3 +1,9 @@
+# -----------------------------------------------------------------------------
+#   This software is distributed under the terms
+#   of the GNU Lesser General  Public Licence (LGPL)
+#   See LICENSE.md for further details
+# -----------------------------------------------------------------------------
+
 import torch
 import torch.nn as nn
 import torch.optim as optim

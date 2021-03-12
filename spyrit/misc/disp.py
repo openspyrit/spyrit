@@ -1,3 +1,9 @@
+# -----------------------------------------------------------------------------
+#   This software is distributed under the terms
+#   of the GNU Lesser General  Public Licence (LGPL)
+#   See LICENSE.md for further details
+# -----------------------------------------------------------------------------
+
 import matplotlib.pyplot as plt;
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from PIL import Image;
