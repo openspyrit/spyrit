@@ -89,7 +89,6 @@ All the necessary packages and libraries are contained within the ```setup.py ``
 
 To check that the installation has been a success, try running the following lines in yout python terminal :
 
-
 ```
 import spyrit
 ```
@@ -101,11 +100,10 @@ import torch;
 a = torch.randn(64,64);
 ```
 
-A minimal exemple can be found [here](https://github.com/openspyrit/spyrit/blob/master/.github/workflows/example.py). To run it, you can do
+A minimal exemple can be found [here](https://github.com/openspyrit/spyrit/blob/master/.github/workflows/example.py). To run it, clone or download the file and you can do:
 
 ```
-cd spyrit
-python .github/workflows/example.py
+python example.py
 ```
 
 ## Contributing
