@@ -44,7 +44,7 @@ if _platform == "win32":
 setup(name='spyrit',
       version='0.13.5',
       description='Demo package',
-      url='https://gitlab.in2p3.fr/antonio-tomas.lorente-mur/spyrit',
+      url='https://github.com/openspyrit/spyrit',
       long_description = readme(),
       long_description_content_type = "text/markdown",
       classifiers = [
