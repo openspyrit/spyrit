@@ -1,34 +1,21 @@
 spyrit package
-===============
+==============
 
-acquisition module
-----------------------
+Subpackages
+-----------
 
-.. automodule:: acquisition
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. toctree::
 
-learning module
-----------------------
+   spyrit.acquisiton
+   spyrit.learning
+   spyrit.misc
+   spyrit.pre_processing
+   spyrit.reconstruction
 
-.. automodule:: learning
-   :members:
-   :undoc-members:
-   :show-inheritance:
+Module contents
+---------------
 
-misc module
--------------------------
-
-.. automodule:: misc
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-reconstruction module
-------------------------
-
-.. automodule:: reconstruction
+.. automodule:: spyrit
    :members:
    :undoc-members:
    :show-inheritance:
