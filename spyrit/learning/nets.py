@@ -3,7 +3,6 @@
 #   of the GNU Lesser General  Public Licence (LGPL)
 #   See LICENSE.md for further details
 # -----------------------------------------------------------------------------
-
 from __future__ import print_function, division
 import sys
 import torch
@@ -18,6 +17,7 @@ import os
 import datetime
 import copy
 import pickle
+import statistics 
 ######################################################################
 # 1. Visualize a few images from the training set
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -56,14 +56,14 @@ def count_param(model):
     return sum(p.numel() for p in model.parameters())
 
 
-def train_model(model, criterion, optimizer, scheduler, dataloaders, device, root, num_epochs=25,disp=False, do_checkpoint=0):
+def train_model(model, criterion, optimizer, scheduler, dataloaders, device, root, num_img, num_epochs=25,disp=False, do_checkpoint=0):
     """ Trains the pytorch model 
         """
     since = time.time()
     best_loss = float("inf")
     best_model_wts = copy.deepcopy(model.state_dict())
 
-    dataset_sizes = {x: len(dataloaders[x]) for x in ['train', 'val']}
+    #dataset_sizes = {x: len(dataloaders[x]) for x in ['train', 'val']}
     train_info  = {};
     train_info['train'] = [];
     train_info['val'] = [];
@@ -130,7 +130,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, device, roo
                     )
     
 
-            epoch_loss = running_loss / dataset_sizes[phase]
+            epoch_loss = running_loss / num_img[phase]
             train_info[phase].append(epoch_loss);
             
             if phase == 'train':
@@ -322,10 +322,13 @@ class Train_par:
         plt.ylabel('Loss')
         
         plt.show()
+        
+    
+        
 
     def plot_log(self, start = 0):
         plt.ion()
-        string1 = "Batch Size : \t {} \ Learning : \t {} \n".format(self.batch_size, self.learning_rate)
+        string1 = " Learning : \t {} \n".format(self.batch_size, self.learning_rate)
         string2 = "size : \t {} \nRegularisation : \t {}".format(self.img_size, self.reg)
         title = string1 + string2;
         
@@ -351,6 +354,38 @@ class Train_par:
         plt.ylabel('Loss')
         
         plt.show()
+        
+def multiplot(train_info1 ,train_info2,train_info3,start = 0):
+        plt.ion()
+        string1 = "Learning : \t {} \n".format(train_info1.learning_rate)
+        string2 = "size : \t {} \nRegularisation : \t {}".format(train_info1.img_size, train_info1.reg)
+        title = string1 + string2;
+        
+        plt.figure(1 , figsize = (20,10))
+        plt.suptitle = title;
+        
+        Epochs = [i+1 for i in range(start,len(train_info1.train_loss))];
+
+        plt.subplot(2, 1, 1)
+        plt.plot(Epochs, train_info1.train_loss[start:], 'o-')
+        plt.plot(Epochs, train_info2.train_loss[start:], 'o-')
+        plt.plot(Epochs, train_info3.train_loss[start:], 'o-')
+        plt.legend(['ConvNet','U_net','DC Model'])
+        
+        plt.title('Train')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        
+        plt.subplot(2, 1, 2)
+        plt.plot(Epochs, train_info1.val_loss[start:], '.-')
+        plt.plot(Epochs, train_info2.val_loss[start:], '.-')
+        plt.plot(Epochs, train_info3.val_loss[start:], '.-')
+        plt.legend(['ConvNet','U_net','DC Model'])
+        plt.title('Validation')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        
+        plt.show()
 
 def read_param(path):
     with open(path,'rb') as param_file:
@@ -362,8 +397,80 @@ def read_param(path):
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ##
 # Function to Display reconstruction for a few images
+    
 #
-
+def boxplot(model1,model2,model3,criterion,dataloaders,device):
+    mse=[[],[],[]]
+    
+    model=[model1,model2,model3]
+    model1.eval()
+    model2.eval()
+    model3.eval()
+    for batch_i, (inputs, labels) in enumerate(dataloaders['val']):
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        phase = 'eval'
+        inputs = inputs.to(device)
+        b,c,h,w = inputs.shape
+        inputs1 = model1.forward_acquire(inputs,b,c,h,w)
+        with torch.set_grad_enabled(phase == 'train'):
+            for i in range (3):
+                outputs = model[i].forward_reconstruct(inputs1,b,c,h,w)
+                for j in range (int(inputs.shape[0])):
+                    Loss = criterion(inputs[j,:,:,:],outputs[j,:,:,:],model[i])
+                    mse[i]+=[Loss.tolist()]
+        #torch.cuda.empty_cache()
+    fig1, ax1 = plt.subplots()
+    ax1.set_title('Reconstruction error (MSE)'+ " with N0 ={} and M = {}".format(model1.N0,model1.M))
+    ax1.boxplot(mse,labels=['ConvNet','U-net','Data-consistent Model'],showmeans=True,showfliers=False)
+    plt.show()
+       
+def boxplotconsist(model1,model2,model3,criterion,dataloaders,device):
+    mse=[[],[],[]]
+    
+    model=[model1,model2,model3]
+    model1.eval()
+    model2.eval()
+    model3.eval()
+    for batch_i, (inputs, labels) in enumerate(dataloaders['val']):
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        phase = 'eval'
+        inputs = inputs.to(device)
+        b,c,h,w = inputs.shape
+        inputs1 = model1.forward_acquire(inputs,b,c,h,w)
+        with torch.set_grad_enabled(phase == 'train'):
+            for i in range (3):
+                outputs = model[i].forward_reconstruct(inputs1,b,c,h,w)
+                reconmeasurements = model1.Pconv(outputs)
+                measurements = model1.Pconv(inputs)
+                # print(measurements.shape)
+                # print(reconmeasurements.shape)
+                print('1=',torch.max(torch.sqrt(measurements)))
+                print(torch.min(torch.sqrt(measurements)))
+                print(torch.max(torch.sqrt(reconmeasurements)))
+                print(torch.min(torch.sqrt(reconmeasurements)))
+                # normeasurements = measurements/torch.sqrt(measurements)
+                # normreconmeasurements = reconmeasurements/torch.sqrt(measurements)
+                # print(torch.max(torch.sqrt(normeasurements)))
+                # print(normreconmeasurements.shape)
+                # print(normreconmeasurements)
+                for j in range (int(inputs.shape[0])):
+                    Loss = criterion(measurements[j,:,:,:],reconmeasurements[j,:,:,:],model[i])
+                    mse[i]+=[Loss.tolist()]
+        #torch.cuda.empty_cache()
+        #torch.cuda.empty_cache()
+    # mse=torch.tensor((1/M),device=device)*mse
+    # mse1=[[],[],[]]
+    # for i in range(3):
+    #     mse1[i] = [j for j in mse[i] if j<1000]
+    #     print(len(mse1[i]))
+    fig1, ax1 = plt.subplots()
+    ax1.set_title('Reconstruction error over measures (MSE)'+ " with N0 ={} and M = {}".format(model1.N0,model1.M))
+    ax1.boxplot(mse,labels=['ConvNet','U-net','Data-consistent Model'],showmeans=True,showfliers=False)
+    plt.show()
+                    
+        
 def visualize_model(model,dataloaders,device, suptitle="", colormap=plt.cm.gray):
     """
     Takes 8 images from the dataloader and shows side by side the input image and the
@@ -393,7 +500,55 @@ def visualize_model(model,dataloaders,device, suptitle="", colormap=plt.cm.gray)
             axarr[i,2*j+1].set_title("Reconstructed")
 
     plt.subplots_adjust(left = 0.08, wspace = 0.5, top = 0.9, right = 0.9)
+    plt.show()
     
+def compare_model(model1,model2,model3,dataloaders,device, suptitle="", colormap=plt.cm.gray):
+    """
+    Compare three models
+    """
+    plt.ion()   # interactive mode
+    inputs, classes = next(iter(dataloaders['train']))
+    while inputs.shape[0]<4:
+        next_input , classes = next(iter(dataloaders['train']))
+        inputs = torch.cat((inputs,next_input),0)
+    inputs = inputs[:4,:,:,:]
+    inputs = inputs.to(device)
+    model1=model1.to(device)
+    model2=model2.to(device)
+    model3=model3.to(device)
+    
+    
+
+    
+
+    with torch.no_grad():
+        outputs1 = model1(inputs)
+        outputs2 = model2(inputs)
+        outputs3 = model3(inputs)
+        
+
+
+    inputs = inputs.cpu().detach().numpy();
+    outputs1 = outputs1.cpu().detach().numpy();
+    outputs3 = outputs3.cpu().detach().numpy();
+    outputs2 = outputs2.cpu().detach().numpy(); 
+    fig, axarr = plt.subplots(4,4,figsize=(20,20));
+#    plt.suptitle(suptitle, fontsize = 16)
+
+    for i in range(4):
+        j=0
+        im1 = axarr[i,2*j].imshow(inputs[i,0,:,:],cmap=colormap)
+        axarr[i,2*j].set_title("Ground Truth")
+        im2 = axarr[i,2*j+1].imshow(outputs1[i,0,:,:], cmap=colormap)
+        axarr[i,2*j+1].set_title("Reconstructed with ConvNet")
+        j=1
+        im1 = axarr[i,2*j].imshow(outputs2[i,0,:,:],cmap=colormap)
+        axarr[i,2*j].set_title("Reconstructed with Unet")
+        im2 = axarr[i,2*j+1].imshow(outputs3[i,0,:,:], cmap=colormap)
+        axarr[i,2*j+1].set_title("Reconstructed with DC model")
+
+    plt.subplots_adjust(left = 0.08, wspace = 0.5, top = 0.9, right = 0.9)
+    plt.show()
     
 def visualize_conv_layers(conv_layer, suptitle = "", colormap = plt.cm.gray):
     """Displays the 8 first filters of the convolution layer conv_layer
@@ -439,13 +594,13 @@ def save_net(title, model):
         title
         """
     model_out_path = "{}.pth".format(title)
-    model_out_path = model_out_path;
+    print(model_out_path);
     torch.save(model.state_dict(), model_out_path);
     print("Model Saved")
 
 
-def load_net(title, model, device):
+def load_net(title, model):
     """Loads net defined by title """
     model_out_path = "{}.pth".format(title)
-    model.load_state_dict(torch.load(model_out_path, map_location=torch.device(device)))
+    model.load_state_dict(torch.load(model_out_path))
     print("Model Loaded: {}".format(title))
