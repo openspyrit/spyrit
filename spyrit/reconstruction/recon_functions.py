@@ -17,7 +17,7 @@ from collections import OrderedDict
 import cv2
 from scipy.stats import rankdata
 from itertools import cycle;
-from function.learning.model_Had_DCAN import *
+# from function.learning.model_Had_DCAN import *
 
 
 
