@@ -15,3 +15,6 @@ spyrit.egg-info
 scripts/tests
 scripts/examples/Makefile
 scripts/examples/.ipynb_checkpoints
+spyrit/learning/.ipynb_checkpoints/
+spyrit/reconstruction/.ipynb_checkpoints/
+
