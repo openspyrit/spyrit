@@ -4,6 +4,8 @@
 #   See LICENSE.md for further details
 # -----------------------------------------------------------------------------
 
+
+
 #from __future__ import print_function, division
 import torch
 import torch.nn as nn
@@ -16,13 +18,14 @@ import matplotlib.pyplot as plt
 import time
 import os
 import copy
-from fht import *
+import fht
 from ..misc.pattern_choice import Hadamard, matrix2conv, split
 from collections import OrderedDict
 import cv2
 from scipy.stats import rankdata
 #from ..misc.disp import *
 from itertools import cycle;
+from function.reconstruction.recon_functions import *
 
 from ..misc.disp import *
 
@@ -48,7 +51,7 @@ def optim_had(dataloader, root):
         inputs = inputs.cpu().detach().numpy();
         for i in range(inputs.shape[0]):
             img = inputs[i,0,:,:];
-            h_img = np.abs(fht2(img))/tot_num;
+            h_img = np.abs(fht.fht2(img))/tot_num;
             Cumulated_had += h_img;
     
     Cumulated_had = Cumulated_had / np.max(Cumulated_had) * 255
@@ -80,21 +83,23 @@ def Stat_had(dataloader, root):
     (batch_size, channels, nx, ny) = inputs.shape;
     tot_num = len(dataloader)*batch_size;
 
+
     Mean_had = np.zeros((nx, ny));
     for inputs,labels in dataloader:
         inputs = inputs.cpu().detach().numpy();
         for i in range(inputs.shape[0]):
             img = inputs[i,0,:,:];
-            h_img = fht2(img);
+            h_img = fht.fht2(img);
             Mean_had += h_img;
     Mean_had = Mean_had/tot_num;
+
 
     Cov_had = np.zeros((nx*ny, nx*ny));
     for inputs,labels in dataloader:
         inputs = inputs.cpu().detach().numpy();
-        for i in range(inputs.shape[0]):
+        for i in range(int(inputs.shape[0]/4)):
             img = inputs[i,0,:,:];
-            h_img = fht2(img);
+            h_img = fht.fht2(img);
             Norm_Variable = np.reshape(h_img-Mean_had, (nx*ny,1));
             Cov_had += Norm_Variable*np.transpose(Norm_Variable);
     Cov_had = Cov_had/(tot_num-1);
@@ -170,7 +175,7 @@ def Hadamard_Transform_Matrix(img_size):
         base_function = np.zeros((img_size**2,1));
         base_function[i] = 1;
         base_function = np.reshape(base_function, (img_size, img_size));
-        hadamard_function = fht2(base_function);
+        hadamard_function = fht.fht2(base_function);
         H[i, :] = np.reshape(hadamard_function, (1,img_size**2));
     return H
 
@@ -260,6 +265,11 @@ def Hadamard_stat_completion_comp(Cov,Mean,img, CR):
 
     return img_rec;
 
+
+
+
+
+
 ###############################################################################
 # 2. NEW Convolutional Neural Network
 ###############################################################################
@@ -267,11 +277,12 @@ def Hadamard_stat_completion_comp(Cov,Mean,img, CR):
 # A. NO NOISE
 #==============================================================================    
 class compNet(nn.Module):
-    def __init__(self, n, M, Mean, Cov, variant=0, H=None):
+    def __init__(self, n, M, Mean, Cov, variant=0, H=None, denoi = None):
         super(compNet, self).__init__()
         
         self.n = n;
         self.M = M;
+
         
         self.even_index = range(0,2*M,2);
         self.uneven_index = range(1,2*M,2);
@@ -280,13 +291,13 @@ class compNet(nn.Module):
         if type(H)==type(None):
             H = Hadamard_Transform_Matrix(self.n)
         H = n*H; #fht hadamard transform needs to be normalized
-        
+        self.H=H
         #-- Hadamard patterns (undersampled basis)
         Var = Cov2Var(Cov)
         Perm = Permutation_Matrix(Var)
-        Pmat = np.dot(Perm,H);
-        Pmat = Pmat[:M,:];
-        Pconv = matrix2conv(Pmat);
+        self.Pmatfull = np.dot(Perm,H);
+        self.Pmat = self.Pmatfull[:M,:];
+        self.Pconv = matrix2conv(self.Pmat);
 
         #-- Denoising parameters 
         Sigma = np.dot(Perm,np.dot(Cov,np.transpose(Perm)));
@@ -307,23 +318,40 @@ class compNet(nn.Module):
         self.mu_1 = mu1.view(1,1,M);
 
         #-- Measurement preprocessing
-        self.Patt = Pconv;
-        P, T = split(Pconv, 1);
+        self.Patt = self.Pconv;
+        P, _ = split(self.Pconv, 1);
         self.P = P;
-        self.T = T;
+#        self.T = T;
         self.P.bias.requires_grad = False;
         self.P.weight.requires_grad = False;
         self.Patt.bias.requires_grad = False;
         self.Patt.weight.requires_grad = False;
-        self.T.weight.requires_grad=False;
-        self.T.weight.requires_grad=False;
+#        self.T.weight.requires_grad=False;
+#        self.T.weight.requires_grad=False;
 
         #-- Pseudo-inverse to determine levels of noise.
-        Pinv = (1/n**2)*np.transpose(Pmat);
+        Pinv = (1/n**2)*np.transpose(self.Pmat);
         self.Pinv = nn.Linear(M,n**2, False)
         self.Pinv.weight.data=torch.from_numpy(Pinv);
         self.Pinv.weight.data=self.Pinv.weight.data.float();
-        self.Pinv.weight.requires_grad=False;
+        self.Pinv.weight.requires_grald=False;
+        
+        Pnorm = (1/n**2)*self.Pmat;
+        self.Pnorm = nn.Linear(M,n**2, False)
+        self.Pnorm.weight.data=torch.from_numpy(Pnorm);
+        self.Pnorm.weight.data=self.Pnorm.weight.data.float();
+        self.Pnorm.weight.requires_grad=False;
+        
+        # Layers for reconstruction : 
+#        
+#        self.convnet = nn.Sequential(OrderedDict([
+#                ('conv1', nn.Conv2d(1,64,kernel_size=9, stride=1, padding=4)),
+#                ('relu1', nn.ReLU()),
+#                ('conv2', nn.Conv2d(64,32,kernel_size=1, stride=1, padding=0)),
+#                ('relu2', nn.ReLU()),
+#                ('conv3', nn.Conv2d(32,1,kernel_size=5, stride=1, padding=2))
+#                ]));
+#        
 
 
         #-- Measurement to image domain
@@ -362,6 +390,7 @@ class compNet(nn.Module):
             print("Measurement to image domain: pseudo inverse")
             
             self.fc1 = self.Pinv;
+            self.fc1.weight.requires_grad=False;
        
         elif variant==3:
             #--- FC is learnt
@@ -370,16 +399,15 @@ class compNet(nn.Module):
             self.fc1 = nn.Linear(M,n**2)
             
         #-- Image correction
-        self.recon = nn.Sequential(OrderedDict([
-          ('conv1', nn.Conv2d(1,64,kernel_size=9, stride=1, padding=4)),
-          ('relu1', nn.ReLU()),
-          ('conv2', nn.Conv2d(64,32,kernel_size=1, stride=1, padding=0)),
-          ('relu2', nn.ReLU()),
-          ('conv3', nn.Conv2d(32,1,kernel_size=5, stride=1, padding=2))
-        ]));
+        
+        if denoi == None:
+            self.recon = ConvNet()
+        else:
+            self.recon = denoi
 
     def forward(self, x):
         b,c,h,w = x.shape;
+        
         x = self.forward_acquire(x, b, c, h, w);
         x = self.forward_reconstruct(x, b, c, h, w);
         return x
@@ -388,31 +416,35 @@ class compNet(nn.Module):
     #--------------------------------------------------------------------------
     def forward_acquire(self, x, b, c, h, w):
         #--Scale input image
-        x = (x+1)/2; 
+        x = (x+1)/2;
         #--Acquisition
         x = x.view(b*c, 1, h, w);
-        x = self.P(x);
+        x = self.P(x)
         x = F.relu(x); ## x[:,:,1] = -1/N0 ????
-        x = x.view(b*c,1, 2*self.M); 
+        x = x.view(b*c,1, 2*self.M);
         return x
     
     def forward_maptoimage(self, x, b, c, h, w):
         #- Pre-processing (use batch norm to avoid division by N0 ?)
-        x = self.T(x);
+        x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
         x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M));
+        m = torch.reshape(x,(b,1,self.M,1))
+        
+        var = torch.zeros_like(m).to(m.device);
+
         #--Projection to the image domain
         x = self.fc1(x);
         x = x.view(b*c,1,h,w)
-        return x
+        return x, m, var;
     
-    def forward_postprocess(self, x, b, c, h, w):
-        x = self.recon(x)
+    def forward_postprocess(self, x, b, c, h, w, m, var):
+        x = self.recon(x,b,c,h,w,m, var)
         x = x.view(b, c, h, w)
         return x
     
     def forward_reconstruct(self, x, b, c, h, w):
-        x = self.forward_maptoimage(x, b, c, h, w)
-        x = self.forward_postprocess(x, b, c, h, w)
+        x, m, var = self.forward_maptoimage(x, b, c, h, w)
+        x = self.forward_postprocess(x, b, c, h, w, m, var)
         return x
      
     
@@ -453,8 +485,8 @@ class compNet(nn.Module):
 # B. NOISY MEASUREMENTS (NOISE LEVEL IS VARYING)
 #==============================================================================
 class noiCompNet(compNet):
-    def __init__(self, n, M, Mean, Cov, variant, N0, sig = 0.1, H=None):
-        super().__init__(n, M, Mean, Cov, variant, H)
+    def __init__(self, n, M, Mean, Cov, variant, N0, sig = 0.1, H=None,denoi = None):
+        super().__init__(n, M, Mean, Cov, variant, H,denoi)
         self.N0 = N0;
         self.sig = sig;
         self.max = nn.MaxPool2d(kernel_size = n);
@@ -474,26 +506,35 @@ class noiCompNet(compNet):
     
     def forward_maptoimage(self, x, b, c, h, w):
         #-- Pre-processing (use batch norm to avoid division by N0 ?)
-        x = self.T(x);
+        var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
+        x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
         x = 2/self.N0*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
         #--Projection to the image domain
+        m = x;
+
+        var = var/(self.N0**2);
+
         x = self.fc1(x);
         x = x.view(b*c,1,h,w) 
-        return x
+        return x, m, var
          
 
     def forward_Pinv(self, x, b, c, h, w):
         #-- Pre-processing (use batch norm to avoid division by N0 ?)
-        x = self.T(x);
+        var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
+        x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
         x = 2/self.N0*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
+        m = x
+        var = var/(self.N0**2);
         #--Projection to the image domain
         x = self.Pinv(x);
         x = x.view(b*c,1,h,w)
-        return x
+        return x, m, var
  
     def forward_N0_Pinv(self, x, b, c, h, w):
         #-- Pre-processing (use batch norm to avoid division by N0 ?)
-        x = self.T(x);
+        var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
+        x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
         #--Projection to the image domain
         x = self.Pinv(x);
         x = x.view(b*c,1,h,w)
@@ -506,6 +547,7 @@ class noiCompNet(compNet):
      
     def forward_N0_maptoimage(self, x, b, c, h, w):
         #-- Pre-processing(Recombining positive and negatve values+normalisation) 
+        var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
         
         #-- Pre-processing(Estimating No and normalizing by No) 
@@ -516,27 +558,31 @@ class noiCompNet(compNet):
         N0_est = N0_est.repeat(1,1,self.M);
         x = torch.div(x,N0_est);
         x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
-
+        m = x
+        var = torch.div(var, N0_est**2);
         #--Projection to the image domain
         x = self.fc1(x);
         x = x.view(b*c,1,h,w)
-        return x
+        return x, m, var
     
     def forward_N0_reconstruct(self, x, b, c, h, w):
-        x = self.forward_N0_maptoimage(x, b, c, h, w)
-        x = self.forward_postprocess(x, b, c, h, w)
+        x, m, var = self.forward_N0_maptoimage(x, b, c, h, w)
+        x = self.forward_postprocess(x, b, c, h, w,m, var)
         return x
  
     def forward_stat_comp(self, x, b, c, h, w):
         #-- Pre-processing(Recombining positive and negatve values+normalisation) 
+        var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
         x = x/self.N0;
         x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
 
+        m = x
+        var = var/(self.N0**2)
         #--Projection to the image domain
         x = self.fc1(x);
         x = x.view(b*c,1,h,w) 
-        return x
+        return x,m,var
      
  
 
@@ -544,8 +590,8 @@ class noiCompNet(compNet):
 # B. NOISY MEASUREMENTS (NOISE LEVEL IS VARYING) + denoising architecture
 #==============================================================================
 class DenoiCompNet(noiCompNet):
-    def __init__(self, n, M, Mean, Cov, variant, N0, sig = 0.1, H=None, mean_denoi=False):
-        super().__init__(n, M, Mean, Cov, variant, N0, sig, H)
+    def __init__(self, n, M, Mean, Cov, variant, N0, sig = 0.1, H=None, mean_denoi=False,denoi = None):
+        super().__init__(n, M, Mean, Cov, variant, N0, sig, H,denoi)
         print("Denoised Measurements")
    
     def forward_maptoimage(self, x, b, c, h, w):
@@ -554,15 +600,16 @@ class DenoiCompNet(noiCompNet):
         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
         x = x/self.N0;
         x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
+        m = x
+        var = var/(self.N0**2);
         
         #--Denoising 
         sigma = self.sigma.repeat(b*c,1,1).to(x.device);
-        x = torch.mul(torch.div(sigma, sigma+var/(self.N0)**2), x);
-
+        x = torch.mul(torch.div(sigma, sigma+var), x);
         #--Projection to the image domain
         x = self.fc1(x);
         x = x.view(b*c,1,h,w) 
-        return x
+        return x, m, var
     
     def forward_maptoimage_2(self, x, b, c, h, w):
         #-- Pre-processing(Recombining positive and negatve values+normalisation) 
@@ -571,15 +618,18 @@ class DenoiCompNet(noiCompNet):
         x = x/self.N0;
         x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
         
+        m = x;
+        var = var/(self.N0**2);
+
         #--Denoising 
         sigma = self.sigma.repeat(b*c,1,1).to(x.device);
         mu_1 = self.mu_1.repeat(b*c,1,1).to(x.device);
-        x = mu_1 + torch.mul(torch.div(sigma, sigma+var/(self.N0)**2), x-mu_1);
-
+        x = mu_1 + torch.mul(torch.div(sigma, sigma+var), x-mu_1);
+        self.x0 = x
         #--Projection to the image domain
         x = self.fc1(x);
         x = x.view(b*c,1,h,w) 
-        return x
+        return x,m, var
      
     def forward_denoised_Pinv(self, x, b, c, h, w):
         #-- Pre-processing(Recombining positive and negatve values+normalisation) 
@@ -588,18 +638,21 @@ class DenoiCompNet(noiCompNet):
         x = x/self.N0;
         x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
         
+        m = x;
+        var = var/(self.N0**2)
+
         #--Denoising 
         sigma = self.sigma.repeat(b*c,1,1).to(x.device);
-        x = torch.mul(torch.div(sigma, sigma+4*var/(self.N0)**2), x);
+        x = torch.mul(torch.div(sigma, sigma+var), x);
 
         #--Projection to the image domain
         x = self.Pinv(x);
         x = x.view(b*c,1,h,w) 
-        return x
+        return x, m, var
    
     def forward_reconstruct(self, x, b, c, h, w):
-        x = self.forward_maptoimage(x, b, c, h, w);
-        x = self.forward_postprocess(x, b, c, h, w)
+        x, m, var = self.forward_maptoimage(x, b, c, h, w);
+        x = self.forward_postprocess(x, b, c, h, w, m, var)
         return x
 
     def forward_NO_maptoimage(self, x, b, c, h, w):
@@ -615,15 +668,19 @@ class DenoiCompNet(noiCompNet):
         N0_est = N0_est.repeat(1,1,self.M);
         x = torch.div(x,N0_est);
          
+        var = torch.div(var, N0_est**2);
+        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
+        m = x;
+
         #--Denoising 
         sigma = self.sigma.repeat(b*c,1,1).to(x.device);
-        x = torch.mul(torch.div(sigma, sigma+torch.div(var,N0_est**2)), x);
-        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
+        x = torch.mul(torch.div(sigma, sigma+var), x);
 
+        
         #--Projection to the image domain
         x = self.fc1(x);
         x = x.view(b*c,1,h,w) 
-        return x;
+        return x, m, var;
 
     def forward_N0_maptoimage_expe(self, x, b, c, h, w, C, s, g):
         #-- Pre-processing(Recombining positive and negatve values+normalisation) 
@@ -637,65 +694,28 @@ class DenoiCompNet(noiCompNet):
         N0_est = N0_est.view(b*c,1,1);
         N0_est = N0_est.repeat(1,1,self.M);
         x = torch.div(x,N0_est);
+        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
          
+        m = x;
+        var = torch.div(var, N0_est**2)
+
         #--Denoising 
         sigma = self.sigma.repeat(b*c,1,1).to(x.device);
-        x = torch.mul(torch.div(sigma, sigma+torch.div(var,N0_est**2)), x);
-        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
- 
+        x = torch.mul(torch.div(sigma, sigma+var), x);
+
+
         #--Projection to the image domain
         x = self.fc1(x);
         x = x.view(b*c,1,h,w) 
-        return x;
+        return x, m, var;    
+
 
     
     def forward_N0_reconstruct_expe(self, x, b, c, h, w,C,s,g):
-        x = self.forward_N0_maptoimage_expe(x, b, c, h, w,C,s,g)
-        x = self.forward_postprocess(x, b, c, h, w)
+        x, m, var = self.forward_N0_maptoimage_expe(x, b, c, h, w,C,s,g)
+        x = self.forward_postprocess(x, b, c, h, w, m, var)
         return x
- 
-    def forward_N0_maptoimage_expe_bis(self, x, b, c, h, w, C, s, g, N0):
-        #-- Pre-processing(Recombining positive and negatve values+normalisation) 
-        var = g**2*(x[:,:,self.even_index] + x[:,:,self.uneven_index]) - 2*C*g +2*s**2;
-        var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
-        x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
-        
-        #-- Pre-processing(Estimating No and normalizing by No) 
-        x_est = self.Pinv(x);
-        x_est = x_est.view(b*c,1,h,w);
-        N0_est = self.max(x_est);
-        N0_est = N0_est.view(b*c,1,1);
-        N0_est = N0_est.repeat(1,1,self.M);
-        sigma = self.sigma.repeat(b*c,1,1).to(x.device);
-        print(N0_est)
-        x = x/N0;
-#        x = torch.div(x,N0_est);
 
-
-        x = torch.mul(torch.div(sigma, sigma+torch.div(var,N0_est**2)), x);
-        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
- 
-#        var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
-#        x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
-#        x = torch.div(x,N0_est);
-#        x = x/N0;
-#         
-#        #--Denoising 
-#        sigma = self.sigma.repeat(b*c,1,1).to(x.device);
-#        x = torch.mul(torch.div(sigma, sigma+var/(N0)**2), x);
-#        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
-# 
-        #--Projection to the image domain
-        x = self.fc1(x);
-        x = x.view(b*c,1,h,w) 
-        return x;
-
-    
-    def forward_N0_reconstruct_expe_bis(self, x, b, c, h, w,C,s,g, N0):
-        x = self.forward_N0_maptoimage_expe_bis(x, b, c, h, w,C,s,g, N0)
-        x = self.forward_postprocess(x, b, c, h, w)
-        return x
- 
 
 ########################################################################
 # 2. Define a custom Loss function
@@ -703,7 +723,7 @@ class DenoiCompNet(noiCompNet):
 # Creating custom loss function
 # ---------------------------
 # Just to make sure that all functions work the same way...   
-# i.e., that they take the same number of arguments
+# ie that they take the same number of arguments
 
 class Weight_Decay_Loss(nn.Module):
     
@@ -712,7 +732,44 @@ class Weight_Decay_Loss(nn.Module):
         self.loss = loss;
 
     def forward(self,x,y, net):
-        mse = self.loss(x,y);
+        mse=self.loss(x,y);
+        return mse
+
+class Variance_Loss(nn.Module):
+    def __init__(self, loss, mean_net):
+        super(Variance_Loss,self).__init__()
+        self.loss = loss;
+        self.mean_net = mean_net;
+        #self.mean_net.eval()
+        for param in self.mean_net.parameters():
+            param.requires_grad = False;
+
+    def forward(self,x,y, net):
+        cond_mean = self.mean_net(x);
+        var = torch.mul((x-cond_mean),(x-cond_mean));
+        mse=self.loss(var, y);
+        return mse
+
+class Covariance_Loss(nn.Module):
+    def __init__(self, loss, mean_net):
+        super(Covariance_Loss,self).__init__()
+        self.loss = loss;
+        self.mean_net = mean_net;
+        #self.mean_net.eval()
+        for param in self.mean_net.parameters():
+            param.requires_grad = False;
+
+    def forward(self,x,y, net):
+        b, c, h, w = x.shape;
+        cond_mean = self.mean_net(x);
+        x = x.reshape(b*c, 1, h*w, 1);
+        cond_mean = cond_mean.reshape(b*c, 1, h*w, 1);
+        Cov = (x-cond_mean)*torch.transpose((x-cond_mean), -2, -1);
+       
+        y = y.reshape(b*c, 1, h*w, 1);
+        cov_est = y*torch.transpose(y, -2,-1);
+
+        mse=self.loss(Cov, cov_est);
         return mse
 
 
