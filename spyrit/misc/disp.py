@@ -3,7 +3,6 @@
 #   of the GNU Lesser General  Public Licence (LGPL)
 #   See LICENSE.md for further details
 # -----------------------------------------------------------------------------
-
 import matplotlib.pyplot as plt;
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from PIL import Image;
@@ -17,7 +16,7 @@ from imutils.video import FPS
 import imutils
 import cv2
 import torch
-from fht import *
+import fht
 
 def display_vid(video, fps, title ='',colormap=plt.cm.gray):
     """
@@ -91,8 +90,8 @@ def Multi_plots(img_list, title_list, shape, suptitle= '', colormap = plt.cm.gra
     if savefig:
         plt.savefig(savefig, bbox_inches='tight')
     plt.show()
- 
-
+    
+    
 def compare_video_frames(vid_list, nb_disp_frames,title_list, suptitle= '', colormap = plt.cm.gray, aspect = (16,9), savefig = "", fontsize = 14):
     rows = len(vid_list);
     cols = nb_disp_frames;
@@ -110,7 +109,8 @@ def compare_video_frames(vid_list, nb_disp_frames,title_list, suptitle= '', colo
     if savefig:
         plt.savefig(savefig, bbox_inches='tight')
     plt.show()
-   
+
+    
 def torch2numpy(torch_tensor):
     return torch_tensor.cpu().detach().numpy();
 
@@ -222,7 +222,7 @@ def vid2batch(root, img_dim, start_frame, end_frame):
 
     return output_batch;
             
- 
+    
 def pre_process_video(video, crop_patch, kernel_size):
     batch_size, seq_length, c, h, w = video.shape
     batched_frames = video.view(batch_size*seq_length*c, h, w);
@@ -235,4 +235,3 @@ def pre_process_video(video, crop_patch, kernel_size):
         output_batch[i,:,:] = torch.Tensor(median_frame);
     output_batch = output_batch.view(batch_size, seq_length, c, h, w);
     return output_batch
-
