@@ -80,7 +80,6 @@ setup(name='spyrit',
       zip_safe=False)
 
 
-#
 
 #
 #      install_requires=[
