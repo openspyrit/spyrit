@@ -445,7 +445,6 @@ class compNet(nn.Module):
     
     def reconstruct(self, x, b, c, h, w):
         with torch.no_grad():
-            b,c,h,w = x.shape
             x = self.forward_reconstruct(x, b, c, h, w)
         return x
    
