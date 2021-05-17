@@ -722,12 +722,13 @@ class NeumannNet(nn.Module):
         return y;
         
     def single_block(self, x, b ,c ,h, w, x0, var):
+#         return x - self.eta * self.gramian(x ,b ,c ,h, w) - self.eta*self.nonlinear_op(x, b ,c ,h, w, x0, var) ##### CHECK THIS
         return x - self.eta * self.gramian(x ,b ,c ,h, w) - self.nonlinear_op(x, b ,c ,h, w, x0, var)
-
+    
     def forward(self, x ,b ,c ,h, w, x0, var):
     # Needs to use Map to image as Pinv!!!!! Also reduces the need to use initial_point
 #        initial_point = self.eta *self.n**2* x;
-        initial_point = self.eta *self.n**2* x;
+        initial_point = self.eta *self.n**2*x;
         running_term = initial_point;
         accumulator = initial_point;
 
