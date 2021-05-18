@@ -4,9 +4,7 @@
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/spyrit.svg)](https://pypi.python.org/pypi/spyrit/)
 
 # Spyrit
-
-Spyrit Toolbox aims to provide all the necessary tools for single-pixel imaging. Starting from simulation, reconstruction, and interface with DMD and spectrometers.
-The aim of this toolbox is to cover all aspects of single-pixel imaging : from simulation to experimental, we aim to provide tools to make realistic measurements and provide reconstruction algorithms. 
+SPYRIT is a [PyTorch](https://pytorch.org/)-based toolbox for deep image reconstruction. While SPYRIT was originally designed for single-pixel image reconstruction, it can solve any linear reconstruction problem.
     
 ## Getting Started
 
