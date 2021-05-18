@@ -48,7 +48,7 @@ pip install -e .
 
 #### Windows
 
-On Windows you need first to redo the symbolic link to fht inside the spyrit repository and then to install [torch](https://pytorch.org/get-started/locally/). Here it's cpu version, adapt to your configuration.
+On Windows you need first to redo the symbolic link to fht inside the spyrit repository and then to install [torch](https://pytorch.org/get-started/locally/). Here it's cpu version, adapt to your configuration. It may be necessary to run the following commands using administrator rights (e.g. starting your Python environment with administrator rights).
 
 ```
 cd spyrit
