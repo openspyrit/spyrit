@@ -66,6 +66,9 @@ To change the version of the package on [pypi](https://pypi.org/project/spyrit/)
  - ```git tag -a new_version -m "new_version"```
  - ```git push --follow-tags```
 
+## API Documentation
+https://spyrit.readthedocs.io/
+
 ## Prerequisites
 
 All the necessary packages and libraries are contained within the ```setup.py ``` file.
