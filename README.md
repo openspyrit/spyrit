@@ -1,4 +1,3 @@
-
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/openspyrit/spyrit?logo=github)
 [![GitHub](https://img.shields.io/github/license/openspyrit/spyrit?style=plastic)](https://github.com/openspyrit/spyrit/blob/master/LICENSE.md)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/spyrit.svg)](https://pypi.python.org/pypi/spyrit/)
@@ -20,14 +19,27 @@ pip install spyrit
 
 #### Windows
 
-On Windows you need first to install [torch](https://pytorch.org/get-started/locally/). Here it's cpu version, adapt to your configuration.
+On Windows you need first to install [torch](https://pytorch.org/get-started/locally/). Adapt to your configuration. Two examples below.
+
+CPU version using `pip `
 
 ```
 pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+```
+
+GPU version using `conda` 
+
+``` shell
+conda install pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch
+```
+
+Then install SPyRiT using `pip`
+
+```shell
 pip install spyrit
 ```
 
-### Developper mode
+### Developer mode
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
 
@@ -48,7 +60,9 @@ pip install -e .
 
 #### Windows
 
-On Windows you need first to redo the symbolic link to fht inside the spyrit repository and then to install [torch](https://pytorch.org/get-started/locally/). Here it's cpu version, adapt to your configuration. It may be necessary to run the following commands using administrator rights (e.g. starting your Python environment with administrator rights).
+On Windows you need first to redo the symbolic link to fht inside the spyrit repository and then to install [torch](https://pytorch.org/get-started/locally/). Here it's cpu version, adapt to your configuration. 
+
+NB: It may be necessary to run the following commands using administrator rights (e.g., starting your Python environment with administrator rights).
 
 ```
 cd spyrit
@@ -128,5 +142,4 @@ This project is licensed under the Creative Commons Attribution Share Alike 4.0 
 * [Nicolas Barbey](https://github.com/nbarbey/fht) for his Fast Hadamard Transform implementation in python  
 * [Jin LI](https://github.com/happyjin/ConvGRU-pytorch) for his implementation of Convolutional Gated Recurrent Units for PyTorch
 * [Erik Lindernoren](https://github.com/eriklindernoren/Action-Recognition) for his processing of the UCF-101 Dataset.
-
 
