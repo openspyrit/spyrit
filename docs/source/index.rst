@@ -3,8 +3,12 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to spyrit's documentation!
+SPyRiT's documentation
 ==================================
+
+SPYRIT is a [PyTorch](https://pytorch.org/)-based toolbox for deep image reconstruction. While SPYRIT was originally designed for single-pixel image reconstruction, it can solve any linear reconstruction problem.
+
+
 
 .. toctree::
    :maxdepth: 2
