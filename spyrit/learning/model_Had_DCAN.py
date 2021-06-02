@@ -551,6 +551,7 @@ class noiCompNet(compNet):
     
     def forward_preprocess(self, x, b, c, h, w):
         #-- Pre-processing(Recombining positive and negatve values+normalisation) 
+        x = x.view(b*c, 1, 2*self.M)
         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
         x = x/self.N0;
         x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b,c,self.M)); 
@@ -582,6 +583,7 @@ class noiCompNet(compNet):
         return x
     
     def forward_preprocess_expe(self, x, b, c, h, w):
+        x = x.view(b*c, 1, 2*self.M)
         #-- Recombining positive and negatve values
         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
         #-- Estimating and normalizing by N0
@@ -614,6 +616,7 @@ class DenoiCompNet(noiCompNet):
         return x
    
     def forward_reconstruct(self, x, b, c, h, w):
+        x = x.view(b*c, 1, 2*self.M)
         var = x[:,:,self.even_index] + x[:,:,self.uneven_index]
         x = self.forward_preprocess(x, b, c, h, w)
         x = self.forward_denoise(x, var, b, c, h, w)
@@ -629,6 +632,7 @@ class DenoiCompNet(noiCompNet):
         return x
     
     def forward_reconstruct_mmse(self, x, b, c, h, w):
+        x = x.view(b*c, 1, 2*self.M)
         var = x[:,:,self.even_index] + x[:,:,self.uneven_index]
         x = self.forward_preprocess(x, b, c, h, w)
         x = self.forward_denoise(x, var, b, c, h, w)
@@ -641,8 +645,8 @@ class DenoiCompNet(noiCompNet):
         return x
     
     def forward_reconstruct_expe(self, x, b, c, h, w, C=0, s=0, g=1):
-
         #-- Pre-processing(Recombining positive and negatve values+normalisation)
+        x = x.view(b*c, 1, 2*self.M)
 
         # If C, s, g are arrays, they must follow the same dimensions as the
         # data x
@@ -663,13 +667,28 @@ class DenoiCompNet(noiCompNet):
         x = self.forward_maptoimage(x, b, c, h, w)
         x = self.forward_postprocess(x, b, c, h, w)
         return x
-    
+   
     def forward_reconstruct_pinv_expe(self, x, b, c, h, w, C=0, s=0, g=1): # Already in the parent class, can be removed
         x = self.forward_preprocess_expe(x, b, c, h, w)
         x = self.pinv(x, b, c, h, w) 
         return x
     
     def forward_reconstruct_mmse_expe(self, x, b, c, h, w, C=0, s=0, g=1):
+        x = x.view(b*c, 1, 2*self.M)
+
+        # If C, s, g are arrays, they must follow the same dimensions as the
+        # data x
+
+        # Making sure C,s,g can be arrays or scalars
+        if not np.isscalar(C):
+            C = C.view(b*c, 1, 1)
+
+        if not np.isscalar(s):
+            s = s.view(b*c, 1, 1)
+
+        if not np.isscalar(g):
+            g = g.view(b*c, 1, 1)
+
         var = g**2*(x[:,:,self.even_index] + x[:,:,self.uneven_index]) - 2*C*g +2*s**2;
         x = self.forward_preprocess_expe(x, b, c, h, w)
         x = self.forward_denoise(x, var, b, c, h, w)
