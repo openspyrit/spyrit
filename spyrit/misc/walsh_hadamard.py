@@ -1,16 +1,36 @@
-# -----------------------------------------------------------------------------
-#   This software is distributed under the terms
-#   of the GNU Lesser General  Public Licence (LGPL)
-#   See LICENSE.md for further details
-# -----------------------------------------------------------------------------
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on 15/01/2020
 
-@author: seb
+""" Walsh-ordered Hadamard tranforms.
+
+Longer description of this module.
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <http://www.gnu.org/licenses/>.
 """
+
+#__author__ = "One solo developer"
+__authors__ = ["Sebastien Crombez", "Nicolas Ducros"]
+__contact__ = "nicolas.ducros@creatis.insa-lyon.fr"
+#__copyright__ = "Copyright $YEAR, $COMPANY_NAME"
+#__credits__ = ["One developer", "And another one", "etc"]
+__date__ = "2020/01/15"
+__deprecated__ = False
+#__email__ =  "nicolas.ducros@creatis.insa-lyon.fr"
+__license__ = "GPLv3"
+__maintainer__ = "developer"
+__status__ = "Development"
+#__version__ = "0.0.1"
+
 
 import math
 import numpy as np 
@@ -74,10 +94,70 @@ def bit_reverse_matrix(n):#internet function to generate bit reverse
         Mat_out[i,l_br[i]] = 1
     return(Mat_out)
     
-"""Generation of a Waslh ordered matrix"""
 
-def walsh_ordered(n): # Generate the n*n Walsh ordered matrix
+def walsh_matrix(n): 
+    """Return 1D Walsh-ordered Hadamard transform matrix
+
+    Args:
+        n (int): Order of the matrix, a power of two.
+
+    Returns:
+        np.ndarray: A n-by-n array
+    
+    Examples:
+        Walsh-ordered Hadamard matrix of order 8
+
+        >>> print(walsh_matrix(8))
+    """
     BR = bit_reverse_matrix(n)
     GRp = gray_code_permutation(n)
     H = hadamard(n)
     return(np.dot(np.dot(GRp,BR),H)) # Apply permutation to the hadmard matrix 
+    
+    
+def walsh2(X,H=None):
+    """Return 2D Walsh-ordered Hadamard transform of an image
+
+    Args:
+        X (np.ndarray): image as a 2d array. The size is a power of two.
+        H (np.ndarray, optional): 1D Walsh-ordered Hadamard transformation matrix
+
+    Returns:
+        np.ndarray: Hadamard transformed image as a 2D array.
+    """
+    if H is None:
+         H = walsh_matrix(len(X))
+    return(np.dot(np.dot(H,X),H))
+
+def iwalsh2(X,H=None):
+    """Return 2D inverse Walsh-ordered Hadamard transform of an image
+
+    Args:
+        X (ndarray): Image as a 2D array. The image is square and its size is a power of two.
+        H (ndarray, optional): 1D inverse Walsh-ordered Hadamard transformation matrix
+
+    Returns:
+        np.ndarray: Inverse Hadamard transformed image as a 2D array.
+    """
+    if H is None:
+         H = walsh_matrix(len(X))
+    return(walsh2(X,H)/len(X)**2)
+
+def walsh2_matrix(n):
+    """Return 2D Walsh-ordered Hadamard transformation matrix
+
+    Args:
+        n (int): Order of the matrix, which should be a power of two.
+
+    Returns:
+        H (ndarray): A n*n-by-n*n array
+    """
+    H = np.zeros((n**2, n**2))
+    H1d = walsh_matrix(n)
+    for i in range(n**2):
+        image = np.zeros((n**2,1));
+        image[i] = 1;
+        image = np.reshape(image, (n, n));
+        hadamard = walsh2(image, H1d);
+        H[:, i] = np.reshape(hadamard, (1,n**2));
+    return H
