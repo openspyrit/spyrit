@@ -142,4 +142,3 @@ This project is licensed under the Creative Commons Attribution Share Alike 4.0 
 * [Nicolas Barbey](https://github.com/nbarbey/fht) for his Fast Hadamard Transform implementation in python  
 * [Jin LI](https://github.com/happyjin/ConvGRU-pytorch) for his implementation of Convolutional Gated Recurrent Units for PyTorch
 * [Erik Lindernoren](https://github.com/eriklindernoren/Action-Recognition) for his processing of the UCF-101 Dataset.
-
