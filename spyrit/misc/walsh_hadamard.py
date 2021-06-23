@@ -36,6 +36,7 @@ import math
 import numpy as np 
 from scipy.linalg import hadamard
 from sympy.combinatorics.graycode import GrayCode
+import torch
 
 
 """Generation of a Gray permutation matrix"""
@@ -161,3 +162,21 @@ def walsh2_matrix(n):
         hadamard = walsh2(image, H1d);
         H[:, i] = np.reshape(hadamard, (1,n**2));
     return H
+
+def walsh2_torch(im,H=None):
+    """Return 2D Walsh-ordered Hadamard transform of an image
+
+    Args:
+        im (torch.Tensor): Image, typically a B-by-C-by-W-by-H Tensor
+        H (torch.Tensor, optional): 1D Walsh-ordered Hadamard transformation matrix. A 2-D tensor of size W-by-H.
+
+    Returns:
+        torch.Tensor: Hadamard transformed image. Same size as im
+        
+    Examples:
+        >>> im = torch.randn(256, 1, 64, 64)
+        >>> had = walsh2_torch(im)
+    """
+    if H is None:
+         H = torch.from_numpy(walsh_matrix(im.shape[3]).astype('float32'))
+    return  torch.matmul(torch.matmul(H,im),H)
