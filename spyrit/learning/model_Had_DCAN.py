@@ -23,8 +23,11 @@ import cv2
 from scipy.stats import rankdata
 #from ..misc.disp import *
 from itertools import cycle;
+from pathlib import Path
 
 from ..misc.disp import *
+import spyrit.misc.walsh_hadamard as wh
+import math
 
 
 #######################################################################
@@ -66,6 +69,155 @@ def hadamard_opt_spc(M ,root, nx, ny):
     conv = Hadamard(msk); 
 
     return conv
+
+
+def abs_walsh(dataloader, device):
+    
+    # Estimate tot_num
+    inputs, classes = next(iter(dataloader))
+    #inputs = inputs.cpu().detach().numpy();
+    (batch_size, channels, nx, ny) = inputs.shape;
+    tot_num = len(dataloader)*batch_size;
+    
+    # Init
+    n = 0
+    output = torch.zeros((nx,ny),dtype=torch.float32)
+    H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
+    
+    # Send to device (e.g., cuda)
+    output = output.to(device)
+    H = torch.from_numpy(H).to(device)
+    
+    # Accumulate over all images in dataset
+    for inputs,_ in dataloader:
+        inputs = inputs.to(device);
+        n = n + inputs.shape[0]
+        trans = wh.walsh2_torch(inputs,H);
+        trans = torch.abs(trans)
+        output = output.add(torch.sum(trans,0))
+        print(f'Abs:  {n} / (less than) {tot_num} images', end='\n')
+    print('', end='\n')
+    
+    #-- Normalize
+    output = output/n;
+    output = torch.squeeze(output)
+    
+    return output
+
+def stat_walsh(dataloader, device, root):
+    
+    # Get dimensions and estimate total number of images in the dataset
+    inputs, classes = next(iter(dataloader))
+    (b, c, nx, ny) = inputs.shape;
+    tot_num = len(dataloader)*b;
+    
+    # 1. Mean
+    
+    # Init
+    n = 0
+    mean = torch.zeros((nx,ny), dtype=torch.float32)
+    H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
+    
+    # Send to device (e.g., cuda)
+    mean = mean.to(device)
+    H = torch.from_numpy(H).to(device)
+    
+    # Accumulate sum over all images in dataset
+    for inputs,_ in dataloader:
+        inputs = inputs.to(device);
+        trans = wh.walsh2_torch(inputs,H);
+        trans = torch.abs(trans)
+        mean = mean.add(torch.sum(trans,0))
+        # print
+        n = n + inputs.shape[0]
+        print(f'Mean:  {n} / (less than) {tot_num} images', end='\n')
+    print('', end='\n')
+    
+    # Normalize
+    mean = mean/n;
+    mean = torch.squeeze(mean)
+    #torch.save(mean, root+'Average_{}x{}'.format(nx,ny)+'.pth')
+    np.save(root / Path('Average_{}x{}'.format(nx,ny)+'.npy'), mean.cpu().detach().numpy())
+    
+    # 2. Covariance
+    
+    # Init
+    n = 0
+    cov = torch.zeros((nx*ny,nx*ny), dtype=torch.float32)
+    cov = cov.to(device)
+    
+    # Accumulate (im - mu)*(im - mu)^T over all images in dataset
+    for inputs,_ in dataloader:
+        inputs = inputs.to(device);
+        trans = wh.walsh2_torch(inputs,H)
+        trans = trans - mean.repeat(inputs.shape[0],1,1,1)
+        trans = trans.view(inputs.shape[0], nx*ny, 1)
+        cov = torch.addbmm(cov, trans, trans.view(inputs.shape[0], 1, nx*ny))
+        # print
+        n += inputs.shape[0]
+        print(f'Cov:  {n} / (less than) {tot_num} images', end='\n')
+    print('', end='\n')
+    
+    # Normalize
+    cov = cov/(n-1);
+    #torch.save(cov, root+'Cov_{}x{}'.format(nx,ny)+'.pth') # todo?
+    np.save(root / Path('Cov_{}x{}'.format(nx,ny)+'.npy'), cov.cpu().detach().numpy())
+    
+    return mean, cov
+
+def stat_walsh_np(dataloader, root):
+    """ 
+        Computes Mean Hadamard Image over the whole dataset + 
+        Covariance Matrix Amongst the coefficients
+    """
+    inputs, classes = next(iter(dataloader))
+    inputs = inputs.cpu().detach().numpy();
+    (batch_size, channels, nx, ny) = inputs.shape;
+    tot_num = len(dataloader)*batch_size;
+    
+    H1d = wh.walsh_ordered(nx)
+    
+     # Abs matrix
+    Mean_had = abs_walsh_ordered(dataloader, H1d, tot_num)
+    print("Saving abs")
+    np.save(root / Path('Abs_{}x{}'.format(nx,ny)+'.npy'), Mean_had)
+
+    # Mean matrix
+    #-- Accumulate over all images in dataset
+    n = 0
+    Mean_had = np.zeros((nx, ny));
+    for inputs,_ in dataloader:
+        inputs = inputs.cpu().detach().numpy();
+        for i in range(inputs.shape[0]):
+            img = inputs[i,0,:,:];
+            h_img = wh.walsh_ordered2(img,H1d);
+            Mean_had += h_img;
+            n = n+1
+        print(f'Mean:  {n} / (less than) {tot_num} images', end='\r')
+    print('', end='\n')
+    
+    #-- Normalize & save
+    Mean_had = Mean_had/n;
+    print("Saving mean")
+    np.save(root / Path('Mean_{}x{}'.format(nx,ny)+'.npy'), Mean_had)
+    
+    # Covariance matrix    
+    n = 0
+    Cov_had = np.zeros((nx*ny, nx*ny));
+    for inputs,_ in dataloader:
+        inputs = inputs.cpu().detach().numpy();
+        for i in range(inputs.shape[0]):
+            img = inputs[i,0,:,:];
+            h_img = walsh_ordered2(img, H1d);
+            Norm_Variable = np.reshape(h_img-Mean_had, (nx*ny,1));
+            Cov_had += Norm_Variable*np.transpose(Norm_Variable);
+            n = n+1
+        print(f'Covariance:  {n} / (less than) {tot_num} images', end='\r')     
+    print()
+    
+    #-- Normalize & save
+    Cov_had = Cov_had/(n-1);  
+    np.save(root / Path('Cov_{}x{}'.format(nx,ny)+'.npy'), Cov_had)
 
 
 
@@ -163,6 +315,42 @@ def maximum_Variance_Pattern(Cov,H,M):
     Pmat = np.dot(Perm,H);
     Pmat = Pmat[:M,:];
     return Pmat, Perm
+
+def Variance_ranking(Cov):
+    """
+        Returns rank of the variance given the covariance
+        
+    Args:
+        Cov (ndarray): Covariance matrix.
+        
+    Returns:
+        Ind (ndarray): Ranking between 1 and length of Cov
+    """
+    Var = Cov2Var(Cov)
+    (nx, ny) = Var.shape;
+    Ind = rankdata(-Var, method = 'ordinal').reshape(nx, ny);
+    return Ind
+
+def Variance_mask(Cov,eta=0.5):
+    """Return a mask indicating the coefficients with maximum variance
+
+    Args:
+        Cov (ndarray): Covariance matrix.
+        eta (float): Sampling ratio between 0 and 1
+
+    Returns:
+        mask (boolean array): 1 to keep, 0 otherwise
+    """
+
+    ind = Variance_ranking(Cov)
+    (nx, ny) = ind.shape;
+    M = math.ceil(eta*ind.size)
+    print(M)
+    mask = np.zeros_like(ind, dtype=bool)
+    mask[ind<M] = 1
+    
+    return mask
+
     
 def Hadamard_Transform_Matrix(img_size):
     H = np.zeros((img_size**2, img_size**2))
