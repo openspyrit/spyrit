@@ -125,8 +125,7 @@ def stat_walsh(dataloader, device, root):
     # Accumulate sum over all images in dataset
     for inputs,_ in dataloader:
         inputs = inputs.to(device);
-        trans = wh.walsh2_torch(inputs,H);
-        trans = torch.abs(trans)
+        trans = wh.walsh2_torch(inputs,H)
         mean = mean.add(torch.sum(trans,0))
         # print
         n = n + inputs.shape[0]
