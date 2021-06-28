@@ -250,14 +250,12 @@ def Stat_had(dataloader, root):
             Cov_had += Norm_Variable*np.transpose(Norm_Variable);
     Cov_had = Cov_had/(tot_num-1);
 
-
-    
     np.save(root+'Cov_{}x{}'.format(nx,ny)+'.npy', Cov_had)
     np.savetxt(root+'Cov_{}x{}'.format(nx,ny)+'.txt', Cov_had)
     
     np.save(root+'Average_{}x{}'.format(nx,ny)+'.npy', Mean_had)
     np.savetxt(root+'Average_{}x{}'.format(nx,ny)+'.txt', Mean_had)
-    cv2.imwrite(root+'Average_{}x{}'.format(nx,ny)+'.png', Mean_had)#Needs conversion to Uint8!
+    cv2.imwrite(root+'Average_{}x{}'.format(nx,ny)+'.png', Mean_had) #Needs conversion to Uint8!
     return Mean_had, Cov_had 
 
 
@@ -291,18 +289,36 @@ def Permutation_Matrix_root(root):
     P[Reorder-1, Columns] = 1;
     return P
 
-
-def Permutation_Matrix(had_mat):
+def Permutation_Matrix(mat):
     """
-        Returns Permutation Matrix For The Hadamard Coefficients that ranks
-        The Coefficients according to the Matrix defined By had_mat.
+        Returns 
     """
-    (nx, ny) = had_mat.shape;
-    Reorder = rankdata(-had_mat, method = 'ordinal');
+    (nx, ny) = mat.shape;
+    Reorder = rankdata(-mat, method = 'ordinal');
     Columns = np.array(range(nx*ny));
     P = np.zeros((nx*ny, nx*ny));
     P[Reorder-1, Columns] = 1;
     return P
+
+def permutation_from_ind(ind):
+    """
+        Returns 
+    """
+    n = len(ind)
+    Columns = np.array(range(n));
+    P = np.zeros((n, n));
+    P[ind-1, Columns] = 1;
+    return P
+
+def ranking_matrix(mat):
+    """
+        Ranks the coefficient of a matrix
+
+    """
+    (nx, ny) = mat.shape;
+    ind = rankdata(-mat, method = 'ordinal').reshape(nx, ny);
+    return ind
+
 
 def maximum_Variance_Pattern(Cov,H,M):
     """
@@ -326,8 +342,7 @@ def Variance_ranking(Cov):
         Ind (ndarray): Ranking between 1 and length of Cov
     """
     Var = Cov2Var(Cov)
-    (nx, ny) = Var.shape;
-    Ind = rankdata(-Var, method = 'ordinal').reshape(nx, ny);
+    Ind = ranking_matrix(Var);
     return Ind
 
 def Variance_mask(Cov,eta=0.5):
@@ -340,7 +355,6 @@ def Variance_mask(Cov,eta=0.5):
     Returns:
         mask (boolean array): 1 to keep, 0 otherwise
     """
-
     ind = Variance_ranking(Cov)
     (nx, ny) = ind.shape;
     M = math.ceil(eta*ind.size)
@@ -360,6 +374,39 @@ def Hadamard_Transform_Matrix(img_size):
         hadamard_function = fht2(base_function);
         H[i, :] = np.reshape(hadamard_function, (1,img_size**2));
     return H
+
+def meas2img(meas, Ord):
+    """Return image from measurement vector
+
+    Args:
+        meas (ndarray): Measurement vector.
+        Ord (ndarray): Order matrix
+
+    Returns:
+        Img (ndarray): Measurement image
+    """
+    y = np.pad(meas, (0, Ord.size-len(meas)))
+    Perm = Permutation_Matrix(Ord)
+    Img = np.dot(np.transpose(Perm),y).reshape(Ord.shape)
+    return Img
+
+def meas2img_torch(meas, Ord):
+    """Return image from measurement vector
+
+    Args:
+        meas (torch.Tensor): Measurement vector.
+        Ord (np.ndarray): Order matrix
+
+    Returns:
+        Img (torch.Tensor): Measurement image
+    """
+    y = nn.functional.pad(meas, (0, Ord.size-meas.shape[2]))
+    Perm = torch.from_numpy(Permutation_Matrix(Ord).astype('float32'))
+    Perm = Perm.to(meas.device)
+    Perm = torch.transpose(Perm,0,1)
+    Img = torch.matmul(Perm,meas) # Requires too much memory
+    
+    return Img
 
 def Hadamard_stat_completion_matrices(Cov_had, Mean_had, CR):
     img_size, ny = Mean_had.shape;
@@ -454,7 +501,7 @@ def Hadamard_stat_completion_comp(Cov,Mean,img, CR):
 # A. NO NOISE
 #==============================================================================    
 class compNet(nn.Module):
-    def __init__(self, n, M, Mean, Cov, variant=0, H=None):
+    def __init__(self, n, M, Mean, Cov, variant=0, H=None, Ord=None):
         super(compNet, self).__init__()
         
         self.n = n;
@@ -469,8 +516,10 @@ class compNet(nn.Module):
         H = n*H; #fht hadamard transform needs to be normalized
         
         #-- Hadamard patterns (undersampled basis)
-        Var = Cov2Var(Cov)
-        Perm = Permutation_Matrix(Var)
+        if type(Ord)==type(None):         
+            Ord = Cov2Var(Cov)
+            
+        Perm = Permutation_Matrix(Ord)
         Pmat = np.dot(Perm,H);
         Pmat = Pmat[:M,:];
         Pconv = matrix2conv(Pmat);
@@ -585,8 +634,7 @@ class compNet(nn.Module):
     
     def forward_maptoimage(self, x, b, c, h, w):
         #- Pre-processing (use batch norm to avoid division by N0 ?)
-        x = self.T(x);
-        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M));
+        x = self.forward_preprocess(x, b, c, h, w);
         #--Projection to the image domain
         x = self.fc1(x);
         x = x.view(b*c,1,h,w)
@@ -601,7 +649,12 @@ class compNet(nn.Module):
         x = self.forward_maptoimage(x, b, c, h, w)
         x = self.forward_postprocess(x, b, c, h, w)
         return x
-     
+    
+    def forward_preprocess(self, x, b, c, h, w):
+        #- Pre-processing (use batch norm to avoid division by N0 ?)
+        x = self.T(x);
+        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M));
+        return x
     
     #--------------------------------------------------------------------------
     # Evaluation functions (no grad)
@@ -723,8 +776,6 @@ class noiCompNet(compNet):
         x = self.fc1(x);
         x = x.view(b*c,1,h,w) 
         return x
-     
- 
 
 #==============================================================================    
 # B. NOISY MEASUREMENTS (NOISE LEVEL IS VARYING) + denoising architecture

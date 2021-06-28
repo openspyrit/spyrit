@@ -134,8 +134,8 @@ def iwalsh2(X,H=None):
     """Return 2D inverse Walsh-ordered Hadamard transform of an image
 
     Args:
-        X (ndarray): Image as a 2D array. The image is square and its size is a power of two.
-        H (ndarray, optional): 1D inverse Walsh-ordered Hadamard transformation matrix
+        X (np.ndarray): Image as a 2D array. The image is square and its size is a power of two.
+        H (np.ndarray, optional): 1D inverse Walsh-ordered Hadamard transformation matrix
 
     Returns:
         np.ndarray: Inverse Hadamard transformed image as a 2D array.
@@ -151,7 +151,7 @@ def walsh2_matrix(n):
         n (int): Order of the matrix, which should be a power of two.
 
     Returns:
-        H (ndarray): A n*n-by-n*n array
+        H (np.ndarray): A n*n-by-n*n array
     """
     H = np.zeros((n**2, n**2))
     H1d = walsh_matrix(n)
@@ -179,4 +179,5 @@ def walsh2_torch(im,H=None):
     """
     if H is None:
          H = torch.from_numpy(walsh_matrix(im.shape[3]).astype('float32'))
+    H = H.to(im.device)
     return  torch.matmul(torch.matmul(H,im),H)
