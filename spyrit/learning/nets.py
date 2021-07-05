@@ -117,7 +117,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, device, roo
     
     
                     sys.stdout.write(
-                        "\r[%s] [Epoch %d/%d] [Batch %d/%d] [Loss: %f] ETA: %s"
+                        "\r[%s] [Epoch %d/%d] [Batch %d/%d] [Loss: %f] ETA: %s "
                         % (
                             phase,
                             epoch+1,
@@ -147,8 +147,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, device, roo
 
         if do_checkpoint>0:
             if epoch%do_checkpoint==0:
-                checkpoint_root = root + "model_checkpoints/";
-                checkpoint(checkpoint_root, epoch, model);
+                checkpoint(root, epoch, model);
 
     time_elapsed = time.time() - since
     if disp:
@@ -224,7 +223,7 @@ def train_model_supervised(model, criterion, optimizer, scheduler, dataloaders, 
     
     
                     sys.stdout.write(
-                        "\r[%s] [Epoch %d/%d] [Batch %d/%d] [Loss: %f] ETA: %s"
+                        "\r[%s] [Epoch %d/%d] [Batch %d/%d] [Loss: %f] ETA: %s "
                         % (
                             phase,
                             epoch+1,
@@ -250,8 +249,7 @@ def train_model_supervised(model, criterion, optimizer, scheduler, dataloaders, 
 
         if do_checkpoint>0:
             if epoch%do_checkpoint==0:
-                checkpoint_root = root + "model_checkpoints/";
-                checkpoint(checkpoint_root, epoch, model);
+                checkpoint(root, epoch, model);
 
     time_elapsed = time.time() - since
     if disp:
@@ -430,7 +428,7 @@ def checkpoint(root, epoch, model):
         the right epoch
         """
     model_out_path = "model_epoch_{}.pth".format(epoch)
-    model_out_path = root+ model_out_path;
+    model_out_path = root / model_out_path;
     torch.save(model.state_dict() , model_out_path);
     print("Checkpoint saved to {}".format(model_out_path))
 
