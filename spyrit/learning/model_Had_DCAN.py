@@ -685,8 +685,13 @@ class compNet(nn.Module):
         return x
     
     def forward_reconstruct_pinv(self, x, b, c, h, w):
-        x = x = self.forward_preprocess(x, b, c, h, w)
+        x = self.forward_preprocess(x, b, c, h, w)
         x = self.pinv(x, b, c, h, w);
+        return x
+    
+    def forward_reconstruct_mmse(self, x, b, c, h, w):
+        x = self.forward_preprocess(x, b, c, h, w)
+        x = self.forward_maptoimage(x, b, c, h, w)
         return x
     
     def forward_preprocess(self, x, b, c, h, w):
@@ -699,13 +704,13 @@ class compNet(nn.Module):
         #--Projection to the image domain
         x = self.fc1(x);
         x = x.view(b*c,1,h,w)
-        return 
+        return x
     
     
     def forward_postprocess(self, x, b, c, h, w):
         x = self.recon(x)
         x = x.view(b, c, h, w)
-        return 
+        return x
     
     def pinv(self, x, b, c, h, w):
         x = self.Pinv(x);
@@ -748,16 +753,18 @@ class compNet(nn.Module):
 # B. NOISY MEASUREMENTS (NOISE LEVEL IS VARYING)
 #==============================================================================
 class noiCompNet(compNet):
-    def __init__(self, n, M, Mean, Cov, variant, N0=2500, sig=0.1, H=None):
-        super().__init__(n, M, Mean, Cov, variant, H)
+    def __init__(self, n, M, Mean, Cov, variant, N0=2500, sig=0.5, H=None, Ord=None):
+        super().__init__(n, M, Mean, Cov, variant, H, Ord)
         self.N0 = N0;
         self.sig = sig;
         self.max = nn.MaxPool2d(kernel_size = n);
         print("Varying N0 = {:g} +/- {:g}".format(N0,sig*N0))
         
     def forward_acquire(self, x, b, c, h, w):
-        #--Scale input image
-        x = (self.N0*(1+self.sig*torch.randn_like(x)))*(x+1)/2;
+        #--Scale input image      
+        a = self.N0*(1+self.sig*(torch.rand(x.shape[0])-0.5)).to(x.device)
+        print('alpha in [{}--{}] photons'.format(min(a).item(),max(a).item()))
+        x = a.view(-1,1,1,1)*(x+1)/2;
         
         #--Acquisition
         x = x.view(b*c, 1, h, w);
@@ -813,8 +820,8 @@ class noiCompNet(compNet):
 # B. NOISY MEASUREMENTS (NOISE LEVEL IS VARYING) + denoising architecture
 #==============================================================================
 class DenoiCompNet(noiCompNet):
-    def __init__(self, n, M, Mean, Cov, variant, N0, sig = 0.1, H=None):
-        super().__init__(n, M, Mean, Cov, variant, N0, sig, H)
+    def __init__(self, n, M, Mean, Cov, variant=0, N0=2500, sig=0.5, H=None, Ord=None):
+        super().__init__(n, M, Mean, Cov, variant, N0, sig, H, Ord)
         print("Denoised Measurements")
    
     def forward(self, x):
@@ -834,6 +841,13 @@ class DenoiCompNet(noiCompNet):
         x = self.forward_denoise(x, var, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
         x = self.forward_postprocess(x, b, c, h, w)
+        return x
+    
+    def forward_reconstruct_mmse(self, x, b, c, h, w):
+        var = x[:,:,self.even_index] + x[:,:,self.uneven_index]
+        x = self.forward_preprocess(x, b, c, h, w)
+        x = self.forward_denoise(x, var, b, c, h, w)
+        x = self.forward_maptoimage(x, b, c, h, w)
         return x
     
     def forward_reconstruct_pinv(self, x, b, c, h, w):
