@@ -125,3 +125,21 @@ print('Number of trainable parameters: {}'.format(count_trainable_param(model)))
 print('Total number of parameters: {}'.format(count_param(model)))
 
 
+#%% Load measured data
+meas = dataset_meas(dataloaders['val'], model, device) #dataloaders['train']
+meas = np.array(meas)
+
+#%%
+n1 = 2; #2,12 or 2,7
+n2 = 7;
+
+
+# Load training history
+train_path = model_root/('TRAIN_c0mp'+suffix+'.pkl')
+train_net_prob = read_param(train_path)
+train_path = model_root/('TRAIN_pinv'+suffix+'.pkl')
+train_net_pinv = read_param(train_path)
+train_path = model_root/('TRAIN_free'+suffix+'.pkl')
+train_net_free = read_param(train_path)
+
+
