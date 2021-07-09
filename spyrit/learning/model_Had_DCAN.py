@@ -732,7 +732,7 @@ class compNet(nn.Module):
         with torch.no_grad():
            b,c,h,w = x.shape
            x = self.forward_acquire(x, b, c, h, w)
-           x = self.forward_maptoimage(x, b, c, h, w)
+           x = self.forward_reconstruct_mmse(x, b, c, h, w)
         return x
      
     def evaluate_Pinv(self, x):
