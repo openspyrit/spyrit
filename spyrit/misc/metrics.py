@@ -142,6 +142,22 @@ def psnr(I1,I2):
     MSE=diff.sum()/I1.size;
     Psnr=10*np.log(d**2/MSE)/np.log(10);
     return Psnr
+
+def psnr_(img1,img2,r=2):
+    """
+    Computes the psnr between two image with values expected in a given range
+    
+    Args:
+        img1, img2 (np.ndarray): images
+        r (float): image range
+        
+    Returns:
+        Psnr (float): Peak signal-to-noise ratio
+    
+    """
+    MSE = np.mean((img1 - img2) ** 2)
+    Psnr = 10*np.log(r**2/MSE)/np.log(10);
+    return Psnr
     
 def ssim(I1,I2):
     """
