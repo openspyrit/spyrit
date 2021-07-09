@@ -676,9 +676,11 @@ class compNet(nn.Module):
         x = self.P(x);
         x = F.relu(x); ## x[:,:,1] = -1/N0 ????
         x = x.view(b*c,1, 2*self.M); 
+        print("No noise")
         return x
     
     def forward_reconstruct(self, x, b, c, h, w):
+        print("CompNet")
         x = self.forward_preprocess(x, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
         x = self.forward_postprocess(x, b, c, h, w)
@@ -763,7 +765,7 @@ class noiCompNet(compNet):
     def forward_acquire(self, x, b, c, h, w):
         #--Scale input image      
         a = self.N0*(1+self.sig*(torch.rand(x.shape[0])-0.5)).to(x.device)
-        print('alpha in [{}--{}] photons'.format(min(a).item(),max(a).item()))
+        print('alpha in [{:.2f}--{:.2f}] photons'.format(min(a).item(),max(a).item()))
         x = a.view(-1,1,1,1)*(x+1)/2;
         
         #--Acquisition
@@ -832,13 +834,20 @@ class DenoiCompNet(noiCompNet):
     
     def forward_denoise(self, x, var, b, c, h, w):
         sigma = self.sigma.repeat(b*c,1,1).to(x.device);
-        x = torch.mul(torch.div(sigma, sigma+var/(self.N0)**2), x);
+        x = torch.mul(torch.div(sigma, sigma + var/(self.N0)**2), x);
         return x
    
     def forward_reconstruct(self, x, b, c, h, w):
         var = x[:,:,self.even_index] + x[:,:,self.uneven_index]
         x = self.forward_preprocess(x, b, c, h, w)
         x = self.forward_denoise(x, var, b, c, h, w)
+        x = self.forward_maptoimage(x, b, c, h, w)
+        x = self.forward_postprocess(x, b, c, h, w)
+        return x
+    
+    def forward_reconstruct_comp(self, x, b, c, h, w):
+        #x = super().forward_reconstruct(x, b, c, h, w)
+        x = self.forward_preprocess(x, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
         x = self.forward_postprocess(x, b, c, h, w)
         return x
@@ -851,9 +860,7 @@ class DenoiCompNet(noiCompNet):
         return x
     
     def forward_reconstruct_pinv(self, x, b, c, h, w):
-        var = x[:,:,self.even_index] + x[:,:,self.uneven_index]
         x = self.forward_preprocess(x, b, c, h, w)
-        x = self.forward_denoise(x, var, b, c, h, w)
         x = self.pinv(x, b, c, h, w)
         return x
     
@@ -866,9 +873,7 @@ class DenoiCompNet(noiCompNet):
         return x
     
     def forward_reconstruct_pinv_expe(self, x, b, c, h, w, C=0, s=0, g=1):
-        var = g**2*(x[:,:,self.even_index] + x[:,:,self.uneven_index]) - 2*C*g +2*s**2;
         x = self.forward_preprocess_expe(x, b, c, h, w)
-        x = self.forward_denoise(x, var, b, c, h, w)
         x = self.pinv(x, b, c, h, w) 
         return x
 
