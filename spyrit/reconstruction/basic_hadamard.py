@@ -46,7 +46,7 @@ def optimal_order_mask(CR, title1, trainloader, img_size):
     msk[np.absolute(had_comp)>CR]=0;
     return msk;
 
-  def optimal_order_noisy(net, input_batch, dyn, No, fc):
+def optimal_order_noisy(net, input_batch, dyn, No, fc):
     batch_size,c,h,w = x.shape
     Patt = list(net.children())[0];
     P, T = split(Patt, dyn);
