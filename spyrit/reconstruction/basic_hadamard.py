@@ -117,10 +117,10 @@ def noisy_net_output(net, input_batch, No):
     x = net.recon(x);
     return x;
 
- def rescale(model, n):
-     model.conv1.weight.data = n*model.conv1.weight.data;
-     model.fc1.weight.data = (1/n)*model.fc1.weight.data;
-     model.fc1.bias.data = (1/n)*model.fc1.bias.data;
+def rescale(model, n):
+    model.conv1.weight.data = n*model.conv1.weight.data;
+    model.fc1.weight.data = (1/n)*model.fc1.weight.data;
+    model.fc1.bias.data = (1/n)*model.fc1.bias.data;
 
 
 def inverse_transform_net(Cov_had, Mean_had, M):
