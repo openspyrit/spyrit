@@ -130,6 +130,7 @@ def walsh2(X,H=None):
          H = walsh_matrix(len(X))
     return(np.dot(np.dot(H,X),H))
 
+
 def iwalsh2(X,H=None):
     """Return 2D inverse Walsh-ordered Hadamard transform of an image
 
