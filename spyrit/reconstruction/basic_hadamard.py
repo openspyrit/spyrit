@@ -71,7 +71,7 @@ def stat_completion(x, net):
     x = x.view(batch_size*c, 1, h, w);
     x = (x+1)/2;
     x = No*x;
-    x = model.(x)
+    x = model.x
     x = x.view([x.shape[0],1,M])
     x = model.fc1(x)
     output_batch = x.view([x.shape[0], 1, h, w])
