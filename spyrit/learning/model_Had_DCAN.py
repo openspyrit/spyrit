@@ -576,17 +576,18 @@ class compNet(nn.Module):
         Sigma = Sigma[diag_index];
         Sigma = n**2/4*Sigma[:M]; #(H = nH donc Cov = n**2 Cov)!
         #Sigma = Sigma[:M];
-        Sigma = torch.Tensor(Sigma);
-        self.sigma = Sigma.view(1,1,M);
-        
+        Sigma = torch.Tensor(Sigma)
+        self.sigma = Sigma.view(1,1,M)
+        self.sigma.requires_grad = False
 
-        P1 = np.zeros((n**2,1));
-        P1[0] = n**2;
-        mean = n*np.reshape(Mean,(self.n**2,1))+P1;
-        mu = (1/2)*np.dot(Perm, mean);
+        P1 = np.zeros((n**2,1))
+        P1[0] = n**2
+        mean = n*np.reshape(Mean,(self.n**2,1))+P1
+        mu = (1/2)*np.dot(Perm, mean)
         #mu = np.dot(Perm, np.reshape(Mean, (n**2,1)))
-        mu1 = torch.Tensor(mu[:M]);
-        self.mu_1 = mu1.view(1,1,M);
+        mu1 = torch.Tensor(mu[:M])
+        self.mu_1 = mu1.view(1,1,M)
+        self.mu_1.requires_grad = False
 
         #-- Measurement preprocessing
         self.Patt = Pconv;
