@@ -10,3 +10,4 @@ PyWavelets
 wget
 sympy
 imageio
+astropy
