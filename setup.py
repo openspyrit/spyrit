@@ -76,6 +76,7 @@ setup(name='spyrit',
           'wget',
           'sympy',
           'imageio',
+          'astropy',
       ],
       packages=find_packages(),
       zip_safe=False)

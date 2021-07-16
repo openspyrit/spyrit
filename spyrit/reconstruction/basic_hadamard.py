@@ -46,7 +46,7 @@ def optimal_order_mask(CR, title1, trainloader, img_size):
     msk[np.absolute(had_comp)>CR]=0;
     return msk;
 
-  def optimal_order_noisy(net, input_batch, dyn, No, fc):
+def optimal_order_noisy(net, input_batch, dyn, No, fc):
     batch_size,c,h,w = x.shape
     Patt = list(net.children())[0];
     P, T = split(Patt, dyn);
@@ -71,7 +71,7 @@ def stat_completion(x, net):
     x = x.view(batch_size*c, 1, h, w);
     x = (x+1)/2;
     x = No*x;
-    x = model.(x)
+    x = model.x
     x = x.view([x.shape[0],1,M])
     x = model.fc1(x)
     output_batch = x.view([x.shape[0], 1, h, w])
@@ -117,10 +117,10 @@ def noisy_net_output(net, input_batch, No):
     x = net.recon(x);
     return x;
 
- def rescale(model, n):
-     model.conv1.weight.data = n*model.conv1.weight.data;
-     model.fc1.weight.data = (1/n)*model.fc1.weight.data;
-     model.fc1.bias.data = (1/n)*model.fc1.bias.data;
+def rescale(model, n):
+    model.conv1.weight.data = n*model.conv1.weight.data;
+    model.fc1.weight.data = (1/n)*model.fc1.weight.data;
+    model.fc1.bias.data = (1/n)*model.fc1.bias.data;
 
 
 def inverse_transform_net(Cov_had, Mean_had, M):
