@@ -492,17 +492,20 @@ class noiCompNet(compNet):
         print("Varying N0 = {:g} +/- {:g}".format(N0,sig*N0))
         
     def forward_acquire(self, x, b, c, h, w):
-        #--Scale input image
-        x = (self.N0*(1+self.sig*torch.randn_like(x)))*(x+1)/2;
+        a = self.N0*(1+self.sig*(torch.rand(x.shape[0])-0.5)).to(x.device)
+        print('alpha in [{}--{}] photons'.format(min(a).item(),max(a).item()))
+        x = a.view(-1,1,1,1)*(x+1)/2;
+        
         #--Acquisition
         x = x.view(b*c, 1, h, w);
         x = self.P(x);
         x = F.relu(x);     # x[:,:,1] = -1/N0 ????
         x = x.view(b*c,1, 2*self.M); # x[:,:,1] < 0??? 
+        
         #--Measurement noise (Gaussian approximation of Poisson)
         x = x + torch.sqrt(x)*torch.randn_like(x);  
         return x
-    
+
     def forward_maptoimage(self, x, b, c, h, w):
         #-- Pre-processing (use batch norm to avoid division by N0 ?)
         var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
