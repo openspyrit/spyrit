@@ -129,3 +129,18 @@ class NetImage(VisionDataset):
 
     def extra_repr(self) -> str:
         return "Split: {}".format("Train" if self.train is True else "Test")
+        
+        
+        
+#        
+#        
+#        
+##!/bin/bash
+#wget https://image-net.org/data/downsample/Imagenet64_val.zip
+#wget https://image-net.org/data/downsample/Imagenet64_train_part1.zip
+#wget https://image-net.org/data/downsample/Imagenet64_train_part2.zip
+#mkdir imagenet-batches
+#unzip Imagenet64_val.zip imagenet-batches
+#unzip Imagnet64_train_part1.zip imagenet-batches
+#unzip Imagnet64_train_part2.zip imagenet-batches
+
