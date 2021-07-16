@@ -8,4 +8,6 @@ opencv-python
 imutils
 PyWavelets
 wget
+sympy
 imageio
+astropy
