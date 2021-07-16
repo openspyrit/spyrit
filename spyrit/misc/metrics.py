@@ -27,6 +27,18 @@ def batch_psnr(torch_batch, output_batch):
         list_psnr.append(psnr(img, img_out));
     return list_psnr;
 
+
+def batch_pmdr(torch_batch, output_batch):
+    list_pmdr = [];
+    for i in range(torch_batch.shape[0]):
+        img = torch_batch[i, 0, :, :];
+        img_out = output_batch[i,0,:,:];
+        img = img.cpu().detach().numpy();
+        img_out = img_out.cpu().detach().numpy();
+        list_pmdr.append(MD(img, img_out));
+    return list_pmdr;
+
+
 def batch_ssim(torch_batch, output_batch):
     list_ssim = [];
     for i in range(torch_batch.shape[0]):
@@ -137,11 +149,26 @@ def psnr(I1,I2):
     """
     Computes the psnr between two images I1 and I2
     """
-    d=np.amax(I1)-np.amin(I1);
+#     d=np.amax(I1)-np.amin(I1);
+    d = 2
     diff=np.square(I2-I1);
     MSE=diff.sum()/I1.size;
     Psnr=10*np.log(d**2/MSE)/np.log(10);
     return Psnr
+
+
+def MD(I1,I2):
+    """
+    Computes the Maximum difference between two images I1 and I2
+    """
+    d=np.amax(I1)-np.amin(I1);
+    d =2 ;
+    diff=np.linalg.norm(I2-I1, ord = np.inf);
+    Pmdr= 10*np.log(d/diff)/np.log(10);
+    return Pmdr
+
+
+
     
 def ssim(I1,I2):
     """
