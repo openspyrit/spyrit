@@ -69,7 +69,7 @@ jobs:
         path: data_example
         key: data_example3
         restore-keys: data_example3
-    - name: Run the tests on Mac and Linux
+    - name: Run the ISBI test on Mac and Linux
       if: matrix.os != 'windows-latest'
       run: |
           mkdir -p data_example
@@ -80,9 +80,22 @@ jobs:
               tar xzvf stl10_binary.tar.gz
               cd ..
           fi
-          python ../.github/workflows/example.py
+          python ../.github/workflows/example_2020_ISBI.py
           rm -rf data/stl10_binary
-    - name: Run the tests on Windows
+    - name: Run the Optic test on Mac and Linux
+      if: matrix.os != 'windows-latest'
+      run: |
+          mkdir -p data_example
+          pip install -e .
+          pip install tabulate pylops bm3d
+          cd data_example
+          wget https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/expe.zip
+          unzip expe.zip
+          wget https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/model.zip
+          unzip model.zip
+          cd ..
+          python .github/workflows/example_2021_OpticsExpress.py
+    - name: Run the ISBI test on Windows
       if: matrix.os == 'windows-latest'
       run: |
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
@@ -94,8 +107,22 @@ jobs:
               tar xzvf stl10_binary.tar.gz
               cd ..
           }
-          python ..\.github\workflows\example.py
+          python ..\.github\workflows\example_2020_ISBI.py
           rm -r -fo data/stl10_binary
+    - name: Run the Optic test on Windows
+      if: matrix.os == 'windows-latest'
+      run: |
+          if(-not (Test-Path -path "data_example")) { mkdir data_example }
+          pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install -e .
+          pip install tabulate pylops bm3d
+          cd data_example
+          C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/expe.zip
+          unzip expe.zip
+          C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/model.zip
+          unzip model.zip
+          cd ..
+          python .github\workflows\example_2021_OpticsExpress.py
 
   test_wheel:
     runs-on: ${{ matrix.os }}
@@ -127,7 +154,7 @@ jobs:
       with:
         name: dist
         path: dist/
-    - name: Run the tests on Mac and Linux
+    - name: Run the ISBI test on Mac and Linux
       if: matrix.os != 'windows-latest'
       run: |
           mkdir -p data_example
@@ -139,9 +166,22 @@ jobs:
               tar xzvf stl10_binary.tar.gz
               cd ..
           fi
-          python ../.github/workflows/example.py
+          python ../.github/workflows/example_2020_ISBI.py
           rm -rf data/stl10_binary
-    - name: Run the tests on Windows
+    - name: Run the Optic test on Mac and Linux
+      if: matrix.os != 'windows-latest'
+      run: |
+          mkdir -p data_example
+          cd dist
+          pip install spyrit-*.whl
+          cd ../data_example
+          wget https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/expe.zip
+          unzip expe.zip
+          wget https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/model.zip
+          unzip model.zip
+          cd ..
+          python .github/workflows/example_2021_OpticsExpress.py
+    - name: Run the ISBI test on Windows
       if: matrix.os == 'windows-latest'
       run: |
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
@@ -154,9 +194,23 @@ jobs:
               tar xzvf stl10_binary.tar.gz
               cd ..
           }
-          python ..\.github\workflows\example.py
+          python ..\.github\workflows\example_2020_ISBI.py
           rm -r -fo data/stl10_binary
-  
+    - name: Run the Optic test on Windows
+      if: matrix.os == 'windows-latest'
+      run: |
+          if(-not (Test-Path -path "data_example")) { mkdir data_example }
+          cd dist
+          pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install --find-links=. spyrit
+          cd ..\data_example
+          C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/expe.zip
+          unzip expe.zip
+          C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/model.zip
+          unzip model.zip
+          cd ..
+          python .github\workflows\example_2021_OpticsExpress.py
+
   publish_wheel:
     runs-on: ubuntu-latest
     needs: [build_wheel, test_wheel, test_install]
