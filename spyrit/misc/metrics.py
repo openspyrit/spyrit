@@ -157,6 +157,7 @@ def psnr(I1,I2):
     return Psnr
 
 
+
 def MD(I1,I2):
     """
     Computes the Maximum difference between two images I1 and I2
@@ -168,6 +169,21 @@ def MD(I1,I2):
     return Pmdr
 
 
+def psnr_(img1,img2,r=2):
+    """
+    Computes the psnr between two image with values expected in a given range
+    
+    Args:
+        img1, img2 (np.ndarray): images
+        r (float): image range
+        
+    Returns:
+        Psnr (float): Peak signal-to-noise ratio
+    
+    """
+    MSE = np.mean((img1 - img2) ** 2)
+    Psnr = 10*np.log(r**2/MSE)/np.log(10);
+    return Psnr
 
     
 def ssim(I1,I2):

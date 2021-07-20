@@ -74,13 +74,14 @@ setup(name='spyrit',
           'imutils',
           'PyWavelets',
           'wget',
+          'sympy',
           'imageio',
+          'astropy',
       ],
       packages=find_packages(),
       zip_safe=False)
 
 
-#
 
 #
 #      install_requires=[

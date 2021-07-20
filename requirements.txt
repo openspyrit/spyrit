@@ -1,0 +1,13 @@
+numpy
+matplotlib
+scipy
+torch
+torchvision
+Pillow
+opencv-python
+imutils
+PyWavelets
+wget
+sympy
+imageio
+astropy
