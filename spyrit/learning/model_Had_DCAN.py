@@ -809,9 +809,9 @@ class noiCompNet(compNet):
         return x
       
     def forward_reconstruct_expe(self, x, b, c, h, w):
-      """"
-      Add C, g, s, and have the fully experimental processing here.
-      """
+        """"
+        Add C, g, s, and have the fully experimental processing here.
+        """
         var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
         m, N0_est = self.forward_preprocess_expe(x, b, c, h, w);
         var = torch.div(var, N0_est**2);
