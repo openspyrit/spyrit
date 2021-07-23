@@ -128,8 +128,7 @@ meas = np.array(meas)
 
 #Neumann Net
 denoi_img = model.recon;
-denoi_3 = Unet;
-denoi =  NeumannNet(M, img_size, Cov_had, denoi = denoi_3, iterations = 2)
+denoi =  NeumannNet(M, img_size, Cov_had, denoi = denoi_img, iterations = 2)
 model = noiCompNet(img_size, M, Mean_had, Cov_had, 2, N0, 0, denoi=denoi);
 
 # Unet
