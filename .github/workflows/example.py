@@ -24,7 +24,7 @@ from spyrit.learning.model_Had_DCAN import *# compNet, Stat_had, Weight_Decay_Lo
 from spyrit.learning.nets import *
 from spyrit.misc.disp import *
 from spyrit.misc.metrics import *
-#from spyrit.reconstruction.recon_functions import *
+from spyrit.reconstruction.recon_functions import *
 
 # User-defined global parameters
 #- Acquisition
