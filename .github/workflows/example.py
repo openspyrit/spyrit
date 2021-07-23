@@ -125,7 +125,6 @@ print('Total number of parameters: {}'.format(count_param(model)))
 #%% Load measured data
 meas = dataset_meas(dataloaders['val'], model, device) #dataloaders['train']
 meas = np.array(meas)
-model = DenoiCompNet(opt.img_size, opt.CR, Mean_had, Cov_had, opt.net_arch, opt.N0, opt.sig, H, denoi=denoi);
 
 #Neumann Net
 denoi_img = model.recon;
