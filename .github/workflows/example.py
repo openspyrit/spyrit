@@ -138,7 +138,7 @@ model_u = noiCompNet(img_size, M, Mean_had, Cov_had, 2, N0, 0, denoi=denoi_img);
 
 # EM-Net
 denoi_img = Unet(1,1)
-denoi =  sn_dp_iteratif_2(M, img_size, Cov_had, denoi_img, n_iter = 2)
+denoi =  sn_dp_iteratif_2(M, img_size, Cov_had, denoi = denoi_img, n_iter = 2)
 denoi.set_layers(model_u.recon, Cov_had)
 model = DenoiCompNet(img_size, M, Mean_had, Cov_had,0, N0, 0, denoi=denoi);
 
