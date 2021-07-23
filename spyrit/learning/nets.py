@@ -597,8 +597,8 @@ def save_net(title, model):
     print("Model Saved")
 
 
-def load_net(title, model):
+def load_net(title, model, device):
     """Loads net defined by title """
     model_out_path = "{}.pth".format(title)
-    model.load_state_dict(torch.load(model_out_path))
+    model.load_state_dict(torch.load(model_out_path, map_location=torch.device(device)))
     print("Model Loaded: {}".format(title))
