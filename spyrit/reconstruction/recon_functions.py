@@ -683,8 +683,8 @@ class NeumannNet(nn.Module):
         self.n = n;
         self.M = M;
         self.iterations = iterations;
-        if denoi == None:
-            denoi = ConvNet
+        if denoi is None:
+            denoi = ConvNet()
         # Hadamard matrix
         if type(H)==type(None):
             H = Hadamard_Transform_Matrix(self.n)
@@ -704,7 +704,7 @@ class NeumannNet(nn.Module):
         self.Gramian.weight.data=self.Gramian.weight.data.float();
         self.Gramian.weight.requires_grald=False;
         
-        self.nonlinear_op = denoi();
+        self.nonlinear_op = denoi;
 
         self.register_parameter(name='eta', param=torch.nn.Parameter(torch.tensor(eta_initial_val), requires_grad=True))    
 
@@ -722,8 +722,7 @@ class NeumannNet(nn.Module):
         return y;
         
     def single_block(self, x, b ,c ,h, w, x0, var):
-#         return x - self.eta * self.gramian(x ,b ,c ,h, w) - self.eta*self.nonlinear_op(x, b ,c ,h, w, x0, var) ##### CHECK THIS
-        return x - self.eta * self.gramian(x ,b ,c ,h, w) - self.nonlinear_op(x, b ,c ,h, w, x0, var)
+        return x - self.eta * self.gramian(x ,b ,c ,h, w) - self.nonlinear_op(x, b ,c ,h, w, x0, var);
     
     def forward(self, x ,b ,c ,h, w, x0, var):
     # Needs to use Map to image as Pinv!!!!! Also reduces the need to use initial_point
