@@ -143,5 +143,5 @@ denoi.set_layers(model_u.recon, Cov_had)
 model = DenoiCompNet(img_size, M, Mean_had, Cov_had,0, N0, 0, denoi=denoi);
 
 # MoDL
-denoi =  iteratif(opt.CR, opt.img_size, Cov_had, denoi=model_u.recon, n_iter = 2)
+denoi =  iteratif(M, img_size, Cov_had, denoi=model_u.recon, n_iter = 2)
 model = noiCompNet(img_size, M, Mean_had, Cov_had, 2, N0, 0, denoi=denoi);
