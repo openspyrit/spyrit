@@ -388,16 +388,6 @@ def Variance_mask(Cov,eta=0.5):
     return mask
 
     
-def Hadamard_Transform_Matrix(img_size):
-    H = np.zeros((img_size**2, img_size**2))
-    for i in range(img_size**2):
-        base_function = np.zeros((img_size**2,1));
-        base_function[i] = 1;
-        base_function = np.reshape(base_function, (img_size, img_size));
-        hadamard_function = fht2(base_function);
-        H[i, :] = np.reshape(hadamard_function, (1,img_size**2));
-    return H
-
 def meas2img(meas, Ord):
     """Return image from measurement vector
 
@@ -451,7 +441,7 @@ def Hadamard_stat_completion_matrices(Cov_had, Mean_had, CR):
     # choice of patterns
     Var = Cov2Var(Cov_had)
     P = Permutation_Matrix(Var)
-    H = Hadamard_Transform_Matrix(img_size);
+    H = wh.walsh2_matrix(img_size)/img_size
 
     Sigma = np.dot(P,np.dot(Cov_had,np.transpose(P)))
     mu = np.dot(P, np.reshape(Mean_had, (img_size**2,1)))
@@ -516,7 +506,7 @@ def Hadamard_stat_completion_comp(Cov, Mean, Im, CR):
     img_size, ny = Im.shape;
     Var = Cov2Var(Cov)
     P = Permutation_Matrix(Var)
-    H = Hadamard_Transform_Matrix(img_size);
+    H = wh.walsh2_matrix(img_size)/img_size
 
     Sigma = np.dot(P,np.dot(Cov,np.transpose(P)))
     mu = np.dot(P, np.reshape(Mean, (img_size**2,1)))
@@ -558,7 +548,7 @@ class compNet(nn.Module):
         
         #-- Hadamard patterns (full basis)
         if type(H)==type(None):
-            H = Hadamard_Transform_Matrix(self.n)
+            H = wh.walsh2_matrix(self.n)/self.n
         H = n*H; #fht hadamard transform needs to be normalized
         
         #-- Hadamard patterns (undersampled basis)
