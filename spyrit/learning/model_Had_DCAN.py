@@ -446,8 +446,8 @@ class compNet(nn.Module):
         x = x.view(b*c, 1, h, w);
         x = self.P(x);
         x = F.relu(x); ## x[:,:,1] = -1/N0 ????
-        x = x.view(b*c,1, 2*self.M); 
         print("No noise")
+        x = x.view(b, c, 2*self.M); 
         return x
     
     def forward_reconstruct(self, x, b, c, h, w):
@@ -470,24 +470,25 @@ class compNet(nn.Module):
     def forward_preprocess(self, x, b, c, h, w):
         #- Pre-processing (use batch norm to avoid division by N0 ?)
         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
-        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M));
+        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1,h,w).to(x.device)),(b,c,self.M));
         return x
     
     def forward_maptoimage(self, x, b, c, h, w):
         #--Projection to the image domain
         x = self.fc1(x);
-        x = x.view(b*c,1,h,w)
+        x = x.view(b, c, h, w)
         return x
-    
+        
     
     def forward_postprocess(self, x, b, c, h, w):
+        x = x.view(b*c, 1, h, w)
         x = self.recon(x)
         x = x.view(b, c, h, w)
         return x
     
     def pinv(self, x, b, c, h, w):
         x = self.Pinv(x);
-        x = x.view(b*c,1,h,w)
+        x = x.view(b, c, h, w)
         return x
     
     #--------------------------------------------------------------------------
@@ -543,7 +544,7 @@ class noiCompNet(compNet):
         x = x.view(b*c, 1, h, w);
         x = self.P(x);
         x = F.relu(x);     # x[:,:,1] = -1/N0 ????
-        x = x.view(b*c,1, 2*self.M); # x[:,:,1] < 0??? 
+        x = x.view(b, c, 2*self.M); # x[:,:,1] < 0??? 
         
         #--Measurement noise (Gaussian approximation of Poisson)
         x = x + torch.sqrt(x)*torch.randn_like(x);  
@@ -553,7 +554,7 @@ class noiCompNet(compNet):
         #-- Pre-processing(Recombining positive and negatve values+normalisation) 
         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
         x = x/self.N0;
-        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
+        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b,c,self.M)); 
 
         return x
     
@@ -582,10 +583,10 @@ class noiCompNet(compNet):
         #-- Estimating and normalizing by N0
         x_est = self.pinv(x, b, c, h, w);
         N0_est = self.max(x_est)
-        N0_est = N0_est.view(b*c,1,1)
+        N0_est = N0_est.view(b,c,1)
         N0_est = N0_est.repeat(1,1,self.M)
         x = torch.div(x,N0_est)
-        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M))
+        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b,c,self.M))
         return x
 
 
@@ -604,8 +605,8 @@ class DenoiCompNet(noiCompNet):
         return x
     
     def forward_denoise(self, x, var, b, c, h, w):
-        sigma = self.sigma.repeat(b*c,1,1).to(x.device);
-        x = torch.mul(torch.div(sigma, sigma + var/(self.N0)**2), x);
+        sigma = self.sigma.repeat(b,c,1).to(x.device);
+        x = torch.mul(torch.div(sigma, sigma+var/(self.N0)**2), x);
         return x
    
     def forward_reconstruct(self, x, b, c, h, w):
