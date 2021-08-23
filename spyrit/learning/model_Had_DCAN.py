@@ -264,9 +264,6 @@ def stat_denoising_matrices(P, Cov_had, NVMS, n, CR):
     Product0 = np.matmul(NVMS, NVMS_inv)
     Product1 = np.matmul(Sigma1, NVMS_inv)
     Product2 = np.matmul(Product1, np.eye(CR) + Product0)
-    Product3 = np.matmul(Product1, np.eye(CR) + np.matmul(Product0, np.eye(CR) + Product0))
-    Product4 = np.matmul(Product1, Product0)
-    Product5 = np.matmul(NVMS_inv, Product0)
 
     return NVMS_inv, Product1, Product2
 
