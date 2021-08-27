@@ -33,13 +33,16 @@ if __name__ == "__main__":
     parser.add_argument("--net_arch",   type=int,   default=0,      help="Network architecture (variants for the FCL)")
     parser.add_argument("--precompute_root", type=str, default='/home/amador/Documents/Stage/Codes/spyrit-doc/Test/', help="Path to precomputed data")
     parser.add_argument("--precompute", type=bool,  default=False,  help="Tells if the precomputed data is available")
-    parser.add_argument("--model_root", type=str,   default='/home/amador/Documents/Stage/Codes/spyrit-doc/Training_models/', help="Path to model saving files")
+    parser.add_argument("--model_root", type=str,   default='/home/amador/Documents/Stage/Codes/Semaine18/Training_Models/', help="Path to model saving files")
     parser.add_argument("--intensity_max",  type=float,   default=0, help="maximum photons/pixel")
     parser.add_argument("--intensity_sig",  type=float,   default=0.5, help="std of maximum photons/pixel")
     parser.add_argument("--denoi",      type=bool,   default=False, help="Denoising layer with diagonal matrix approximation")
     parser.add_argument("--full", type=bool, default=False, help="Denoising layer with full matrix inversion")
     parser.add_argument("--approx", type=bool, default=False, help="Denoising layer with a first order taylor matrix approximation")
     parser.add_argument("--NVMS", type=bool, default=False, help="Denoising layer with a first order taylor matrix approximation + NVMS")
+    parser.add_argument("--Iter", type=bool, default=False, help="Tells if the iterative FCNN is taken")
+    parser.add_argument("--Niter", type=int, default=5, help="Maximum of schema iterations")
+    parser.add_argument("--tau", type=float, default=1e-3, help="Step size of the gradient  descent")
     # Optimisation
     parser.add_argument("--num_epochs", type=int,   default=1,     help="Number of training epochs")
     parser.add_argument("--batch_size", type=int,   default=256,    help="Size of each training batch")
@@ -106,9 +109,7 @@ if __name__ == "__main__":
     print('Coefficients with Walsh-Hadamard order')
 
     if opt.NVMS:
-        NVMS_root = Path('/home/amador/Documents/Stage/Codes/Semaine18/NVMS/')
-
-        My_NVMS_file = Path(NVMS_root) / (
+        My_NVMS_file = Path(opt.precompute_root) / (
             'NVMS_N_{}_M_{}.npy'.format(opt.img_size, opt.CR))
         NVMS = np.load(My_NVMS_file) / (opt.intensity_max * (1 - opt.intensity_sig))
         print('loaded :NVMS_N0_N_{}_M_{}.npy'.format(opt.img_size, opt.CR))
@@ -127,6 +128,20 @@ if __name__ == "__main__":
                 variant=opt.net_arch, N0=opt.intensity_max,
                 sig=opt.intensity_sig, H=H, Ord=Ord)
         midfix = '_N0_{}_sig_{}'.format(np.int(opt.intensity_max), opt.intensity_sig)
+    elif opt.Iter:
+        if opt.NVMS:
+            model = DenoiCompNetIterNVMS(opt.img_size, opt.CR, Mean_had, Cov_had, NVMS,
+                                     Niter=opt.Niter, tau=opt.tau,
+                                     variant=opt.net_arch, N0=opt.intensity_max,
+                                     sig=opt.intensity_sig, H=H, Ord=Ord)
+            midfix = '_N0_{}_sig_{}_DenoiIterNVMS_Niter_{}_tau_{}'.format(np.int(opt.intensity_max), opt.intensity_sig,
+                                                                      np.int(opt.Niter), opt.tau)
+        else:
+            model = DenoiCompNetIter(opt.img_size, opt.CR, Mean_had, Cov_had,
+                                     Niter=opt.Niter, tau=opt.tau,
+                                     variant=opt.net_arch, N0=opt.intensity_max,
+                                     sig=opt.intensity_sig, H=H, Ord=Ord)
+            midfix = '_N0_{}_sig_{}_DenoiIter_Niter_{}_tau_{}'.format(np.int(opt.intensity_max), opt.intensity_sig, np.int(opt.Niter), opt.tau)
     elif opt.full:
         model = DenoiCompNetFull(opt.img_size, opt.CR, Mean_had, Cov_had,
                 variant=opt.net_arch, N0=opt.intensity_max,

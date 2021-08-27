@@ -38,17 +38,16 @@ img_size = 64  # image size
 batch_size = 256
 M = 1024  # number of measurements
 N0 = 50  # maximum photons/pixel in training stage
-N0_test = 2  # Noise test level
+N0_test = 2500  # Noise test level
 sig = 0.0  # std of maximum photons/pixel
 sig_test = 0.0  # std noise test
 
 #########################
 # -- Model and data paths
 #########################
-data_root = Path('/home/licho/Documentos/Stage/Codes/STL10/')
-stats_root = Path('/home/licho/Documentos/Stage/Codes/Test/')
-# NVMS_root = Path('/home/licho/Documentos/Stage/Codes/Semaine16/NVMS/')
-model_root = Path('/home/licho/Documentos/Stage/Codes/Semaine17/models/fix50ph_Models/')
+data_root = Path('/home/amador/Documents/python-virtual-environments/STL10')
+stats_root = Path('/home/amador/Documents/Stage/Codes/spyrit-doc/Test')
+model_root = Path('/home/amador/Documents/Stage/Codes/Semaine17/Training_models/fix50ph_Models/')
 
 My_NVMS_file = Path(stats_root) / (
     'NVMS_N_{}_M_{}.npy'.format(img_size, M))
@@ -135,7 +134,6 @@ load_net(title_Pinv, pinv, device)
 # model 2 : MMSE without denoising stage
 ########################################
 net_arch = 0
-# mmse = DenoiCompNetIter(img_size, M, Mean, Cov, variant=net_arch, N0=N0_test, sig=sig, H=H, Ord=Ord)
 mmse = noiCompNet(img_size, M, Mean, Cov, variant=net_arch, N0=N0_test, sig=sig_test, H=H, Ord=Ord)
 mmse = mmse.to(device)
 
@@ -190,7 +188,7 @@ title_mmse_full = model_root / (net_type[net_arch] + suffix_mmse_full)
 load_net(title_mmse_full, mmse_full, device)
 
 #################################################################################
-# model 3 : MMSE + Denoising stage with a first order taylor approximation + NVMS
+# model 5 : MMSE + Denoising stage with a first order taylor approximation + NVMS
 #################################################################################
 net_arch = 0
 mmse_NVMS = DenoiCompNetNVMS(img_size, M, Mean, Cov, NVMS=NVMS, variant=net_arch, N0=N0_test, sig=sig_test, H=H, Ord=Ord)
@@ -213,34 +211,15 @@ mmse_NVMS.fcP0.weight = mmse_NVMS_stock.fcP0.weight
 mmse_NVMS.fcP1.weight = mmse_NVMS_stock.fcP1.weight
 mmse_NVMS.fcP2.weight = mmse_NVMS_stock.fcP2.weight
 
-#########################################################
-# model 5 : Theoretical MMSE (Measurements without noise)
-#########################################################
-net_arch = 0
-num_epochs = 20
-mmse_theo = compNet(img_size, M, Mean, Cov, variant=net_arch, H=H, Ord=Ord)
-mmse_theo = mmse_theo.to(device)
-
-# -- Load net
-suffix_mmse_theo = '_N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}_reg_{}'.format(\
-    img_size, M, num_epochs, lr, step_size, gamma, batch_size, reg)
-
-title_mmse_theo = model_root / (net_type[net_arch] + suffix_mmse_theo)
-load_net(title_mmse_theo, mmse_theo, device)
-
 #############################
 # -- Acquisition measurements
 #############################
-num_img = 19  # [4,19,123]
+num_img = 4  # [4,19,123]
 b = 1
 img_test = inputs[num_img, 0, :, :].view([b, c, h, w])
 m = mmse_diag.forward_acquire(img_test, b, c, h, w)  # measures with pos/neg coefficients
 m, var = mmse_diag.forward_variance(m, b, c, h, w)  # Variance calculus
 hadam = mmse_diag.forward_preprocess(m, b, c, h, w)  # hadamard coefficient normalized
-
-# -- theoretical model
-m_theo = mmse_theo.forward_acquire(img_test, b, c, h, w)
-pre_theo = mmse_theo.forward_preprocess(m_theo, b, c, h, w)
 
 #####################
 # -- Model evaluation
@@ -268,9 +247,6 @@ f_mmse_full = mmse_full.forward_maptoimage(full_denoi, b, c, h, w)
 nvms_denoi = mmse_NVMS.forward_denoise(hadam, var, b, c, h, w)
 f_mmse_nvms = mmse_NVMS.forward_maptoimage(nvms_denoi, b, c, h, w)
 
-# -- Theoretical mmse
-f_mmse_theo = mmse_theo.forward_maptoimage(pre_theo, b, c, h, w)
-
 # -- Pseudo inverse + FCN
 net_pinv = pinv.forward_postprocess(f_pinv, b, c, h, w)
 
@@ -290,18 +266,15 @@ net_mmse_full = mmse_full.forward_postprocess(f_mmse_full, b, c, h, w)
 # -- mmse + NVMS denoi + FCN
 net_mmse_nvms = mmse_NVMS.forward_postprocess(f_mmse_nvms, b, c, h, w)
 
-# -- Theoretical mmse + FCN
-net_mmse_theo = mmse_theo.forward_postprocess(f_mmse_theo, b, c, h, w)
-
 ###########################
 # -- Displaying the results
 ###########################
 # numpy ground-true : We select an image for visual test
-GT = img_test.view([h,w]).cpu().detach().numpy()
+GT = img_test.view([h, w]).cpu().detach().numpy()
 
 fig, axs = plt.subplots(nrows=2, ncols=7, constrained_layout=True)
 fig.suptitle('Comparaison des reconstructions en appliquant différents noyaux proposées. '
-             'Acquisition effectué avec {} motifs et {} photons. Réseau convolutionel a été entraîné avec {} photons'.format(M, N0_test, N0), fontsize='large')
+             'Acquisition effectué avec {} motifs et {} photons. Réseau convolutionel entraîné avec {} photons'.format(M, N0_test, N0), fontsize='large')
 
 ax = axs[0, 0]
 im = f_pinv[0, 0, :, :].cpu().detach().numpy()
@@ -386,8 +359,6 @@ ax.imshow(GT, cmap='gray')
 ax.set_title('Vérité Terrain')
 
 plt.show()
-
-"""
 
 ####################################
 # -- PSNR test on the validation set
@@ -479,7 +450,6 @@ ax.legend(('Pseudo inverse : 38m 23s', \
           ' MMSE + denoi (Taylor approximation) :  112m 45s',\
           ' MMSE + denoi (full inversion) :  149m 5s',\
           ' MMSE + denoi (Taylor inversion) + NVMS : 38m 41s'),  loc='upper right')
-"""
 
 
 
