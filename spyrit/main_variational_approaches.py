@@ -39,8 +39,8 @@ sig = 0.0  # std of maximum photons/pixel
 #########################
 # -- Model and data paths
 #########################
-data_root = Path('/home/licho/Documentos/Stage/Codes/STL10/')
-stats_root = Path('/home/licho/Documentos/Stage/Codes/Test/')
+data_root = Path('/home/licho/Documentos/Stage/Codes/STL10')
+stats_root = Path('/home/licho/Documentos/Stage/Codes/Test')
 
 ########################
 # -- STL10 database load
@@ -92,18 +92,16 @@ Niter = 500  # Number of iterations for ISTA algorithm
 Reg_L1_ISTA_DCT = RegL1ISTA(img_size, M, Mean, Cov, Basis=DCT, reg=Lambda, Niter=Niter, N0=N0, sig=sig, H=H, Ord=Ord)
 Reg_L1_ISTA_DCT = Reg_L1_ISTA_DCT.to(device)
 
-"""
 #######################################
 # model 2 : TV-L2 Regularisation
 #######################################
-epsilon = 1e-3 # Gradient regularisation parameter
-Lambda = 7e1 # Regularisation parameter
-step_size = 1e-6 # Gradient descent step size
-Niter = 500 # Number of iterations for gradient descent algorithm
+epsilon = 1e-3  # Gradient regularisation parameter
+Lambda = 1e2  # Regularisation parameter
+step_size = 1e-5  # Gradient descent step size
+Niter = 500  # Number of iterations for gradient descent algorithm
 
-Reg_TV_L2 = RegTVL2GRAD(img_size, M, Mean, Cov, reg=Lambda, eta=step_size, Niter=Niter, eps=epsilon, N0=N0, sig=sig, H=H, Ord=Ord)
+Reg_TV_L2 = RegTVL2GRAD(img_size, M, Mean, Cov, reg=Lambda, step_size=step_size, epsilon=epsilon, Niter=Niter, N0=N0, sig=sig, H=H, Ord=Ord)
 Reg_TV_L2 = Reg_TV_L2 .to(device)
-"""
 
 ################
 # -- Test images
@@ -115,7 +113,7 @@ b, c, h, w = inputs.shape
 #############################
 # -- Acquisition measurements
 #############################
-num_img = 34  # [4,19,123]
+num_img = 4  # [4,19,123]
 b = 1
 img_test = inputs[num_img, 0, :, :].view([b, c, h, w])
 m = Reg_L1_ISTA_DCT.forward_acquire(img_test, b, c, h, w)  # measures with pos/neg coefficients
@@ -126,7 +124,7 @@ hadam = Reg_L1_ISTA_DCT.forward_preprocess(m, b, c, h, w)  # hadamard coefficien
 #####################
 
 f_Reg_L1 = Reg_L1_ISTA_DCT.forward_maptoimage(hadam, b, c, h, w)
-# f_Reg_TV_L2 = Reg_TV_L2.forward_reconstruct(hadam, b, c, h, w)
+f_Reg_TV_L2 = Reg_TV_L2.forward_maptoimage(hadam, b, c, h, w)
 
 ###########################
 # -- Displaying the results
@@ -134,7 +132,7 @@ f_Reg_L1 = Reg_L1_ISTA_DCT.forward_maptoimage(hadam, b, c, h, w)
 # numpy ground-true : We select an image for visual test
 GT = img_test.view([h, w]).cpu().detach().numpy()
 
-fig, axs = plt.subplots(nrows=1, ncols=2, constrained_layout=True)
+fig, axs = plt.subplots(nrows=1, ncols=3, constrained_layout=True)
 fig.suptitle('Comparaison des reconstructions en appliquant différents methodes proposées. '
              'Acquisition effectué avec {} motifs et {} photons.'.format(M, N0), fontsize='large')
 
@@ -144,15 +142,13 @@ ax.imshow(im, cmap='gray')
 ax.set_title('Regularisation L1 en appliquant la transformé de cosinus')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
-"""
 ax = axs[1]
 im = f_Reg_TV_L2[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
-ax.set_title('Regilarisation TV-L2')
+ax.set_title('Regularisation TV-L2')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
-"""
 
-ax = axs[1]
+ax = axs[2]
 ax.imshow(GT, cmap='gray')
 ax.set_title('Vérité Terrain')
 
