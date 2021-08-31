@@ -33,7 +33,7 @@ from spyrit.misc.walsh_hadamard import *  # Hadamard order matrix
 img_size = 64  # image size
 batch_size = 256
 M = 1024  # number of measurements
-N0 = 100  # maximum photons/pixel in training stage
+N0 = 10  # maximum photons/pixel in training stage
 sig = 0.0  # std of maximum photons/pixel
 
 #########################
@@ -41,6 +41,11 @@ sig = 0.0  # std of maximum photons/pixel
 #########################
 data_root = Path('/home/licho/Documentos/Stage/Codes/STL10')
 stats_root = Path('/home/licho/Documentos/Stage/Codes/Test')
+
+My_NVMS_file = Path(stats_root) / (
+    'NVMS_N_{}_M_{}.npy'.format(img_size, M))
+NVMS = np.load(My_NVMS_file) / N0
+print('loaded :NVMS_N_{}_M_{}.npy'.format(img_size, M))
 
 ########################
 # -- STL10 database load
@@ -87,9 +92,9 @@ uneven_index = range(1, 2 * M, 2)
 #######################################
 DCT = dct(np.eye(img_size ** 2), axis=0)  # Discrete Cosine Transform
 Lambda = 1e4  # Regularisation parameter. This parameter also controls the regularity in the noise presence
-Niter = 500  # Number of iterations for ISTA algorithm
+Niter = 10000  # Number of iterations for ISTA algorithm
 
-Reg_L1_ISTA_DCT = RegL1ISTA(img_size, M, Mean, Cov, Basis=DCT, reg=Lambda, Niter=Niter, N0=N0, sig=sig, H=H, Ord=Ord)
+Reg_L1_ISTA_DCT = RegL1ISTA(img_size, M, Mean, Cov, NVMS=NVMS, Basis=DCT, reg=Lambda, Niter=Niter, N0=N0, sig=sig, H=H, Ord=Ord)
 Reg_L1_ISTA_DCT = Reg_L1_ISTA_DCT.to(device)
 
 #######################################
@@ -98,10 +103,19 @@ Reg_L1_ISTA_DCT = Reg_L1_ISTA_DCT.to(device)
 epsilon = 1e-3  # Gradient regularisation parameter
 Lambda = 1e2  # Regularisation parameter
 step_size = 1e-5  # Gradient descent step size
-Niter = 500  # Number of iterations for gradient descent algorithm
+Niter = 10000  # Number of iterations for gradient descent algorithm
 
-Reg_TV_L2 = RegTVL2GRAD(img_size, M, Mean, Cov, reg=Lambda, step_size=step_size, epsilon=epsilon, Niter=Niter, N0=N0, sig=sig, H=H, Ord=Ord)
+Reg_TV_L2 = RegTVL2GRAD(img_size, M, Mean, Cov, NVMS=NVMS, reg=Lambda, step_size=step_size, epsilon=epsilon, Niter=Niter, N0=N0, sig=sig, H=H, Ord=Ord)
 Reg_TV_L2 = Reg_TV_L2 .to(device)
+
+########################################
+# model 1 : Regularisation L1 with FISTA
+########################################
+Lambda = 2e4  # Regularisation parameter. This parameter also controls the regularity in the noise presence
+Niter = 500  # Number of iterations for FISTA algorithm
+
+Reg_L1_FISTA_DCT = RegL1ISTA(img_size, M, Mean, Cov, NVMS=NVMS, Basis=DCT, reg=Lambda, Niter=Niter, N0=N0, sig=sig, H=H, Ord=Ord)
+Reg_L1_FISTA_DCT = Reg_L1_FISTA_DCT.to(device)
 
 ################
 # -- Test images
@@ -117,7 +131,9 @@ num_img = 4  # [4,19,123]
 b = 1
 img_test = inputs[num_img, 0, :, :].view([b, c, h, w])
 m = Reg_L1_ISTA_DCT.forward_acquire(img_test, b, c, h, w)  # measures with pos/neg coefficients
+m, var = Reg_L1_ISTA_DCT.forward_variance(m, b, c, h, w)
 hadam = Reg_L1_ISTA_DCT.forward_preprocess(m, b, c, h, w)  # hadamard coefficient normalized
+hadam_denoi = Reg_L1_ISTA_DCT.forward_denoise(hadam, var, b, c, h, w)
 
 #####################
 # -- Model evaluation
@@ -126,29 +142,52 @@ hadam = Reg_L1_ISTA_DCT.forward_preprocess(m, b, c, h, w)  # hadamard coefficien
 f_Reg_L1 = Reg_L1_ISTA_DCT.forward_maptoimage(hadam, b, c, h, w)
 f_Reg_TV_L2 = Reg_TV_L2.forward_maptoimage(hadam, b, c, h, w)
 
+f_Reg_L1_denoi = Reg_L1_ISTA_DCT.forward_maptoimage(hadam_denoi, b, c, h, w)
+f_Reg_TV_L2_denoi = Reg_TV_L2.forward_maptoimage(hadam_denoi, b, c, h, w)
+
+f_Reg_L1_denoi_FISTA = Reg_L1_FISTA_DCT.forward_maptoimage_FISTA(hadam_denoi, b, c, h, w)
+
 ###########################
 # -- Displaying the results
 ###########################
 # numpy ground-true : We select an image for visual test
 GT = img_test.view([h, w]).cpu().detach().numpy()
 
-fig, axs = plt.subplots(nrows=1, ncols=3, constrained_layout=True)
+fig, axs = plt.subplots(nrows=1, ncols=6, constrained_layout=True)
 fig.suptitle('Comparaison des reconstructions en appliquant différents methodes proposées. '
              'Acquisition effectué avec {} motifs et {} photons.'.format(M, N0), fontsize='large')
 
 ax = axs[0]
 im = f_Reg_L1[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
-ax.set_title('Regularisation L1 en appliquant la transformé de cosinus')
+ax.set_title('Reg L1 (DCT-ISTA)')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
 ax = axs[1]
 im = f_Reg_TV_L2[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
-ax.set_title('Regularisation TV-L2')
+ax.set_title('Reg TV-L2')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
 ax = axs[2]
+im = f_Reg_L1_denoi[0, 0, :, :].cpu().detach().numpy()
+ax.imshow(im, cmap='gray')
+ax.set_title('Reg L1 (DCT-ISTA) + NVMS denoi')
+ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
+
+ax = axs[3]
+im = f_Reg_TV_L2_denoi[0, 0, :, :].cpu().detach().numpy()
+ax.imshow(im, cmap='gray')
+ax.set_title('Reg TV-L2 + NVMS denoi')
+ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
+
+ax = axs[4]
+im = f_Reg_L1_denoi_FISTA[0, 0, :, :].cpu().detach().numpy()
+ax.imshow(im, cmap='gray')
+ax.set_title('Reg L1 (DCT-FISTA) + NVMS denoi')
+ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
+
+ax = axs[5]
 ax.imshow(GT, cmap='gray')
 ax.set_title('Vérité Terrain')
 

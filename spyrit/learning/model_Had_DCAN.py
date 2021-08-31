@@ -861,9 +861,9 @@ class DenoiCompNetIterNVMS(DenoiCompNetNVMS):
 # -- Variational classes
 ########################
 
-class RegL1ISTA (noiCompNet):
-    def __init__(self, n, M, Mean, Cov, Basis, reg, Niter, variant=0, N0=2500, sig=0.5, H=None, Ord=None):
-        super().__init__(n, M, Mean, Cov, variant, N0, sig, H, Ord)
+class RegL1ISTA(DenoiCompNetNVMS):
+    def __init__(self, n, M, Mean, Cov, NVMS, Basis, reg, Niter, variant=0, N0=2500, sig=0.5, H=None, Ord=None):
+        super().__init__(n, M, Mean, Cov, NVMS, variant, N0, sig, H, Ord)
         self.Basis = Basis
         self.reg = reg
         self.Niter = Niter
@@ -911,8 +911,31 @@ class RegL1ISTA (noiCompNet):
 
         return x
 
+    def forward_maptoimage_FISTA(self, m, b, c, h, w):
+        # -- Initialisation of the coefficients vector
+        x1 = torch.zeros(b, c, h * w)
+        x = x1.clone().detach()
+        t1 = 1
+
+        # -- FISTA Algorithm
+        for k in range(1, self.Niter):
+            gradient = self.Wt(self.W(x1) - m)
+            x1 = self.proximal_operator(x1 - self.eta * gradient)
+            t2 = (1 + np.sqrt(1 + 4 * t1 ** 2)) / 2
+            x1 = x1 + ((t1 - 1) / t2) * (x1 - x)
+
+            t1 = t2
+            x = x1.clone().detach()
+
+        # -- Map to image domain
+        x = self.IT(x).view(b, c, h, w)
+
+        return x
+
     def forward_reconstruct(self, x, b, c, h, w):
+        x, var = self.forward_variance(x, b, c, h, w)
         x = self.forward_preprocess(x, b, c, h, w)
+        x = self.forward_denoise(x, var, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
 
         return x
@@ -920,9 +943,9 @@ class RegL1ISTA (noiCompNet):
 ########################################################################################################################
 
 
-class RegTVL2GRAD (noiCompNet):
-    def __init__(self, n, M, Mean, Cov, reg, step_size, epsilon, Niter, variant=0, N0=2500, sig=0.5, H=None, Ord=None):
-        super().__init__(n, M, Mean, Cov, variant, N0, sig, H, Ord)
+class RegTVL2GRAD(DenoiCompNetNVMS):
+    def __init__(self, n, M, Mean, Cov, NVMS, reg, step_size, epsilon, Niter, variant=0, N0=2500, sig=0.5, H=None, Ord=None):
+        super().__init__(n, M, Mean, Cov, NVMS, variant, N0, sig, H, Ord)
         self.reg = reg
         self.Niter = Niter
         self.step_size = step_size
@@ -989,7 +1012,9 @@ class RegTVL2GRAD (noiCompNet):
         return x
 
     def forward_reconstruct(self, x, b, c, h, w):
+        x, var = self.forward_variance(x, b, c, h, w)
         x = self.forward_preprocess(x, b, c, h, w)
+        x = self.forward_denoise(x, var, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
 
         return x
