@@ -994,21 +994,42 @@ class RegTVL2GRAD(DenoiCompNetNVMS):
 
         return divergence_x + divergence_y
 
+    def forward_adjoint(self, x, m, b, c):
+        [ux, uy] = self.grad2D(x, b, c)
+        grad_norm = torch.sqrt((ux ** 2 + uy ** 2) + self.epsilon)
+
+        hx = torch.div(ux, grad_norm)
+        hy = torch.div(uy, grad_norm)
+
+        div = self.divergence2D(hx, hy, b, c)
+        x = self.Wt(self.W(x.view(b, c, 1, self.n ** 2)) - m) - self.reg * div.view(b, c, 1, self.n ** 2)
+
+        return x
+
     def forward_maptoimage(self, m, b, c, h, w):
         # -- Image initialisation
         x = torch.zeros(b, c, h, w)
 
         for i in range(1, self.Niter):
-            [ux, uy] = self.grad2D(x, b, c)
-            grad_norm = torch.sqrt((ux ** 2 + uy ** 2) + self.epsilon)
-
-            hx = torch.div(ux, grad_norm)
-            hy = torch.div(uy, grad_norm)
-
-            div = self.divergence2D(hx, hy, b, c)
-            gradient = self.Wt(self.W(x.view(b, c, 1, self.n ** 2)) - m) - self.reg * div.view(b, c, 1, self.n ** 2)
+            gradient = self.forward_adjoint(x, m, b, c)
             x = x - self.step_size * gradient.view(b, c, h, w)
 
+        return x
+
+    def forward_maptoimage_conjugate(self, m, b, c, h, w):
+        # -- Image initialisation
+        x = torch.zeros(b, c, h, w)
+        g0 = self.forward_adjoint(x, m, b, c)
+        p = -g0.clone().detach()
+
+        for i in range(1, self.Niter):
+            x = x + self.step_size * p.view(b, c, h, w)
+            g1 = self.forward_adjoint(x, m, b, c)
+            beta = torch.linalg.norm(g1, dim=3) ** 2 / torch.linalg.norm(g0, dim=3) ** 2
+            p = -g1 + beta.view(b, c, 1, 1) * p
+            g0 = g1.clone().detach()
+
+        x = x + self.step_size * p.view(b, c, h, w)
         return x
 
     def forward_reconstruct(self, x, b, c, h, w):
