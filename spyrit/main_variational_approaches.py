@@ -33,14 +33,14 @@ from spyrit.misc.walsh_hadamard import *  # Hadamard order matrix
 img_size = 64  # image size
 batch_size = 256
 M = 1024  # number of measurements
-N0 = 100  # maximum photons/pixel in training stage
+N0 = 50  # maximum photons/pixel in training stage
 sig = 0.0  # std of maximum photons/pixel
 
 #########################
 # -- Model and data paths
 #########################
-data_root = Path('/home/licho/Documentos/Stage/Codes/STL10')
-stats_root = Path('/home/licho/Documentos/Stage/Codes/Test')
+data_root = Path('/home/amador/Documents/python-virtual-environments/STL10')
+stats_root = Path('/home/amador/Documents/Stage/Codes/spyrit-doc/Test')
 
 My_NVMS_file = Path(stats_root) / (
     'NVMS_N_{}_M_{}.npy'.format(img_size, M))
@@ -103,7 +103,7 @@ Reg_L1_ISTA_DCT = Reg_L1_ISTA_DCT.to(device)
 epsilon = 1e-3  # Gradient regularisation parameter
 Lambda = 1e2  # Regularisation parameter
 step_size = 1e-4  # Gradient descent step size
-Niter = 15  # Number of iterations for gradient descent algorithm
+Niter = 100  # Number of iterations for gradient descent algorithm
 
 Reg_TV_L2 = RegTVL2GRAD(img_size, M, Mean, Cov, NVMS=NVMS, reg=Lambda, step_size=step_size, epsilon=epsilon, Niter=Niter, N0=N0, sig=sig, H=H, Ord=Ord)
 Reg_TV_L2 = Reg_TV_L2.to(device)
@@ -121,12 +121,19 @@ Reg_L1_FISTA_DCT = Reg_L1_FISTA_DCT.to(device)
 # model 4 : TV-L2 Regularisation with gradient conjugate
 ########################################################
 epsilon = 1e-3  # Gradient regularisation parameter
-Lambda = 1e2  # Regularisation parameter
-step_size = 2e-4  # Gradient descent step size : 3e-5
-Niter = 7  # Number of iterations for gradient descent algorithm : 25
+Lambda = 1e2  # Regularisation parameter : 1e2
+step_size = 8e-5  # Gradient descent step size : 8e-5
+Niter = 6  # Number of iterations for gradient descent algorithm : 6
 
 Reg_TV_L2_Conj = RegTVL2GRAD(img_size, M, Mean, Cov, NVMS=NVMS, reg=Lambda, step_size=step_size, epsilon=epsilon, Niter=Niter, N0=N0, sig=sig, H=H, Ord=Ord)
 Reg_TV_L2_Conj = Reg_TV_L2_Conj.to(device)
+
+#############################################################
+# model 5 : MMSE + Denoising stage with full matrix inversion
+#############################################################
+net_arch = 0
+mmse_full = DenoiCompNetFull(img_size, M, Mean, Cov, variant=net_arch, N0=N0, sig=sig, H=H, Ord=Ord)
+mmse_full = mmse_full.to(device)
 
 ################
 # -- Test images
@@ -138,26 +145,28 @@ b, c, h, w = inputs.shape
 #############################
 # -- Acquisition measurements
 #############################
-num_img = 200  # [4,19,123]
+num_img = 209  # [4,19,123]
 b = 1
 img_test = inputs[num_img, 0, :, :].view([b, c, h, w])
-m = Reg_L1_ISTA_DCT.forward_acquire(img_test, b, c, h, w)  # measures with pos/neg coefficients
-m, var = Reg_L1_ISTA_DCT.forward_variance(m, b, c, h, w)
+m0 = Reg_L1_ISTA_DCT.forward_acquire(img_test, b, c, h, w)  # measures with pos/neg coefficients
+m, var = Reg_L1_ISTA_DCT.forward_variance(m0, b, c, h, w)
 hadam = Reg_L1_ISTA_DCT.forward_preprocess(m, b, c, h, w)  # hadamard coefficient normalized
 hadam_denoi = Reg_L1_ISTA_DCT.forward_denoise(hadam, var, b, c, h, w)
+
+hadam_full_denoi = mmse_full.forward_denoise(hadam, var, b, c, h, w)
 
 #####################
 # -- Model evaluation
 #####################
 
 f_Reg_L1 = Reg_L1_ISTA_DCT.forward_maptoimage(hadam, b, c, h, w)
-f_Reg_TV_L2 = Reg_TV_L2.forward_maptoimage(hadam, b, c, h, w)
+f_mmse_full = mmse_full.forward_maptoimage(hadam_full_denoi, b, c, h, w)
 
 f_Reg_L1_denoi = Reg_L1_ISTA_DCT.forward_maptoimage(hadam_denoi, b, c, h, w)
-f_Reg_TV_L2_denoi = Reg_TV_L2.forward_maptoimage(hadam_denoi, b, c, h, w)
+f_Reg_TV_L2_denoi = Reg_TV_L2.forward_gradient(hadam_denoi, b, c, h, w)
 
 f_Reg_L1_denoi_FISTA = Reg_L1_FISTA_DCT.forward_maptoimage_FISTA(hadam_denoi, b, c, h, w)
-f_Reg_TV_L2_denoi_Conj = Reg_TV_L2_Conj.forward_maptoimage_conjugate(hadam_denoi, b, c, h, w)
+f_Reg_TV_L2_denoi_Conj = Reg_TV_L2_Conj.forward_gradient_conjugate(hadam_denoi, b, c, h, w)
 
 ###########################
 # -- Displaying the results
@@ -194,21 +203,21 @@ ax.set_title('Vérité Terrain')
 #################################
 
 ax = axs[1, 0]
-im = f_Reg_TV_L2[0, 0, :, :].cpu().detach().numpy()
+im = f_mmse_full[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
-ax.set_title('Reg TV-L2')
+ax.set_title('mmse + full denoi')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
 ax = axs[1, 1]
 im = f_Reg_TV_L2_denoi[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
-ax.set_title('Reg TV-L2 + NVMS denoi')
+ax.set_title('mmse + NVMS denoi + Reg TV-L2')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
 ax = axs[1, 2]
 im = f_Reg_TV_L2_denoi_Conj[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
-ax.set_title('Reg TV_Conj-L2 + NVMS denoi')
+ax.set_title('mmse + NVMS + Reg TV_Conj-L2')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
 ax = axs[1, 3]

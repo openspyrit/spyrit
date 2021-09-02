@@ -790,6 +790,12 @@ class DenoiCompNetIter(DenoiCompNet):
         super().__init__(n, M, Mean, Cov, variant, N0, sig, H, Ord)
         self.Niter = Niter
         self.tau = tau
+        # -- Gradient precalculated layers
+        self.W = nn.Linear(self.n ** 2, self.M, False)
+
+        self.W.weight.data = torch.from_numpy(self.Pmat)
+        self.W.weight.data = self.W.weight.data.float()
+        self.W.weight.requires_grad = False
         print("Denoised Measurements methods (by diagonal approximation ) with Fixed-point Iteration Algorithm for a step size of {} and {} iterations".format(tau, Niter))
 
     def forward_reconstruct(self, x, b, c, h, w):
@@ -806,7 +812,7 @@ class DenoiCompNetIter(DenoiCompNet):
             is_last = False
             with torch.no_grad():
                 # -- Transform of f^(1) to the measurement domain and comparison with the raw measurements
-                mk = m_alpha - self.forward_maptomeasure(x, b, c, h, w)
+                mk = m_alpha - self.W(x.view(b * c, 1, h * w))
 
                 # -- Operations in the variation domain (First Layer)
                 y = self.forward_denoise(mk, var, b, c, h, w)
@@ -965,68 +971,67 @@ class RegTVL2GRAD(DenoiCompNetNVMS):
 
         print("Image reconstruction by TV-L2 regularisation")
 
-    def grad2D(self, x, b, c):
-
-        In1 = x[:, :, self.n - 1, :]
-        In1 = In1.view(b, c, 1, self.n)
+    def grad2D(self, x, b, c, h, w):
+        In1 = x[:, :, h - 1, :]
+        In1 = In1.view(b, c, 1, h)
         Ifx = torch.cat((x[:, :, 1:, :], In1), 2)
         Dx = Ifx - x
 
-        In2 = x[:, :, :, self.n - 1]
-        In2 = In2.view(b, c, self.n, 1)
+        In2 = x[:, :, :, w - 1]
+        In2 = In2.view(b, c, w, 1)
         Ify = torch.cat((x[:, :, :, 1:], In2), 3)
         Dy = Ify - x
 
         return [Dx, Dy]
 
-    def divergence2D(self, gx, gy, b, c):
+    def divergence2D(self, gx, gy, b, c, h, w):
         gx0 = gx[:, :, 0, :]
-        gx0 = gx0.view(b, c, 1, self.n)
-        gx1 = -gx[:, :, self.n - 2, :]
-        gx1 = gx1.view(b, c, 1, self.n)
-        divergence_x = torch.cat((gx0, gx[:, :, 1:self.n - 1, :] - gx[:, :, :self.n - 2, :], gx1), 2)
+        gx0 = gx0.view(b, c, 1, h)
+        gx1 = -gx[:, :, h - 2, :]
+        gx1 = gx1.view(b, c, 1, h)
+        divergence_x = torch.cat((gx0, gx[:, :, 1:h - 1, :] - gx[:, :, :h - 2, :], gx1), 2)
 
         gy0 = gy[:, :, :, 0]
-        gy0 = gy0.view(b, c, self.n, 1)
-        gy1 = -gy[:, :, :, self.n - 2]
-        gy1 = gy1.view(b, c, self.n, 1)
-        divergence_y = torch.cat((gy0, gy[:, :, :, 1:self.n - 1] - gy[:, :, :, :self.n - 2], gy1), 3)
+        gy0 = gy0.view(b, c, w, 1)
+        gy1 = -gy[:, :, :, w - 2]
+        gy1 = gy1.view(b, c, w, 1)
+        divergence_y = torch.cat((gy0, gy[:, :, :, 1:w - 1] - gy[:, :, :, :w - 2], gy1), 3)
 
         return divergence_x + divergence_y
 
-    def forward_adjoint(self, x, m, b, c):
-        [ux, uy] = self.grad2D(x, b, c)
+    def forward_adjoint(self, x, m, b, c, h, w):
+        [ux, uy] = self.grad2D(x, b, c, h, w)
         grad_norm = torch.sqrt((ux ** 2 + uy ** 2) + self.epsilon)
 
         hx = torch.div(ux, grad_norm)
         hy = torch.div(uy, grad_norm)
 
-        div = self.divergence2D(hx, hy, b, c)
-        x = self.Wt(self.W(x.view(b, c, 1, self.n ** 2)) - m) - self.reg * div.view(b, c, 1, self.n ** 2)
+        div = self.divergence2D(hx, hy, b, c, h, w)
+        x = self.Wt(self.W(x.view(b * c, 1, h * w)) - m) - self.reg * div.view(b * c, 1, h * w)
 
         return x
 
-    def forward_maptoimage(self, m, b, c, h, w):
+    def forward_gradient(self, m, b, c, h, w):
         # -- Image initialisation
-        x = torch.zeros(b, c, h, w)
+        x = self.forward_maptoimage(m, b, c, h, w)
 
         for i in range(1, self.Niter):
-            gradient = self.forward_adjoint(x, m, b, c)
+            gradient = self.forward_adjoint(x, m, b, c, h, w)
             x = x - self.step_size * gradient.view(b, c, h, w)
 
         return x
 
-    def forward_maptoimage_conjugate(self, m, b, c, h, w):
+    def forward_gradient_conjugate(self, m, b, c, h, w):
         # -- Image initialisation
-        x = torch.zeros(b, c, h, w)
-        g0 = self.forward_adjoint(x, m, b, c)
+        x = self.forward_maptoimage(m, b, c, h, w)
+        g0 = self.forward_adjoint(x, m, b, c, h, w)
         p = -g0.clone().detach()
 
         for i in range(1, self.Niter):
             x = x + self.step_size * p.view(b, c, h, w)
-            g1 = self.forward_adjoint(x, m, b, c)
-            beta = torch.linalg.norm(g1, dim=3) ** 2 / torch.linalg.norm(g0, dim=3) ** 2
-            p = -g1 + beta.view(b, c, 1, 1) * p
+            g1 = self.forward_adjoint(x, m, b, c, h, w)
+            beta = torch.linalg.norm(g1, dim=2) ** 2 / torch.linalg.norm(g0, dim=2) ** 2
+            p = -g1 + beta.view(b * c, 1, 1) * p
             g0 = g1.clone().detach()
 
         x = x + self.step_size * p.view(b, c, h, w)
@@ -1036,9 +1041,27 @@ class RegTVL2GRAD(DenoiCompNetNVMS):
         x, var = self.forward_variance(x, b, c, h, w)
         x = self.forward_preprocess(x, b, c, h, w)
         x = self.forward_denoise(x, var, b, c, h, w)
-        x = self.forward_maptoimage(x, b, c, h, w)
+        x = self.forward_gradient_conjugate(x, b, c, h, w)
+        x = self.forward_postprocess(x, b, c, h, w)
 
         return x
+
+
+"""
+        m = x.clone().detach()
+        # -- Image initialisation
+        x = self.forward_maptoimage(x, b, c, h, w)
+        for i in range(1, self.Niter):
+            is_last = False
+            with torch.no_grad():
+                gradient = self.forward_adjoint(x, m, b, c, h, w)
+                x = x - self.step_size * gradient.view(b, c, h, w)
+                # -- Image update (Due to the memory performance in the backward-step, we keep only the gradients of the last iteration).
+                if i == self.Niter - 1:
+                    is_last = True
+                torch.set_grad_enabled(is_last)
+                x = self.forward_postprocess(x, b, c, h, w)
+"""
 
 ########################################################################################################################
 
