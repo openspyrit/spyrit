@@ -117,7 +117,7 @@ def walsh_matrix(n):
     
     
 def walsh2(X,H=None):
-    """Return 2D Walsh-ordered Hadamard transform of an image
+    r"""Return 2D Walsh-ordered Hadamard transform of an image :math:`H^\top X H`
 
     Args:
         X (np.ndarray): image as a 2d array. The size is a power of two.
