@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest]
         python-version: [3.6, 3.7, 3.8]
 
     steps:
@@ -29,44 +29,14 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         architecture: 'x64'
-    - name: Create Wheel Linux
-      if: matrix.os == 'ubuntu-latest'
+    - name: Create Wheel
       run: |
-          if  [ ${{ matrix.python-version }} == "3.6" ]; then
-            export PYTHONFOLDER="cp36-cp36m"
-          elif [ ${{ matrix.python-version }} == "3.7" ]; then
-            export PYTHONFOLDER="cp37-cp37m"
-          elif [ ${{ matrix.python-version }} == "3.8" ]; then
-            export PYTHONFOLDER="cp38-cp38"
-          fi
-          docker run --rm -e "PYTHONFOLDER=${PYTHONFOLDER}" -v $GITHUB_WORKSPACE:/home quay.io/pypa/manylinux2014_x86_64 /home/.github/workflows/actionsCreateWheelLinux.sh
-          ls wheelhouse
-          sudo rm -rf dist
-          mv wheelhouse dist
-    - name: Create Wheel Windows
-      if: matrix.os == 'windows-latest'
-      run: |
-          pip install wheel delocate numpy==1.19.3
-          rm -r -fo fht
-          cmd /c mklink /d fht spyrit\fht\fht
+          pip install wheel numpy==1.19.3
           python setup.py sdist bdist_wheel
           mkdir wheelhouse
-          copy dist\spyrit-* wheelhouse\
+          cp dist/spyrit-* wheelhouse/
           ls wheelhouse
-          rm -r -fo dist
-          mv wheelhouse dist
-    - name: Create Wheel Mac
-      if: matrix.os == 'macos-latest'
-      run: |     
-          brew update
-          brew install ccache \
-                       libomp
-          pip install wheel delocate numpy==1.19.3
-          python setup.py sdist bdist_wheel
-          delocate-wheel -w wheelhouse -v dist/*.whl
-          ls wheelhouse
-          delocate-listdeps --all wheelhouse/*.whl
-          rm -rf dist
+          rm -r dist
           mv wheelhouse dist
     - name: Upload wheels
       uses: actions/upload-artifact@v1
@@ -116,8 +86,6 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
-          rm -r -fo fht
-          cmd /c mklink /d fht spyrit\fht\fht
           pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
           pip install -e .
           cd data_example
@@ -164,19 +132,7 @@ jobs:
       run: |
           mkdir -p data_example
           cd dist
-          if  [ ${{ matrix.python-version }} == "3.6" ]; then
-            export PYTHONFOLDER="cp36-cp36m"
-          elif [ ${{ matrix.python-version }} == "3.7" ]; then
-            export PYTHONFOLDER="cp37-cp37m"
-          elif [ ${{ matrix.python-version }} == "3.8" ]; then
-            export PYTHONFOLDER="cp38-cp38"
-          fi
-          if  [ ${{ matrix.os }} == "ubuntu-latest" ]; then
-            export OS="manylinux"
-          elif [ ${{ matrix.os }} == "macos-latest" ]; then
-            export OS="macos"
-          fi
-          pip install spyrit-*${PYTHONFOLDER}-${OS}*.whl
+          pip install spyrit-*.whl
           cd ../data_example
           if [ -f "data/stl10_binary.tar.gz" ]; then
               cd data
