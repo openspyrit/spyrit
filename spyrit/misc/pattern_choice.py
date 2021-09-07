@@ -17,7 +17,6 @@ import os
 import copy
 from abc import ABC, abstractmethod
 import pywt
-from fht import *
 
 
 ########################################################################
@@ -221,7 +220,7 @@ def Hadamard(def_matrix, par=0, lvl=1):
         i=ind[0][index];
         j=ind[1][index];
         Z[i,j]= 1;
-        pat = torch.from_numpy(fht2(Z));
+        #pat = torch.from_numpy(fht2(Z));
 
         Z[i,j]= 0;
         Q.weight.data[index, 0, :,:] = pat;
@@ -337,7 +336,7 @@ def Hadamard_opt(M, par=0, lvl=1):
         i=ind[0][index];
         j=ind[1][index];
         Z[i,j]= 1;
-        pat = torch.from_numpy(fht2(Z));
+        #pat = torch.from_numpy(fht2(Z));
 
         Z[i,j]= 0;
         Q.weight.data[index, 0, :,:] = pat;

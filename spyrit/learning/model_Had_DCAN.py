@@ -16,7 +16,6 @@ import numpy as np
 #import time
 #import os
 #import copy
-from fht import *
 from ..misc.pattern_choice import Hadamard, matrix2conv, split
 from collections import OrderedDict
 #import cv2
