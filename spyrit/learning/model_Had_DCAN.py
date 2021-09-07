@@ -790,12 +790,7 @@ class DenoiCompNetIter(DenoiCompNet):
         super().__init__(n, M, Mean, Cov, variant, N0, sig, H, Ord)
         self.Niter = Niter
         self.tau = tau
-        # -- Gradient precalculated layers
-        self.W = nn.Linear(self.n ** 2, self.M, False)
 
-        self.W.weight.data = torch.from_numpy(self.Pmat)
-        self.W.weight.data = self.W.weight.data.float()
-        self.W.weight.requires_grad = False
         print("Denoised Measurements methods (by diagonal approximation ) with Fixed-point Iteration Algorithm for a step size of {} and {} iterations".format(tau, Niter))
 
     def forward_reconstruct(self, x, b, c, h, w):
@@ -812,7 +807,7 @@ class DenoiCompNetIter(DenoiCompNet):
             is_last = False
             with torch.no_grad():
                 # -- Transform of f^(1) to the measurement domain and comparison with the raw measurements
-                mk = m_alpha - self.W(x.view(b * c, 1, h * w))
+                mk = m_alpha - self.forward_maptomeasure(x, b, c, h, w)
 
                 # -- Operations in the variation domain (First Layer)
                 y = self.forward_denoise(mk, var, b, c, h, w)
@@ -950,12 +945,14 @@ class RegL1ISTA(DenoiCompNetNVMS):
 
 
 class RegTVL2GRAD(DenoiCompNetNVMS):
-    def __init__(self, n, M, Mean, Cov, NVMS, reg, step_size, epsilon, Niter, variant=0, N0=2500, sig=0.5, H=None, Ord=None):
+    def __init__(self, n, M, Mean, Cov, NVMS, reg, step_size, epsilon, eta, theta, Niter, variant=0, N0=2500, sig=0.5, H=None, Ord=None):
         super().__init__(n, M, Mean, Cov, NVMS, variant, N0, sig, H, Ord)
         self.reg = reg
         self.Niter = Niter
         self.step_size = step_size
         self.epsilon = epsilon
+        self.eta = eta
+        self.theta = theta
 
         # -- Gradient precalculated layers
         self.W = nn.Linear(self.n ** 2, self.M, False)
@@ -1045,6 +1042,38 @@ class RegTVL2GRAD(DenoiCompNetNVMS):
         x = self.forward_postprocess(x, b, c, h, w)
 
         return x
+
+    def proximal_operator(self, p, q, x):
+
+        p[:, :, 0, :] = p[:, :, 0, :] / torch.max(torch.ones(p[:, :, 0, :].shape), torch.abs(p[:, :, 0, :]))
+        p[:, :, 1, :] = p[:, :, 1, :] / torch.max(torch.ones(p[:, :, 1, :].shape), torch.abs(p[:, :, 1, :]))
+
+        q = (q - self.eta * x) / (1 + self.eta)
+
+        return [p, q]
+
+    def forward_maptoimage_Primal_Dual(self, m, b, c, h, w):
+        x = torch.zeros(b * c, 1, h, w)
+        x_bar = x.clone().detach()
+        p = torch.zeros(b * c, 1, 2, h * w)
+        q = torch.zeros(b * c, 1, self.M)
+
+        for i in range(1, self.Niter):
+            [ux, uy] = self.grad2D(x_bar, b, c, h, w)
+            grad = torch.cat((ux.view(b * c, 1, 1, h * w), uy.view(b * c, 1, 1, h * w)), 2)
+
+            p = p + self.eta * self.reg * grad
+            q = q + self.eta * self.W(x_bar.view(b * c, 1, h * w))
+            [p, q] = self.proximal_operator(p, q, m)
+
+            px = torch.reshape(p[:, :, 0, :], (b * c, 1, h, w))
+            py = torch.reshape(p[:, :, 1, :], (b * c, 1, h, w))
+            div = self.divergence2D(px, py, b, c, h, w)
+
+            x_star = x + self.step_size * self.reg * div - self.step_size * self.Wt(q).view(b * c, 1, h, w)
+            x_bar = x_star + self.theta * (x_star - x)
+
+        return x_star
 
 
 """
