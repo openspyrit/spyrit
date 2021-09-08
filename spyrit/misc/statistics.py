@@ -180,7 +180,8 @@ def Stat_had(dataloader, root):
         inputs = inputs.cpu().detach().numpy();
         for i in range(inputs.shape[0]):
             img = inputs[i,0,:,:];
-            h_img = fht2(img);
+            H = walsh_matrix(len(img))
+            h_img = wh.walsh2(img,H)/len(img)
             Mean_had += h_img;
     Mean_had = Mean_had/tot_num;
 
@@ -189,7 +190,8 @@ def Stat_had(dataloader, root):
         inputs = inputs.cpu().detach().numpy();
         for i in range(inputs.shape[0]):
             img = inputs[i,0,:,:];
-            h_img = fht2(img);
+            H = walsh_matrix(len(img))
+            h_img = wh.walsh2(img,H)/len(img)
             Norm_Variable = np.reshape(h_img-Mean_had, (nx*ny,1));
             Cov_had += Norm_Variable*np.transpose(Norm_Variable);
     Cov_had = Cov_had/(tot_num-1);
@@ -216,7 +218,9 @@ def optim_had(dataloader, root):
         inputs = inputs.cpu().detach().numpy();
         for i in range(inputs.shape[0]):
             img = inputs[i,0,:,:];
-            h_img = np.abs(fht2(img))/tot_num;
+            H = walsh_matrix(len(img))
+            h_img = wh.walsh2(img,H)/len(img)
+            h_img = np.abs(h_img)/tot_num;
             Cumulated_had += h_img;
     
     Cumulated_had = Cumulated_had / np.max(Cumulated_had) * 255
