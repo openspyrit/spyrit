@@ -26,7 +26,7 @@ setup(name='spyrit',
       license='Attribution-ShareAlike 4.0 International',
       python_requires='>=3.6',
       install_requires=[
-          'numpy (==1.19.3)',
+          'numpy',
           'matplotlib',
           'scipy',
           'torch',
