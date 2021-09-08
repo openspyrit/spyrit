@@ -339,7 +339,7 @@ model_root = 'data_example/model/'; #  Path to model saving files
 expe_root = "data_example/expe_2/" # Path to precomputed data
 
 #Optimisation
-num_epochs = 100 ; #Number of training epochs 
+num_epochs = 20 ; #Number of training epochs 
 batch_size = 256 ; # Size of each training batch
 reg = 1e-7; # Regularisation Parameter
 lr = 1e-3; # Learning Rate
@@ -387,7 +387,7 @@ Perm = Permutation_Matrix(Var)
 
 #Compressed Reconstruction via CNN (CR = 7/8)
 #Parameters
-CR = 512; # Number of patterns
+CR = 1024; # Number of patterns
 even_index = range(0,2*CR,2);
 uneven_index = range(1,2*CR,2);
 
@@ -411,7 +411,7 @@ model_list_denoi = net_list(img_size, CR, Mean_had, Cov_had,net_arch, N0_list, s
 model_list_no_noise = net_list(img_size, CR, Mean_had, Cov_had,net_arch, [0 for i in range(len(N0_list))], sig, 1, H, suffix,model_root);
 
 model = noiCompNet(img_size, CR, Mean_had, Cov_had, 3, 50, 0.5, H)
-root_model = '../../models/OE/NET_free_N0_2500_sig_0.5_N_64_M_512_epo_20_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07'
+root_model = 'data_example/model/NET_free_N0_2500_sig_0.5_N_64_M_512_epo_20_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07'
 model = model.to(device)
 load_net(root_model,model, device)
 
@@ -680,7 +680,7 @@ model_list_denoi = net_list(img_size, CR, Mean_had, Cov_had,net_arch, N0_list, s
 model_list_no_noise = net_list(img_size, CR, Mean_had, Cov_had,net_arch, [0 for i in range(len(N0_list))], sig, 1, H, suffix,model_root);
 
 model = noiCompNet(img_size, CR, Mean_had, Cov_had, 3, 50, 0.5, H)
-root_model = '../../models/OE/NET_free_N0_2500_sig_0.5_N_64_M_1024_epo_20_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07'
+root_model = 'data_example/model/NET_free_N0_2500_sig_0.5_N_64_M_1024_epo_20_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07'
 model = model.to(device)
 load_net(root_model,model, device)
 titles = ["GT",  "TV", "Tikhonov","Noiseless Net", "Free Layer", "Tikhonov+bm3d", "Proposed"]
