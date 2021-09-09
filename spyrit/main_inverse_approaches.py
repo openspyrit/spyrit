@@ -45,9 +45,9 @@ sig_test = 0.0  # std noise test
 #########################
 # -- Model and data paths
 #########################
-data_root = Path('/home/amador/Documents/python-virtual-environments/STL10')
-stats_root = Path('/home/amador/Documents/Stage/Codes/spyrit-doc/Test')
-model_root = Path('/home/amador/Documents/Stage/Codes/Semaine17/Training_Models/fix50ph_Models/')
+data_root = Path('/home/licho/Documentos/Stage/Codes/STL10')
+stats_root = Path('/home/licho/Documentos/Stage/Codes/Test')
+model_root = Path('/home/licho/Documentos/Stage/Codes/Semaine17/models/fix50ph_Models')
 
 My_NVMS_file = Path(stats_root) / (
     'NVMS_N_{}_M_{}.npy'.format(img_size, M))
@@ -211,24 +211,10 @@ mmse_NVMS.fcP0.weight = mmse_NVMS_stock.fcP0.weight
 mmse_NVMS.fcP1.weight = mmse_NVMS_stock.fcP1.weight
 mmse_NVMS.fcP2.weight = mmse_NVMS_stock.fcP2.weight
 
-########################################
-# model 6 : MMSE without denoising stage
-########################################
-net_arch = 3
-free = noiCompNet(img_size, M, Mean, Cov, variant=net_arch, N0=N0_test, sig=sig_test, H=H, Ord=Ord)
-free = free.to(device)
-
-# -- Load net
-suffix_free = '_N0_{}_sig_{}_N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}_reg_{}'.format(\
-    N0, sig, img_size, M, num_epochs, lr, step_size, gamma, batch_size, reg)
-
-title_free = model_root / (net_type[net_arch] + suffix_free)
-load_net(title_free, free, device)
-
 #############################
 # -- Acquisition measurements
 #############################
-num_img = 208  # [4,19,123]
+num_img = 200  # [4,19,123]
 b = 1
 img_test = inputs[num_img, 0, :, :].view([b, c, h, w])
 m = mmse_diag.forward_acquire(img_test, b, c, h, w)  # measures with pos/neg coefficients
@@ -261,9 +247,6 @@ f_mmse_full = mmse_full.forward_maptoimage(full_denoi, b, c, h, w)
 nvms_denoi = mmse_NVMS.forward_denoise(hadam, var, b, c, h, w)
 f_mmse_nvms = mmse_NVMS.forward_maptoimage(nvms_denoi, b, c, h, w)
 
-# -- free
-f_free = free.forward_maptoimage(hadam, b, c, h, w)
-
 # -- Pseudo inverse + FCN
 net_pinv = pinv.forward_postprocess(f_pinv, b, c, h, w)
 
@@ -283,7 +266,21 @@ net_mmse_full = mmse_full.forward_postprocess(f_mmse_full, b, c, h, w)
 net_mmse_nvms = mmse_NVMS.forward_postprocess(f_mmse_nvms, b, c, h, w)
 
 # -- free + FCN
-net_free = free.forward_postprocess(f_free, b, c, h, w)
+"""
+Niter = 8
+tau =1
+for i in range(1, Niter):
+    nvms_denoi = nvms_denoi - torch.matmul(torch.tensor(mmse_NVMS.Pmat, dtype=torch.float32).view(1,1,1024,4096), f_mmse_nvms.view(1,1,h*w,1)).view(1,1,1024)
+    f_mmse_nvms = mmse_NVMS.forward_maptoimage(nvms_denoi, b, c, h, w)
+    net_mmse_nvms = mmse_NVMS.forward_postprocess(net_mmse_nvms + tau * f_mmse_nvms, b, c, h, w)
+"""
+
+Niter = 20
+tau = 0.05
+for i in range(1, Niter):
+    nvms_denoi = nvms_denoi - torch.matmul(torch.tensor(mmse_NVMS.Pmat, dtype=torch.float32).view(1,1,1024,4096), f_mmse_nvms.view(1,1,h*w,1)).view(1,1,1024)
+    f_mmse_nvms = mmse_NVMS.forward_maptoimage(nvms_denoi, b, c, h, w)
+    net_mmse_nvms = (1 - tau) * net_mmse_nvms +  tau * mmse_NVMS.forward_postprocess(net_mmse_nvms  + f_mmse_nvms, b, c, h, w)
 
 ###########################
 # -- Displaying the results
@@ -291,101 +288,89 @@ net_free = free.forward_postprocess(f_free, b, c, h, w)
 # numpy ground-true : We select an image for visual test
 GT = img_test.view([h, w]).cpu().detach().numpy()
 
-fig, axs = plt.subplots(nrows=2, ncols=8, constrained_layout=True)
+fig, axs = plt.subplots(nrows=2, ncols=7, constrained_layout=True)
 fig.suptitle('Comparaison des reconstructions en appliquant différents noyaux proposées. '
              'Acquisition effectué avec {} motifs et {} photons. Réseau convolutionel entraîné avec {} photons'.format(M, N0_test, N0), fontsize='large')
 
 ax = axs[0, 0]
-im = f_free[0, 0, :, :].cpu().detach().numpy()
-ax.imshow(im, cmap='gray')
-ax.set_title('free')
-ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
-
-ax = axs[0, 1]
 im = f_pinv[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
 ax.set_title('Pinv')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
-ax = axs[0, 2]
+ax = axs[0, 1]
 im = f_mmse[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
 ax.set_title('MMSE (without denoising)')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
-ax = axs[0, 3]
+ax = axs[0, 2]
 im = f_mmse_taylor[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
 ax.set_title('MMSE (Taylor)')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
-ax = axs[0, 4]
+ax = axs[0, 3]
 im = f_mmse_diag[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
 ax.set_title('MMSE (Diagonal)')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
-ax = axs[0, 5]
+ax = axs[0, 4]
 im = f_mmse_nvms[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
 ax.set_title('MMSE (Taylor-NVMS)')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
-ax = axs[0, 6]
+ax = axs[0, 5]
 im = f_mmse_full[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
 ax.set_title('MMSE (Inverse complète)')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
-ax = axs[0, 7]
+ax = axs[0, 6]
 ax.imshow(GT, cmap='gray')
 ax.set_title('Vérité Terrain')
 
 ##############
 
 ax = axs[1, 0]
-im = net_free[0, 0, :, :].cpu().detach().numpy()
-ax.imshow(im, cmap='gray')
-ax.set_title('free + FCNN')
-ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
-
-ax = axs[1, 1]
 im = net_pinv[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
 ax.set_title('Pinv + FCNN')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
-ax = axs[1, 2]
+ax = axs[1, 1]
 im = net_mmse[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
 ax.set_title('MMSE (without denoising) + FCNN')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
-ax = axs[1, 3]
+ax = axs[1, 2]
 im = net_mmse_taylor[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
 ax.set_title('MMSE (Taylor) + FCNN')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
-ax = axs[1, 4]
+ax = axs[1, 3]
 im = net_mmse_denoi[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
 ax.set_title('MMSE (Diagonal) + FCNN')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
-ax = axs[1, 5]
+ax = axs[1, 4]
 im = net_mmse_nvms[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
 ax.set_title('MMSE (Taylor-NVMS) + FCNN')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
-ax = axs[1, 6]
+ax = axs[1, 5]
 im = net_mmse_full[0, 0, :, :].cpu().detach().numpy()
 ax.imshow(im, cmap='gray')
 ax.set_title('MMSE (Inverse complète) + FCNN')
 ax.set_xlabel('PSNR =%.3f' % psnr_(GT, im))
 
-ax = axs[1, 7]
+ax = axs[1, 6]
 ax.imshow(GT, cmap='gray')
 ax.set_title('Vérité Terrain')
 
@@ -394,6 +379,7 @@ plt.show()
 ####################################
 # -- PSNR test on the validation set
 ####################################
+"""
 psnr_Pinv, psnr_NET_Pinv = dataset_psnr(dataloaders['val'], pinv, device)
 print_mean_std(psnr_Pinv, 'Pinv')
 print_mean_std(psnr_NET_Pinv, 'Pinv + FCNN')
@@ -498,3 +484,5 @@ ax.legend(('free : 40m 02s', \
 
 
 
+
+"""

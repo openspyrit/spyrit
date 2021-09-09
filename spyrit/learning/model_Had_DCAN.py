@@ -786,76 +786,73 @@ class DenoiCompNetNVMS(DenoiCompNet):
 
 
 class DenoiCompNetIter(DenoiCompNet):
-    def __init__(self, n, M, Mean, Cov, Niter=5, tau=1, variant=0, N0=25, sig=0.0, H=None, Ord=None):
+    def __init__(self, n, M, Mean, Cov, Niter=5, variant=0, N0=2500, sig=0.0, H=None, Ord=None):
         super().__init__(n, M, Mean, Cov, variant, N0, sig, H, Ord)
         self.Niter = Niter
-        self.tau = tau
 
-        print("Denoised Measurements methods (by diagonal approximation ) with Fixed-point Iteration Algorithm for a step size of {} and {} iterations".format(tau, Niter))
+        # -- Hadamard operator H1 (image push forward)
+        self.H1 = nn.Linear(self.n ** 2, self.M, False)
+        self.H1.weight.data = torch.from_numpy(self.Pmat)
+        self.H1.weight.data = self.H1.weight.data.float()
+        self.H1.weight.requires_grad = False
+
+        print("Iterative Neural Network with denoised measurements (by diagonal approximation ). For {} iterations".format(Niter))
 
     def forward_reconstruct(self, x, b, c, h, w):
-        # -- Computation of f^(1) when f^(0)=0
+        #  -- f(0) : image initialization
+        f = torch.zeros(b * c, 1, h, w).to(x.device)
+        # -- Variance estimation for the measurements
         x, var = self.forward_variance(x, b, c, h, w)
+        # -- Normalization and combination of pos/neg coefficients
         x = self.forward_preprocess(x, b, c, h, w)
-        m_alpha = x.clone().detach()
-        x = self.forward_denoise(x, var, b, c, h, w)
-        x = self.forward_maptoimage(x, b, c, h, w)
-        x = self.tau * self.forward_postprocess(x, b, c, h, w)
 
-        # -- Fixed-point Iteration Algorithm
-        for k in range(self.Niter - 1):
-            is_last = False
-            with torch.no_grad():
-                # -- Transform of f^(1) to the measurement domain and comparison with the raw measurements
-                mk = m_alpha - self.forward_maptomeasure(x, b, c, h, w)
+        # -- Iterative image correction
+        for k in range(1, self.Niter):
+            # -- Variation in the measurements domain
+            epsilon = x - self.H1(f.view(b * c, 1, h * w))
+            # -- Linear denoising (measurements domain)
+            epsilon = self.forward_denoise(epsilon, var, b, c, h, w)
+            # -- Linear completion (image domain)
+            f = f + self.forward_maptoimage(epsilon, b, c, h, w)
+            # -- Non linear image correction
+            f = self.forward_postprocess(f, b, c, h, w)
 
-                # -- Operations in the variation domain (First Layer)
-                y = self.forward_denoise(mk, var, b, c, h, w)
-                y = self.forward_maptoimage(y, b, c, h, w)
-                # -- Image update (Due to the memory performance in the backward-step, we keep only the gradients of the last iteration).
-                if k + 1 == self.Niter - 1:
-                    is_last = True
-
-                torch.set_grad_enabled(is_last)
-                x = x + self.tau * self.forward_postprocess(y, b, c, h, w)
-
-        return x
+        return f
 
 
 class DenoiCompNetIterNVMS(DenoiCompNetNVMS):
-    def __init__(self, n, M, Mean, Cov, NVMS, Niter=5, tau=1e-3, variant=0, N0=25, sig=0.0, H=None, Ord=None):
+    def __init__(self, n, M, Mean, Cov, NVMS, Niter=5, variant=0, N0=2500, sig=0.0, H=None, Ord=None):
         super().__init__(n, M, Mean, Cov, NVMS, variant, N0, sig, H, Ord)
         self.Niter = Niter
-        self.tau = tau
-        print("Denoised Measurements methods (Taylor approximation + NVMS) with iterative gradient descent for a step size of {} and {} iterations".format(tau, Niter))
+
+        # -- Hadamard operator H1 (image push forward)
+        self.H1 = nn.Linear(self.n ** 2, self.M, False)
+        self.H1.weight.data = torch.from_numpy(self.Pmat)
+        self.H1.weight.data = self.H1.weight.data.float()
+        self.H1.weight.requires_grad = False
+
+        print("Iterative Neural Network with denoised measurements (by diagonal approximation ). For {} iterations".format(Niter))
 
     def forward_reconstruct(self, x, b, c, h, w):
-        # -- Computation of f^(1) when f^(0)=0
+        #  -- f(0) : image initialization
+        f = torch.zeros(b * c, 1, h, w).to(x.device)
+        # -- Variance estimation for the measurements
         x, var = self.forward_variance(x, b, c, h, w)
+        # -- Normalization and combination of pos/neg coefficients
         x = self.forward_preprocess(x, b, c, h, w)
-        m_alpha = x.clone().detach()
-        x = self.forward_denoise(x, var, b, c, h, w)
-        x = self.forward_maptoimage(x, b, c, h, w)
-        x = self.tau * self.forward_postprocess(x, b, c, h, w)
 
-        # -- Fixed-point Iteration Algorithm
-        for k in range(self.Niter - 1):
-            is_last = False
-            with torch.no_grad():
-                # -- Transform of f^(1) to the measurement domain and comparison with the raw measurements
-                mk = m_alpha - self.forward_maptomeasure(x, b, c, h, w)
+        # -- Iterative image correction
+        for k in range(1, self.Niter):
+            # -- Variation in the measurements domain
+            epsilon = x - self.H1(f.view(b * c, 1, h * w))
+            # -- Linear denoising (measurements domain)
+            epsilon = self.forward_denoise(epsilon, var, b, c, h, w)
+            # -- Linear completion (image domain)
+            f = f + self.forward_maptoimage(epsilon, b, c, h, w)
+            # -- Non linear image correction
+            f = self.forward_postprocess(f, b, c, h, w)
 
-                # -- Operations in the variation domain (First Layer)
-                y = self.forward_denoise(mk, var, b, c, h, w)
-                y = self.forward_maptoimage(y, b, c, h, w)
-                # -- Image update (Due to the memory performance in the backward-step, we keep only the gradients of the last iteration).
-                if k + 1 == self.Niter - 1:
-                    is_last = True
-
-                torch.set_grad_enabled(is_last)
-                x = x + self.tau * self.forward_postprocess(y, b, c, h, w)
-
-        return x
+        return f
 
 
 ########################
@@ -1010,7 +1007,7 @@ class RegTVL2GRAD(DenoiCompNetNVMS):
 
     def forward_gradient(self, m, b, c, h, w):
         # -- Image initialisation
-        x = self.forward_maptoimage(m, b, c, h, w)
+        x = torch.zeros(b * c, 1, h, w)
 
         for i in range(1, self.Niter):
             gradient = self.forward_adjoint(x, m, b, c, h, w)
@@ -1045,6 +1042,7 @@ class RegTVL2GRAD(DenoiCompNetNVMS):
 
     def proximal_operator(self, p, q, x):
 
+        # pnorm = torch.linalg.norm(p, ord='fro', dim=(2, 3))
         p[:, :, 0, :] = p[:, :, 0, :] / torch.max(torch.ones(p[:, :, 0, :].shape), torch.abs(p[:, :, 0, :]))
         p[:, :, 1, :] = p[:, :, 1, :] / torch.max(torch.ones(p[:, :, 1, :].shape), torch.abs(p[:, :, 1, :]))
 

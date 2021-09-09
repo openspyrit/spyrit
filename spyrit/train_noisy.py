@@ -33,7 +33,7 @@ if __name__ == "__main__":
     parser.add_argument("--net_arch",   type=int,   default=0,      help="Network architecture (variants for the FCL)")
     parser.add_argument("--precompute_root", type=str, default='/home/amador/Documents/Stage/Codes/spyrit-doc/Test/', help="Path to precomputed data")
     parser.add_argument("--precompute", type=bool,  default=False,  help="Tells if the precomputed data is available")
-    parser.add_argument("--model_root", type=str,   default='/home/amador/Documents/Stage/Codes/Semaine19/Coupling_Model_Test/', help="Path to model saving files")
+    parser.add_argument("--model_root", type=str,   default='/home/amador/Documents/Stage/Codes/Semaine20/Iterative_FCNN/', help="Path to model saving files")
     parser.add_argument("--intensity_max",  type=float,   default=0, help="maximum photons/pixel")
     parser.add_argument("--intensity_sig",  type=float,   default=0.0, help="std of maximum photons/pixel")
     parser.add_argument("--denoi",      type=bool,   default=False, help="Denoising layer with diagonal matrix approximation")
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     parser.add_argument("--Lambda", type=int, default=1e2, help="Regularisation Parameter")
     parser.add_argument("--tau", type=float, default=8e-5, help="Step size of the gradient descent")
     parser.add_argument("--epsilon", type=float, default=1e-3, help="Regularisation Parameter")
-    parser.add_argument("--Niter", type=int, default=6, help="Maximum of schema iterations")
+    parser.add_argument("--Niter", type=int, default=5, help="Maximum of schema iterations")
     # Optimisation
     parser.add_argument("--num_epochs", type=int,   default=1,     help="Number of training epochs")
     parser.add_argument("--batch_size", type=int,   default=256,    help="Size of each training batch")
@@ -132,19 +132,16 @@ if __name__ == "__main__":
         midfix = '_N0_{}_sig_{}'.format(np.int(opt.intensity_max), opt.intensity_sig)
     elif opt.Iter:
         if opt.NVMS:
-            model = RegTVL2GRAD(opt.img_size, opt.CR, Mean_had, Cov_had, NVMS,
-                                reg=opt.Lambda, step_size=opt.tau, epsilon=opt.epsilon, Niter=opt.Niter,
-                                variant=opt.net_arch, N0=opt.intensity_max,
-                                sig=opt.intensity_sig, H=H, Ord=Ord)
-            midfix = '_N0_{}_sig_{}_DenoiIterNVMS_Niter_{}_tau_{}'.format(np.int(opt.intensity_max), opt.intensity_sig,
-                                                                      np.int(opt.Niter), opt.tau)
+            model = DenoiCompNetIterNVMS(opt.img_size, opt.CR, Mean_had, Cov_had, NVMS,
+                                     Niter=opt.Niter, variant=opt.net_arch, N0=opt.intensity_max,
+                                     sig=opt.intensity_sig, H=H, Ord=Ord)
+            midfix = '_N0_{}_sig_{}_IterDenoiNVMS_Niter_{}'.format(np.int(opt.intensity_max), opt.intensity_sig, np.int(opt.Niter))
 
         else:
             model = DenoiCompNetIter(opt.img_size, opt.CR, Mean_had, Cov_had,
-                                     Niter=opt.Niter, tau=opt.tau,
-                                     variant=opt.net_arch, N0=opt.intensity_max,
+                                     Niter=opt.Niter, variant=opt.net_arch, N0=opt.intensity_max,
                                      sig=opt.intensity_sig, H=H, Ord=Ord)
-            midfix = '_N0_{}_sig_{}_DenoiIter_Niter_{}_tau_{}'.format(np.int(opt.intensity_max), opt.intensity_sig, np.int(opt.Niter), opt.tau)
+            midfix = '_N0_{}_sig_{}_IterDenoi_Niter_{}'.format(np.int(opt.intensity_max), opt.intensity_sig, np.int(opt.Niter))
     elif opt.full:
         model = DenoiCompNetFull(opt.img_size, opt.CR, Mean_had, Cov_had,
                 variant=opt.net_arch, N0=opt.intensity_max,
