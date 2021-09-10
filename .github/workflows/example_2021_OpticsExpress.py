@@ -471,17 +471,17 @@ outputs = [];
 with torch.no_grad():
     for i in range(len(GT)):
         list_outs = [];
-        x_Pinv = model_list[0].forward_N0_Pinv(1/K*m_list[i]*4, 1, 1, img_size, img_size);
-        x_Stat_comp = model_list[0].forward_N0_maptoimage(1/K*m_list[i]*4, 1, 1, img_size, img_size);
-        x_Denoi_Stat_comp = model_list_denoi[0].forward_N0_maptoimage_expe(m_list[i]*4, 1, 1, img_size, img_size, C, s, K);
+        x_Pinv = model_list[0].forward_reconstruct_pinv_expe(1/K*m_list[i]*4, 1, 1, img_size, img_size);
+        x_Stat_comp = model_list[0].forward_reconstruct_comp_expe(1/K*m_list[i]*4, 1, 1, img_size, img_size);
+        x_Denoi_Stat_comp = model_list_denoi[0].forward_reconstruct_mmse_expe(m_list[i]*4, 1, 1, img_size, img_size, C, s, K);
 
         t1_start = perf_counter() 
         x_SDCAN = model_list_no_noise[0].forward_postprocess(x_Stat_comp, 1,1, img_size, img_size);
         t1_stop = perf_counter() 
         print("CNN time = {}s".format(t1_stop-t1_start))
         
-        x_SDCAN_denoi = model_list_denoi[0].forward_N0_reconstruct_expe(m_list[i]*4,1,1, img_size, img_size, C, s, K);
-        x_free = model.forward_N0_reconstruct_expe(m_list[i]*4,1,1, img_size, img_size, C, s, K);
+        x_SDCAN_denoi = model_list_denoi[0].forward_reconstruct_expe(m_list[i]*4,1,1, img_size, img_size, C, s, K);
+        x_free = model.forward_reconstruct_expe(m_list[i]*4,1,1, img_size, img_size)#, C, s, K);
         
         
 #         print(x_bm3d.shape)
@@ -584,12 +584,12 @@ outputs = [];
 with torch.no_grad():
     for i in range(len(GT)):
         list_outs = [];
-        x_Pinv = model_list[0].forward_N0_Pinv(1/K*m_list[i]*4, 1, 1, img_size, img_size);
-        x_Stat_comp = model_list[0].forward_N0_maptoimage(1/K*m_list[i]*4, 1, 1, img_size, img_size);
-        x_Denoi_Stat_comp = model_list_denoi[0].forward_N0_maptoimage_expe(m_list[i]*4, 1, 1, img_size, img_size, C, s, K);
+        x_Pinv = model_list[0].forward_reconstruct_pinv_expe(1/K*m_list[i]*4, 1, 1, img_size, img_size);
+        x_Stat_comp = model_list[0].forward_reconstruct_comp_expe(1/K*m_list[i]*4, 1, 1, img_size, img_size);
+        x_Denoi_Stat_comp = model_list_denoi[0].forward_reconstruct_mmse_expe(m_list[i]*4, 1, 1, img_size, img_size, C, s, K);
         x_SDCAN = model_list_no_noise[0].forward_postprocess(x_Stat_comp, 1,1, img_size, img_size);
-        x_SDCAN_denoi = model_list_denoi[0].forward_N0_reconstruct_expe(m_list[i]*4,1,1, img_size, img_size, C, s, K);
-        x_free = model.forward_N0_reconstruct_expe(m_list[i]*4,1,1, img_size, img_size, C, s, K);
+        x_SDCAN_denoi = model_list_denoi[0].forward_reconstruct_expe(m_list[i]*4,1,1, img_size, img_size, C, s, K);
+        x_free = model.forward_reconstruct_expe(m_list[i]*4,1,1, img_size, img_size)#, C, s, K);
 
             
         m = torch2numpy(m_list[i][0,0,even_index] - m_list[i][0,0,uneven_index]);
@@ -739,12 +739,12 @@ outputs = [];
 with torch.no_grad():
     for i in range(len(GT)):
         list_outs = [];
-        x_Pinv = model_list[0].forward_N0_Pinv(1/K*m_list[i]*4, 1, 1, img_size, img_size);
-        x_Stat_comp = model_list[0].forward_N0_maptoimage(1/K*m_list[i]*4, 1, 1, img_size, img_size);
-        x_Denoi_Stat_comp = model_list_denoi[0].forward_N0_maptoimage_expe(m_list[i]*4, 1, 1, img_size, img_size, C, s, K);
+        x_Pinv = model_list[0].forward_reconstruct_pinv_expe(1/K*m_list[i]*4, 1, 1, img_size, img_size);
+        x_Stat_comp = model_list[0].forward_reconstruct_comp_expe(1/K*m_list[i]*4, 1, 1, img_size, img_size);
+        x_Denoi_Stat_comp = model_list_denoi[0].forward_reconstruct_mmse_expe(m_list[i]*4, 1, 1, img_size, img_size, C, s, K);
         x_SDCAN = model_list_no_noise[0].forward_postprocess(x_Stat_comp, 1,1, img_size, img_size);
-        x_SDCAN_denoi = model_list_denoi[0].forward_N0_reconstruct_expe(m_list[i]*4,1,1, img_size, img_size, C, s, K);
-        x_free = model.forward_N0_reconstruct_expe(m_list[i]*4,1,1, img_size, img_size, C, s, K);
+        x_SDCAN_denoi = model_list_denoi[0].forward_reconstruct_expe(m_list[i]*4,1,1, img_size, img_size, C, s, K);
+        x_free = model.forward_reconstruct_expe(m_list[i]*4,1,1, img_size, img_size)#, C, s, K);
 
         
         m = torch2numpy(m_list[i][0,0,even_index] - m_list[i][0,0,uneven_index]);
@@ -811,7 +811,7 @@ title_lists = [title_lamp, title_cat, title_star]
 
 
 nb_disp_frames = 8
-compare_video_frames(outputs, nb_disp_frames, title_lists, savefig = '../../img/tci/results_expe.pdf', fontsize = 11.4)
+compare_video_frames(outputs, nb_disp_frames, title_lists, fontsize = 11.4)
 
 def transpose(liste):
     x = len(liste);
@@ -836,22 +836,19 @@ def transpose_vid(liste):
         out.append(out_i);
     return out;
 
-# compare_video_frames(transpose_vid(outputs), 3, transpose(title_lists), aspect = (9,30), savefig = '../../img/tci/results_expe.pdf', fontsize = 11.4)
-# type(outputs[0])
-
 nb_disp_frames = 4
 
 title_lists[0][1] = "Noisy "+ title_lists[0][1]
 title_lists[2][1] = "Noisy "+ title_lists[2][1]
 title_lists[1][1] = "Noisy "+ title_lists[1][1]
-compare_video_frames([outputs[0][:,:4,:,:,:]], nb_disp_frames, [title_lists[0][:4]], savefig = '../../img/tci/results_expe_1.pdf', fontsize = 11.4)
-compare_video_frames([outputs[0][:,4:,:,:,:]], nb_disp_frames, [title_lists[0][4:]], savefig = '../../img/tci/results_expe_2.pdf', fontsize = 11.4)
+compare_video_frames([outputs[0][:,:4,:,:,:]], nb_disp_frames, [title_lists[0][:4]], fontsize = 11.4)
+compare_video_frames([outputs[0][:,4:,:,:,:]], nb_disp_frames, [title_lists[0][4:]], fontsize = 11.4)
 
-compare_video_frames([outputs[1][:,:4,:,:,:]], nb_disp_frames, [title_lists[1][:4]], savefig = '../../img/tci/results_expe_3.pdf', fontsize = 11.4)
-compare_video_frames([outputs[1][:,4:,:,:,:]], nb_disp_frames, [title_lists[1][4:]], savefig = '../../img/tci/results_expe_4.pdf', fontsize = 11.4)
+compare_video_frames([outputs[1][:,:4,:,:,:]], nb_disp_frames, [title_lists[1][:4]], fontsize = 11.4)
+compare_video_frames([outputs[1][:,4:,:,:,:]], nb_disp_frames, [title_lists[1][4:]], fontsize = 11.4)
 
-compare_video_frames([outputs[2][:,:4,:,:,:]], nb_disp_frames, [title_lists[2][:4]], savefig = '../../img/tci/results_expe_5.pdf', fontsize = 11.4)
-compare_video_frames([outputs[2][:,4:,:,:,:]], nb_disp_frames, [title_lists[2][4:]], savefig = '../../img/tci/results_expe_6.pdf', fontsize = 11.4)
+compare_video_frames([outputs[2][:,:4,:,:,:]], nb_disp_frames, [title_lists[2][:4]], fontsize = 11.4)
+compare_video_frames([outputs[2][:,4:,:,:,:]], nb_disp_frames, [title_lists[2][4:]], fontsize = 11.4)
 
 
 
