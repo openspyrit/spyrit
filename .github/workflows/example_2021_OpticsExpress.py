@@ -18,7 +18,7 @@ from spyrit.misc.metrics import *
 
 
 
-import tabulate
+#import tabulate
 import os, sys
 import warnings
 
