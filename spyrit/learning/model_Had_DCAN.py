@@ -655,7 +655,7 @@ class DenoiCompNet(noiCompNet):
     
     def forward_reconstruct_mmse_expe(self, x, b, c, h, w, C=0, s=0, g=1):
         var = g**2*(x[:,:,self.even_index] + x[:,:,self.uneven_index]) - 2*C*g +2*s**2;
-        x = self.forward_preprocess(x, b, c, h, w)
+        x = self.forward_preprocess_expe(x, b, c, h, w)
         x = self.forward_denoise(x, var, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
         return x
