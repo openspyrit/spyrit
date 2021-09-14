@@ -788,11 +788,10 @@ class NeumannNet(nn.Module):
         self.Gramian = nn.Linear(n**2,n**2, False)
         self.Gramian.weight.data=torch.from_numpy(Gramian_mat);
         self.Gramian.weight.data=self.Gramian.weight.data.float();
-        self.Gramian.weight.requires_grald=False;
-        
+        self.Gramian.weight.requires_grad=False;
         self.nonlinear_op = denoi;
-
         self.register_parameter(name='eta', param=torch.nn.Parameter(torch.tensor(eta_initial_val), requires_grad=True))    
+
 
     def _linear_op(self, x):
         return self.linear_op.forward(x)
