@@ -250,11 +250,12 @@ class iteratif(nn.Module):
         
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.Ptot = matrix2conv(self.Pmatfull);
+        self.Ptot.weight.requires_grad = False;
         self.lambd = nn.Parameter(torch.tensor([0.05], requires_grad=True, device = device))
         
      
         self.Pinvtot = matrix2conv((1/n**2)*np.transpose(self.Pmatfull));
-    
+        self.Pinvtot.weight.requires_grad = False;
     def forward(self,x ,b ,c ,h ,w, x0, var):
         for i in range(self.n_iter):
             x=self.conv(x,b ,c ,h ,w ,x0, var)
@@ -301,15 +302,29 @@ class ConvNet(nn.Module):
                 ('relu2', nn.ReLU()),
                 ('conv3', nn.Conv2d(32,1,kernel_size=5, stride=1, padding=2))
                 ]));
-
-
-
-
-
+                
     def forward(self,x ,b ,c ,h ,w,x0, var):
         x = self.convnet(x)
         return x
     
+class DConvNet(nn.Module):  
+    def __init__(self):
+        super(DConvNet,self).__init__()
+        self.convnet = nn.Sequential(OrderedDict([
+                ('conv1', nn.Conv2d(1,64,kernel_size=9, stride=1, padding=4)),
+                ('relu1', nn.ReLU()),
+                ('BN1', nn.BatchNorm2d(64)),
+                ('conv2', nn.Conv2d(64,64,kernel_size=1, stride=1, padding=0)),
+                ('relu2', nn.ReLU()),
+                ('BN2', nn.BatchNorm2d(64)),
+                ('conv3', nn.Conv2d(64,32,kernel_size=3, stride=1, padding=1)),
+                ('relu3', nn.ReLU()),
+                ('BN3', nn.BatchNorm2d(32)),
+                ('conv4', nn.Conv2d(32,1,kernel_size=5, stride=1, padding=2))
+                ]));
+    def forward(self,x ,b ,c ,h ,w,x0, var):
+        x = self.convnet(x)
+        return x
 
     
 class sn_dp_iteratif(nn.Module):
@@ -378,9 +393,10 @@ class sn_dp_iteratif(nn.Module):
             y = y.view(b*c, 1, h, w);
             
             x = y + x
+#        x = self.conv(x, b ,c ,h ,w ,x0, var)
         return x
 
-    
+
 class sn_dp_iteratif_2(nn.Module):
     def __init__(self,  M, n, Cov, H=None,denoi =None, n_iter = 5):
         super(sn_dp_iteratif_2,self).__init__()
@@ -400,9 +416,12 @@ class sn_dp_iteratif_2(nn.Module):
         Perm = Permutation_Matrix(Var)
         self.Pmatfull = np.dot(Perm,H);
         self.Pinvtot = matrix2conv((1/n**2)*np.transpose(self.Pmatfull));
+        self.Pinvtot.weight.requires_grad = False;
+        
   
         self.Pmat = self.Pmatfull[:M,:];
         self.Pconv = matrix2conv(self.Pmat);
+        self.Pconv.weight.requires_grad = False
 
 
         self.denoise_layer = Denoise_layer(M);
@@ -487,14 +506,13 @@ def Stat_net(dataloader, root, model, device, transform, save = False):
 
         
 class em_dl_iteratif_2(nn.Module):
-    def __init__(self,  M, n, Cov, H=None,denoi =None, n_iter = 5):
+    def __init__(self,  M, n, Cov, H=None,denoi = None, n_iter = 5):
         super(em_dl_iteratif_2,self).__init__()
         self.n = n;
         self.M = M;
         self.n_iter = n_iter
         if denoi == None:
-            denoi = ConvNet()
-        self.conv = denoi
+            denoi = ConvNet();
         # Hadamard matrix
         if type(H)==type(None):
             H = Hadamard_Transform_Matrix(self.n)
@@ -510,25 +528,28 @@ class em_dl_iteratif_2(nn.Module):
         self.Pconv = matrix2conv(self.Pmat);
 
 
-
+        self.conv = denoi;
         denoise_list = [];
         completion_list = [];
         for i in range(n_iter):
             denoise_list.append(Denoise_layer(M));
             completion_list.append(nn.Linear(M, n**2-M, False))
-
+        conv_list.append(denoi());
 
         self.denoise_list = nn.ModuleList(denoise_list);
         self.completion_list = nn.ModuleList(completion_list);
-
-    
-
+        
     def forward(self,x ,b ,c ,h, w, x0, var):
         for i in range(self.n_iter):
             x = self.conv(x, b ,c ,h ,w ,x0, var)
             z = self.Pconv(x);
             z = z.view(b*c,self.M);
-
+#
+#            print(var.dtype)
+#            print(var.device)
+#            print(self.denoise_list[i].weight.dtype)
+#            print(self.denoise_list[i].weight.device)
+#
             y1 = torch.mul(self.denoise_list[i](var.view(b*c,self.M)), x0.view(b*c,self.M)-z);
             y1 = y1.view(b*c,1,self.M)
             y2 = self.completion_list[i](y1);
@@ -541,6 +562,69 @@ class em_dl_iteratif_2(nn.Module):
             x = y + x
         x = self.conv(x, b ,c ,h ,w ,x0, var)
         return x
+
+    def set_denoise_layer(self, denoise):
+        self.conv = copy.deepcopy(denoise);
+
+    def set_layers(self, em_net, Cov):
+        """
+            Allows initalisation of reconstructor at specified values of 
+            Denoised layer, denoiser, and completion layer
+            """
+        self.conv = copy.deepcopy(em_net.conv);
+        nb_iter = min(self.n_iter, em_net.n_iter)
+        for i in range(nb_iter):
+            print(i)
+            self.denoise_list[i] = copy.deepcopy(em_net.denoise_list[i]);
+            self.completion_list[i] = copy.deepcopy(em_net.completion_list[i]);
+        diag_index = np.diag_indices(self.n**2);
+        Sigma = Cov[diag_index];
+        Sigma = Sigma[:self.M]
+        print(len(self.denoise_list))
+        print(nb_iter)
+        self.denoise_list[nb_iter].weight.data = torch.from_numpy(Sigma)
+    
+        Sig_1 = Cov[:self.M,:self.M]
+        Sig_21 = Cov[self.M:,:self.M]
+        Sig_sc = np.dot(Sig_21, np.linalg.inv(Sig_1));
+        self.completion_list[nb_iter].weight.data = torch.from_numpy(Sig_sc)
+
+    def set_init_layers(self, denoi, Cov):
+        """
+            Allows initalisation of reconstructor at specified values of 
+            Denoised layer, denoiser, and completion layer
+            """
+        self.conv = copy.deepcopy(denoi);
+    
+        diag_index = np.diag_indices(self.n**2);
+        Sigma = Cov[diag_index];
+        Sigma = Sigma[:self.M]
+        self.denoise_list[0].weight.data = torch.from_numpy(Sigma)
+    
+        Sig_1 = Cov[:self.M,:self.M]
+        Sig_21 = Cov[self.M:,:self.M]
+        Sig_sc = np.dot(Sig_21, np.linalg.inv(Sig_1));
+    
+        self.completion_list[0].weight.data = torch.from_numpy(Sig_sc)
+    
+
+
+    def fix_layers(self, n_iter):
+        """
+            Allows to make the parameters before a certain iteration as non-learnable
+        """
+#        self.conv.weight.requires_grad = False;
+#        self.conv.bias.requires_grad = False;
+        for i in range(n_iter):
+            self.denoise_list[i].weight.requires_grad = False;
+            self.completion_list[i].weight.requires_grad = False;
+
+    def all_layers_trainable(self):
+        """
+            Sets all parameters in the neural network as trainable parameters """
+        for i in range(self.n_iter):
+            self.denoise_list[i].weight.requires_grad = True;
+            self.completion_list[i].weight.requires_grad = True;
 
 class em_dl_iteratif_3(nn.Module):
     def __init__(self,  M, n, Cov, H=None,denoi =None, n_iter = 5):
@@ -695,6 +779,8 @@ class NeumannNet(nn.Module):
         Perm = Permutation_Matrix(Var)
         self.Pmatfull = np.dot(Perm,H);
         self.Pinvtot = matrix2conv((1/n**2)*np.transpose(self.Pmatfull));
+        self.Pinvtot.weight.requires_grad = False;
+        
   
         self.Pmat = self.Pmatfull[:M,:];
         Gramian_mat = np.dot(np.transpose(self.Pmat), self.Pmat)
