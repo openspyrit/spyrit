@@ -270,7 +270,7 @@ def TV(y, H, img_size, mu = 0.15, lamda = [0.1, 0.1], niter = 20, niterinner = 1
                                               **dict(iter_lim=5, damp=1e-4))
     return xinv;
 
-from bm3d import bm3d, BM3DProfile
+#from bm3d import bm3d, BM3DProfile
 
 
 def diag(y):
@@ -286,39 +286,39 @@ def Diag(A):
     return d;
 
 
-def Denoi_stat_comp(y, Sigma, Sigma_a, H):
-    Pat = np.dot(Sigma, np.transpose(H));
-    P_k = np.linalg.inv(Sigma_a+np.dot(H,Pat));
-    P_k = np.dot(Pat, P_k);
-    x_k = np.dot(P_k,y);
-    P_k = Sigma + np.dot(P_k, np.transpose(Pat));
-    return x_k, P_k
+# def Denoi_stat_comp(y, Sigma, Sigma_a, H):
+#     Pat = np.dot(Sigma, np.transpose(H));
+#     P_k = np.linalg.inv(Sigma_a+np.dot(H,Pat));
+#     P_k = np.dot(Pat, P_k);
+#     x_k = np.dot(P_k,y);
+#     P_k = Sigma + np.dot(P_k, np.transpose(Pat));
+#     return x_k, P_k
 
-def BM3D_tikho(x_noi, P_k):
-    sigma = np.mean(Diag(P_k));
-    x_est = bm3d(x_noi, sigma);
-    return x_est;
+# #def BM3D_tikho(x_noi, P_k):
+#     sigma = np.mean(Diag(P_k));
+#     x_est = bm3d(x_noi, sigma);
+#     return x_est;
 
-def BM3D_tikho_from_meas_expe(m, CR, img_size, H_k, Cov_had, Perm, H, g, C, s):
-    even_index = range(0,2*CR,2);
-    odd_index = range(1,2*CR,2);
+# def BM3D_tikho_from_meas_expe(m, CR, img_size, H_k, Cov_had, Perm, H, g, C, s):
+#     even_index = range(0,2*CR,2);
+#     odd_index = range(1,2*CR,2);
     
-    y_k_pos = m[even_index];
-    y_k_neg = m[odd_index];
-    Sigma_a = 1/g*(y_k_pos+y_k_neg)- 2*C/g +2*s**2/g**2;
-    One = np.dot(H_k, np.ones((img_size**2,)));
-    y_k = 1/g*(y_k_pos-y_k_neg);
-    alpha_est = np.amax(np.dot(np.dot(np.transpose(H_k), np.linalg.inv(np.dot(H_k, np.transpose(H_k)))),y_k))
-    Sigma_a = Sigma_a/(alpha_est**2);
-    y_k = 2/alpha_est*y_k - One;
-    Sigma_a = diag(Sigma_a);
+#     y_k_pos = m[even_index];
+#     y_k_neg = m[odd_index];
+#     Sigma_a = 1/g*(y_k_pos+y_k_neg)- 2*C/g +2*s**2/g**2;
+#     One = np.dot(H_k, np.ones((img_size**2,)));
+#     y_k = 1/g*(y_k_pos-y_k_neg);
+#     alpha_est = np.amax(np.dot(np.dot(np.transpose(H_k), np.linalg.inv(np.dot(H_k, np.transpose(H_k)))),y_k))
+#     Sigma_a = Sigma_a/(alpha_est**2);
+#     y_k = 2/alpha_est*y_k - One;
+#     Sigma_a = diag(Sigma_a);
     
-    Sigma = img_size**2*np.dot(Perm,np.dot(Cov_had,np.transpose(Perm)));
-    Sigma_i = 1/img_size**2*np.dot(np.transpose(H),np.dot(Cov_had,H))
-    x_k_est, P_k = Denoi_stat_comp(y_k, Sigma_i, Sigma_a, H_k);
-    x_k_est = np.reshape(x_k_est, (img_size, img_size))
-    x_k_bm3d = BM3D_tikho(x_k_est, P_k);
-    return x_k_bm3d;
+#     Sigma = img_size**2*np.dot(Perm,np.dot(Cov_had,np.transpose(Perm)));
+#     Sigma_i = 1/img_size**2*np.dot(np.transpose(H),np.dot(Cov_had,H))
+#     x_k_est, P_k = Denoi_stat_comp(y_k, Sigma_i, Sigma_a, H_k);
+#     x_k_est = np.reshape(x_k_est, (img_size, img_size))
+#     x_k_bm3d = BM3D_tikho(x_k_est, P_k);
+#     return x_k_bm3d;
 
 #Parameters
 #Acquisition Parameters
@@ -415,9 +415,7 @@ root_model = 'data_example/model/NET_free_N0_2500_sig_0.5_N_64_M_1024_epo_20_lr_
 model = model.to(device)
 load_net(root_model,model, device)
 
-titles = ["GT",  "TV", "Tikhonov","Noiseless Net", "Free Layer", "Tikhonov+bm3d", "Proposed"]
-
-# titles = ["GT", "PI",  "TV", "Tikhonov","Noiseless Net", "Free Layer", "Tikhonov+bm3d", "Proposed"]
+titles = ["GT",  "TV", "Tikhonov","Noiseless Net", "Free Layer", "Proposed"]
 
 #LED Lamp - Part 3
 #Loading the Compressed Data
@@ -483,49 +481,31 @@ with torch.no_grad():
         x_SDCAN_denoi = model_list_denoi[0].forward_reconstruct_expe(m_list[i]*4,1,1, img_size, img_size, C, s, K);
         x_free = model.forward_reconstruct_expe(m_list[i]*4,1,1, img_size, img_size)#, C, s, K);
         
-        
-#         print(x_bm3d.shape)
-        
         m = torch2numpy(m_list[i][0,0,even_index] - m_list[i][0,0,uneven_index]);
         alpha_est = np.amax(np.dot(np.dot(np.transpose(H_k), np.linalg.inv(np.dot(H_k, np.transpose(H_k)))),m))
         x_tv = 2*TV(m/alpha_est, H_k, img_size)-1;
-#         x_bm3d = bm3d(torch2numpy(x_Denoi_Stat_comp[0,0,:,:]),1/alpha_est**2*(1/K*np.mean(torch2numpy(m_list[i][0,0,even_index]+m_list[i][0,0,uneven_index]))- 2*C/K +2*s**2/K**2))
-        
-        t1_start = perf_counter() 
-        x_bm3d = bm3d(torch2numpy(x_Denoi_Stat_comp[0,0,:,:]),0.3)
-        t1_stop = perf_counter() 
-        print("BM3D time = {}s".format(t1_stop-t1_start))
-#         x_bm3d = BM3D_tikho_from_meas_expe(torch2numpy(m_list[i][0,0,:]), CR, img_size, H_k, Cov_had, Perm, H, K, C, s)
 
-#         print(np.amax(x_tv))
-#         print(np.amin(x_tv))
 
-        x_bm3d = torch.Tensor(x_bm3d).to(device);
-        x_bm3d = x_bm3d.view(1,1, img_size, img_size);
         x_tv = torch.Tensor(x_tv).to(device);
         x_tv = x_tv.view(1,1, img_size, img_size);
         
         gt = torch.Tensor(GT[i]).to(device);
         gt = gt.view(1,1, img_size, img_size);
         list_outs.append(gt);
-#         list_outs.append(x_Pinv);
         list_outs.append(x_tv);
         list_outs.append(x_Denoi_Stat_comp);
         list_outs.append(x_SDCAN);
         list_outs.append(x_free);
-        list_outs.append(x_bm3d);
         list_outs.append(x_SDCAN_denoi);
         output = torch.stack(list_outs, axis = 1);
 
         psnr = batch_psnr_vid(Ground_truth, output);
-#         ssim = batch_ssim_vid(Ground_truth, output);
         outputs.append(torch2numpy(output));
-#         title_lists.append(["{} {},\n PSNR = {},\n SSIM = {}".format(titles[j],Additional_info[i][j], round(psnr[j],2),round( ssim[j],2)) for j in range(len(titles))]);
         title_lists.append(["{} {},\n PSNR = {}".format(titles[j],Additional_info[i][j], round(psnr[j],2)) for j in range(len(titles))]);
 
 o1 = outputs;
 t1 = title_lists;
-nb_disp_frames = 7;
+nb_disp_frames = 6;
 #compare_video_frames(outputs, nb_disp_frames, title_lists);
 outputs_0 = outputs[:1];
 outputs_1 = outputs[1:4];
@@ -595,41 +575,28 @@ with torch.no_grad():
         m = torch2numpy(m_list[i][0,0,even_index] - m_list[i][0,0,uneven_index]);
         alpha_est = np.amax(np.dot(np.dot(np.transpose(H_k), np.linalg.inv(np.dot(H_k, np.transpose(H_k)))),m))
         x_tv = 2*TV(m/alpha_est, H_k, img_size)-1;
-#         x_bm3d = bm3d(torch2numpy(x_Denoi_Stat_comp[0,0,:,:]),1/alpha_est**2*(1/K*np.mean(torch2numpy(m_list[i][0,0,even_index]+m_list[i][0,0,uneven_index]))- 2*C/K +2*s**2/K**2))
-        x_bm3d = bm3d(torch2numpy(x_Denoi_Stat_comp[0,0,:,:]),0.3)
-
-#         print(np.amax(x_tv))
-#         print(np.amin(x_tv))
-
-        x_bm3d = torch.Tensor(x_bm3d).to(device);
-        x_bm3d = x_bm3d.view(1,1, img_size, img_size);
         x_tv = torch.Tensor(x_tv).to(device);
         x_tv = x_tv.view(1,1, img_size, img_size);
         
         gt = torch.Tensor(GT[i]).to(device);
         gt = gt.view(1,1, img_size, img_size);
         list_outs.append(gt);
-#         list_outs.append(x_Pinv);
         list_outs.append(x_tv);
         list_outs.append(x_Denoi_Stat_comp);
         list_outs.append(x_SDCAN);
         list_outs.append(x_free);
-        list_outs.append(x_bm3d);
         list_outs.append(x_SDCAN_denoi);
         output = torch.stack(list_outs, axis = 1);
 
         psnr = batch_psnr_vid(Ground_truth, output);
-#         ssim = batch_ssim_vid(Ground_truth, output);
         output = torch2numpy(output);
         output = batch_flipud(output);
         outputs.append(output);
-#         title_lists.append(["{} {},\n PSNR = {},\n SSIM = {}".format(titles[j],Additional_info[i][j], round(psnr[j],2),round( ssim[j],2)) for j in range(len(titles))]);
         title_lists.append(["{} {},\n PSNR = {}".format(titles[j],Additional_info[i][j], round(psnr[j],2)) for j in range(len(titles))]);
 
 o2 = outputs;
 t2 = title_lists;
-nb_disp_frames = 7;
-#compare_video_frames(outputs, nb_disp_frames, title_lists);
+nb_disp_frames = 6;
 outputs_0 = outputs[:1];
 outputs_1 = outputs[1:4];
 outputs_2 = outputs[4:];
@@ -642,8 +609,7 @@ compare_video_frames(outputs_1, nb_disp_frames, title_lists_1);
 compare_video_frames(outputs_2, nb_disp_frames, title_lists_2);
 
 #Compressed Reconstruction via CNN (CR = 3/4)
-#Parameters
-# num_epochs = 100 ; #Number of training epochs 
+#Parameters 
 num_epochs = 20 ; #Number of training epochs 
 batch_size = 256 ; # Size of each training batch
 reg = 1e-7; # Regularisation Parameter
@@ -653,14 +619,11 @@ gamma =0.5; # Scheduler Decrease Rate
 
 
 CR = 1024; # Number of patterns
-# CR = 2048; # Number of patterns
 
 even_index = range(0,2*CR,2);
 uneven_index = range(1,2*CR,2);
 
 
-# Var = Cov2Var(Cov_had)
-# Perm = Permutation_Matrix(Var)
 Pmat = np.dot(Perm,H);
 H_k = Pmat[:CR,:];
 
@@ -669,10 +632,8 @@ suffix = '_N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}_reg_{}'.format(\
         img_size, CR, num_epochs, lr, step_size,\
         gamma, batch_size, reg)
 
-# N0_list = [700, 150, 80, 60, 30, 10, 10];
-# N0_list_OG = [500, 150, 80, 60, 30, 10, 2];
+
 N0_list = [2500];
-# N0_list = [50];
 
 # with HiddenPrints():
 model_list = net_list(img_size, CR, Mean_had, Cov_had,net_arch, N0_list, sig, 0, H, suffix, model_root);
@@ -683,9 +644,7 @@ model = noiCompNet(img_size, CR, Mean_had, Cov_had, 3, 50, 0.5, H)
 root_model = 'data_example/model/NET_free_N0_2500_sig_0.5_N_64_M_1024_epo_20_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07'
 model = model.to(device)
 load_net(root_model,model, device)
-titles = ["GT",  "TV", "Tikhonov","Noiseless Net", "Free Layer", "Tikhonov+bm3d", "Proposed"]
-
-# titles = ["GT", "PI",  "TV", "Tikhonov","Noiseless Net", "Free Layer", "Tikhonov+bm3d", "Proposed"]
+titles = ["GT",  "TV", "Tikhonov","Noiseless Net", "Free Layer", "Proposed"]
 
 #Siemens Star
 #Loading the Compressed Data
@@ -750,41 +709,28 @@ with torch.no_grad():
         m = torch2numpy(m_list[i][0,0,even_index] - m_list[i][0,0,uneven_index]);
         alpha_est = np.amax(np.dot(np.dot(np.transpose(H_k), np.linalg.inv(np.dot(H_k, np.transpose(H_k)))),m))
         x_tv = 2*TV(m/alpha_est, H_k, img_size)-1;
-#         x_bm3d = bm3d(torch2numpy(x_Denoi_Stat_comp[0,0,:,:]),1/alpha_est**2*(1/K*np.mean(torch2numpy(m_list[i][0,0,even_index]+m_list[i][0,0,uneven_index]))- 2*C/K +2*s**2/K**2))
-
-        x_bm3d = bm3d(torch2numpy(x_Denoi_Stat_comp[0,0,:,:]),0.3)
-
-        
-#         print(np.amax(x_tv))
-#         print(np.amin(x_tv))
-        x_bm3d = torch.Tensor(x_bm3d).to(device);
-        x_bm3d = x_bm3d.view(1,1, img_size, img_size);
         x_tv = torch.Tensor(x_tv).to(device);
         x_tv = x_tv.view(1,1, img_size, img_size);
         
         gt = torch.Tensor(GT[i]).to(device);
         gt = gt.view(1,1, img_size, img_size);
         list_outs.append(gt);
-#         list_outs.append(x_Pinv);
+
         list_outs.append(x_tv);
         list_outs.append(x_Denoi_Stat_comp);
         list_outs.append(x_SDCAN);
         list_outs.append(x_free);
-        list_outs.append(x_bm3d);
         list_outs.append(x_SDCAN_denoi);
         output = torch.stack(list_outs, axis = 1);
 
         psnr = batch_psnr_vid(Ground_truth, output);
-#         ssim = batch_ssim_vid(Ground_truth, output);
         outputs.append(torch2numpy(output));
-#         title_lists.append(["{} {},\n PSNR = {},\n SSIM = {}".format(titles[j],Additional_info[i][j], round(psnr[j],2),round( ssim[j],2)) for j in range(len(titles))]);
         title_lists.append(["{} {},\n PSNR = {}".format(titles[j],Additional_info[i][j], round(psnr[j],2)) for j in range(len(titles))]);
 
 
 o3 = outputs;
 t3 = title_lists;
-nb_disp_frames = 7;
-#compare_video_frames(outputs, nb_disp_frames, title_lists);
+nb_disp_frames = 6;
 outputs_0 = outputs[:1];
 outputs_1 = outputs[1:4];
 outputs_2 = outputs[4:];
@@ -796,7 +742,7 @@ compare_video_frames(outputs_0, nb_disp_frames, title_lists_0);
 compare_video_frames(outputs_1, nb_disp_frames, title_lists_1);
 compare_video_frames(outputs_2, nb_disp_frames, title_lists_2);
 
-#Final Figure
+#%% Final Figure
 out_lamp = np.concatenate((np.reshape(o1[0][0,0,0,:,:],(1,1,1,img_size, img_size)), o1[-1]), axis = 1)
 title_lamp = [t1[0][0][:-11] + "(a)"]+t1[-1]
 
@@ -810,7 +756,7 @@ outputs = [out_lamp, out_cat, out_star]
 title_lists = [title_lamp, title_cat, title_star]
 
 
-nb_disp_frames = 8
+nb_disp_frames = 7
 compare_video_frames(outputs, nb_disp_frames, title_lists, fontsize = 11.4)
 
 def transpose(liste):
@@ -836,7 +782,7 @@ def transpose_vid(liste):
         out.append(out_i);
     return out;
 
-nb_disp_frames = 4
+nb_disp_frames = 3
 
 title_lists[0][1] = "Noisy "+ title_lists[0][1]
 title_lists[2][1] = "Noisy "+ title_lists[2][1]
