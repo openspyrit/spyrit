@@ -95,6 +95,8 @@ jobs:
           unzip model.zip
           cd ..
           python .github/workflows/example_2021_OpticsExpress.py
+          cd data_example
+          rm -rf expe.zip model.zip expe_2 model
     - name: Run the ISBI test on Windows
       if: matrix.os == 'windows-latest'
       run: |
@@ -123,6 +125,8 @@ jobs:
           unzip model.zip
           cd ..
           python .github\workflows\example_2021_OpticsExpress.py
+          cd data_example
+          rm -r -fo expe.zip model.zip expe_2 model
 
   test_wheel:
     runs-on: ${{ matrix.os }}
@@ -183,6 +187,8 @@ jobs:
           unzip model.zip
           cd ..
           python .github/workflows/example_2021_OpticsExpress.py
+          cd data_example
+          rm -rf expe.zip model.zip expe_2 model
     - name: Run the ISBI test on Windows
       if: matrix.os == 'windows-latest'
       run: |
@@ -213,6 +219,8 @@ jobs:
           unzip model.zip
           cd ..
           python .github\workflows\example_2021_OpticsExpress.py
+          cd data_example
+          rm -r -fo expe.zip model.zip expe_2 model
 
   publish_wheel:
     runs-on: ubuntu-latest
