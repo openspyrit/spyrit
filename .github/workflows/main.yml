@@ -101,7 +101,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
-          pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
           pip install -e .
           cd data_example
           if(Test-Path -path "data\stl10_binary.tar.gz") {
@@ -115,7 +115,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
-          pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
           pip install -e .
           pip install tabulate pylops bm3d
           cd data_example
@@ -194,7 +194,7 @@ jobs:
       run: |
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
           cd dist
-          pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
           pip install --find-links=. spyrit
           cd ..\data_example
           if(Test-Path -path "data\stl10_binary.tar.gz") {
@@ -209,7 +209,7 @@ jobs:
       run: |
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
           cd dist
-          pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
           pip install tabulate pylops bm3d
           pip install --find-links=. spyrit
           cd ..\data_example
