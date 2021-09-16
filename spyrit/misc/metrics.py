@@ -145,18 +145,29 @@ def dataset_psnr_ssim_fcl(dataloader, model, device):
     ssim = np.array(ssim);
     return psnr, ssim
 
+#def psnr(I1,I2):
+#    """
+#    Computes the psnr between two images I1 and I2
+#    """
+##     d=np.amax(I1)-np.amin(I1);
+#    d = 2
+#    diff=np.square(I2-I1);
+#    MSE=diff.sum()/I1.size;
+#    Psnr=10*np.log(d**2/MSE)/np.log(10);
+#    return Psnr
+#
+
 def psnr(I1,I2):
     """
     Computes the psnr between two images I1 and I2
     """
 #     d=np.amax(I1)-np.amin(I1);
+    I2 = I2-np.mean(I2);
     d = 2
     diff=np.square(I2-I1);
     MSE=diff.sum()/I1.size;
     Psnr=10*np.log(d**2/MSE)/np.log(10);
     return Psnr
-
-
 
 def MD(I1,I2):
     """
@@ -185,7 +196,6 @@ def psnr_(img1,img2,r=2):
     Psnr = 10*np.log(r**2/MSE)/np.log(10);
     return Psnr
 
-    
 def ssim(I1,I2):
     """
     Computes the ssim between two images I1 and I2
@@ -200,6 +210,8 @@ def ssim(I1,I2):
     c2 = (0.03*L)**2
     result = ((2*mu1*mu2+c1)*(2*s12+c2))/((mu1**2+mu2**2+c1)*(s1**2+s2**2+c2))
     return result
+    
+
 
 def batch_psnr_vid(input_batch, output_batch):
     list_psnr = [];

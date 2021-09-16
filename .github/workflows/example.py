@@ -24,13 +24,15 @@ from spyrit.learning.model_Had_DCAN import *# compNet, Stat_had, Weight_Decay_Lo
 from spyrit.learning.nets import *
 from spyrit.misc.disp import *
 from spyrit.misc.metrics import *
+from spyrit.reconstruction.recon_functions import *
 
 # User-defined global parameters
 #- Acquisition
-img_size = 64 # image size
-M = 333       # number of neasurements
+img_size = 64  # image size - for test purposes, we should make that 16x16
+M = 100       # number of neasurements
+N0 = 50
 #- Training
-num_epochs = 60
+num_epochs = 1
 lr = 1e-3 
 step_size = 20
 gamma = 0.2
@@ -83,28 +85,13 @@ Mean_had = np.load(stats_root / 'Average_{}x{}.npy'.format(img_size, img_size))
 suffix = '_N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}_reg_{}'.format(\
          img_size, M, num_epochs, lr, step_size, gamma, batch_size, reg)
 
-
-model = compNet(img_size,M, Mean_had,Cov_had)
-model = model.to(device)
-title = model_root/('NET_c0mp'+ suffix)
-load_net(title, model, device)
-
-psnr_net_prob, psnr_prob = dataset_psnr(dataloaders['val'], model, device);
-     
-print_mean_std(psnr_net_prob,'compNet: ')
-print_mean_std(psnr_prob,'comp: ')
-
-print('Number of trainable parameters: {}'.format(count_trainable_param(model)))
-print('Total number of parameters: {}'.format(count_param(model)))
-
 #Pseudo Inverse
 model = compNet(img_size,M, Mean_had,Cov_had,2)
 model = model.to(device)
 title = model_root/('NET_pinv'+ suffix)
+save_net(title, model)
 load_net(title, model, device)
-
 psnr_net_pinv, psnr_pinv = dataset_psnr(dataloaders['val'], model, device)
-
 print_mean_std(psnr_net_pinv,'pinvNet: ')
 print_mean_std(psnr_pinv,'PInv: ')
 print('Number of trainable parameters: {}'.format(count_trainable_param(model)))
@@ -114,13 +101,23 @@ print('Total number of parameters: {}'.format(count_param(model)))
 model = compNet(img_size,M, Mean_had,Cov_had,3)
 model = model.to(device)
 title = model_root/('NET_free'+ suffix)
+save_net(title, model)
 load_net(title, model, device)
-#    
 psnr_net_free, psnr_free = dataset_psnr(dataloaders['val'], model, device)
-
 print_mean_std(psnr_net_free,'freeNet: ')
 print_mean_std(psnr_free,'free: ')
+print('Number of trainable parameters: {}'.format(count_trainable_param(model)))
+print('Total number of parameters: {}'.format(count_param(model)))
 
+#CompNet
+model = compNet(img_size,M, Mean_had,Cov_had)
+model = model.to(device)
+title = model_root/('NET_c0mp'+ suffix)
+save_net(title, model)
+load_net(title, model, device)
+psnr_net_prob, psnr_prob = dataset_psnr(dataloaders['val'], model, device);
+print_mean_std(psnr_net_prob,'compNet: ')
+print_mean_std(psnr_prob,'comp: ')
 print('Number of trainable parameters: {}'.format(count_trainable_param(model)))
 print('Total number of parameters: {}'.format(count_param(model)))
 
@@ -129,17 +126,21 @@ print('Total number of parameters: {}'.format(count_param(model)))
 meas = dataset_meas(dataloaders['val'], model, device) #dataloaders['train']
 meas = np.array(meas)
 
-#%%
-n1 = 2; #2,12 or 2,7
-n2 = 7;
+#Neumann Net
+denoi_img = model.recon;
+denoi =  NeumannNet(M, img_size, Cov_had, denoi = denoi_img, iterations = 2)
+model = noiCompNet(img_size, M, Mean_had, Cov_had, 2, N0, 0, denoi=denoi);
 
+# Unet
+denoi_img = Unet(1,1)
+model_u = noiCompNet(img_size, M, Mean_had, Cov_had, 2, N0, 0, denoi=denoi_img);
 
-# Load training history
-train_path = model_root/('TRAIN_c0mp'+suffix+'.pkl')
-train_net_prob = read_param(train_path)
-train_path = model_root/('TRAIN_pinv'+suffix+'.pkl')
-train_net_pinv = read_param(train_path)
-train_path = model_root/('TRAIN_free'+suffix+'.pkl')
-train_net_free = read_param(train_path)
+# EM-Net
+denoi_img = Unet(1,1)
+denoi =  sn_dp_iteratif_2(M, img_size, Cov_had, denoi = denoi_img, n_iter = 2)
+denoi.set_layers(model_u.recon, Cov_had)
+model = DenoiCompNet(img_size, M, Mean_had, Cov_had,0, N0, 0, denoi=denoi);
 
-
+# MoDL
+denoi =  iteratif(M, img_size, Cov_had, denoi=model_u.recon, n_iter = 2)
+model = noiCompNet(img_size, M, Mean_had, Cov_had, 2, N0, 0, denoi=denoi);
