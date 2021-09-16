@@ -121,12 +121,15 @@ jobs:
           cd data_example
           C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/expe.zip
           unzip expe.zip
+          rm -r -fo expe.zip
           C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/model.zip
           unzip model.zip
+          rm -r -fo model.zip
           cd ..
           python .github\workflows\example_2021_OpticsExpress.py
           cd data_example
-          rm -r -fo expe.zip model.zip expe_2 model
+          rm -r -fo expe_2
+          rm -r -fo model
 
   test_wheel:
     runs-on: ${{ matrix.os }}
@@ -215,12 +218,15 @@ jobs:
           cd ..\data_example
           C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/expe.zip
           unzip expe.zip
+          rm -r -fo expe.zip
           C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/model.zip
           unzip model.zip
+          rm -r -fo model.zip
           cd ..
           python .github\workflows\example_2021_OpticsExpress.py
           cd data_example
-          rm -r -fo expe.zip model.zip expe_2 model
+          rm -r -fo expe_2
+          rm -r -fo model
 
   publish_wheel:
     runs-on: ubuntu-latest
