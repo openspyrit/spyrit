@@ -514,9 +514,9 @@ title_lists_0 = title_lists[:1];
 title_lists_1 = title_lists[1:4];
 title_lists_2 = title_lists[4:];
 
-compare_video_frames(outputs_0, nb_disp_frames, title_lists_0);
-compare_video_frames(outputs_1, nb_disp_frames, title_lists_1);
-compare_video_frames(outputs_2, nb_disp_frames, title_lists_2);
+#compare_video_frames(outputs_0, nb_disp_frames, title_lists_0);
+#compare_video_frames(outputs_1, nb_disp_frames, title_lists_1);
+#compare_video_frames(outputs_2, nb_disp_frames, title_lists_2);
 
 #STL-10 Cat
 #Loading the Compressed Data
@@ -604,9 +604,9 @@ title_lists_0 = title_lists[:1];
 title_lists_1 = title_lists[1:4];
 title_lists_2 = title_lists[4:];
 
-compare_video_frames(outputs_0, nb_disp_frames, title_lists_0);
-compare_video_frames(outputs_1, nb_disp_frames, title_lists_1);
-compare_video_frames(outputs_2, nb_disp_frames, title_lists_2);
+#compare_video_frames(outputs_0, nb_disp_frames, title_lists_0);
+#compare_video_frames(outputs_1, nb_disp_frames, title_lists_1);
+#compare_video_frames(outputs_2, nb_disp_frames, title_lists_2);
 
 #Compressed Reconstruction via CNN (CR = 3/4)
 #Parameters 
@@ -738,9 +738,9 @@ title_lists_0 = title_lists[:1];
 title_lists_1 = title_lists[1:4];
 title_lists_2 = title_lists[4:];
 
-compare_video_frames(outputs_0, nb_disp_frames, title_lists_0);
-compare_video_frames(outputs_1, nb_disp_frames, title_lists_1);
-compare_video_frames(outputs_2, nb_disp_frames, title_lists_2);
+#compare_video_frames(outputs_0, nb_disp_frames, title_lists_0);
+#compare_video_frames(outputs_1, nb_disp_frames, title_lists_1);
+#compare_video_frames(outputs_2, nb_disp_frames, title_lists_2);
 
 #%% Final Figure
 out_lamp = np.concatenate((np.reshape(o1[0][0,0,0,:,:],(1,1,1,img_size, img_size)), o1[-1]), axis = 1)
@@ -757,7 +757,7 @@ title_lists = [title_lamp, title_cat, title_star]
 
 
 nb_disp_frames = 7
-compare_video_frames(outputs, nb_disp_frames, title_lists, fontsize = 11.4)
+#compare_video_frames(outputs, nb_disp_frames, title_lists, fontsize = 11.4)
 
 def transpose(liste):
     x = len(liste);
@@ -787,14 +787,14 @@ nb_disp_frames = 3
 title_lists[0][1] = "Noisy "+ title_lists[0][1]
 title_lists[2][1] = "Noisy "+ title_lists[2][1]
 title_lists[1][1] = "Noisy "+ title_lists[1][1]
-compare_video_frames([outputs[0][:,:4,:,:,:]], nb_disp_frames, [title_lists[0][:4]], fontsize = 11.4)
-compare_video_frames([outputs[0][:,4:,:,:,:]], nb_disp_frames, [title_lists[0][4:]], fontsize = 11.4)
+#compare_video_frames([outputs[0][:,:4,:,:,:]], nb_disp_frames, [title_lists[0][:4]], fontsize = 11.4)
+#compare_video_frames([outputs[0][:,4:,:,:,:]], nb_disp_frames, [title_lists[0][4:]], fontsize = 11.4)
 
-compare_video_frames([outputs[1][:,:4,:,:,:]], nb_disp_frames, [title_lists[1][:4]], fontsize = 11.4)
-compare_video_frames([outputs[1][:,4:,:,:,:]], nb_disp_frames, [title_lists[1][4:]], fontsize = 11.4)
+#compare_video_frames([outputs[1][:,:4,:,:,:]], nb_disp_frames, [title_lists[1][:4]], fontsize = 11.4)
+#compare_video_frames([outputs[1][:,4:,:,:,:]], nb_disp_frames, [title_lists[1][4:]], fontsize = 11.4)
 
-compare_video_frames([outputs[2][:,:4,:,:,:]], nb_disp_frames, [title_lists[2][:4]], fontsize = 11.4)
-compare_video_frames([outputs[2][:,4:,:,:,:]], nb_disp_frames, [title_lists[2][4:]], fontsize = 11.4)
+#compare_video_frames([outputs[2][:,:4,:,:,:]], nb_disp_frames, [title_lists[2][:4]], fontsize = 11.4)
+#compare_video_frames([outputs[2][:,4:,:,:,:]], nb_disp_frames, [title_lists[2][4:]], fontsize = 11.4)
 
 
 
