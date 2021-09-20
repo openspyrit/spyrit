@@ -211,6 +211,9 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
+          rm -r -fo spyrit 
+          rm -r -fo __init__.py
+          ls
           cd dist
           pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
           pip install tabulate pylops bm3d
