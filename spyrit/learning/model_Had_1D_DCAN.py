@@ -249,11 +249,12 @@ class compNet_1D(compNet):
     def __init__(self, n, M, Mean, Cov, variant=0, H=None, alpha=0, Ord=None):
         super().__init__(n, M, Mean, Cov, variant, H, Ord)
         self.alpha = alpha
-        
+        self.even_index = range(0,2*M*n,2);
+        self.uneven_index = range(1,2*M*n,2);
         self.n = n;
         self.M = M;
         Pmat = H
-        #plot_im2D(Pinv)
+        print(np.shape(H))
         Pconv = matrix2conv(Pmat);
         
         self.Patt = Pconv;
@@ -274,21 +275,82 @@ class compNet_1D(compNet):
         self.Pinv.weight.data=self.Pinv.weight.data.float();
         self.Pinv.weight.requires_grad=False;
         
+        
+        #-- Measurement to image domain
+        if variant==0:
+            #--- Statistical Matrix completion (no mean)
+            print("Measurement to image domain: statistical completion (no mean)")
+            
+            self.fc1 = nn.Linear(M,n**2, False)
+            
+            W, b, mu1 = stat_completion_matrices(Perm, H, Cov, Mean, M)
+            W = (1/n**2)*W; 
+
+            self.fc1.weight.data=torch.from_numpy(W);
+            self.fc1.weight.data=self.fc1.weight.data.float();
+            self.fc1.weight.requires_grad=False;
+        
+        if variant==1:
+            #--- Statistical Matrix completion  
+            print("Measurement to image domain: statistical completion")
+            
+            self.fc1 = nn.Linear(M,n**2)
+            
+            W, b, mu1 = stat_completion_matrices(Perm, H, Cov, Mean, M)
+            W = (1/n**2)*W; 
+            b = (1/n**2)*b;
+            b = b - np.dot(W,mu1);
+            self.fc1.bias.data=torch.from_numpy(b[:,0]);
+            self.fc1.bias.data=self.fc1.bias.data.float();
+            self.fc1.bias.requires_grad = False;
+            self.fc1.weight.data=torch.from_numpy(W);
+            self.fc1.weight.data=self.fc1.weight.data.float();
+            self.fc1.weight.requires_grad=False;
+        
+        elif variant==2:
+            #--- Pseudo-inverse
+            print("Measurement to image domain: pseudo inverse")
+            
+            self.fc1 = self.Pinv;
+       
+        elif variant==3:
+            #--- FC is learnt
+            print("Measurement to image domain: free")
+            
+            self.fc1 = nn.Linear(M,n**2)
+            
+        #-- Image correction
+        self.recon = nn.Sequential(OrderedDict([
+          ('conv1', nn.Conv2d(1,64,kernel_size=9, stride=1, padding=4)),
+          ('relu1', nn.ReLU()),
+          ('conv2', nn.Conv2d(64,32,kernel_size=1, stride=1, padding=0)),
+          ('relu2', nn.ReLU()),
+          ('conv3', nn.Conv2d(32,1,kernel_size=5, stride=1, padding=2))
+        ]));
+        
     def forward_acquire(self, x, b, c, h, w):
         #--Scale input image
         x = (x+1)/2; 
         #--Acquisition
         x = x.view(b*c, 1, h, w);
+
         x = self.P(x);
         #x = F.relu(x); ## x[:,:,1] = -1/N0 ???? #Modifié
         print("No noise")
-        x = x.view(b*c,1, 2*self.M*n);#x.view(b, c, 2*self.M)#; #Modifié
+        x = x.view(b*c,1, 2*self.M*self.n);#x.view(b, c, 2*self.M)#; #Modifié
         return x
     
     def forward_preprocess(self, x, b, c, h, w):
         #- Pre-processing (use batch norm to avoid division by N0 ?)
         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
         #x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1,h,w).to(x.device)),(b,c,self.M*self.n)); #Modifier
+        return x
+    
+    def forward_maptoimage(self, x, b, c, h, w):
+        #--Projection to the image domain
+        print(x.size())
+        x = self.fc1(x);
+        x = x.view(b, c, h, w)
         return x
     
 class testCompNet(compNet):
@@ -353,3 +415,4 @@ class testCompNet(compNet):
         x = torch.div(x,N0_est)
         x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b,c,self.M))
         return x
+    
