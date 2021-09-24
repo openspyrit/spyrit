@@ -254,7 +254,6 @@ class compNet_1D(compNet):
         self.n = n;
         self.M = M;
         Pmat = H
-        print(np.shape(H))
         Pconv = matrix2conv(Pmat);
         
         self.Patt = Pconv;
@@ -346,12 +345,7 @@ class compNet_1D(compNet):
         #x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1,h,w).to(x.device)),(b,c,self.M*self.n)); #Modifier
         return x
     
-    def forward_maptoimage(self, x, b, c, h, w):
-        #--Projection to the image domain
-        print(x.size())
-        x = self.fc1(x);
-        x = x.view(b, c, h, w)
-        return x
+
     
 class testCompNet(compNet):
     def __init__(self, n, M, Mean, Cov, variant, N0=2500, sig=0.5, H=None, Ord=None):
