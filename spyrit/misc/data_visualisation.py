@@ -49,14 +49,15 @@ def simple_plot_2D(Lx,Ly,fig=None,title=None,xlabel=None,ylabel=None,style_color
     plt.show()
 
 # Plot a 2D matrix
-def plot_im2D(Im,fig=None,title=None,xlabel=None,ylabel=None):
+def plot_im2D(Im,fig=None,title=None,xlabel=None,ylabel=None,cmap='viridis'):
 
     plt.figure(fig)
     plt.clf()
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    plt.imshow(Im)
+    plt.imshow(Im,cmap=cmap)
     plt.colorbar()
     plt.show()
+  
   
