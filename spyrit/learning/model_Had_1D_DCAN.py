@@ -416,47 +416,60 @@ class testCompNet(compNet):
 #===========================================
         
 class compNet_1D_test_product(nn.Module):
-    def __init__(self, n, M, Mean, Cov, variant=0, H=None, Ord=None):
-        super(compNet, self).__init__()
+    def __init__(self, n, M, lr, Pinv = np.zeros(0), variant=0, H=None):
+        super(compNet_1D_test_product, self).__init__()
         
         self.n = n;
         self.M = M;
         
-        self.even_index = range(0,2*M,2);
-        self.uneven_index = range(1,2*M,2);
+        self.even_index = range(0,2*M*n,2);
+        self.uneven_index = range(1,2*M*n,2);
         
         #-- Hadamard patterns (full basis)
         if type(H)==type(None):
-            H = wh.walsh2_matrix(self.n)/self.n
+            H = Hadamard_Transform_Matrix(self.n)
         H = n*H; #fht hadamard transform needs to be normalized
-        
-        #-- Hadamard patterns (undersampled basis)
-        if type(Ord)==type(None):         
-            Ord = Cov2Var(Cov)
+        Pmat = np.zeros((M*n,n*n))
+        P_ind = []
+        for i in range(n):
+            for j in range(M):
+                P_ind.append(i*n+j)
+        for i in range(M*n):
+            Pmat[i] = H[P_ind[i]]
             
-        Perm = Permutation_Matrix(Ord)
-        Pmat = np.dot(Perm,H);
-        Pmat = Pmat[:M,:];
+        Pinv2 = np.zeros((n*n,M*n))
+        P_ind = []
+        for i in range(n):
+            for j in range(M):
+                P_ind.append(i*n+j)
+        for i in range(M*n):
+            Pinv2[:,i] = Pinv[:,P_ind[i]]
+        Pinv = Pinv2
+        #-- Hadamard patterns (undersampled basis)
+        #Var = Cov2Var(Cov)
+        #Perm = Permutation_Matrix(Var)
+        #Pmat = np.dot(Perm,H);
+        #Pmat = H[:M,:];#Pmat[:M,:];
         Pconv = matrix2conv(Pmat);
+        
 
         #-- Denoising parameters 
-        Sigma = np.dot(Perm,np.dot(Cov,np.transpose(Perm)));
-        diag_index = np.diag_indices(n**2);
-        Sigma = Sigma[diag_index];
-        Sigma = n**2/4*Sigma[:M]; #(H = nH donc Cov = n**2 Cov)!
-        #Sigma = Sigma[:M];
-        Sigma = torch.Tensor(Sigma)
-        self.sigma = Sigma.view(1,1,M)
-        self.sigma.requires_grad = False
+        #Sigma = np.dot(Perm,np.dot(Cov,np.transpose(Perm)));
+        #diag_index = np.diag_indices(n**2);
+        #Sigma = Sigma[diag_index];
+        #Sigma = n**2/4*Sigma[:M]; #(H = nH donc Cov = n**2 Cov)!
+        ##Sigma = Sigma[:M];
+        #Sigma = torch.Tensor(Sigma);
+        #self.sigma = Sigma.view(1,1,M);
+        
 
-        P1 = np.zeros((n**2,1))
-        P1[0] = n**2
-        mean = n*np.reshape(Mean,(self.n**2,1))+P1
-        mu = (1/2)*np.dot(Perm, mean)
-        #mu = np.dot(Perm, np.reshape(Mean, (n**2,1)))
-        mu1 = torch.Tensor(mu[:M])
-        self.mu_1 = mu1.view(1,1,M)
-        self.mu_1.requires_grad = False
+        #P1 = np.zeros((n**2,1));
+        #P1[0] = n**2;
+        #mean = n*np.reshape(Mean,(self.n**2,1))+P1;
+        #mu = (1/2)*np.dot(Perm, mean);
+        ##mu = np.dot(Perm, np.reshape(Mean, (n**2,1)))
+        #mu1 = torch.Tensor(mu[:M]);
+        #self.mu_1 = mu1.view(1,1,M);
 
         #-- Measurement preprocessing
         self.Patt = Pconv;
@@ -471,9 +484,14 @@ class compNet_1D_test_product(nn.Module):
         self.T.weight.requires_grad=False;
 
         #-- Pseudo-inverse to determine levels of noise.
-        Pinv = (1/n**2)*np.transpose(Pmat);
-        self.Pinv = nn.Linear(M,n**2, False)
-        self.Pinv.weight.data=torch.from_numpy(Pinv);
+        #if np.shape(Pinv)[0]==0:
+        #    Pinv = torch.from_numpy(Pinv)
+        #else:
+        #    Pinv = torch.pinverse(torch.from_numpy(Pmat), rcond=lr)#(1/n**2)*np.transpose(Pmat);
+        
+        Pinv = torch.from_numpy(Pinv)
+        self.Pinv = nn.Linear(M*n,n**2, False)
+        self.Pinv.weight.data=Pinv;
         self.Pinv.weight.data=self.Pinv.weight.data.float();
         self.Pinv.weight.requires_grad=False;
 
@@ -483,7 +501,7 @@ class compNet_1D_test_product(nn.Module):
             #--- Statistical Matrix completion (no mean)
             print("Measurement to image domain: statistical completion (no mean)")
             
-            self.fc1 = nn.Linear(M,n**2, False)
+            self.fc1 = nn.Linear(M*n,n**2, False)
             
             W, b, mu1 = stat_completion_matrices(Perm, H, Cov, Mean, M)
             W = (1/n**2)*W; 
@@ -532,63 +550,49 @@ class compNet_1D_test_product(nn.Module):
 
     def forward(self, x):
         b,c,h,w = x.shape;
-        x = self.forward_acquire(x, b, c, h, w)
-        x = self.forward_reconstruct(x, b, c, h, w)
+        x = self.forward_acquire(x, b, c, h, w);
+        x = self.forward_reconstruct(x, b, c, h, w);
         return x
     #--------------------------------------------------------------------------
     # Forward functions (with grad)
     #--------------------------------------------------------------------------
     def forward_acquire(self, x, b, c, h, w):
         #--Scale input image
-        x = (x+1)/2; 
+        #x = (x+1)/2; 
         #--Acquisition
         x = x.view(b*c, 1, h, w);
-        x = self.P(x);
-        x = F.relu(x); ## x[:,:,1] = -1/N0 ????
-        print("No noise")
-        x = x.view(b, c, 2*self.M); 
+        print(self.Patt)
+        print(x.size())
+        x = self.Patt(x);
+        #x = F.relu(x); ## x[:,:,1] = -1/N0 ????
+        x = x.view(b*c,1, self.M*self.n); 
         return x
     
-    def forward_reconstruct(self, x, b, c, h, w):
-        print("CompNet")
-        x = self.forward_preprocess(x, b, c, h, w)
-        x = self.forward_maptoimage(x, b, c, h, w)
-        x = self.forward_postprocess(x, b, c, h, w)
-        return x
-    
-    def forward_reconstruct_pinv(self, x, b, c, h, w):
-        x = self.forward_preprocess(x, b, c, h, w)
-        x = self.pinv(x, b, c, h, w);
-        return x
-    
-    def forward_reconstruct_mmse(self, x, b, c, h, w):
-        x = self.forward_preprocess(x, b, c, h, w)
-        x = self.forward_maptoimage(x, b, c, h, w)
+    def forward_maptoimage(self, x, b, c, h, w):
+        #- Pre-processing (use batch norm to avoid division by N0 ?)
+        #x = self.T(x);
+        #x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M));
+        #--Projection to the image domain
+        x = self.fc1(x);
+        x = x.view(b*c,1,h,w)
         return x
     
     def forward_preprocess(self, x, b, c, h, w):
         #- Pre-processing (use batch norm to avoid division by N0 ?)
-        x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
-        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1,h,w).to(x.device)),(b,c,self.M));
+        #x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
+        #x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1,h,w).to(x.device)),(b,c,self.M));
         return x
-    
-    def forward_maptoimage(self, x, b, c, h, w):
-        #--Projection to the image domain
-        x = self.fc1(x);
-        x = x.view(b, c, h, w)
-        return x
-        
     
     def forward_postprocess(self, x, b, c, h, w):
-        x = x.view(b*c, 1, h, w)
         x = self.recon(x)
         x = x.view(b, c, h, w)
         return x
     
-    def pinv(self, x, b, c, h, w):
-        x = self.Pinv(x);
-        x = x.view(b, c, h, w)
+    def forward_reconstruct(self, x, b, c, h, w):
+        x = self.forward_maptoimage(x, b, c, h, w)
+        x = self.forward_postprocess(x, b, c, h, w)
         return x
+     
     
     #--------------------------------------------------------------------------
     # Evaluation functions (no grad)
@@ -603,7 +607,7 @@ class compNet_1D_test_product(nn.Module):
         with torch.no_grad():
            b,c,h,w = x.shape
            x = self.forward_acquire(x, b, c, h, w)
-           x = self.forward_reconstruct_mmse(x, b, c, h, w)
+           x = self.forward_maptoimage(x, b, c, h, w)
         return x
      
     def evaluate_Pinv(self, x):
@@ -619,11 +623,9 @@ class compNet_1D_test_product(nn.Module):
     
     def reconstruct(self, x, b, c, h, w):
         with torch.no_grad():
+            b,c,h,w = x.shape
             x = self.forward_reconstruct(x, b, c, h, w)
         return x
-
-
-
 
 
 
