@@ -33,20 +33,15 @@ if __name__ == "__main__":
     parser.add_argument("--net_arch",   type=int,   default=0,      help="Network architecture (variants for the FCL)")
     parser.add_argument("--precompute_root", type=str, default='/home/amador/Documents/Stage/Codes/spyrit-doc/Test/', help="Path to precomputed data")
     parser.add_argument("--precompute", type=bool,  default=False,  help="Tells if the precomputed data is available")
-    parser.add_argument("--model_root", type=str,   default='/home/amador/Documents/Stage/Codes/Semaine20/Iterative_FCNN/', help="Path to model saving files")
-    parser.add_argument("--intensity_max",  type=float,   default=0, help="maximum photons/pixel")
+    parser.add_argument("--model_root", type=str,   default='/home/amador/Documents/Stage/Codes/Semaine23/Unified_models', help="Path to model saving files")
+    parser.add_argument("--intensity_max",  type=float,   default=50, help="maximum photons/pixel")
     parser.add_argument("--intensity_sig",  type=float,   default=0.0, help="std of maximum photons/pixel")
-    parser.add_argument("--denoi",      type=bool,   default=False, help="Denoising layer with diagonal matrix approximation")
-    parser.add_argument("--full", type=bool, default=False, help="Denoising layer with full matrix inversion")
-    parser.add_argument("--approx", type=bool, default=False, help="Denoising layer with a first order taylor matrix approximation")
-    parser.add_argument("--NVMS", type=bool, default=False, help="Denoising layer with a first order taylor matrix approximation + NVMS")
-    parser.add_argument("--Iter", type=bool, default=False, help="Tells if the iterative FCNN is taken")
-    parser.add_argument("--Lambda", type=int, default=1e2, help="Regularisation Parameter")
-    parser.add_argument("--tau", type=float, default=8e-5, help="Step size of the gradient descent")
-    parser.add_argument("--epsilon", type=float, default=1e-3, help="Regularisation Parameter")
-    parser.add_argument("--Niter", type=int, default=5, help="Maximum of schema iterations")
+    parser.add_argument("--denoi",      type=bool,   default=True, help="Tells if denoising stage is perform")
+    parser.add_argument("--denoi_type", type=int,   default=0, help="Approach of denoising operation: 0= NVMS ,1=Diagonal ,2=Full inverse ")
+    parser.add_argument("--Niter_Net", type=int, default=4, help="Maximum of FCNN iterations")
+
     # Optimisation
-    parser.add_argument("--num_epochs", type=int,   default=1,     help="Number of training epochs")
+    parser.add_argument("--num_epochs", type=int,   default=15,     help="Number of training epochs")
     parser.add_argument("--batch_size", type=int,   default=256,    help="Size of each training batch")
     parser.add_argument("--reg",        type=float, default=1e-7,   help="Regularisation Parameter")
     parser.add_argument("--lr",         type=float, default=1e-3,   help="Learning Rate")
@@ -110,11 +105,12 @@ if __name__ == "__main__":
     H = walsh2_matrix(opt.img_size) / opt.img_size
     print('Coefficients with Walsh-Hadamard order')
 
-    if opt.NVMS:
-        My_NVMS_file = Path(opt.precompute_root) / (
-            'NVMS_N_{}_M_{}.npy'.format(opt.img_size, opt.CR))
-        NVMS = np.load(My_NVMS_file) / (opt.intensity_max * (1 - opt.intensity_sig))
-        print('loaded :NVMS_N0_N_{}_M_{}.npy'.format(opt.img_size, opt.CR))
+    # -- Calculate the Noise Variance Matrix Stabilization (NVMS)
+    # -- In the training stage, we take the average intensity
+    my_nvms_file = Path(opt.precompute_root) / (
+        'NVMS_N_{}_M_{}.npy'.format(opt.img_size, opt.CR))
+    NVMS = np.load(my_nvms_file) / opt.intensity_max
+    print('loaded :NVMS_N0_N_{}_M_{}.npy'.format(opt.img_size, opt.CR))
 
     # =======================================================================
     # 3. Define a Neural Network
@@ -130,38 +126,16 @@ if __name__ == "__main__":
                 variant=opt.net_arch, N0=opt.intensity_max,
                 sig=opt.intensity_sig, H=H, Ord=Ord)
         midfix = '_N0_{}_sig_{}'.format(np.int(opt.intensity_max), opt.intensity_sig)
-    elif opt.Iter:
-        if opt.NVMS:
-            model = DenoiCompNetIterNVMS(opt.img_size, opt.CR, Mean_had, Cov_had, NVMS,
-                                     Niter=opt.Niter, variant=opt.net_arch, N0=opt.intensity_max,
-                                     sig=opt.intensity_sig, H=H, Ord=Ord)
-            midfix = '_N0_{}_sig_{}_IterDenoiNVMS_Niter_{}'.format(np.int(opt.intensity_max), opt.intensity_sig, np.int(opt.Niter))
-
-        else:
-            model = DenoiCompNetIter(opt.img_size, opt.CR, Mean_had, Cov_had,
-                                     Niter=opt.Niter, variant=opt.net_arch, N0=opt.intensity_max,
-                                     sig=opt.intensity_sig, H=H, Ord=Ord)
-            midfix = '_N0_{}_sig_{}_IterDenoi_Niter_{}'.format(np.int(opt.intensity_max), opt.intensity_sig, np.int(opt.Niter))
-    elif opt.full:
-        model = DenoiCompNetFull(opt.img_size, opt.CR, Mean_had, Cov_had,
-                variant=opt.net_arch, N0=opt.intensity_max,
-                sig=opt.intensity_sig, H=H, Ord=Ord)
-        midfix = '_N0_{}_sig_{}_DenoiFull'.format(np.int(opt.intensity_max), opt.intensity_sig)
-    elif opt.approx:
-        model = DenoiCompNetApprox(opt.img_size, opt.CR, Mean_had, Cov_had,
-                variant=opt.net_arch, N0=opt.intensity_max,
-                sig=opt.intensity_sig, H=H, Ord=Ord)
-        midfix = '_N0_{}_sig_{}_DenoiApprox'.format(np.int(opt.intensity_max), opt.intensity_sig)
-    elif opt.NVMS:
-        model = DenoiCompNetNVMS(opt.img_size, opt.CR, Mean_had, Cov_had, NVMS,
-                variant=opt.net_arch, N0=opt.intensity_max,
-                sig=opt.intensity_sig, H=H, Ord=Ord)
-        midfix = '_N0_{}_sig_{}_DenoiNVMS'.format(np.int(opt.intensity_max), opt.intensity_sig)
     else:
-        model = DenoiCompNet(opt.img_size, opt.CR, Mean_had, Cov_had, 
-                variant=opt.net_arch, N0=opt.intensity_max,
+        model = DenoiCompNet(opt.img_size, opt.CR, Mean_had, Cov_had, NVMS, Niter=opt.Niter_Net,
+                variant=opt.net_arch, denoi=opt.denoi_type, N0=opt.intensity_max,
                 sig=opt.intensity_sig, H=H, Ord=Ord)
-        midfix = '_N0_{}_sig_{}_Denoi'.format(np.int(opt.intensity_max), opt.intensity_sig)
+        if opt.denoi_type == 0:
+            midfix = '_N0_{}_sig_{}_Denoi_NVMS_Niter_{}'.format(np.int(opt.intensity_max), opt.intensity_sig, opt.Niter_Net)
+        elif opt.denoi_type == 1:
+            midfix = '_N0_{}_sig_{}_Denoi_Diag_Niter_{}'.format(np.int(opt.intensity_max), opt.intensity_sig, opt.Niter_Net)
+        else:
+            midfix = '_N0_{}_sig_{}_Denoi_Full_Niter_{}'.format(np.int(opt.intensity_max), opt.intensity_sig, opt.Niter_Net)
         
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
