@@ -325,6 +325,7 @@ net_type = ['NET_c0mp', 'NET_comp', 'NET_pinv', 'NET_free']
 net_arch = 0  # Bayesian solution
 num_epochs_simple = 20  # Number of training epochs for simple schema
 num_epochs_comp = 10  # Number of training epochs for compound schema
+num_epochs_full = 5  # Number epochs for vanilla version
 batch_size = 256  # Size of each training batch
 reg = 1e-7  # Regularisation Parameter
 lr = 1e-3  # Learning Rate
@@ -346,7 +347,7 @@ denoiCompNetFull = denoiCompNetFull.to(device)
 
 # -- Load net
 suffix = '_N0_{}_sig_{}_Denoi_Full_Niter_{}_N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}_reg_{}'.format(\
-    N0, sig, Niter_simple, img_size, M, num_epochs_comp, lr, step_size, gamma, batch_size, reg)
+    N0, sig, Niter_simple, img_size, M, num_epochs_full, lr, step_size, gamma, batch_size, reg)
 
 title = model_root / (net_type[net_arch] + suffix)
 load_net(title, denoiCompNetFull, device)
@@ -764,8 +765,8 @@ ax.grid(which='minor', linestyle=':', linewidth=0.5, color='black')
 plt.grid(True)
 ax.legend(('Full inversion (vanilla version, k=0)  :  24m 58s',\
            'Diagonal approximation (k=0) :  26m 05s', \
-           'Diagonal approximation (k=4) :  17m 53s', \
+           'Diagonal approximation (k=4) :  30m 46s', \
            'Taylor approximation with NVMS (k=0) : 26m 07s', \
-           'Taylor approximation with NVMS (k=4) : 16m 58s', \
+           'Taylor approximation with NVMS (k=4) : 28m 34s', \
            ),  loc='upper right')
 
