@@ -192,12 +192,12 @@ class compNet_1D(compNet):
     
         
 class compNet_1D_test_product(nn.Module):
-    def __init__(self, n, M, lr, Pinv = np.zeros(0), variant=0, H=None):
+    def __init__(self, n, M, H, variant=2,alpha = 1e-1):
         super(compNet_1D_test_product, self).__init__()
         
         self.n = n;
         self.M = M;
-        self.H = H
+        self.H = H[0][0][:M]
         print(self.H.device)
         self.even_index = range(0,2*M*n,2);
         self.uneven_index = range(1,2*M*n,2);
@@ -264,7 +264,7 @@ class compNet_1D_test_product(nn.Module):
         #if np.shape(Pinv)[0]==0:
         #    Pinv = torch.from_numpy(Pinv)
         #else:
-        #    Pinv = torch.pinverse(torch.from_numpy(Pmat), rcond=lr)#(1/n**2)*np.transpose(Pmat);
+        Pinv = torch.pinverse(self.H, rcond=alpha)#(1/n**2)*np.transpose(Pmat);
         
         Pinv = Pinv.float()
         self.Pinv = Pinv
@@ -348,6 +348,7 @@ class compNet_1D_test_product(nn.Module):
         #x = self.T(x);
         #x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M));
         #--Projection to the image domain
+
         x = x.float()
         x = torch.matmul(self.Pinv,x)
         x = x.view(b*c,1,h,w)
