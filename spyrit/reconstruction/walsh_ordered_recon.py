@@ -14,7 +14,7 @@ Created on Wed Jan 15 16:48:37 2020
 import sys
 import numpy as np
 sys.path.append('/home/crombez/Documents/PhD/python/libreries/')
-from walsh_hadamard import walsh2
+from misc.walsh_hadamard import walsh2
 
 
 def recon_Walsh(Data,n): # Return the product of the a 2D matrix with the Walsh ordered matrix of the same size
