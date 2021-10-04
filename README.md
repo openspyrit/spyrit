@@ -47,7 +47,7 @@ These instructions will get you a copy of the project up and running on your loc
 First, you need to clone the repository:
 
 ```
-git clone --recurse-submodules https://github.com/openspyrit/spyrit.git
+git clone https://github.com/openspyrit/spyrit.git
 ```
 
 Then, you can install the spyrit package with python (we recommend you to use virtual environment)
@@ -86,7 +86,7 @@ https://spyrit.readthedocs.io/
 
 All the necessary packages and libraries are contained within the ```setup.py ``` file.
 
-- numpy (==1.19.3)
+- numpy
 - matplotlib
 - scipy
 - torch
