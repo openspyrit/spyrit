@@ -4,7 +4,7 @@
 
 # Spyrit
 SPYRIT is a [PyTorch](https://pytorch.org/)-based toolbox for deep image reconstruction. While SPYRIT was originally designed for single-pixel image reconstruction, it can solve any linear reconstruction problem.
-    
+   
 ## Getting Started
 
 ### User mode
