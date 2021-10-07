@@ -10,22 +10,15 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 import numpy as np
-import torchvision
-from torchvision import datasets, models, transforms
-import matplotlib.pyplot as plt
-import time
-import os
-import copy
-import fht
+from fht import * # not used ?
+
 from ..misc.pattern_choice import Hadamard, matrix2conv, split
 from collections import OrderedDict
-import cv2
 from scipy.stats import rankdata
-from itertools import cycle;
-from pathlib import Path
-import spyrit.misc.walsh_hadamard as wh
+from ..misc.disp import *
+from spyrit.misc.statistics import *
+
 import math
 from ..reconstruction.recon_functions import *
 
@@ -36,28 +29,6 @@ from ..reconstruction.recon_functions import *
 # Hadamard patterns for a given image size
 # 
 
-def optim_had(dataloader, root):
-    """ Computes image that ranks the hadamard coefficients
-    """
-    inputs, classes = next(iter(dataloader))
-    inputs = inputs.cpu().detach().numpy();
-    (batch_size, channels, nx, ny) = inputs.shape;
-
-    tot_num = len(dataloader)*batch_size;
-    Cumulated_had = np.zeros((nx, ny));
-    # Iterate over data.
-    for inputs,labels in dataloader:
-        inputs = inputs.cpu().detach().numpy();
-        for i in range(inputs.shape[0]):
-            img = inputs[i,0,:,:];
-            h_img = np.abs(fht.fht2(img))/tot_num;
-            Cumulated_had += h_img;
-    
-    Cumulated_had = Cumulated_had / np.max(Cumulated_had) * 255
-    np.save(root+'{}x{}'.format(nx,ny)+'.npy', Cumulated_had)
-    np.savetxt(root+'{}x{}'.format(nx,ny)+'.txt', Cumulated_had)
-    cv2.imwrite(root+'{}x{}'.format(nx,ny)+'.png', Cumulated_had)
-    return Cumulated_had 
 
 def hadamard_opt_spc(M ,root, nx, ny):
     msk = np.ones((nx,ny))
@@ -69,197 +40,6 @@ def hadamard_opt_spc(M ,root, nx, ny):
 
     return conv
 
-
-def abs_walsh(dataloader, device):
-    
-    # Estimate tot_num
-    inputs, classes = next(iter(dataloader))
-    #inputs = inputs.cpu().detach().numpy();
-    (batch_size, channels, nx, ny) = inputs.shape;
-    tot_num = len(dataloader)*batch_size;
-    
-    # Init
-    n = 0
-    output = torch.zeros((nx,ny),dtype=torch.float32)
-    H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
-    
-    # Send to device (e.g., cuda)
-    output = output.to(device)
-    H = torch.from_numpy(H).to(device)
-    
-    # Accumulate over all images in dataset
-    for inputs,_ in dataloader:
-        inputs = inputs.to(device);
-        n = n + inputs.shape[0]
-        trans = wh.walsh2_torch(inputs,H);
-        trans = torch.abs(trans)
-        output = output.add(torch.sum(trans,0))
-        print(f'Abs:  {n} / (less than) {tot_num} images', end='\n')
-    print('', end='\n')
-    
-    #-- Normalize
-    output = output/n;
-    output = torch.squeeze(output)
-    
-    return output
-
-def stat_walsh(dataloader, device, root):
-    
-    # Get dimensions and estimate total number of images in the dataset
-    inputs, classes = next(iter(dataloader))
-    (b, c, nx, ny) = inputs.shape;
-    tot_num = len(dataloader)*b;
-    
-    # 1. Mean
-    
-    # Init
-    n = 0
-    mean = torch.zeros((nx,ny), dtype=torch.float32)
-    H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
-    
-    # Send to device (e.g., cuda)
-    mean = mean.to(device)
-    H = torch.from_numpy(H).to(device)
-    
-    # Accumulate sum over all images in dataset
-    for inputs,_ in dataloader:
-        inputs = inputs.to(device);
-        trans = wh.walsh2_torch(inputs,H)
-        mean = mean.add(torch.sum(trans,0))
-        # print
-        n = n + inputs.shape[0]
-        print(f'Mean:  {n} / (less than) {tot_num} images', end='\n')
-    print('', end='\n')
-    
-    # Normalize
-    mean = mean/n;
-    mean = torch.squeeze(mean)
-    #torch.save(mean, root+'Average_{}x{}'.format(nx,ny)+'.pth')
-    np.save(root / Path('Average_{}x{}'.format(nx,ny)+'.npy'), mean.cpu().detach().numpy())
-    
-    # 2. Covariance
-    
-    # Init
-    n = 0
-    cov = torch.zeros((nx*ny,nx*ny), dtype=torch.float32)
-    cov = cov.to(device)
-    
-    # Accumulate (im - mu)*(im - mu)^T over all images in dataset
-    for inputs,_ in dataloader:
-        inputs = inputs.to(device);
-        trans = wh.walsh2_torch(inputs,H)
-        trans = trans - mean.repeat(inputs.shape[0],1,1,1)
-        trans = trans.view(inputs.shape[0], nx*ny, 1)
-        cov = torch.addbmm(cov, trans, trans.view(inputs.shape[0], 1, nx*ny))
-        # print
-        n += inputs.shape[0]
-        print(f'Cov:  {n} / (less than) {tot_num} images', end='\n')
-    print('', end='\n')
-    
-    # Normalize
-    cov = cov/(n-1);
-    #torch.save(cov, root+'Cov_{}x{}'.format(nx,ny)+'.pth') # todo?
-    np.save(root / Path('Cov_{}x{}'.format(nx,ny)+'.npy'), cov.cpu().detach().numpy())
-    
-    return mean, cov
-
-def stat_walsh_np(dataloader, root):
-    """ 
-        Computes Mean Hadamard Image over the whole dataset + 
-        Covariance Matrix Amongst the coefficients
-    """
-    inputs, classes = next(iter(dataloader))
-    inputs = inputs.cpu().detach().numpy();
-    (batch_size, channels, nx, ny) = inputs.shape;
-    tot_num = len(dataloader)*batch_size;
-    
-    H1d = wh.walsh_ordered(nx)
-    
-     # Abs matrix
-    Mean_had = abs_walsh_ordered(dataloader, H1d, tot_num)
-    print("Saving abs")
-    np.save(root / Path('Abs_{}x{}'.format(nx,ny)+'.npy'), Mean_had)
-
-    # Mean matrix
-    #-- Accumulate over all images in dataset
-    n = 0
-    Mean_had = np.zeros((nx, ny));
-    for inputs,_ in dataloader:
-        inputs = inputs.cpu().detach().numpy();
-        for i in range(inputs.shape[0]):
-            img = inputs[i,0,:,:];
-            h_img = wh.walsh_ordered2(img,H1d);
-            Mean_had += h_img;
-            n = n+1
-        print(f'Mean:  {n} / (less than) {tot_num} images', end='\r')
-    print('', end='\n')
-    
-    #-- Normalize & save
-    Mean_had = Mean_had/n;
-    print("Saving mean")
-    np.save(root / Path('Mean_{}x{}'.format(nx,ny)+'.npy'), Mean_had)
-    
-    # Covariance matrix    
-    n = 0
-    Cov_had = np.zeros((nx*ny, nx*ny));
-    for inputs,_ in dataloader:
-        inputs = inputs.cpu().detach().numpy();
-        for i in range(inputs.shape[0]):
-            img = inputs[i,0,:,:];
-            h_img = walsh_ordered2(img, H1d);
-            Norm_Variable = np.reshape(h_img-Mean_had, (nx*ny,1));
-            Cov_had += Norm_Variable*np.transpose(Norm_Variable);
-            n = n+1
-        print(f'Covariance:  {n} / (less than) {tot_num} images', end='\r')     
-    print()
-    
-    #-- Normalize & save
-    Cov_had = Cov_had/(n-1);  
-    np.save(root / Path('Cov_{}x{}'.format(nx,ny)+'.npy'), Cov_had)
-
-
-
-def Stat_had(dataloader, root):
-    """ 
-        Computes Mean Hadamard Image over the whole dataset + 
-        Covariance Matrix Amongst the coefficients
-    """
-
-    inputs, classes = next(iter(dataloader))
-    inputs = inputs.cpu().detach().numpy();
-    (batch_size, channels, nx, ny) = inputs.shape;
-    tot_num = len(dataloader)*batch_size;
-
-
-    Mean_had = np.zeros((nx, ny));
-    for inputs,labels in dataloader:
-        inputs = inputs.cpu().detach().numpy();
-        for i in range(inputs.shape[0]):
-            img = inputs[i,0,:,:];
-            h_img = fht.fht2(img);
-            Mean_had += h_img;
-    Mean_had = Mean_had/tot_num;
-
-
-    Cov_had = np.zeros((nx*ny, nx*ny));
-    for inputs,labels in dataloader:
-        inputs = inputs.cpu().detach().numpy();
-        for i in range(int(inputs.shape[0]/4)):
-            img = inputs[i,0,:,:];
-            h_img = fht.fht2(img);
-            Norm_Variable = np.reshape(h_img-Mean_had, (nx*ny,1));
-            Cov_had += Norm_Variable*np.transpose(Norm_Variable);
-    Cov_had = Cov_had/(tot_num-1);
-
-    np.save(root+'Cov_{}x{}'.format(nx,ny)+'.npy', Cov_had)
-    np.savetxt(root+'Cov_{}x{}'.format(nx,ny)+'.txt', Cov_had)
-    
-    np.save(root+'Average_{}x{}'.format(nx,ny)+'.npy', Mean_had)
-    np.savetxt(root+'Average_{}x{}'.format(nx,ny)+'.txt', Mean_had)
-    cv2.imwrite(root+'Average_{}x{}'.format(nx,ny)+'.png', Mean_had) #Needs conversion to Uint8!
-    return Mean_had, Cov_had 
-
-
 def img2mask(Value_map, M):
     (nx, ny) = Value_map.shape;
     msk = np.ones((nx, ny));
@@ -267,15 +47,6 @@ def img2mask(Value_map, M):
     msk[np.absolute(ranked_data)>M]=0;
     return msk
 
-def Cov2Var(Cov):
-    """
-    Extracts Variance Matrix from Covarience Matrix
-    """
-    (Nx, Ny) = Cov.shape;
-    diag_index = np.diag_indices(Nx);
-    Var = Cov[diag_index];
-    Var = np.reshape(Var, (int(np.sqrt(Nx)),int(np.sqrt(Nx))) );
-    return Var
 
 def Permutation_Matrix_root(root):
     """
@@ -389,16 +160,6 @@ def Variance_mask(Cov,eta=0.5):
     return mask
 
     
-def Hadamard_Transform_Matrix(img_size):
-    H = np.zeros((img_size**2, img_size**2))
-    for i in range(img_size**2):
-        base_function = np.zeros((img_size**2,1));
-        base_function[i] = 1;
-        base_function = np.reshape(base_function, (img_size, img_size));
-        hadamard_function = fht.fht2(base_function);
-        H[i, :] = np.reshape(hadamard_function, (1,img_size**2));
-    return H
-
 def meas2img(meas, Ord):
     """Return image from measurement vector
 
@@ -452,7 +213,7 @@ def Hadamard_stat_completion_matrices(Cov_had, Mean_had, CR):
     # choice of patterns
     Var = Cov2Var(Cov_had)
     P = Permutation_Matrix(Var)
-    H = Hadamard_Transform_Matrix(img_size);
+    H = wh.walsh2_matrix(img_size)/img_size
 
     Sigma = np.dot(P,np.dot(Cov_had,np.transpose(P)))
     mu = np.dot(P, np.reshape(Mean_had, (img_size**2,1)))
@@ -517,7 +278,7 @@ def Hadamard_stat_completion_comp(Cov, Mean, Im, CR):
     img_size, ny = Im.shape;
     Var = Cov2Var(Cov)
     P = Permutation_Matrix(Var)
-    H = Hadamard_Transform_Matrix(img_size);
+    H = wh.walsh2_matrix(img_size)/img_size
 
     Sigma = np.dot(P,np.dot(Cov,np.transpose(P)))
     mu = np.dot(P, np.reshape(Mean, (img_size**2,1)))
@@ -566,7 +327,7 @@ class compNet(nn.Module):
         
         #-- Hadamard patterns (full basis)
         if type(H)==type(None):
-            H = Hadamard_Transform_Matrix(self.n)
+            H = wh.walsh2_matrix(self.n)/self.n
         H = n*H; #fht hadamard transform needs to be normalized
         self.H=H
         #-- Hadamard patterns (undersampled basis)
@@ -689,7 +450,8 @@ class compNet(nn.Module):
         x = x.view(b*c, 1, h, w);
         x = self.P(x)
         x = F.relu(x); ## x[:,:,1] = -1/N0 ????
-        x = x.view(b*c,1, 2*self.M);
+        print("No noise")
+        x = x.view(b, c, 2*self.M); 
         return x
     
     def forward_reconstruct(self, x, b, c, h, w):
@@ -713,23 +475,24 @@ class compNet(nn.Module):
     def forward_preprocess(self, x, b, c, h, w):
         #- Pre-processing (use batch norm to avoid division by N0 ?)
         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
-        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M));
+        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1,h,w).to(x.device)),(b,c,self.M));
         return x
     
     def forward_maptoimage(self, x, b, c, h, w):
         #--Projection to the image domain
         x = self.fc1(x);
-        x = x.view(b*c,1,h,w)
-        return x;
-          
+        x = x.view(b, c, h, w)
+        return x
+    
     def forward_postprocess(self, x, b, c, h, w, m, var):
-        x = self.recon(x,b,c,h,w,m, var)
+        x = x.view(b*c, 1, h, w)
+        x = self.recon(x, b, c, h, w, m, var)
         x = x.view(b, c, h, w)
         return x
     
     def pinv(self, x, b, c, h, w):
         x = self.Pinv(x);
-        x = x.view(b*c,1,h,w)
+        x = x.view(b, c, h, w)
         return x
     
     #--------------------------------------------------------------------------
@@ -785,28 +548,29 @@ class noiCompNet(compNet):
         x = x.view(b*c, 1, h, w);
         x = self.P(x);
         x = F.relu(x);     # x[:,:,1] = -1/N0 ????
-        x = x.view(b*c,1, 2*self.M); # x[:,:,1] < 0??? 
+        x = x.view(b, c, 2*self.M); # x[:,:,1] < 0??? 
         
         #--Measurement noise (Gaussian approximation of Poisson)
         x = x + torch.sqrt(x)*torch.randn_like(x);  
         return x
       
-    def forward_preprocess(self, x, b, c, h, w):
+    def forward_preprocess(self, x, b, c, h, w): # todo: return var
         #-- Pre-processing(Recombining positive and negatve values+normalisation) 
         var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
         x = x/self.N0;
-        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
+        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b,c,self.M));
         return x;
-      
-    def forward_reconstruct(self, x, b, c, h, w):
-        print("CompNet")
-        var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
+         
+    def forward_reconstruct(self, x, b, c, h, w): # todo: get var from preprocess
+        print("noiCompNet")
+        var = x[:,:,self.even_index] + x[:,:,self.uneven_index]; 
         m = self.forward_preprocess(x, b, c, h, w)
         var = var/(self.N0**2)
         x = self.forward_maptoimage(m, b, c, h, w)
         x = self.forward_postprocess(x, b, c, h, w, m, var)
         return x
+     
       
     def forward_reconstruct_expe(self, x, b, c, h, w):
         """"
@@ -838,78 +602,11 @@ class noiCompNet(compNet):
         #-- Estimating and normalizing by N0
         x_est = self.pinv(x, b, c, h, w);
         N0_est = self.max(x_est)
-        N0_est = N0_est.view(b*c,1,1)
+        N0_est = N0_est.view(b,c,1)
         N0_est = N0_est.repeat(1,1,self.M)
-        x = torch.div(x,N0_est)
-        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M))
-        return x, N0_est;
-      
-
-#     def forward_maptoimage(self, x, b, c, h, w):
-#         #-- Pre-processing (use batch norm to avoid division by N0 ?)
-#         var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
-#         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
-#         x = 2/self.N0*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
-#         #--Projection to the image domain
-#         m = x;
-
-#         var = var/(self.N0**2);
-
-#         x = self.fc1(x);
-#         x = x.view(b*c,1,h,w) 
-#         return x, m, var
-         
-
-#     def forward_Pinv(self, x, b, c, h, w):
-#         #-- Pre-processing (use batch norm to avoid division by N0 ?)
-#         var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
-#         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
-#         x = 2/self.N0*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
-#         m = x
-#         var = var/(self.N0**2);
-#         #--Projection to the image domain
-#         x = self.Pinv(x);
-#         x = x.view(b*c,1,h,w)
-#         return x, m, var
- 
-#     def forward_N0_Pinv(self, x, b, c, h, w):
-#         #-- Pre-processing (use batch norm to avoid division by N0 ?)
-#         var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
-#         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
-#         #--Projection to the image domain
-#         x = self.Pinv(x);
-#         x = x.view(b*c,1,h,w)
-#         N0_est = self.max(x);
-#         N0_est = N0_est.view(b*c,1,1,1);
-#         N0_est = N0_est.repeat(1,1,h,w);
-#         x = torch.div(x,N0_est);
-#         x=2*x-1; 
-#         return x
-     
-#     def forward_N0_maptoimage(self, x, b, c, h, w):
-
-   
-      
-#     def forward_N0_reconstruct(self, x, b, c, h, w):
-#         x, m, var = self.forward_N0_maptoimage(x, b, c, h, w)
-#         x = self.forward_postprocess(x, b, c, h, w,m, var)
-#         return x
- 
-#     def forward_stat_comp(self, x, b, c, h, w):
-#         #-- Pre-processing(Recombining positive and negatve values+normalisation) 
-#         var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
-#         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
-#         x = x/self.N0;
-#         x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M)); 
-
-#         m = x
-#         var = var/(self.N0**2)
-#         #--Projection to the image domain
-#         x = self.fc1(x);
-#         x = x.view(b*c,1,h,w) 
-#         return x,m,var
-    
-
+        x = torch.div(x, N0_est)
+        x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b,c,self.M))
+        return x, N0_est
 
 
 #==============================================================================    
@@ -921,8 +618,8 @@ class DenoiCompNet(noiCompNet):
         print("Denoised Measurements")
         
     def forward_denoise(self, x, var, b, c, h, w):
-        sigma = self.sigma.repeat(b*c,1,1).to(x.device);
-        x = torch.mul(torch.div(sigma, sigma + var), x);
+        sigma = self.sigma.repeat(b,c,1).to(x.device);
+        x = torch.mul(torch.div(sigma, sigma+var), x);
         return x
 
     def forward_reconstruct(self, x, b, c, h, w):
@@ -1023,5 +720,3 @@ class Covariance_Loss(nn.Module):
 
         mse=self.loss(Cov, cov_est);
         return mse
-
-

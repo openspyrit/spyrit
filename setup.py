@@ -42,7 +42,7 @@ if _platform == "win32":
   compile_args = '/openmp '
 
 setup(name='spyrit',
-      version='0.13.5',
+      version='0.14.0',
       description='Demo package',
       url='https://github.com/openspyrit/spyrit',
       long_description = readme(),
