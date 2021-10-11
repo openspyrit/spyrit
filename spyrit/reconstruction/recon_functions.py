@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import time
 import os
 import copy
-import fht
 import copy
 from ..misc.pattern_choice import Hadamard, matrix2conv, split
 from collections import OrderedDict
@@ -27,6 +26,8 @@ def Hadamard_Transform_Matrix(img_size):
         base_function = np.zeros((img_size**2,1));
         base_function[i] = 1;
         base_function = np.reshape(base_function, (img_size, img_size));
+        H = walsh_matrix(len(base_function))
+        wh.walsh2(base_function,H)/len(base_function)
         hadamard_function = fht.fht2(base_function);
         H[i, :] = np.reshape(hadamard_function, (1,img_size**2));
     return H
