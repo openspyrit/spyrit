@@ -16,8 +16,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.6, 3.7, 3.8]
+        os: [ubuntu-latest]
+        python-version: [3.6, 3.7, 3.8, 3.9]
 
     steps:
     - name: Checkout github repo
@@ -29,44 +29,14 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         architecture: 'x64'
-    - name: Create Wheel Linux
-      if: matrix.os == 'ubuntu-latest'
+    - name: Create Wheel
       run: |
-          if  [ ${{ matrix.python-version }} == "3.6" ]; then
-            export PYTHONFOLDER="cp36-cp36m"
-          elif [ ${{ matrix.python-version }} == "3.7" ]; then
-            export PYTHONFOLDER="cp37-cp37m"
-          elif [ ${{ matrix.python-version }} == "3.8" ]; then
-            export PYTHONFOLDER="cp38-cp38"
-          fi
-          docker run --rm -e "PYTHONFOLDER=${PYTHONFOLDER}" -v $GITHUB_WORKSPACE:/home quay.io/pypa/manylinux2014_x86_64 /home/.github/workflows/actionsCreateWheelLinux.sh
-          ls wheelhouse
-          sudo rm -rf dist
-          mv wheelhouse dist
-    - name: Create Wheel Windows
-      if: matrix.os == 'windows-latest'
-      run: |
-          pip install wheel delocate numpy==1.19.3
-          rm -r -fo fht
-          cmd /c mklink /d fht spyrit\fht\fht
+          pip install wheel
           python setup.py sdist bdist_wheel
           mkdir wheelhouse
-          copy dist\spyrit-* wheelhouse\
+          cp dist/spyrit-* wheelhouse/
           ls wheelhouse
-          rm -r -fo dist
-          mv wheelhouse dist
-    - name: Create Wheel Mac
-      if: matrix.os == 'macos-latest'
-      run: |     
-          brew update
-          brew install ccache \
-                       libomp
-          pip install wheel delocate numpy==1.19.3
-          python setup.py sdist bdist_wheel
-          delocate-wheel -w wheelhouse -v dist/*.whl
-          ls wheelhouse
-          delocate-listdeps --all wheelhouse/*.whl
-          rm -rf dist
+          rm -r dist
           mv wheelhouse dist
     - name: Upload wheels
       uses: actions/upload-artifact@v1
@@ -80,7 +50,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8, 3.9]
 
     steps:
     - name: Checkout github repo
@@ -99,7 +69,7 @@ jobs:
         path: data_example
         key: data_example3
         restore-keys: data_example3
-    - name: Run the tests on Mac and Linux
+    - name: Run the ISBI test on Mac and Linux
       if: matrix.os != 'windows-latest'
       run: |
           mkdir -p data_example
@@ -110,15 +80,28 @@ jobs:
               tar xzvf stl10_binary.tar.gz
               cd ..
           fi
-          python ../.github/workflows/example.py
+          python ../.github/workflows/example_2020_ISBI.py
           rm -rf data/stl10_binary
-    - name: Run the tests on Windows
+    - name: Run the Optic test on Mac and Linux
+      if: matrix.os != 'windows-latest'
+      run: |
+          mkdir -p data_example
+          pip install -e .
+          pip install tabulate pylops bm3d
+          cd data_example
+          wget https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/expe.zip
+          unzip expe.zip
+          wget https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/model.zip
+          unzip model.zip
+          cd ..
+          python .github/workflows/example_2021_OpticsExpress.py
+          cd data_example
+          rm -rf expe.zip model.zip expe_2 model
+    - name: Run the ISBI test on Windows
       if: matrix.os == 'windows-latest'
       run: |
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
-          rm -r -fo fht
-          cmd /c mklink /d fht spyrit\fht\fht
-          pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
           pip install -e .
           cd data_example
           if(Test-Path -path "data\stl10_binary.tar.gz") {
@@ -126,8 +109,27 @@ jobs:
               tar xzvf stl10_binary.tar.gz
               cd ..
           }
-          python ..\.github\workflows\example.py
+          python ..\.github\workflows\example_2020_ISBI.py
           rm -r -fo data/stl10_binary
+    - name: Run the Optic test on Windows
+      if: matrix.os == 'windows-latest'
+      run: |
+          if(-not (Test-Path -path "data_example")) { mkdir data_example }
+          pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install -e .
+          pip install tabulate pylops bm3d
+          cd data_example
+          C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/expe.zip
+          unzip expe.zip
+          rm -r -fo expe.zip
+          C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/model.zip
+          unzip model.zip
+          rm -r -fo model.zip
+          cd ..
+          python .github\workflows\example_2021_OpticsExpress.py
+          cd data_example
+          rm -r -fo expe_2
+          rm -r -fo model
 
   test_wheel:
     runs-on: ${{ matrix.os }}
@@ -136,7 +138,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8, 3.9]
 
     steps:
     - name: Checkout github repo
@@ -159,48 +161,79 @@ jobs:
       with:
         name: dist
         path: dist/
-    - name: Run the tests on Mac and Linux
+    - name: Run the ISBI test on Mac and Linux
       if: matrix.os != 'windows-latest'
       run: |
           mkdir -p data_example
           cd dist
-          if  [ ${{ matrix.python-version }} == "3.6" ]; then
-            export PYTHONFOLDER="cp36-cp36m"
-          elif [ ${{ matrix.python-version }} == "3.7" ]; then
-            export PYTHONFOLDER="cp37-cp37m"
-          elif [ ${{ matrix.python-version }} == "3.8" ]; then
-            export PYTHONFOLDER="cp38-cp38"
-          fi
-          if  [ ${{ matrix.os }} == "ubuntu-latest" ]; then
-            export OS="manylinux"
-          elif [ ${{ matrix.os }} == "macos-latest" ]; then
-            export OS="macos"
-          fi
-          pip install spyrit-*${PYTHONFOLDER}-${OS}*.whl
+          pip install spyrit-*.whl
+          pip install tabulate pylops bm3d
           cd ../data_example
           if [ -f "data/stl10_binary.tar.gz" ]; then
               cd data
               tar xzvf stl10_binary.tar.gz
               cd ..
           fi
-          python ../.github/workflows/example.py
+          python ../.github/workflows/example_2020_ISBI.py
           rm -rf data/stl10_binary
-    - name: Run the tests on Windows
+    - name: Run the Optic test on Mac and Linux
+      if: matrix.os != 'windows-latest'
+      run: |
+          mkdir -p data_example
+          cd dist
+          pip install spyrit-*.whl
+          pip install tabulate pylops bm3d
+          cd ../data_example
+          wget https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/expe.zip
+          unzip expe.zip
+          wget https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/model.zip
+          unzip model.zip
+          cd ..
+          python .github/workflows/example_2021_OpticsExpress.py
+          cd data_example
+          rm -rf expe.zip model.zip expe_2 model
+    - name: Run the ISBI test on Windows
       if: matrix.os == 'windows-latest'
       run: |
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
           cd dist
-          pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
-          pip install --find-links=. spyrit
+          pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          $package=dir -Path . -Filter spyrit*.whl | %{$_.FullName}
+          echo $package
+          pip install $package
+          #pip install --find-links=. spyrit
           cd ..\data_example
           if(Test-Path -path "data\stl10_binary.tar.gz") {
               cd data
               tar xzvf stl10_binary.tar.gz
               cd ..
           }
-          python ..\.github\workflows\example.py
+          python ..\.github\workflows\example_2020_ISBI.py
           rm -r -fo data/stl10_binary
-  
+    - name: Run the Optic test on Windows
+      if: matrix.os == 'windows-latest'
+      run: |
+          if(-not (Test-Path -path "data_example")) { mkdir data_example }
+          rm -r -fo spyrit 
+          rm -r -fo __init__.py
+          ls
+          cd dist
+          #pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install tabulate pylops bm3d
+          #pip install --find-links=. spyrit
+          cd ..\data_example
+          C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/expe.zip
+          unzip expe.zip
+          rm -r -fo expe.zip
+          C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/model.zip
+          unzip model.zip
+          rm -r -fo model.zip
+          cd ..
+          python .github\workflows\example_2021_OpticsExpress.py
+          cd data_example
+          rm -r -fo expe_2
+          rm -r -fo model
+
   publish_wheel:
     runs-on: ubuntu-latest
     needs: [build_wheel, test_wheel, test_install]

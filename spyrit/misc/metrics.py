@@ -14,7 +14,6 @@ from torchvision import datasets, models, transforms
 import torch.nn.functional as F
 import imageio
 import cv2
-from fht import *
 import matplotlib.pyplot as plt
 
 def batch_psnr(torch_batch, output_batch):

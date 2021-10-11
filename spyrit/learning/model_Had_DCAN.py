@@ -11,8 +11,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from fht import * # not used ?
-
 from ..misc.pattern_choice import Hadamard, matrix2conv, split
 from collections import OrderedDict
 from scipy.stats import rankdata
@@ -465,7 +463,7 @@ class compNet(nn.Module):
     def forward_reconstruct_pinv(self, x, b, c, h, w):
         x = self.forward_preprocess(x, b, c, h, w)
         x = self.pinv(x, b, c, h, w);
-        return x
+        return x 
     
     def forward_reconstruct_mmse(self, x, b, c, h, w):
         x = self.forward_preprocess(x, b, c, h, w)
@@ -596,6 +594,11 @@ class noiCompNet(compNet):
         # x=2*x-1;
         return x
     
+    def forward_reconstruct_comp_expe(self, x, b, c, h, w):
+        x = self.forward_preprocess_expe(x, b, c, h, w)
+        x = self.forward_maptoimage(x, b, c, h, w)   
+        return x
+    
     def forward_preprocess_expe(self, x, b, c, h, w):
         #-- Recombining positive and negatve values
         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
@@ -664,6 +667,13 @@ class DenoiCompNet(noiCompNet):
     def forward_reconstruct_pinv_expe(self, x, b, c, h, w, C=0, s=0, g=1):
         x, _ = self.forward_preprocess_expe(x, b, c, h, w)
         x = self.pinv(x, b, c, h, w) 
+        return x
+    
+    def forward_reconstruct_mmse_expe(self, x, b, c, h, w, C=0, s=0, g=1):
+        var = g**2*(x[:,:,self.even_index] + x[:,:,self.uneven_index]) - 2*C*g +2*s**2;
+        x = self.forward_preprocess_expe(x, b, c, h, w)
+        x = self.forward_denoise(x, var, b, c, h, w)
+        x = self.forward_maptoimage(x, b, c, h, w)
         return x
 
 ########################################################################
