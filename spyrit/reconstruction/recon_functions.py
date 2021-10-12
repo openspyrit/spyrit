@@ -17,20 +17,8 @@ import cv2
 from scipy.stats import rankdata
 from itertools import cycle;
 # from function.learning.model_Had_DCAN import *
+import spyrit.misc.walsh_hadamard as wh
 
-
-
-def Hadamard_Transform_Matrix(img_size):
-    H = np.zeros((img_size**2, img_size**2))
-    for i in range(img_size**2):
-        base_function = np.zeros((img_size**2,1));
-        base_function[i] = 1;
-        base_function = np.reshape(base_function, (img_size, img_size));
-        H = walsh_matrix(len(base_function))
-        wh.walsh2(base_function,H)/len(base_function)
-        hadamard_function = fht.fht2(base_function);
-        H[i, :] = np.reshape(hadamard_function, (1,img_size**2));
-    return H
 
 def Cov2Var(Cov):
     """
@@ -241,7 +229,7 @@ class iteratif(nn.Module):
         self.conv = denoi
         # Hadamard matrix
         if type(H)==type(None):
-            H = Hadamard_Transform_Matrix(self.n)
+            H = wh.walsh2_matrix(self.n)/self.n
         H = n*H; #fht hadamard transform needs to be normalized
         self.H=H
         #-- Hadamard patterns (undersampled basis)
@@ -339,7 +327,7 @@ class sn_dp_iteratif(nn.Module):
         self.conv = denoi
         # Hadamard matrix
         if type(H)==type(None):
-            H = Hadamard_Transform_Matrix(self.n)
+            H = wh.walsh2_matrix(self.n)/self.n
         H = n*H; #fht hadamard transform needs to be normalized
         self.H=H
         #-- Hadamard patterns (undersampled basis)
@@ -409,7 +397,7 @@ class sn_dp_iteratif_2(nn.Module):
         self.conv = denoi
         # Hadamard matrix
         if type(H)==type(None):
-            H = Hadamard_Transform_Matrix(self.n)
+            H = wh.walsh2_matrix(self.n)/self.n
         H = n*H; #fht hadamard transform needs to be normalized
         self.H=H
         #-- Hadamard patterns (undersampled basis)
@@ -516,7 +504,7 @@ class em_dl_iteratif_2(nn.Module):
             denoi = ConvNet();
         # Hadamard matrix
         if type(H)==type(None):
-            H = Hadamard_Transform_Matrix(self.n)
+            H = wh.walsh2_matrix(self.n)/self.n
         H = n*H; #fht hadamard transform needs to be normalized
         self.H=H
         #-- Hadamard patterns (undersampled basis)
@@ -637,7 +625,7 @@ class em_dl_iteratif_3(nn.Module):
             denoi = ConvNet
         # Hadamard matrix
         if type(H)==type(None):
-            H = Hadamard_Transform_Matrix(self.n)
+            H = H = wh.walsh2_matrix(self.n)/self.n
         H = n*H; #fht hadamard transform needs to be normalized
         self.H=H
         #-- Hadamard patterns (undersampled basis)
@@ -772,7 +760,7 @@ class NeumannNet(nn.Module):
             denoi = ConvNet()
         # Hadamard matrix
         if type(H)==type(None):
-            H = Hadamard_Transform_Matrix(self.n)
+            H = wh.walsh2_matrix(self.n)/self.n
         H = n*H; #fht hadamard transform needs to be normalized
         self.H=H;
         #-- Hadamard patterns (undersampled basis)
