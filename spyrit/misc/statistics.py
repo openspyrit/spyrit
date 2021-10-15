@@ -268,22 +268,18 @@ def stat_walsh_stl10(stat_root = Path('./stats/'), data_root = Path('./data/'),
     time_elapsed = (time.perf_counter() - time_start)
     print(time_elapsed)
     
-    
 def stat_mean_coef_from_model(dataloader, device, model_exp):
     #A rediscuter avec Nicolas
     # Get dimensions and estimate total number of images in the dataset
     inputs, classes = next(iter(dataloader))
-    (b,nx, ny) = inputs.shape
-    tot_num = len(dataloader)*b
-    print(b, nx, ny)
-    print(tot_num)
+    (ny,nh) = mdt.size()
  
-    mean = torch.zeros(ny).to(device)
+    mean = torch.zeros(nh).to(device)
 #   
     for inputs,_ in dataloader:
         inputs = inputs.to(device);
-        trans = torch.matmul(model_exp,inputs)#.cpu() 
-        mean = mean.add(torch.sum(trans,0))
+        trans = torch.matmul(inputs,model_exp)#.cpu() 
+        mean = mean.add(torch.sum(trans,[0,1]))
     mean_vect = np.abs(np.transpose(mean.cpu().detach().numpy())) 
     #mean = mean/mean.max()
     return(mean_vect)
