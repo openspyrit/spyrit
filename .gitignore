@@ -6,12 +6,9 @@ __pycache__
 *.ipynb
 
 #folders 
-data
+data*
 img
 models
 dist
 build
 spyrit.egg-info
-scripts/tests
-scripts/examples/Makefile
-scripts/examples/.ipynb_checkpoints
