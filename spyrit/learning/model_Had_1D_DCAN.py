@@ -842,18 +842,18 @@ class compNet_1D_size_im(nn.Module):
 ## Normalement c'est la version finale
         
 class compNet_1D_size_im_f(nn.Module):
-    def __init__(self, M, H, variant=2,alpha = 1e-1):
+    def __init__(self,Nl,Nc,Nh,M, H, variant=2,alpha = 1e-1):
         super(compNet_1D_size_im_f, self).__init__()
         
-        #self.Nl = Nl;
-        #self.Nc = Nc;
-        #self.Nh = Nh;
+        self.Nl = Nl;
+        self.Nc = Nc;
+        self.Nh = Nh;
         self.M = M;
         self.variant = variant
         #H =  H[0,0,:,:M]
-        (self.Nl,self.Nh) = H.size()
+ 
         self.H = H[:,:M]
-        print(H.size())
+
         #print(self.H.device)
         #self.even_index = range(0,2*M*n,2);
         #self.uneven_index = range(1,2*M*n,2);
@@ -927,8 +927,13 @@ class compNet_1D_size_im_f(nn.Module):
         Pt = Pt.float()
         self.Pt = Pt/self.Nh
         
-        
-
+                
+        x_flat = torch.ones((1,1,Nl,Nc))
+        (b,c,h,w) = x_flat.size()      
+        m_flat = self.forward_acquire(x_flat,b,c,h,w)
+        x_flat = torch.matmul(m_flat,self.Pt)
+        x_flat = x_flat.view(b*c,1,h,w)
+        self.flat = x_flat
 
         #-- Measurement to image domain
         if variant==0:
@@ -1014,24 +1019,25 @@ class compNet_1D_size_im_f(nn.Module):
         #x = self.T(x);
         #x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b*c,1,self.M));
         #--Projection to the image domain
-        (b,c,Nl,cr) = x.size()
-        print()
-        (Nc,cr) = self.H.size()
-        x_flat =np.ones((b,c,Nl,Nc))
-        x_flat = torch.from_numpy(x_flat)
-        x_flat = x_flat.float()
-
-        (b,c,h,w) = np.shape(x_flat)
-        
-        m_flat = self.forward_acquire(x_flat,b,c,h,w)
-        x_flat = torch.matmul(m_flat,self.fc1)
-        x_flat = x_flat.view(b*c,1,h,w)
+#        (b,c,Nl,cr) = x.size()
+#        print()
+#        (Nc,cr) = self.H.size()
+#        x_flat =np.ones((b,c,Nl,Nc))
+#        x_flat = torch.from_numpy(x_flat)
+#        x_flat = x_flat.float()
+#
+#        (b,c,h,w) = np.shape(x_flat)
+#        x_flat = x_flat.to(device)
+#        
+#        m_flat = self.forward_acquire(x_flat,b,c,h,w)
+#        x_flat = torch.matmul(m_flat,self.fc1)
+#        x_flat = x_flat.view(b*c,1,h,w)
         
         if self.variant==3:
         #x = x.float()
             x = torch.matmul(x,self.fc1)#x = torch.matmul(self.Pinv,x)
             x = x.view(b*c,1,h,w)
-            x = x/x_flat
+            x = x/self.flat
         else :
                     x = torch.matmul(x,self.fc1)#x = torch.matmul(self.Pinv,x)
                     x = x.view(b*c,1,h,w)
