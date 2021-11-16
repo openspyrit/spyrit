@@ -927,7 +927,7 @@ class compNet_1D_size_im_f(nn.Module):
         Pt = torch.transpose(self.H,0,1)
         Pt = Pt.float()
         self.Pt = Pt/self.Nh
-
+        self.fc1 = Pt/self.Nh
                 
         x_flat = np.ones((1,1,Nl,Nc))
         x_flat = torch.Tensor(x_flat)
@@ -1043,8 +1043,8 @@ class compNet_1D_size_im_f(nn.Module):
             x = x.view(b*c,1,h,w)
             x = x/self.flat
         else :
-                    x = torch.matmul(x,self.fc1)#x = torch.matmul(self.Pinv,x)
-                    x = x.view(b*c,1,h,w)
+            x = torch.matmul(x,self.fc1)#x = torch.matmul(self.Pinv,x)
+            x = x.view(b*c,1,h,w)
         return x
     
     def forward_preprocess(self, x, b, c, h, w):
