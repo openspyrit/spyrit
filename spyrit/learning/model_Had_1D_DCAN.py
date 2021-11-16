@@ -932,9 +932,9 @@ class compNet_1D_size_im_f(nn.Module):
         x_flat = np.ones((1,1,Nl,Nc))
         x_flat = torch.Tensor(x_flat)
         x_flat = x_flat.float()
-        x_flat = x_flat.to(self.device)
+        self.x_flat = x_flat
         (b,c,h,w) = x_flat.size()      
-        m_flat = self.forward_acquire(x_flat,b,c,h,w)
+        m_flat = self.forward_acquire(self.x_flat,b,c,h,w)
         x_flat = torch.matmul(m_flat,self.Pt)
         x_flat = x_flat.view(b*c,1,h,w)
         self.flat = x_flat
