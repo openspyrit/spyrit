@@ -842,13 +842,14 @@ class compNet_1D_size_im(nn.Module):
 ## Normalement c'est la version finale
         
 class compNet_1D_size_im_f(nn.Module):
-    def __init__(self,Nl,Nc,Nh,M, H, variant=2,alpha = 1e-1):
+    def __init__(self,Nl,Nc,Nh,M, H,device, variant=2,alpha = 1e-1):
         super(compNet_1D_size_im_f, self).__init__()
         
         self.Nl = Nl;
         self.Nc = Nc;
         self.Nh = Nh;
         self.M = M;
+        self.device = device
         self.variant = variant
         #H =  H[0,0,:,:M]
  
@@ -931,6 +932,7 @@ class compNet_1D_size_im_f(nn.Module):
         x_flat = np.ones((1,1,Nl,Nc))
         x_flat = torch.Tensor(x_flat)
         x_flat = x_flat.float()
+        x_flat = x_flat.to(self.device)
         (b,c,h,w) = x_flat.size()      
         m_flat = self.forward_acquire(x_flat,b,c,h,w)
         x_flat = torch.matmul(m_flat,self.Pt)
