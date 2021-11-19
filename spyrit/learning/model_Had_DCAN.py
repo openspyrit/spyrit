@@ -559,13 +559,13 @@ class noiCompNet(compNet):
         return x
     
     def forward_reconstruct_expe(self, x, b, c, h, w):
-        x = self.forward_preprocess_expe(x, b, c, h, w)
+        x, _ = self.forward_preprocess_expe(x, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
         x = self.forward_postprocess(x, b, c, h, w)
         return x
     
     def forward_reconstruct_pinv_expe(self, x, b, c, h, w):
-        x = self.forward_preprocess_expe(x, b, c, h, w)
+        x, _ = self.forward_preprocess_expe(x, b, c, h, w)
         x = self.pinv(x, b, c, h, w)      
         #-- Faster alternative
         # x = x[:,:,self.even_index] - x[:,:,self.uneven_index]
@@ -578,7 +578,7 @@ class noiCompNet(compNet):
         return x
     
     def forward_reconstruct_comp_expe(self, x, b, c, h, w):
-        x = self.forward_preprocess_expe(x, b, c, h, w)
+        x, _ = self.forward_preprocess_expe(x, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)   
         return x
     
@@ -588,12 +588,14 @@ class noiCompNet(compNet):
         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
         #-- Estimating and normalizing by N0
         x_est = self.pinv(x, b, c, h, w);
-        N0_est = self.max(x_est)
-        N0_est = N0_est.view(b,c,1)
-        N0_est = N0_est.repeat(1,1,self.M)
+        N0 = self.max(x_est)
+        N0 = N0.view(b,c,1)
+        print(N0)
+        #--
+        N0_est = N0.repeat(1,1,self.M)
         x = torch.div(x,N0_est)
         x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b,c,self.M))
-        return x
+        return x, N0
 
 
 #==============================================================================    
@@ -613,6 +615,11 @@ class DenoiCompNet(noiCompNet):
     def forward_denoise(self, x, var, b, c, h, w):
         sigma = self.sigma.repeat(b,c,1).to(x.device);
         x = torch.mul(torch.div(sigma, sigma+var/(self.N0)**2), x);
+        return x
+    
+    def forward_denoise_expe(self, x, var, N0, b, c, h, w):
+        sigma = self.sigma.repeat(b,c,1).to(x.device);
+        x = torch.mul(torch.div(sigma, sigma+var/N0**2), x);
         return x
    
     def forward_reconstruct(self, x, b, c, h, w):
@@ -662,14 +669,14 @@ class DenoiCompNet(noiCompNet):
             g = g.view(b*c, 1, 1)
 
         var = g**2*(x[:,:,self.even_index] + x[:,:,self.uneven_index]) - 2*C*g +2*s**2;
-        x = self.forward_preprocess_expe(x, b, c, h, w)
-        x = self.forward_denoise(x, var, b, c, h, w)
+        x, N0 = self.forward_preprocess_expe(x, b, c, h, w)
+        x = self.forward_denoise_expe(x, var, N0, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
         x = self.forward_postprocess(x, b, c, h, w)
         return x
    
     def forward_reconstruct_pinv_expe(self, x, b, c, h, w, C=0, s=0, g=1): # Already in the parent class, can be removed
-        x = self.forward_preprocess_expe(x, b, c, h, w)
+        x, _ = self.forward_preprocess_expe(x, b, c, h, w)
         x = self.pinv(x, b, c, h, w) 
         return x
     
@@ -690,8 +697,8 @@ class DenoiCompNet(noiCompNet):
             g = g.view(b*c, 1, 1)
 
         var = g**2*(x[:,:,self.even_index] + x[:,:,self.uneven_index]) - 2*C*g +2*s**2;
-        x = self.forward_preprocess_expe(x, b, c, h, w)
-        x = self.forward_denoise(x, var, b, c, h, w)
+        x, N0 = self.forward_preprocess_expe(x, b, c, h, w)
+        x = self.forward_denoise_expe(x, var, N0, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
         return x
 
