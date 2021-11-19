@@ -879,7 +879,7 @@ class compNet_1D_size_im(nn.Module):
 class compNet_1D_size_im_f(nn.Module):
     def __init__(self,Nl,Nc,Nh,M, H, variant=2,alpha = 1e-1):
         super(compNet_1D_size_im_f, self).__init__()
-        
+        print("cest le nouveux réseaux")
         self.Nl = Nl;
         self.Nc = Nc;
         self.Nh = Nh;
