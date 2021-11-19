@@ -473,6 +473,11 @@ with torch.no_grad():
         x_Stat_comp = model_list[0].forward_reconstruct_comp_expe(1/K*m_list[i]*4, 1, 1, img_size, img_size);
         x_Denoi_Stat_comp = model_list_denoi[0].forward_reconstruct_mmse_expe(m_list[i]*4, 1, 1, img_size, img_size, C, s, K);
 
+        if i == 0:
+            torch.save(x_Pinv, 'data_example/x_Pinv.pt')
+            torch.save(x_Stat_comp, 'data_example/x_Stat_comp.pt')
+            torch.save(x_Denoi_Stat_comp, 'data_example/x_Denoi_Stat_comp.pt')
+
         t1_start = perf_counter() 
         x_SDCAN = model_list_no_noise[0].forward_postprocess(x_Stat_comp, 1,1, img_size, img_size);
         t1_stop = perf_counter() 
@@ -796,6 +801,15 @@ title_lists[1][1] = "Noisy "+ title_lists[1][1]
 #compare_video_frames([outputs[2][:,:4,:,:,:]], nb_disp_frames, [title_lists[2][:4]], fontsize = 11.4)
 #compare_video_frames([outputs[2][:,4:,:,:,:]], nb_disp_frames, [title_lists[2][4:]], fontsize = 11.4)
 
-
+# Compare data with ref to test:
+x_Pinv = torch.load('data_example/x_Pinv.pt')
+x_Pinv_ref = torch.load('data_example/example_2021_OpticsExpress_ref/x_Pinv_ref.pt')
+assert(torch.allclose(x_Pinv, x_Pinv_ref, rtol=1e-02, atol=1e-06))
+x_Stat_comp = torch.load('data_example/x_Stat_comp.pt')
+x_Stat_comp_ref = torch.load('data_example/example_2021_OpticsExpress_ref/x_Stat_comp_ref.pt')
+assert(torch.allclose(x_Stat_comp, x_Stat_comp_ref, rtol=1e-02, atol=1e-06))
+x_Denoi_Stat_comp = torch.load('data_example/x_Denoi_Stat_comp.pt')
+x_Denoi_Stat_comp_ref = torch.load('data_example/example_2021_OpticsExpress_ref/x_Denoi_Stat_comp_ref.pt')
+assert(torch.allclose(x_Denoi_Stat_comp, x_Denoi_Stat_comp_ref, rtol=1e-02, atol=1e-06))
 
 
