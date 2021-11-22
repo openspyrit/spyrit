@@ -962,7 +962,7 @@ class compNet_1D_size_im_f(nn.Module):
         Pt = torch.transpose(self.H,0,1)
         Pt = Pt.float()
         self.Pt = Pt/self.Nh
-        self.fc1 = Pt/self.Nh
+        #self.fc1 = Pt/self.Nh
                 
 #        x_flat = np.ones((1,1,Nl,Nc))
 #        x_flat = torch.Tensor(x_flat)
@@ -1135,7 +1135,7 @@ class compNet_1D_size_im_f(nn.Module):
 
 
 #TEST Addd comp stat
-        
+  #Test de completion par couhe de neruones       
 class compNet_1D_size_stat(nn.Module):
     def __init__(self,Nl,Nc,Nh,M, H,Cov,Mean,device, RC=2,Stat_comp=False,alpha = 1e-1):
         super(compNet_1D_size_stat, self).__init__()
