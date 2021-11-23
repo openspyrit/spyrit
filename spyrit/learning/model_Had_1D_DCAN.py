@@ -1302,7 +1302,9 @@ class compNet_1D_size_stat(nn.Module):
     def forward_maptoimage(self, x, b, c, h, w):
         
         if self.Stat_comp:
+            device = x.device
             x = stat_comp(x,self.Cov,self.Mean,self.M,self.Nl,self.Nc,self.Nh)
+            x = x.to(device)
         
 #        if self.RC==2:
 #        #x = x.float()
