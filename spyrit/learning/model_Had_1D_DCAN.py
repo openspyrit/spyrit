@@ -1137,14 +1137,14 @@ class compNet_1D_size_im_f(nn.Module):
 #TEST Addd comp stat
   #Test de completion par couhe de neruones       
 class compNet_1D_size_stat(nn.Module):
-    def __init__(self,Nl,Nc,Nh,M, H,Cov,Mean,device, RC=2,Stat_comp=False,alpha = 1e-1):
+    def __init__(self,Nl,Nc,Nh,M, H,Cov,Mean, RC=2,Stat_comp=False,alpha = 1e-1):#device,
         super(compNet_1D_size_stat, self).__init__()
         
         self.Nl = Nl;
         self.Nc = Nc;
         self.Nh = Nh;
         self.M = M;
-        self.device = device
+        #self.device = device
         self.RC = RC
         self.Cov = Cov
         self.Mean = Mean
@@ -1221,6 +1221,7 @@ class compNet_1D_size_stat(nn.Module):
         #    Pinv = torch.from_numpy(Pinv)
         #else:
         if Stat_comp:
+            print("Statistic completion")
             Pinv = torch.pinverse(self.H2, rcond=alpha)
         else:
             Pinv = torch.pinverse(self.H, rcond=alpha)
@@ -1235,18 +1236,18 @@ class compNet_1D_size_stat(nn.Module):
         self.Pt = Pt/self.Nh
         self.fc1 = Pt/self.Nh
                 
-        x_flat = np.ones((1,1,Nl,Nc))
-        x_flat = torch.Tensor(x_flat)
-        x_flat = x_flat.float()
-        x_flat = x_flat.to(self.H.device)
-        (b,c,h,w) = x_flat.size()
-        if Stat_comp:
-            m_flat = torch.matmul(x_flat,self.H2)
-        else :
-            m_flat = torch.matmul(x_flat,self.H)
-        x_flat = torch.matmul(m_flat,self.Pt)
-        x_flat = x_flat.view(b*c,1,h,w)
-        self.flat = x_flat
+#        x_flat = np.ones((1,1,Nl,Nc))
+#        x_flat = torch.Tensor(x_flat)
+#        x_flat = x_flat.float()
+#        x_flat = x_flat.to(self.H.device)
+#        (b,c,h,w) = x_flat.size()
+#        if Stat_comp:
+#            m_flat = torch.matmul(x_flat,self.H2)
+#        else :
+#            m_flat = torch.matmul(x_flat,self.H)
+#        x_flat = torch.matmul(m_flat,self.Pt)
+#        x_flat = x_flat.view(b*c,1,h,w)
+#        self.flat = x_flat
 
         #-- Measurement to image domain
         
@@ -1303,14 +1304,16 @@ class compNet_1D_size_stat(nn.Module):
         if self.Stat_comp:
             x = stat_comp(x,self.Cov,self.Mean,self.M,self.Nl,self.Nc,self.Nh)
         
-        if self.RC==2:
-        #x = x.float()
-            x = torch.matmul(x,self.fc1)#x = torch.matmul(self.Pinv,x)
-            x = x.view(b*c,1,h,w)
-            x = x/self.flat
-        else :
-            x = torch.matmul(x,self.fc1)#x = torch.matmul(self.Pinv,x)
-            x = x.view(b*c,1,h,w)
+#        if self.RC==2:
+#        #x = x.float()
+#            x = torch.matmul(x,self.fc1)#x = torch.matmul(self.Pinv,x)
+#            x = x.view(b*c,1,h,w)
+##            x = x/self.flat
+#        else :
+#            x = torch.matmul(x,self.fc1)#x = torch.matmul(self.Pinv,x)
+#            x = x.view(b*c,1,h,w)
+        x = torch.matmul(x,self.fc1)#x = torch.matmul(self.Pinv,x)
+        x = x.view(b*c,1,h,w)
         return x
     
     def forward_preprocess(self, x, b, c, h, w):
