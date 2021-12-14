@@ -1812,7 +1812,7 @@ class compNet_1D_size_stat_norma(nn.Module):
         x_max = x.max()
         x_min = x.min()
         x = ((x-x_min)/(x_max-x_min)-0.5)*2;
-        print(x_max,x_min)
+        #print(x_max,x_min)
         #res_im =x.numpy()
         #plot_im2D(res_im[0][0])
         x = self.recon(x)
