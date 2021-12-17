@@ -575,18 +575,14 @@ class noiCompNet(compNet):
         x = self.forward_maptoimage(x, b, c, h, w)   
         return x
     
-    def forward_preprocess_expe(self, x, b, c, h, w, K=1):
-        
-        # not tested!
-        if not np.isscalar(K): 
-            K = K.view(b*c, 1, 1)
+    def forward_preprocess_expe(self, x, b, c, h, w):
         
         x = x.view(b*c, 1, 2*self.M)
         
-        #-- Recombining positive and negatve values
+        #-- Recombining positive and negative values
         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
         
-        #-- Estimating and normalizing by N0
+        #-- Estimating and normalizing by N0 = K*alpha
         x_est = self.pinv(x, b, c, h, w);
         N0 = self.max(x_est)
         N0 = N0.view(b,c,1)
@@ -596,7 +592,7 @@ class noiCompNet(compNet):
         N0_est = N0.repeat(1,1,self.M)
         x = torch.div(x,N0_est)
         x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b,c,self.M))
-        return x, N0/K
+        return x, N0
 
 
 #==============================================================================    
@@ -629,7 +625,6 @@ class DenoiCompNet(noiCompNet):
         return x
 
     def forward_reconstruct_comp(self, x, b, c, h, w):
-        #x = super().forward_reconstruct(x, b, c, h, w)
         x = self.forward_preprocess(x, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
         x = self.forward_postprocess(x, b, c, h, w)
@@ -650,12 +645,9 @@ class DenoiCompNet(noiCompNet):
         return x
     
     def forward_reconstruct_mmse_expe(self, x, b, c, h, w, mu=0, sig=0, K=1):
-        x = x.view(b*c, 1, 2*self.M)
-
-        # If C, s, g are arrays, they must follow the same dimensions as the
-        # data x
-
-        # Making sure C,s,g can be arrays or scalars
+        
+        
+        # If C, s, g are arrays, they must have the same dimensions as  x
         if not np.isscalar(mu):
             mu = mu.view(b*c, 1, 1)
 
@@ -664,11 +656,12 @@ class DenoiCompNet(noiCompNet):
 
         if not np.isscalar(K):
             K = K.view(b*c, 1, 1)
-        
-        x, alpha = self.forward_preprocess_expe(x, b, c, h, w, K)
-        var = K*(x[:,:,self.even_index] + x[:,:,self.uneven_index] - 2*mu) + 2*sig**2
-        var = var/(K*alpha)**2  
-        x = self.forward_denoise_expe(x, var, b, c, h, w)
+            
+        x = x.view(b*c, 1, 2*self.M)
+        var = K*(x[:,:,self.even_index] + x[:,:,self.uneven_index] - 2*mu) + 2*sig**2       
+        x, N0 = self.forward_preprocess_expe(x, b, c, h, w, K)
+        var = var/N0**2  # N.B.: N0 = K*alpha
+        x = self.forward_denoise(x, var, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
         return x
     
