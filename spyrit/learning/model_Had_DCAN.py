@@ -343,8 +343,8 @@ class compNet(nn.Module):
         Sigma = np.dot(Perm,np.dot(Cov,np.transpose(Perm)));
         diag_index = np.diag_indices(n**2);
         Sigma = Sigma[diag_index];
-        Sigma = n**2/4*Sigma[:M]; #(H = nH donc Cov = n**2 Cov)!
-        #Sigma = Sigma[:M];
+        Sigma = n**2/4*Sigma[:M];   # Multiplication by n**2 as H <- nH  leads to Cov <- n**2 Cov 
+                                    # Division by 4 to get the covariance of images in [0 1], not [-1 1]
         Sigma = torch.Tensor(Sigma)
         self.sigma = Sigma.view(1,1,M)
         self.sigma.requires_grad = False
@@ -659,7 +659,7 @@ class DenoiCompNet(noiCompNet):
             
         x = x.view(b*c, 1, 2*self.M)
         var = K*(x[:,:,self.even_index] + x[:,:,self.uneven_index] - 2*mu) + 2*sig**2       
-        x, N0 = self.forward_preprocess_expe(x, b, c, h, w, K)
+        x, N0 = self.forward_preprocess_expe(x, b, c, h, w)
         var = var/N0**2  # N.B.: N0 = K*alpha
         x = self.forward_denoise(x, var, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
