@@ -201,11 +201,7 @@ jobs:
           cd data_example
           rm -rf expe.zip model.zip example_2021_OpticsExpress_ref.zip expe_2 model example_2021_OpticsExpress_ref
           cd ..
-          mkdir -p dist/${{ matrix.python-version }}_${{ matrix.os }}_test_wheel
           ls data_example
-          mv data_example/x_Pinv.pt dist/${{ matrix.python-version }}_${{ matrix.os }}_test_wheel
-          mv data_example/x_Stat_comp.pt dist/${{ matrix.python-version }}_${{ matrix.os }}_test_wheel
-          mv data_example/x_Denoi_Stat_comp.pt dist/${{ matrix.python-version }}_${{ matrix.os }}_test_wheel    
     - name: Upload wheels
       uses: actions/upload-artifact@v1
       with:
