@@ -376,6 +376,7 @@ class compNet(nn.Module):
         self.Pinv.weight.data=torch.from_numpy(Pinv);
         self.Pinv.weight.data=self.Pinv.weight.data.float();
         self.Pinv.weight.requires_grad=False;
+        # definir la bonne pseudo inv
 
 
         #-- Measurement to image domain
