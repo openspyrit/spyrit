@@ -337,8 +337,8 @@ class compNet(nn.Module):
         Sigma = np.dot(Perm,np.dot(Cov,np.transpose(Perm)));
         diag_index = np.diag_indices(n**2);
         Sigma = Sigma[diag_index];
-        Sigma = n**2/4*Sigma[:M]; #(H = nH donc Cov = n**2 Cov)!
-        #Sigma = Sigma[:M];
+        Sigma = n**2/4*Sigma[:M];   # Multiplication by n**2 as H <- nH  leads to Cov <- n**2 Cov 
+                                    # Division by 4 to get the covariance of images in [0 1], not [-1 1]
         Sigma = torch.Tensor(Sigma)
         self.sigma = Sigma.view(1,1,M)
         self.sigma.requires_grad = False
@@ -367,14 +367,7 @@ class compNet(nn.Module):
         self.Pinv = nn.Linear(M,n**2, False)
         self.Pinv.weight.data=torch.from_numpy(Pinv);
         self.Pinv.weight.data=self.Pinv.weight.data.float();
-        self.Pinv.weight.requires_grald=False;
-        
-        Pnorm = (1/n**2)*Pmat;
-        self.Pnorm = nn.Linear(M,n**2, False)
-        self.Pnorm.weight.data=torch.from_numpy(Pnorm);
-        self.Pnorm.weight.data=self.Pnorm.weight.data.float();
-        self.Pnorm.weight.requires_grad=False;
-        
+        self.Pinv.weight.requires_grad=False;
 
         #-- Measurement to image domain
         if variant==0:
@@ -567,9 +560,6 @@ class noiCompNet(compNet):
      
       
     def forward_reconstruct_expe(self, x, b, c, h, w):
-        """"
-        Add C, g, s, and have the fully experimental processing here.
-        """
         var = x[:,:,self.even_index] + x[:,:,self.uneven_index];
         m, N0_est = self.forward_preprocess_expe(x, b, c, h, w);
         var = torch.div(var, N0_est**2);
@@ -578,37 +568,33 @@ class noiCompNet(compNet):
         return x
       
     def forward_reconstruct_pinv_expe(self, x, b, c, h, w):
-        x = self.forward_preprocess_expe(x, b, c, h, w)
+        x, _ = self.forward_preprocess_expe(x, b, c, h, w)
         x = self.pinv(x, b, c, h, w)      
-        #-- Faster alternative
-        # x = x[:,:,self.even_index] - x[:,:,self.uneven_index]
-        # x = self.pinv(x, b, c, h, w);
-        # N0_est = self.max(x);
-        # N0_est = N0_est.view(b*c,1,1,1);
-        # N0_est = N0_est.repeat(1,1,h,w);
-        # x = torch.div(x,N0_est);
-        # x=2*x-1;
+
         return x
     
     def forward_reconstruct_comp_expe(self, x, b, c, h, w):
-        x = self.forward_preprocess_expe(x, b, c, h, w)
+        x, _ = self.forward_preprocess_expe(x, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)   
         return x
     
     def forward_preprocess_expe(self, x, b, c, h, w):
+        
         x = x.view(b*c, 1, 2*self.M)
-        #-- Recombining positive and negatve values
+        
+        #-- Recombining positive and negative values
         x = x[:,:,self.even_index] - x[:,:,self.uneven_index];
-        #-- Estimating and normalizing by N0
+        
+        #-- Estimating and normalizing by N0 = K*alpha
         x_est = self.pinv(x, b, c, h, w);
-        N0_est = self.max(x_est)
-        N0_est = N0_est.view(b,c,1)
-        N0_est = N0_est.repeat(1,1,self.M)
-        x = torch.div(x, N0_est)
+        N0 = self.max(x_est)
+        N0 = N0.view(b,c,1)
+        print(N0)
+        N0_est = N0.repeat(1,1,self.M)
+        x = torch.div(x,N0_est)
         x = 2*x-torch.reshape(self.Patt(torch.ones(b*c,1, h,w).to(x.device)),(b,c,self.M))
-        return x, N0_est
-
-
+        return x, N0
+      
 #==============================================================================    
 # B. NOISY MEASUREMENTS (NOISE LEVEL IS VARYING) + denoising architecture
 #==============================================================================
@@ -625,8 +611,8 @@ class DenoiCompNet(noiCompNet):
     def forward_reconstruct(self, x, b, c, h, w):
         x = x.view(b*c, 1, 2*self.M)
         var = x[:,:,self.even_index] + x[:,:,self.uneven_index]
+        var = var/(self.N0)**2
         m = self.forward_preprocess(x, b, c, h, w)
-        var = var/(self.N0**2)
         x = self.forward_denoise(m, var, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
         x = self.forward_postprocess(x, b, c, h, w, m, var)
@@ -634,8 +620,8 @@ class DenoiCompNet(noiCompNet):
 
     def forward_reconstruct_comp(self, x, b, c, h, w):
         var = x[:,:,self.even_index] + x[:,:,self.uneven_index]
-        m = self.forward_preprocess(x, b, c, h, w)
         var = var/(self.N0**2)
+        m = self.forward_preprocess(x, b, c, h, w)
         x = self.forward_maptoimage(m, b, c, h, w)
         x = self.forward_postprocess(x, b, c, h, w, m, var)
         return x
@@ -643,9 +629,9 @@ class DenoiCompNet(noiCompNet):
     def forward_reconstruct_mmse(self, x, b, c, h, w):
         x = x.view(b*c, 1, 2*self.M)
         var = x[:,:,self.even_index] + x[:,:,self.uneven_index]
-        m = self.forward_preprocess(x, b, c, h, w)
-        var = var/(self.N0**2)
-        x = self.forward_denoise(m, var, b, c, h, w)
+        var = var/(self.N0)**2
+        x = self.forward_preprocess(x, b, c, h, w)
+        x = self.forward_denoise(x, var, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
         return x
     
@@ -654,57 +640,46 @@ class DenoiCompNet(noiCompNet):
         x = self.pinv(x, b, c, h, w)
         return x
     
-    def forward_reconstruct_expe(self, x, b, c, h, w, C=0, s=0, g=1):
-        #-- Pre-processing(Recombining positive and negatve values+normalisation)
+    def forward_reconstruct_mmse_expe(self, x, b, c, h, w, mu=0, sig=0, K=1):
+        # If C, s, g are arrays, they must have the same dimensions as  x
+        if not np.isscalar(mu):
+            mu = mu.view(b*c, 1, 1)
+
+        if not np.isscalar(sig):
+            sig = sig.view(b*c, 1, 1)
+
+        if not np.isscalar(K):
+            K = K.view(b*c, 1, 1)
+            
         x = x.view(b*c, 1, 2*self.M)
+        var = K*(x[:,:,self.even_index] + x[:,:,self.uneven_index] - 2*mu) + 2*sig**2       
+        x, N0 = self.forward_preprocess_expe(x, b, c, h, w)
+        var = var/N0**2  # N.B.: N0 = K*alpha
+        x = self.forward_denoise(x, var, b, c, h, w)
+        x = self.forward_maptoimage(x, b, c, h, w)
+        return x
+    
+    def forward_reconstruct_expe(self, x, b, c, h, w, mu=0, sig=0, K=1):    
+                # If C, s, g are arrays, they must have the same dimensions as  x
+        if not np.isscalar(mu):
+            mu = mu.view(b*c, 1, 1)
 
-        # If C, s, g are arrays, they must follow the same dimensions as the
-        # data x
+        if not np.isscalar(sig):
+            sig = sig.view(b*c, 1, 1)
 
-        # Making sure C,s,g can be arrays or scalars
-        if not np.isscalar(C):
-            C = C.view(b*c, 1, 1)
-
-        if not np.isscalar(s):
-            s = s.view(b*c, 1, 1)
-
-        if not np.isscalar(g):
-            g = g.view(b*c, 1, 1)
-
-        var = g**2*(x[:,:,self.even_index] + x[:,:,self.uneven_index]) - 2*C*g +2*s**2;
-        m, N0_est = self.forward_preprocess_expe(x, b, c, h, w)
-        var = torch.div(var, N0_est**2);
+        if not np.isscalar(K):
+            K = K.view(b*c, 1, 1)
+            
+        x = x.view(b*c, 1, 2*self.M)
+        var = K*(x[:,:,self.even_index] + x[:,:,self.uneven_index] - 2*mu) + 2*sig**2       
+        m, N0 = self.forward_preprocess_expe(x, b, c, h, w)
+        var = var/N0**2  # N.B.: N0 = K*alpha
         x = self.forward_denoise(m, var, b, c, h, w)
         x = self.forward_maptoimage(x, b, c, h, w)
         x = self.forward_postprocess(x, b, c, h, w, m, var)
         return x
-
-    def forward_reconstruct_pinv_expe(self, x, b, c, h, w, C=0, s=0, g=1): # Already in the parent class, can be removed
-        x, _ = self.forward_preprocess_expe(x, b, c, h, w)
-        x = self.pinv(x, b, c, h, w) 
-        return x
     
-    def forward_reconstruct_mmse_expe(self, x, b, c, h, w, C=0, s=0, g=1):
-        x = x.view(b*c, 1, 2*self.M)
-
-        # If C, s, g are arrays, they must follow the same dimensions as the
-        # data x
-
-        # Making sure C,s,g can be arrays or scalars
-        if not np.isscalar(C):
-            C = C.view(b*c, 1, 1)
-
-        if not np.isscalar(s):
-            s = s.view(b*c, 1, 1)
-
-        if not np.isscalar(g):
-            g = g.view(b*c, 1, 1)
-
-        var = g**2*(x[:,:,self.even_index] + x[:,:,self.uneven_index]) - 2*C*g +2*s**2;
-        x = self.forward_preprocess_expe(x, b, c, h, w)
-        x = self.forward_denoise(x, var, b, c, h, w)
-        x = self.forward_maptoimage(x, b, c, h, w)
-        return x
+   
 
 ########################################################################
 # 2. Define a custom Loss function

@@ -93,10 +93,12 @@ jobs:
           unzip expe.zip
           wget https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/model.zip
           unzip model.zip
+          wget https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/example_2021_OpticsExpress_ref.zip
+          unzip -o example_2021_OpticsExpress_ref.zip
           cd ..
           python .github/workflows/example_2021_OpticsExpress.py
           cd data_example
-          rm -rf expe.zip model.zip expe_2 model
+          rm -rf expe.zip model.zip example_2021_OpticsExpress_ref.zip expe_2 model example_2021_OpticsExpress_ref
     - name: Run the ISBI test on Windows
       if: matrix.os == 'windows-latest'
       run: |
@@ -125,11 +127,15 @@ jobs:
           C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/model.zip
           unzip model.zip
           rm -r -fo model.zip
+          C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/example_2021_OpticsExpress_ref.zip
+          unzip example_2021_OpticsExpress_ref.zip
+          rm -r -fo example_2021_OpticsExpress_ref.zip
           cd ..
           python .github\workflows\example_2021_OpticsExpress.py
           cd data_example
           rm -r -fo expe_2
           rm -r -fo model
+          rm -r -fo example_2021_OpticsExpress_ref
 
   test_wheel:
     runs-on: ${{ matrix.os }}
@@ -188,10 +194,19 @@ jobs:
           unzip expe.zip
           wget https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/model.zip
           unzip model.zip
+          wget https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/example_2021_OpticsExpress_ref.zip
+          unzip -o example_2021_OpticsExpress_ref.zip
           cd ..
           python .github/workflows/example_2021_OpticsExpress.py
           cd data_example
-          rm -rf expe.zip model.zip expe_2 model
+          rm -rf expe.zip model.zip example_2021_OpticsExpress_ref.zip expe_2 model example_2021_OpticsExpress_ref
+          cd ..
+          ls data_example
+    - name: Upload wheels
+      uses: actions/upload-artifact@v1
+      with:
+        name: dist
+        path: dist/
     - name: Run the ISBI test on Windows
       if: matrix.os == 'windows-latest'
       run: |
@@ -228,11 +243,15 @@ jobs:
           C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/model.zip
           unzip model.zip
           rm -r -fo model.zip
+          C:\msys64\usr\bin\wget.exe https://www.creatis.insa-lyon.fr/~ducros/spyritexamples/2021_OpticsExpress/example_2021_OpticsExpress_ref.zip
+          unzip example_2021_OpticsExpress_ref.zip
+          rm -r -fo example_2021_OpticsExpress_ref.zip
           cd ..
           python .github\workflows\example_2021_OpticsExpress.py
           cd data_example
           rm -r -fo expe_2
           rm -r -fo model
+          rm -r -fo example_2021_OpticsExpress_ref
 
   publish_wheel:
     runs-on: ubuntu-latest
