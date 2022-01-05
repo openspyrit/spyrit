@@ -267,4 +267,123 @@ def stat_walsh_stl10(stat_root = Path('./stats/'), data_root = Path('./data/'),
     stat_walsh(dataloaders['train'], device, stat_root)
     time_elapsed = (time.perf_counter() - time_start)
     print(time_elapsed)
+    
+def stat_mean_coef_from_model(dataloader, device, model_exp):
+    #A rediscuter avec Nicolas
+    # Get dimensions and estimate total number of images in the dataset
+    inputs, classes = next(iter(dataloader))
+    (ny,nh) = mdt.size()
+ 
+    mean = torch.zeros(nh).to(device)
+#   
+    for inputs,_ in dataloader:
+        inputs = inputs.to(device);
+        trans = torch.matmul(inputs,model_exp)#.cpu() 
+        mean = mean.add(torch.sum(trans,[0,1]))
+    mean_vect = np.abs(np.transpose(mean.cpu().detach().numpy())) 
+    #mean = mean/mean.max()
+    return(mean_vect)
+
+def mea_abs_model(dataloader, device, model,root):
+    
+    # Get dimensions and estimate total number of images in the dataset
+    inputs, classes = next(iter(dataloader))
+    (nx,nh) = model.size()
+    tot_num = len(dataloader)
+    (b,ny,nx) = inputs.size()
+    # 1. Mean
+    
+    # Init
+    n = 0
+    mean = torch.zeros(nh).to(device)
+    
+    # Accumulate sum over all images in dataset
+    for inputs,_ in dataloader:
+        inputs = inputs.to(device);
+        trans = torch.abs(torch.matmul(inputs,model))#.cpu() 
+        mean = mean.add(torch.sum(trans,[0,1]))
+        # print
+        n += inputs.shape[0]
+       # print(f'Mean:  {n} / (less than) {tot_num} images', end='\n')
+    print('', end='\n')
+    
+    # Normalize
+    mean = mean/(n*ny)
+    #print(mean.size())
+    mean = torch.squeeze(mean)
+    #torch.save(mean, root+'Average_{}x{}'.format(nx,ny)+'.pth')
+
+    path = root / Path('W_Average_abs_Nx{}_Nh{}'.format(nx,nh)+'.npy')
+    #if not root.exists():
+    #    root.mkdir()
+    np.save(path, mean.cpu().detach().numpy())
+    
+    return(mean)
+    
+def stat_model(dataloader, device, model,root):
+    
+    # Get dimensions and estimate total number of images in the dataset
+    inputs, classes = next(iter(dataloader))
+    (nx,nh) = model.size()
+    tot_num = len(dataloader)
+    (b,ny,nx) = inputs.size()
+    # 1. Mean
+    
+    # Init
+    n = 0
+    mean = torch.zeros(nh).to(device)
+    
+    # Accumulate sum over all images in dataset
+    for inputs,_ in dataloader:
+        inputs = inputs.to(device);
+        trans = torch.matmul(inputs,model)#.cpu() 
+        mean = mean.add(torch.sum(trans,[0,1]))
+        # print
+        n += inputs.shape[0]
+       # print(f'Mean:  {n} / (less than) {tot_num} images', end='\n')
+    print('', end='\n')
+    
+    # Normalize
+    mean = mean/(n*ny)
+    #print(mean.size())
+    mean = torch.squeeze(mean)
+    #torch.save(mean, root+'Average_{}x{}'.format(nx,ny)+'.pth')
+
+    path = root / Path('W_Average_Nx{}_Nh{}'.format(nx,nh)+'.npy')
+    #if not root.exists():
+    #    root.mkdir()
+    np.save(path, mean.cpu().detach().numpy())
+    
+    # 2. Covariance
+    
+    # Init
+    n = 0
+    cov = torch.zeros((nh,nh), dtype=torch.float32)
+    cov = cov.to(device)
+    
+    # Accumulate (im - mu)*(im - mu)^T over all images in dataset
+    for inputs,_ in dataloader:
+        inputs = inputs.to(device)
+        trans = torch.matmul(inputs,model)
+        #print(trans.size())
+        for i in range(ny):
+            im_mu = trans[0,i] - mean
+
+            cov += torch.matmul(im_mu.reshape(nh,1),im_mu.reshape(1,nh))
+        # print
+        n += inputs.shape[0]
+        #print(f'Cov:  {n} / (less than) {tot_num} images', end='\n')
+    print('', end='\n')
+    
+    # Normalize
+    cov = cov/((n*ny)-1)
+    #torch.save(cov, root+'Cov_{}x{}'.format(nx,ny)+'.pth') # todo?
+
+    path = root / Path('W_Cov_Nx{}_Nh{}'.format(nx,nh)+'.npy')
+    #if not root.exists():
+    #    root.mkdir()
+    np.save(path, cov.cpu().detach().numpy())
+    
+    return mean, cov
+
 
