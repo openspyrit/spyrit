@@ -1,3 +1,4 @@
+# %%
 from __future__ import print_function, division
 import torch
 import torch.nn as nn
@@ -10,8 +11,6 @@ import argparse
 import sys
 from pathlib import Path
 import scipy.io as sio
-from scipy.sparse.linalg import aslinearoperator
-import pylops
 
 from spyrit.learning.model_Had_DCAN import *
 from spyrit.learning.nets import *
@@ -19,30 +18,13 @@ from spyrit.misc.disp import *
 from spyrit.misc.metrics import *
 
 # import tabulate
-import os
-import sys
-sys.path.append('../..')
+import os, sys
 import warnings
 
-########################
-# -- Load data functions
-########################
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class HiddenPrints:
-    def __enter__(self):
-        self._original_stdout = sys.stdout
-        sys.stdout = open(os.devnull, 'w')
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        sys.stdout.close()
-        sys.stdout = self._original_stdout
-
-
-device = torch.device("cpu")  # torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-
-# Defining functions to load the experimental Data
+# %% Functions to load the experimental Data
 def read_mat_data_index(expe_data, nflip, lambda_i=548):
     F_pos = sio.loadmat(expe_data + "_{}_100_pos_data.mat".format(nflip));
     F_neg = sio.loadmat(expe_data + "_{}_100_neg_data.mat".format(nflip));
@@ -80,18 +62,19 @@ def read_mat_data(expe_data, nflip, lambda_min=460, lambda_max=700):
     return F_pos, F_neg;
 
 
-def read_mat_data_proc(expe_data, nflipi, lambda_min=460, lambda_max=700):
+def read_mat_data_proc(expe_data, nflipi, lamdba_min=460, lambda_max=700):
     F = sio.loadmat(expe_data + "_{}_100_data.mat".format(nflip));
     F_data = F["F_WT_lambda"];
     F_spectro = F["spec"][0][0][0];
     F_spectro = F_spectro[0, :];
-    F = F_data[:, :, F_spectro > lambda_min];
-    F_spectro = F_spectro[F_spectro > lambda_min];
+    F = F_data[:, :, F_spectro > lamdba_min];
+    F_spectro = F_spectro[F_spectro > lamdba_min];
     F = F[:, :, F_spectro < lambda_max];
     F = np.sum(F, axis=2);
     return F;
 
 
+# warning: K not used!
 def load_data_list_index(expe_data, nflip, CR, K, Perm, img_size, num_channel=548):
     even_index = range(0, 2 * CR, 2);
     odd_index = range(1, 2 * CR, 2);
@@ -266,6 +249,12 @@ def single_param_reg(f, g):
     return a * g;
 
 
+from scipy.sparse.linalg import aslinearoperator
+
+
+# from bm3d import bm3d, BM3DProfile
+
+
 def diag(y):
     n = y.shape[0];
     D = np.zeros((n, n));
@@ -279,42 +268,24 @@ def Diag(A):
     d = np.reshape(A[np.diag_indices(n)], (n, 1));
     return d;
 
-
 ########################
 # Acquisition Parameters
 ########################
 img_size = 64;  # Height / width dimension
-M = 1024;  # Number of hadamard coefficients
+CR = 1024;  # Number of patterns
 K = 1.6;  # Normalisation constant
 C = 1070;
 s = 55;
-
-N0 = 50  # maximum photons/pixel in training stage
+N0 = 10  # maximum photons/pixel in training stage
 sig = 0.0  # std of maximum photons/pixel
 
 precompute_root = '/home/licho/Documentos/Stage/Codes/Test/'  # Path to precomputed data
 precompute = False  # Tells if the precomputed data is available
-model_root = Path('/home/licho/Documentos/Stage/Codes/Semaine23/Models');  # Path to model saving files
+model_root = Path('/home/licho/Documentos/Stage/Article/training_models-main');  # Path to model saving files
 expe_root = '/home/licho/Documentos/Stage/Codes/Test/expe_2/'  # # Path of experimental data
-
-my_average_file = Path(precompute_root) / ('Average_{}x{}'.format(img_size, img_size) + '.npy')
-my_cov_file = Path(precompute_root) / ('Cov_{}x{}'.format(img_size, img_size) + '.npy')
-
 # -- Calculate the Noise Variance Matrix Stabilization (NVMS)
 # -- In the experimental case (for testing only). We take the maximum intensity of the image , which is the size of the image.
-NVMS = np.diag((img_size ** 2) * np.ones(M))
-
-# -- Covariance matrix
-print('Loading covariance and mean')
-Mean_had = np.load(my_average_file)
-Cov_had = np.load(my_cov_file)
-
-H = walsh2_matrix(img_size) / img_size  # Walsh-Hadamard matrix
-Mean = Mean_had / img_size  # Normalized mean vector
-Cov = Cov_had / img_size ** 2  # Normalized covariance matrix
-Ord = Cov2Var(Cov)  # Statistic order
-Perm = Permutation_Matrix(Ord)
-Pmat = np.dot(Perm, H)  # Under-sampling hadamard matrix
+NVMS = np.diag((img_size ** 2) * np.ones(CR))
 
 #########################
 # Optimisation parameters
@@ -323,16 +294,48 @@ Pmat = np.dot(Perm, H)  # Under-sampling hadamard matrix
 # --network architecture --> ['c0mp', 'comp','pinv', 'free'] --> [0, 1, 2, 3]
 net_type = ['NET_c0mp', 'NET_comp', 'NET_pinv', 'NET_free']
 net_arch = 0  # Bayesian solution
-num_epochs_simple = 20  # Number of training epochs for simple schema
-num_epochs_comp = 10  # Number of training epochs for compound schema
-num_epochs_full = 5  # Number epochs for vanilla version
+num_epochs = 30  # Number of training epochs for simple schema
 batch_size = 256  # Size of each training batch
 reg = 1e-7  # Regularisation Parameter
 lr = 1e-3  # Learning Rate
 step_size = 10  # Scheduler Step Size
 gamma = 0.5  # Scheduler Decrease Rate
 Niter_simple = 1  # Number of net iterations for simple schema
-Niter_comp = 4  # Number of net iterations for compound schema
+Niter_comp = 5  # Number of net iterations for compound schema
+eta = 2 # hyperparameter
+
+# %% Loading Preprocessed Data
+my_transform_file = Path(expe_root) / ('transform_{}x{}'.format(img_size, img_size) + '.mat')
+H = sio.loadmat(my_transform_file);
+H = (1 / img_size) * H["H"]
+
+my_average_file = Path(precompute_root) / ('Average_{}x{}'.format(img_size, img_size) + '.npy')
+my_cov_file = Path(precompute_root) / ('Cov_{}x{}'.format(img_size, img_size) + '.npy')
+print('Loading covariance and mean')
+Mean_had = np.load(my_average_file)
+Cov_had = np.load(my_cov_file)
+Mean_had = Mean_had / img_size  # Normalized mean vector
+Cov_had = Cov_had / img_size ** 2  # Normalized covariance matrix
+Ord = Cov2Var(Cov_had)  # Statistic order
+Perm = Permutation_Matrix(Ord)
+
+"""
+my_average_file = Path(expe_root) / ('Average_{}x{}'.format(img_size, img_size) + '.mat')
+my_cov_file = Path(expe_root) / ('Cov_{}x{}'.format(img_size, img_size) + '.mat')
+
+print('Loading covariance and mean')
+Mean_had_1 = sio.loadmat(my_average_file)
+Cov_had_1 = sio.loadmat(my_cov_file)
+
+# Normalisation of imported Mean and Covariance.
+Mean_had_1 = Mean_had_1["mu"] - np.dot(H, np.ones((img_size ** 2, 1)));
+Mean_had_1 = np.reshape(Mean_had_1, (img_size, img_size));
+Mean_had_1 = np.amax(Mean_had) / np.amax(Mean_had_1) * Mean_had_1;
+Cov_had_1 = Cov_had_1["C"];
+Cov_had_1 = np.amax(Cov_had) / np.amax(Cov_had_1) * Cov_had_1;
+Var = Cov2Var(Cov_had_1)
+Perm = Permutation_Matrix(Var)
+"""
 
 ########################
 # -- Loading MMSE models
@@ -342,12 +345,12 @@ Niter_comp = 4  # Number of net iterations for compound schema
 # model 1 : Denoising stage with full matrix inversion -- vanilla version (k=0)
 ###############################################################################
 
-denoiCompNetFull = DenoiCompNet(img_size, M, Mean_had, Cov, NVMS, Niter=Niter_simple, variant=net_arch, denoi=2, N0=N0, sig=sig, H=H, Ord=Ord)
+denoiCompNetFull = DenoiCompNet(img_size, CR, Mean_had, Cov_had, NVMS, Niter=Niter_simple, variant=net_arch, denoi=2, N0=N0, sig=sig, H=H)
 denoiCompNetFull = denoiCompNetFull.to(device)
 
 # -- Load net
 suffix = '_N0_{}_sig_{}_Denoi_Full_Niter_{}_N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}_reg_{}'.format(\
-    N0, sig, Niter_simple, img_size, M, num_epochs_full, lr, step_size, gamma, batch_size, reg)
+    N0, sig, Niter_simple, img_size, CR, num_epochs, lr, step_size, gamma, batch_size, reg)
 
 title = model_root / (net_type[net_arch] + suffix)
 load_net(title, denoiCompNetFull, device)
@@ -356,12 +359,12 @@ load_net(title, denoiCompNetFull, device)
 # model 2 : Denoising stage with diagonal matrix approximation (k=0)
 ####################################################################
 
-denoiCompNet_simple = DenoiCompNet(img_size, M, Mean_had, Cov, NVMS, Niter=Niter_simple, variant=net_arch, denoi=1, N0=N0, sig=sig, H=H, Ord=Ord)
+denoiCompNet_simple = DenoiCompNet(img_size, CR, Mean_had, Cov_had, NVMS, Niter=Niter_simple, variant=net_arch, denoi=1, N0=N0, sig=sig, H=H)
 denoiCompNet_simple = denoiCompNet_simple.to(device)
 
 # -- Load net
 suffix1 = '_N0_{}_sig_{}_Denoi_Diag_Niter_{}_N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}_reg_{}'.format(\
-    N0, sig, Niter_simple, img_size, M, num_epochs_simple, lr, step_size, gamma, batch_size, reg)
+    N0, sig, Niter_simple, img_size, CR, num_epochs, lr, step_size, gamma, batch_size, reg)
 
 title1 = model_root / (net_type[net_arch] + suffix1)
 load_net(title1, denoiCompNet_simple, device)
@@ -370,12 +373,12 @@ load_net(title1, denoiCompNet_simple, device)
 # model 3 : Denoising stage with diagonal matrix approximation (k=4)
 ####################################################################
 
-denoiCompNet_iter = DenoiCompNet(img_size, M, Mean, Cov, NVMS, Niter=Niter_comp, variant=net_arch, denoi=1, N0=N0, sig=sig, H=H, Ord=Ord)
+denoiCompNet_iter = DenoiCompNet(img_size, CR, Mean_had, Cov_had, NVMS, Niter=Niter_comp, variant=net_arch, denoi=1, N0=N0, sig=sig, H=H)
 denoiCompNet_iter = denoiCompNet_iter.to(device)
 
 # -- Load net
 suffix2 = '_N0_{}_sig_{}_Denoi_Diag_Niter_{}_N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}_reg_{}'.format(\
-    N0, sig, Niter_comp, img_size, M, num_epochs_comp, lr, step_size, gamma, batch_size, reg)
+    N0, sig, Niter_comp, img_size, CR, num_epochs, lr, step_size, gamma, batch_size, reg)
 
 title2 = model_root / (net_type[net_arch] + suffix2)
 load_net(title2, denoiCompNet_iter, device)
@@ -384,12 +387,12 @@ load_net(title2, denoiCompNet_iter, device)
 # model 4 : Denoising stage with a first order taylor approximation + NVMS (k=0)
 ################################################################################
 
-denoiCompNetNVMS_simple = DenoiCompNet(img_size, M, Mean_had, Cov, NVMS=NVMS, Niter=Niter_simple, variant=net_arch, denoi=0, N0=N0, sig=sig, H=H, Ord=Ord)
+denoiCompNetNVMS_simple = DenoiCompNet(img_size, CR, Mean_had, Cov_had, NVMS=NVMS, Niter=Niter_simple, variant=net_arch, denoi=0, N0=N0, sig=sig, H=H)
 denoiCompNetNVMS_simple = denoiCompNetNVMS_simple.to(device)
 
 # -- Load net
-suffix3 = '_N0_{}_sig_{}_Denoi_NVMS_Niter_{}_N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}_reg_{}'.format(\
-    N0, sig, Niter_simple, img_size, M, num_epochs_simple, lr, step_size, gamma, batch_size, reg)
+suffix3 = '_N0_{}_sig_{}_Denoi_NVMS_Max_Niter_{}_N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}_reg_{}'.format(\
+    N0, sig, Niter_simple, img_size, CR, num_epochs, lr, step_size, gamma, batch_size, reg)
 
 title3 = model_root / (net_type[net_arch] + suffix3)
 load_net(title3, denoiCompNetNVMS_simple, device)
@@ -398,12 +401,12 @@ load_net(title3, denoiCompNetNVMS_simple, device)
 # model 5 : Denoising stage with a first order taylor approximation + NVMS (k=4)
 ################################################################################
 
-denoiCompNetNVMS_iter = DenoiCompNet(img_size, M, Mean, Cov, NVMS=NVMS, Niter=Niter_comp, variant=net_arch, denoi=0, N0=N0, sig=sig, H=H, Ord=Ord)
+denoiCompNetNVMS_iter = DenoiCompNet(img_size, CR, Mean_had, Cov_had, NVMS=NVMS, Niter=Niter_comp, variant=net_arch, denoi=0, N0=N0, sig=sig, H=H)
 denoiCompNetNVMS_iter = denoiCompNetNVMS_iter.to(device)
 
 # -- Load net
-suffix4 = '_N0_{}_sig_{}_Denoi_NVMS_Niter_{}_N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}_reg_{}'.format(\
-    N0, sig, Niter_comp, img_size, M, num_epochs_comp, lr, step_size, gamma, batch_size, reg)
+suffix4 = '_N0_{}_sig_{}_Denoi_NVMS_Max_Niter_{}_N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}_reg_{}'.format(\
+    N0, sig, Niter_comp, img_size, CR, num_epochs, lr, step_size, gamma, batch_size, reg)
 
 title4 = model_root / (net_type[net_arch] + suffix4)
 load_net(title4, denoiCompNetNVMS_iter, device)
@@ -419,6 +422,8 @@ load_net(title4, denoiCompNetNVMS_iter, device)
 #############################
 # Loading the Compressed Data
 #############################
+#%% LED Lamp
+# Loading compressed data
 
 titles_expe = ["noObjectD_1_0.0_variance", "noObjectD_1_0.3_02_variance"] + \
               ["noObjectD_1_0.3_03_variance", "noObjectD_1_0.3_04_variance"] + \
@@ -431,7 +436,7 @@ channel = 548;
 nflip = [1 for i in range(len(titles_expe))];
 expe_data = [expe_root + titles_expe[i] for i in range(len(titles_expe))];
 
-m_list = load_data_list_index(expe_data, nflip, M, K, Perm, img_size, num_channel=channel);
+m_list = load_data_list_index(expe_data, nflip, CR, K, Perm, img_size, num_channel=channel);
 
 m_prim = [];
 m_prim.append(sum(m_list[:4]) + m_list[6]);
@@ -441,12 +446,10 @@ m_prim.append(m_list[6] + m_list[8]);
 m_prim = m_prim + m_list[7:];
 m_list = m_prim;
 
-######################
-# Loading Ground Truth
-######################
-
-# We normalize the incoming data, so that it has the right functioning range for neural networks to work with.
+# Loading ground-truth
+# NB: we normalize it to get the range the neural networks work with.
 GT = raw_ground_truth_list_index(expe_data, nflip, H, img_size, num_channel=channel);
+
 # Good values 450 - 530 -  548 - 600
 GT_prim = [];
 GT_prim.append(sum(GT[:4]) + GT[6]);
@@ -455,19 +458,15 @@ GT_prim.append(GT[0]);
 GT_prim.append(GT[6] + GT[8]);
 GT_prim = GT_prim + GT[7:];
 GT = GT_prim;
+
 max_list = [np.amax(GT[i]) - np.amin(GT[i]) for i in range(len(GT))];
-#    GT = [((GT[i]-np.amin(GT[i]))/max_list[i]+1)/2 for i in range(len(GT))];
 GT = [((GT[i] - np.amin(GT[i])) / max_list[i]) * 2 - 1 for i in range(len(GT))];
 max_list = [max_list[i] / K for i in range(len(max_list))];
 
-########################
-# Displaying the results
-########################
+# %% Displaying the results
+# Once all the networks have been loaded, we evaluate them on the measurements.
 
-###########################
-# -- First layer evaluation
-###########################
-
+"""
 titles = ["GT", "Diagonal approx (k=0)", "Taylor approx with NVMS (k=0)", "full Inverse (k=0)"]
 
 title_lists = [];
@@ -476,24 +475,34 @@ Additional_info = [["N0 = {}".format(round(max_list[i])) if j == 0 else "" for j
 Ground_truth = torch.Tensor(GT[0]).view(1, 1, 1, img_size, img_size).repeat(1, len(titles), 1, 1, 1);
 outputs = [];
 
+# noise_vec = [148, 80, 57, 25, 12, 9]
+
 with torch.no_grad():
     for i in range(len(GT)):
-        list_outs = [];
 
-        x, var = denoiCompNet_simple.forward_variance(1 / K * m_list[i] * 4, 1, 1, img_size, img_size)
-        var = K ** 2 * var - 2 * C * K + 2 * s ** 2;
+        list_outs = [];
+        m_list[i] = m_list[i] * eta;
+        # temp = torch.ones([1, 1, 1024])
+
+        x, var = denoiCompNet_simple.forward_variance(1 / K * m_list[i] , 1, 1, img_size, img_size)
+        var = K * (var - 2 * C) + 2 * s ** 2
         x, N0_est = denoiCompNet_simple.forward_preprocess_expe(x, 1, 1, img_size, img_size)
+        # N0_est = temp * noise_vec[i]
+        print(N0_est)
 
         x_diag = denoiCompNet_simple.forward_denoise_expe(x, var, N0_est, 1, 1, img_size, img_size)
         f_diag = denoiCompNet_simple.forward_maptoimage(x_diag, 1, 1, img_size, img_size)
+        # f_diag = denoiCompNet_simple.forward_postprocess(f_diag, 1, 1, img_size, img_size)
 
         NVMS_est = NVMS / N0_est[0, 0, 0].numpy()
-        P0, P1, P2 = denoiCompNetNVMS_simple.forward_denoise_operators(Cov, NVMS_est, img_size, M)
+        P0, P1, P2 = denoiCompNetNVMS_simple.forward_denoise_operators(Cov_had, NVMS_est, img_size, CR)
         x_nvms = denoiCompNetNVMS_simple.forward_denoise_expe_nvms(x, var, N0_est, P0, P1, P2, 1, 1, img_size, img_size)
         f_nvms = denoiCompNetNVMS_simple.forward_maptoimage(x_nvms, 1, 1, img_size, img_size)
+        # f_nvms = denoiCompNetNVMS_simple.forward_postprocess(f_nvms, 1, 1, img_size, img_size)
 
         x_full = denoiCompNetFull.forward_denoise_expe(x, var, N0_est, 1, 1, img_size, img_size)
         f_full = denoiCompNetFull.forward_maptoimage(x_full, 1, 1, img_size, img_size)
+        # f_full = denoiCompNetFull.forward_postprocess(f_full, 1, 1, img_size, img_size)
 
         gt = torch.Tensor(GT[i]).to(device);
         gt = gt.view(1, 1, img_size, img_size);
@@ -521,12 +530,12 @@ title_lists_2 = title_lists[4:];
 compare_video_frames(outputs_0, nb_disp_frames, title_lists_0);
 compare_video_frames(outputs_1, nb_disp_frames, title_lists_1);
 compare_video_frames(outputs_2, nb_disp_frames, title_lists_2);
+"""
 
 ###################
 # -- Net evaluation
 ###################
-
-titles = ["GT", "Diagonal approx (k=0)", "Diagonal approx (k=4)", "NVMS (k=0)", "NVMS (k=4)", "full Inverse (k=0)"]
+titles = ["GT", "Diagonal approx (k=0)", "Diagonal approx (k=5)", "NVMS (k=0)", "NVMS (k=5)", "full Inverse (k=0)"]
 
 title_lists = [];
 Additional_info = [["N0 = {}".format(round(max_list[i])) if j == 0 else "" for j in range(len(titles))] for i in
@@ -536,12 +545,15 @@ outputs = [];
 
 with torch.no_grad():
     for i in range(len(GT)):
+
         list_outs = [];
-        f_net_diag = denoiCompNet_simple.forward_reconstruct_expe(1 / K * m_list[i] * 4, NVMS, 1, 1, img_size, img_size, C, s, K)
-        f_net_diag_iter = denoiCompNet_iter.forward_reconstruct_expe(1 / K * m_list[i] * 4, NVMS, 1, 1, img_size, img_size, C, s, K)
-        f_net_nvms = denoiCompNetNVMS_simple.forward_reconstruct_expe(1 / K * m_list[i] * 4, NVMS, 1, 1, img_size, img_size, C, s, K)
-        f_net_nvms_iter = denoiCompNetNVMS_iter.forward_reconstruct_expe(1 / K * m_list[i] * 4, NVMS, 1, 1, img_size, img_size, C, s, K)
-        f_net_full = denoiCompNetFull.forward_reconstruct_expe(1 / K * m_list[i] * 4, NVMS, 1, 1, img_size, img_size, C, s, K)
+        m_list[i] = m_list[i] * eta;
+
+        f_net_diag = denoiCompNet_simple.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
+        f_net_diag_iter = denoiCompNet_iter.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
+        f_net_nvms = denoiCompNetNVMS_simple.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
+        f_net_nvms_iter = denoiCompNetNVMS_iter.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
+        f_net_full = denoiCompNetFull.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
 
         gt = torch.Tensor(GT[i]).to(device);
         gt = gt.view(1, 1, img_size, img_size);
@@ -566,20 +578,17 @@ outputs_1 = outputs[1:4];
 outputs_2 = outputs[4:];
 title_lists_0 = title_lists[:1];
 title_lists_1 = title_lists[1:4];
-title_lists_2 = title_lists[4:];
+# title_lists_2 = title_lists[4:];
 
 compare_video_frames(outputs_0, nb_disp_frames, title_lists_0);
 compare_video_frames(outputs_1, nb_disp_frames, title_lists_1);
-compare_video_frames(outputs_2, nb_disp_frames, title_lists_2);
+# compare_video_frames(outputs_2, nb_disp_frames, title_lists_2);
 
 ############
 # STL-10 Cat
 ############
 
-#############################
 # Loading the Compressed Data
-#############################
-
 titles_expe = ["stl10_05_1.5_0.0_0{}_variance".format(i) for i in range(1, 7)] + \
               ["stl10_05_1_0.3_variance", "stl10_05_1_0.6_variance"]
 
@@ -587,9 +596,8 @@ expe_data = [expe_root + titles_expe[i] for i in range(len(titles_expe))];
 nflip = [1.5 for i in range(len(titles_expe))];
 nflip[-2:] = [1 for i in range(len(nflip[-2:]))]
 channel = 581;
-m_list = load_data_list_index(expe_data, nflip, M, K, Perm, img_size, num_channel=channel);
+m_list = load_data_list_index(expe_data, nflip, CR, K, Perm, img_size, num_channel=channel);
 
-m_prim = [];
 m_prim = [];
 m_prim.append(sum(m_list[:7]));
 m_prim.append(m_list[0] + m_list[1]);
@@ -597,9 +605,8 @@ m_prim.append(m_list[2]);
 m_prim = m_prim + m_list[-2:];
 m_list = m_prim;
 
-######################
-# Loading Ground Truth
-######################
+# Loading Ground-Truth
+# NB: we normalize it to get the range the neural networks work with.
 
 GT = raw_ground_truth_list_index(expe_data, nflip, H, img_size, num_channel=channel);
 # Good values 450 - 530 -  548 - 600
@@ -610,18 +617,10 @@ GT_prim.append(GT[2]);
 GT_prim = GT_prim + GT[-2:];
 GT = GT_prim;
 max_list = [np.amax(GT[i]) - np.amin(GT[i]) for i in range(len(GT))];
-#    GT = [((GT[i]-np.amin(GT[i]))/max_list[i]+1)/2 for i in range(len(GT))];
 GT = [((GT[i] - np.amin(GT[i])) / max_list[i]) * 2 - 1 for i in range(len(GT))];
 max_list = [max_list[i] / K for i in range(len(max_list))];
 
-########################
-# Displaying the results
-########################
-
-###########################
-# -- First layer evaluation
-###########################
-
+"""
 titles = ["GT", "Diagonal approx (k=0)", "Taylor approx with NVMS (k=0)", "full Inverse (k=0)"]
 
 title_lists = [];
@@ -630,19 +629,26 @@ Additional_info = [["N0 = {}".format(round(max_list[i])) if j == 0 else "" for j
 Ground_truth = torch.Tensor(GT[0]).view(1, 1, 1, img_size, img_size).repeat(1, len(titles), 1, 1, 1);
 outputs = [];
 
+# noise_vec = [195, 74, 44, 18, 10]
+
 with torch.no_grad():
     for i in range(len(GT)):
-        list_outs = [];
 
-        x, var = denoiCompNet_simple.forward_variance(1 / K * m_list[i] * 4, 1, 1, img_size, img_size)
-        var = K ** 2 * var - 2 * C * K + 2 * s ** 2;
+        list_outs = [];
+        m_list[i] = m_list[i] * eta;
+        # temp = torch.ones([1, 1, 1024])
+
+        x, var = denoiCompNet_simple.forward_variance(1 / K * m_list[i] , 1, 1, img_size, img_size)
+        var = K * (var - 2 * C) + 2 * s ** 2
         x, N0_est = denoiCompNet_simple.forward_preprocess_expe(x, 1, 1, img_size, img_size)
+        # N0_est = temp * noise_vec[i]
+        print(N0_est)
 
         x_diag = denoiCompNet_simple.forward_denoise_expe(x, var, N0_est, 1, 1, img_size, img_size)
         f_diag = denoiCompNet_simple.forward_maptoimage(x_diag, 1, 1, img_size, img_size)
 
-        NVMS_est = NVMS / N0_est[0,0,0].numpy()
-        P0, P1, P2 = denoiCompNetNVMS_simple.forward_denoise_operators(Cov, NVMS_est, img_size, M)
+        NVMS_est = NVMS / N0_est[0, 0, 0].numpy()
+        P0, P1, P2 = denoiCompNetNVMS_simple.forward_denoise_operators(Cov_had, NVMS_est, img_size, CR)
         x_nvms = denoiCompNetNVMS_simple.forward_denoise_expe_nvms(x, var, N0_est, P0, P1, P2, 1, 1, img_size, img_size)
         f_nvms = denoiCompNetNVMS_simple.forward_maptoimage(x_nvms, 1, 1, img_size, img_size)
 
@@ -675,12 +681,12 @@ title_lists_2 = title_lists[4:];
 compare_video_frames(outputs_0, nb_disp_frames, title_lists_0);
 compare_video_frames(outputs_1, nb_disp_frames, title_lists_1);
 compare_video_frames(outputs_2, nb_disp_frames, title_lists_2);
+"""
 
 ###################
 # -- Net evaluation
 ###################
-
-titles = ["GT", "Diagonal approx (k=0)", "Diagonal approx (k=4)", "NVMS (k=0)", "NVMS (k=4)", "full Inverse (k=0)"]
+titles = ["GT", "Diagonal approx (k=0)", "Diagonal approx (k=5)", "NVMS (k=0)", "NVMS (k=5)", "full Inverse (k=0)"]
 
 title_lists = [];
 Additional_info = [["N0 = {}".format(round(max_list[i])) if j == 0 else "" for j in range(len(titles))] for i in
@@ -690,12 +696,15 @@ outputs = [];
 
 with torch.no_grad():
     for i in range(len(GT)):
+
         list_outs = [];
-        f_net_diag = denoiCompNet_simple.forward_reconstruct_expe(1 / K * m_list[i] * 4, NVMS, 1, 1, img_size, img_size, C, s, K)
-        f_net_diag_iter = denoiCompNet_iter.forward_reconstruct_expe(1 / K * m_list[i] * 4, NVMS, 1, 1, img_size, img_size, C, s, K)
-        f_net_nvms = denoiCompNetNVMS_simple.forward_reconstruct_expe(1 / K * m_list[i] * 4, NVMS, 1, 1, img_size, img_size, C, s, K)
-        f_net_nvms_iter = denoiCompNetNVMS_iter.forward_reconstruct_expe(1 / K * m_list[i] * 4, NVMS, 1, 1, img_size, img_size, C, s, K)
-        f_net_full = denoiCompNetFull.forward_reconstruct_expe(1 / K * m_list[i] * 4, NVMS, 1, 1, img_size, img_size, C, s, K)
+        m_list[i] = m_list[i] * eta;
+
+        f_net_diag = denoiCompNet_simple.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
+        f_net_diag_iter = denoiCompNet_iter.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
+        f_net_nvms = denoiCompNetNVMS_simple.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
+        f_net_nvms_iter = denoiCompNetNVMS_iter.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
+        f_net_full = denoiCompNetFull.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
 
         gt = torch.Tensor(GT[i]).to(device);
         gt = gt.view(1, 1, img_size, img_size);
@@ -712,61 +721,186 @@ with torch.no_grad():
         title_lists.append(["{} {},\n PSNR = {}".format(titles[j], Additional_info[i][j], round(psnr[j], 2)) for j in
                             range(len(titles))]);
 
-o1 = outputs;
-t1 = title_lists;
+o2 = outputs;
+t2 = title_lists;
 nb_disp_frames = 6;
 outputs_0 = outputs[:1];
 outputs_1 = outputs[1:4];
 outputs_2 = outputs[4:];
 title_lists_0 = title_lists[:1];
 title_lists_1 = title_lists[1:4];
-title_lists_2 = title_lists[4:];
+# title_lists_2 = title_lists[4:];
 
 compare_video_frames(outputs_0, nb_disp_frames, title_lists_0);
 compare_video_frames(outputs_1, nb_disp_frames, title_lists_1);
-compare_video_frames(outputs_2, nb_disp_frames, title_lists_2);
+# compare_video_frames(outputs_2, nb_disp_frames, title_lists_2);
 
 
-#######################
-# Load training history
-#######################
+###################
+# %% Siemens Star #
+###################
 
-train_path_MMSE_diag_denoi = model_root / ('TRAIN_c0mp' + suffix1 + '.pkl')
-train_NET_MMSE_diag_denoi = read_param(train_path_MMSE_diag_denoi)
+# Loading the compressed raw measurements
+titles_expe = ["starSectorD_2_0.0_01_variance", "starSectorD_2_0.0_02_variance"] + \
+              ["starSectorD_2_0.0_03_variance", "starSectorD_2_0.0_04_variance"] + \
+              ["starSectorD_2_0.0_05_variance", "starSectorD_2_0.0_06_variance"] + \
+              ["starSectorD_2_0.0_07_variance", "starSectorD_2_0.0_08_variance"] + \
+              ["starSectorD_2_0.0_09_variance", "starSectorD_2_0.0_variance"] + \
+              ["starSectorD_2_0.3_variance", "starSectorD_2_0.6_variance"] + \
+              ["starSectorD_2_1.0_variance", "starSectorD_2_1.3_variance"]
 
-train_path_MMSE_nvms_denoi = model_root / ('TRAIN_c0mp' + suffix3 + '.pkl')
-train_NET_MMSE_nvms_denoi = read_param(train_path_MMSE_nvms_denoi)
+channel = 510;
 
-train_path_MMSE_nvms_denoi_iter = model_root / ('TRAIN_c0mp' + suffix4 + '.pkl')
-train_NET_MMSE_nvms_denoi_iter = read_param(train_path_MMSE_nvms_denoi_iter)
+nflip = [2 for i in range(len(titles_expe))];
+expe_data = [expe_root + titles_expe[i] for i in range(len(titles_expe))];
 
-train_path_MMSE_diag_denoi_iter = model_root / ('TRAIN_c0mp' + suffix2 + '.pkl')
-train_NET_MMSE_diag_denoi_iter = read_param(train_path_MMSE_diag_denoi_iter)
+m_list = load_data_list_index(expe_data, nflip, CR, K, Perm, img_size, num_channel=channel);
 
-train_path_MMSE_full_denoi = model_root / ('TRAIN_c0mp' + suffix + '.pkl')
-train_NET_MMSE_full_denoi = read_param(train_path_MMSE_full_denoi)
+m_prim = [];
+m_prim.append(sum(m_list[:10]));
+m_prim.append(m_list[10]);
+m_list = m_prim;
 
-plt.rcParams.update({'font.size': 12})
+# Loading Ground Truth
+# NB: we normalize it to get the range the neural networks work with.
+GT = raw_ground_truth_list_index(expe_data, nflip, H, img_size, num_channel=channel);
+# Good values 450 - 530 -  548 - 600 -510
 
-##################
-# -- Training Plot
-##################
+GT_prim = [];
+GT_prim.append(sum(GT[:10]));
+GT_prim.append(GT[10]);
+GT = GT_prim;
+max_list = [np.amax(GT[i]) - np.amin(GT[i]) for i in range(len(GT))];
+#    GT = [((GT[i]-np.amin(GT[i]))/max_list[i]+1)/2 for i in range(len(GT))];
+GT = [((GT[i] - np.amin(GT[i])) / max_list[i]) * 2 - 1 for i in range(len(GT))];
+max_list = [max_list[i] / K for i in range(len(max_list))];
 
-fig1, ax = plt.subplots(figsize=(10, 6))
-plt.title('Comparison of loss curves for denoising models from training with {} photons'.format(N0), fontsize=16)
-ax.set_xlabel('Time (epochs)')
-ax.set_ylabel('Loss (MSE)')
-ax.plot(train_NET_MMSE_full_denoi.val_loss, 'r', linewidth=1.5)
-ax.plot(train_NET_MMSE_diag_denoi.val_loss, 'g', linewidth=1.5)
-ax.plot(train_NET_MMSE_diag_denoi_iter.val_loss, 'b', linewidth=1.5)
-ax.plot(train_NET_MMSE_nvms_denoi.val_loss, 'c', linewidth=1.5)
-ax.plot(train_NET_MMSE_nvms_denoi_iter.val_loss, 'k', linewidth=1.5)
-ax.grid(which='minor', linestyle=':', linewidth=0.5, color='black')
-plt.grid(True)
-ax.legend(('Full inversion (vanilla version, k=0)  :  24m 58s',\
-           'Diagonal approximation (k=0) :  26m 05s', \
-           'Diagonal approximation (k=4) :  30m 46s', \
-           'Taylor approximation with NVMS (k=0) : 26m 07s', \
-           'Taylor approximation with NVMS (k=4) : 28m 34s', \
-           ),  loc='upper right')
+"""
+titles = ["GT", "Diagonal approx (k=0)", "Taylor approx with NVMS (k=0)", "full Inverse (k=0)"]
 
+# %% Methods comparison
+m_list[0].shape
+
+title_lists = [];
+Additional_info = [["N0 = {}".format(round(max_list[i])) if j == 0 else "" for j in range(len(titles))] for i in
+                   range(len(max_list))]
+Ground_truth = torch.Tensor(GT[0]).view(1, 1, 1, img_size, img_size).repeat(1, len(titles), 1, 1, 1);
+outputs = [];
+
+with torch.no_grad():
+    for i in range(len(GT)):
+
+        list_outs = [];
+        m_list[i] = m_list[i] * eta;
+        # temp = torch.ones([1, 1, 1024])
+
+        x, var = denoiCompNet_simple.forward_variance(1 / K * m_list[i] , 1, 1, img_size, img_size)
+        var = K * (var - 2 * C) + 2 * s ** 2
+        x, N0_est = denoiCompNet_simple.forward_preprocess_expe(x, 1, 1, img_size, img_size)
+        # N0_est = temp * noise_vec[i]
+        print(N0_est)
+
+        x_diag = denoiCompNet_simple.forward_denoise_expe(x, var, N0_est, 1, 1, img_size, img_size)
+        f_diag = denoiCompNet_simple.forward_maptoimage(x_diag, 1, 1, img_size, img_size)
+
+        NVMS_est = NVMS / N0_est[0, 0, 0].numpy()
+        P0, P1, P2 = denoiCompNetNVMS_simple.forward_denoise_operators(Cov_had, NVMS_est, img_size, CR)
+        x_nvms = denoiCompNetNVMS_simple.forward_denoise_expe_nvms(x, var, N0_est, P0, P1, P2, 1, 1, img_size, img_size)
+        f_nvms = denoiCompNetNVMS_simple.forward_maptoimage(x_nvms, 1, 1, img_size, img_size)
+
+        x_full = denoiCompNetFull.forward_denoise_expe(x, var, N0_est, 1, 1, img_size, img_size)
+        f_full = denoiCompNetFull.forward_maptoimage(x_full, 1, 1, img_size, img_size)
+
+        gt = torch.Tensor(GT[i]).to(device);
+        gt = gt.view(1, 1, img_size, img_size);
+        list_outs.append(gt)
+        list_outs.append(f_diag)
+        list_outs.append(f_nvms)
+        list_outs.append(f_full)
+        output = torch.stack(list_outs, axis=1);
+
+        psnr = batch_psnr_vid(Ground_truth, output);
+        outputs.append(torch2numpy(output));
+        title_lists.append(["{} {},\n PSNR = {}".format(titles[j], Additional_info[i][j], round(psnr[j], 2)) for j in
+                            range(len(titles))]);
+
+o3 = outputs
+t3 = title_lists
+nb_disp_frames = 4
+
+outputs_0 = outputs[:1]
+outputs_1 = outputs[1:4]
+title_lists_0 = title_lists[:1]
+title_lists_1 = title_lists[1:4]
+
+compare_video_frames(outputs_0, nb_disp_frames, title_lists_0)
+compare_video_frames(outputs_1, nb_disp_frames, title_lists_1)
+"""
+
+###################
+# -- Net evaluation
+###################
+titles = ["GT", "Diagonal approx (k=0)", "Diagonal approx (k=5)", "NVMS (k=0)", "NVMS (k=5)", "full Inverse (k=0)"]
+
+title_lists = [];
+Additional_info = [["N0 = {}".format(round(max_list[i])) if j == 0 else "" for j in range(len(titles))] for i in
+                   range(len(max_list))]
+Ground_truth = torch.Tensor(GT[0]).view(1, 1, 1, img_size, img_size).repeat(1, len(titles), 1, 1, 1);
+outputs = [];
+
+with torch.no_grad():
+    for i in range(len(GT)):
+
+        list_outs = [];
+        m_list[i] = m_list[i] * eta;
+
+        f_net_diag = denoiCompNet_simple.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
+        f_net_diag_iter = denoiCompNet_iter.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
+        f_net_nvms = denoiCompNetNVMS_simple.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
+        f_net_nvms_iter = denoiCompNetNVMS_iter.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
+        f_net_full = denoiCompNetFull.forward_reconstruct_expe(1 / K * m_list[i], NVMS, 1, 1, img_size, img_size, C, s, K)
+
+        gt = torch.Tensor(GT[i]).to(device);
+        gt = gt.view(1, 1, img_size, img_size);
+        list_outs.append(gt)
+        list_outs.append(f_net_diag)
+        list_outs.append(f_net_diag_iter)
+        list_outs.append(f_net_nvms)
+        list_outs.append(f_net_nvms_iter)
+        list_outs.append(f_net_full)
+        output = torch.stack(list_outs, axis=1);
+
+        psnr = batch_psnr_vid(Ground_truth, output);
+        outputs.append(torch2numpy(output));
+        title_lists.append(["{} {},\n PSNR = {}".format(titles[j], Additional_info[i][j], round(psnr[j], 2)) for j in
+                            range(len(titles))]);
+
+o3 = outputs
+t3 = title_lists
+nb_disp_frames = 6
+
+outputs_0 = outputs[:1]
+outputs_1 = outputs[1:4]
+title_lists_0 = title_lists[:1]
+title_lists_1 = title_lists[1:4]
+
+compare_video_frames(outputs_0, nb_disp_frames, title_lists_0)
+compare_video_frames(outputs_1, nb_disp_frames, title_lists_1)
+
+###################
+# %% Final Figure #
+###################
+out_lamp = np.concatenate((np.reshape(o1[0][0, 0, 0, :, :], (1, 1, 1, img_size, img_size)), o1[-1]), axis=1)
+title_lamp = [t1[0][0][:-11] + "(a)"] + t1[-1]
+
+out_cat = np.concatenate((np.reshape(o2[0][0, 0, 0, :, :], (1, 1, 1, img_size, img_size)), o2[-1]), axis=1)
+title_cat = [t2[0][0][:-11] + "(b)"] + t2[-1]
+
+out_star = np.concatenate((np.reshape(o3[0][0, 0, 0, :, :], (1, 1, 1, img_size, img_size)), o3[-1]), axis=1)
+title_star = [t3[0][0][:-11] + "(c)"] + t3[-1]
+
+outputs = [out_lamp, out_cat, out_star]
+title_lists = [title_lamp, title_cat, title_star]
+
+nb_disp_frames = 7
+compare_video_frames(outputs, nb_disp_frames, title_lists, 'eta = {}\n'.format(eta), fontsize=11.4)

@@ -722,7 +722,7 @@ class DenoiCompNet(noiCompNet):
         var = torch.div(var, self.N0 ** 2)
 
         if self.denoi == 0:
-            x = self.fcP2(x)  # - torch.mul(self.fcP1(var), self.fcP0(x));
+            x = self.fcP2(x) - torch.mul(self.fcP1(var), self.fcP0(x));
 
         elif self.denoi == 1:
             sigma = self.sigma.repeat(b * c, 1, 1).to(x.device);
@@ -742,7 +742,7 @@ class DenoiCompNet(noiCompNet):
         f = torch.zeros(b * c, 1, h, w).to(x.device)
         # -- Variance estimation for the measurements
         x, var = self.forward_variance(x, b, c, h, w)
-        var = K ** 2 * var - 2 * C * K + 2 * s ** 2;
+        var = K * (var - 2 * C) + 2 * s ** 2
         # -- Normalization and combination of pos/neg coefficients
         x, N0_est = self.forward_preprocess_expe(x, b, c, h, w)
 

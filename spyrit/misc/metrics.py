@@ -70,34 +70,54 @@ def dataset_meas(dataloader, model, device):
 #    return psnr;
 #
 
-def dataset_psnr(dataloader, model, device, denoise=False, M=0):
+def dataset_psnr_ssim_2(dataloader, model, device, M=1024):
     psnr = [];
     psnr_fc = [];
+    ssim = [];
+    ssim_fc = [];
     for inputs, labels in dataloader:
         inputs = inputs.to(device)
         b, c, h, w = inputs.shape
 
         x = model.forward_acquire(inputs, b, c, h, w)
-        if denoise:
-            even_index = range(0, 2 * M, 2)
-            uneven_index = range(1, 2 * M, 2)
-            var = torch.mean(x[:, :, even_index] + x[:, :, uneven_index], [1, 2])
-            x[:, 0, even_index][:, 0] = var
-            var = var.view(b * c, 1, 1)
-            var = var.repeat(1, 1, M)
-            x = model.forward_preprocess(x, b, c, h, w)
-            x = model.forward_denoise(x, var, b, c, h, w)
-        else:
-            x = model.forward_preprocess(x, b, c, h, w)
-
+        even_index = range(0, 2 * M, 2)
+        uneven_index = range(1, 2 * M, 2)
+        var = torch.mean(x[:, :, even_index] + x[:, :, uneven_index], [1, 2])
+        x[:, 0, even_index][:, 0] = var
+        var = var.view(b * c, 1, 1)
+        var = var.repeat(1, 1, M)
+        x = model.forward_preprocess(x, b, c, h, w)
+        x = model.forward_denoise(x, var, b, c, h, w)
         x = model.forward_maptoimage(x, b, c, h, w)
         net_x = model.forward_postprocess(x, b, c, h, w)
 
         psnr += batch_psnr(inputs, x);
-        psnr_fc += batch_psnr(inputs, net_x);
-    psnr = np.array(psnr);
-    psnr_fc = np.array(psnr_fc);
-    return psnr, psnr_fc
+        psnr_fc += batch_psnr(inputs, net_x)
+        ssim += batch_ssim(inputs, x)
+        ssim_fc += batch_ssim(inputs, net_x)
+
+    psnr = np.array(psnr)
+    psnr_fc = np.array(psnr_fc)
+    ssim = np.array(ssim)
+    ssim_fc = np.array(ssim_fc)
+
+    return psnr, psnr_fc, ssim, ssim_fc
+
+def dataset_psnr_ssim_iterative(dataloader, model, device, M=1024):
+    psnr = []
+    ssim = []
+    for inputs, labels in dataloader:
+        inputs = inputs.to(device)
+        b, c, h, w = inputs.shape
+        x = model.forward_acquire(inputs, b, c, h, w)
+        x = model.forward_reconstruct(x, b, c, h, w)
+        psnr += batch_psnr(inputs, x)
+        ssim += batch_ssim(inputs, x)
+
+    psnr = np.array(psnr)
+    ssim = np.array(ssim)
+
+    return psnr, ssim
 
 
 def dataset_psnr_precomputed(dataloader, model, device, denoise=False, M=0):
@@ -289,4 +309,4 @@ def compare_nets_unsupervised(net_list, testloader, device):
 
 
 def print_mean_std(x, tag=''):
-    print("{}psnr = {} +/- {}".format(tag, np.mean(x), np.std(x)))
+    print("{} = {} +/- {}".format(tag, np.mean(x), np.std(x)))
