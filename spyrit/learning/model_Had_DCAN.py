@@ -527,7 +527,7 @@ class compNet(nn.Module):
 # B. NOISY MEASUREMENTS (NOISE LEVEL IS VARYING)
 #==============================================================================
 class noiCompNet(compNet):
-    def __init__(self, n, M, Mean, Cov, variant, N0=2500, sig=0.5, H=None, Ord=None):
+    def __init__(self, n, M, Mean, Cov, variant=0, N0=2500, sig=0.0, H=None, Ord=None):
         super().__init__(n, M, Mean, Cov, variant, H, Ord)
         self.N0 = N0;
         self.sig = sig;
@@ -600,7 +600,7 @@ class noiCompNet(compNet):
 # B. NOISY MEASUREMENTS (NOISE LEVEL IS VARYING) + denoising architecture
 #==============================================================================
 class DenoiCompNet(noiCompNet):
-    def __init__(self, n, M, Mean, Cov, variant=0, N0=2500, sig=0.5, H=None, Ord=None):
+    def __init__(self, n, M, Mean, Cov, variant=0, N0=2500, sig=0.0, H=None, Ord=None):
         super().__init__(n, M, Mean, Cov, variant, N0, sig, H, Ord)
         print("Denoised Measurements")
    
