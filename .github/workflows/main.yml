@@ -75,6 +75,7 @@ jobs:
       if: matrix.os != 'windows-latest'
       run: |
           mkdir -p data_example
+          pip install "scipy<1.8.0"
           pip install -e .
           cd data_example
           if [ -f "data/stl10_binary.tar.gz" ]; then
@@ -88,6 +89,7 @@ jobs:
       if: matrix.os != 'windows-latest'
       run: |
           mkdir -p data_example
+          pip install "scipy<1.8.0"
           pip install -e .
           pip install tabulate pylops bm3d
           cd data_example
@@ -105,6 +107,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
+          pip install "scipy<1.8.0"
           pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
           pip install -e .
           cd data_example
@@ -119,6 +122,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
+          pip install "scipy<1.8.0"
           pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
           pip install -e .
           pip install tabulate pylops bm3d
@@ -174,6 +178,7 @@ jobs:
       run: |
           mkdir -p data_example
           cd dist
+          pip install "scipy<1.8.0"
           pip install spyrit-*.whl
           pip install tabulate pylops bm3d
           cd ../data_example
@@ -189,6 +194,7 @@ jobs:
       run: |
           mkdir -p data_example
           cd dist
+          pip install "scipy<1.8.0"
           pip install spyrit-*.whl
           pip install tabulate pylops bm3d
           cd ../data_example
@@ -214,6 +220,7 @@ jobs:
       run: |
           if(-not (Test-Path -path "data_example")) { mkdir data_example }
           cd dist
+          pip install "scipy<1.8.0"
           pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
           $package=dir -Path . -Filter spyrit*.whl | %{$_.FullName}
           echo $package
@@ -235,6 +242,7 @@ jobs:
           rm -r -fo __init__.py
           ls
           cd dist
+          pip install "scipy<1.8.0"
           #pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
           pip install tabulate pylops bm3d
           #pip install --find-links=. spyrit
