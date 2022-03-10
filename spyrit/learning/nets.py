@@ -56,14 +56,14 @@ def count_param(model):
     return sum(p.numel() for p in model.parameters())
 
 
-def train_model(model, criterion, optimizer, scheduler, dataloaders, device, root, num_img, num_epochs=25,disp=False, do_checkpoint=0):
+def train_model(model, criterion, optimizer, scheduler, dataloaders, device, root, num_epochs=25,disp=False, do_checkpoint=0):
     """ Trains the pytorch model 
         """
     since = time.time()
     best_loss = float("inf")
     best_model_wts = copy.deepcopy(model.state_dict())
 
-    #dataset_sizes = {x: len(dataloaders[x]) for x in ['train', 'val']}
+    dataset_sizes = {x: len(dataloaders[x]) for x in ['train', 'val']}
     train_info  = {};
     train_info['train'] = [];
     train_info['val'] = [];
@@ -130,7 +130,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, device, roo
                     )
     
 
-            epoch_loss = running_loss / num_img[phase]
+            epoch_loss = running_loss / dataset_sizes[phase]
             train_info[phase].append(epoch_loss);
             
             if phase == 'train':

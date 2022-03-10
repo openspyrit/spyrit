@@ -5,7 +5,7 @@
 
 # Spyrit
 SPYRIT is a [PyTorch](https://pytorch.org/)-based toolbox for deep image reconstruction. While SPYRIT was originally designed for single-pixel image reconstruction, it can solve any linear reconstruction problem.
-    
+   
 ## Getting Started
 
 ### User mode
@@ -47,7 +47,7 @@ These instructions will get you a copy of the project up and running on your loc
 First, you need to clone the repository:
 
 ```
-git clone --recurse-submodules https://github.com/openspyrit/spyrit.git
+git clone https://github.com/openspyrit/spyrit.git
 ```
 
 Then, you can install the spyrit package with python (we recommend you to use virtual environment)
@@ -61,14 +61,12 @@ pip install -e .
 
 #### Windows
 
-On Windows you need first to redo the symbolic link to fht inside the spyrit repository and then to install [torch](https://pytorch.org/get-started/locally/). Here it's cpu version, adapt to your configuration. 
+On Windows you need first to install [torch](https://pytorch.org/get-started/locally/). Here it's cpu version, adapt to your configuration. 
 
 NB: It may be necessary to run the following commands using administrator rights (e.g., starting your Python environment with administrator rights).
 
 ```
 cd spyrit
-rm -r -fo fht
-cmd /c mklink /d fht spyrit\fht\fht
 pip install requests torch==1.8.0+cpu torchvision==0.9.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
 pip install -e .
 ```
@@ -88,7 +86,7 @@ https://spyrit.readthedocs.io/
 
 All the necessary packages and libraries are contained within the ```setup.py ``` file.
 
-- numpy (==1.19.3)
+- numpy
 - matplotlib
 - scipy
 - torch
@@ -99,7 +97,6 @@ All the necessary packages and libraries are contained within the ```setup.py ``
 - PyWavelets
 - wget
 - imageio
-- [fht](https://github.com/nbarbey/fht) (included as a submodule in spyrit/fht),
 
 ## Test
 
@@ -140,6 +137,5 @@ This project is licensed under the Creative Commons Attribution Share Alike 4.0 
 
 ## Acknowledgments
 
-* [Nicolas Barbey](https://github.com/nbarbey/fht) for his Fast Hadamard Transform implementation in python  
 * [Jin LI](https://github.com/happyjin/ConvGRU-pytorch) for his implementation of Convolutional Gated Recurrent Units for PyTorch
 * [Erik Lindernoren](https://github.com/eriklindernoren/Action-Recognition) for his processing of the UCF-101 Dataset.
