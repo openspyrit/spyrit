@@ -107,7 +107,8 @@ def compare_video_frames(vid_list, nb_disp_frames,title_list, suptitle= '', colo
             ax.set_title(title_list[i][j], fontsize=fontsize);
             plt.axis('off')
     if savefig:
-        plt.savefig(savefig, bbox_inches='tight')
+        plt.savefig(savefig, bbox_inches='tight');
+        print("Image saved");
     plt.show()
 
     
