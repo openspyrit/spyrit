@@ -1,1 +1,0 @@
-# New acquisition sub-package
