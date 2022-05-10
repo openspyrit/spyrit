@@ -16,8 +16,6 @@ from pathlib import Path
 #import spyrit.misc.walsh_hadamard as wh
 from spyrit.learning.model_Had_DCAN import *
 from spyrit.learning.nets import *
-import pdb
-from spyrit.misc.statistics import stat_walsh_stl10
 
 #%%
 #- Acquisition
@@ -41,17 +39,12 @@ transform = transforms.Compose(
 
 testset = \
     torchvision.datasets.STL10(root=data_root, split='test',download=True, transform=transform)
-testloader =  torch.utils.data.DataLoader(testset, batch_size=128, shuffle=False)
+testloader =  torch.utils.data.DataLoader(testset, batch_size=128,shuffle=False)
 
 inputs, _ = next(iter(testloader))
-
-
 b,c,h,w = inputs.shape
 
 #%%
-
-stat_walsh_stl10()
-
 Cov = np.load(stats_root / Path("Cov_{}x{}.npy".format(img_size, img_size)))
 Mean = np.load(stats_root / Path("Average_{}x{}.npy".format(img_size, img_size)))
 H =  wh.walsh2_matrix(img_size)/img_size
