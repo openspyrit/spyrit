@@ -13,7 +13,6 @@ models
 dist
 build
 spyrit.egg-info
-spyrit
 docs
 tutorials
 stats_walsh
