@@ -470,6 +470,208 @@ class sn_dp_iteratif_2(nn.Module):
         return x
 
 
+
+class EM_net(nn.Module):
+    def __init__(self,  M, n, Cov, H = None,denoi = None, n_iter = 5):
+        super(EM_net,self).__init__()
+        self.n = n;
+        self.M = M;
+        self.n_iter = n_iter
+        if denoi == None:
+            denoi = ConvNet()
+        self.conv = denoi
+        # Hadamard matrix
+        if type(H)==type(None):
+            H = Hadamard_Transform_Matrix(self.n)
+        H = n*H; #fht hadamard transform needs to be normalized
+        self.H=H
+        #-- Hadamard patterns (undersampled basis)
+        Var = Cov2Var(Cov)
+        Perm = Permutation_Matrix(Var)
+        self.Pmatfull = np.dot(Perm,H);
+        self.Pinvtot = matrix2conv((1/n**2)*np.transpose(self.Pmatfull));
+        self.Pinvtot.weight.requires_grad = False;
+        #self.Pinvtot.weight.data=self.Pinvtot.weight.data.float();
+        
+  
+        self.Pmat = self.Pmatfull[:M,:];
+        self.Pconv = matrix2conv(self.Pmat);
+        self.Pconv.weight.requires_grad = False
+
+
+        denoise_list = [];
+        for i in range(n_iter):
+            denoise_list.append(Denoise_layer(M));
+        self.denoise_list = nn.ModuleList(denoise_list);
+        self.completion_layer = nn.Linear(M, n**2-M, False);
+        self.completion_layer.weight.requires_grad = False;
+
+        self.C = 0;
+        self.s = 0;
+        self.g = 1;
+        self.N0 = 10;
+
+        P, _ = split(self.Pconv, 1);
+        self.P = P;
+        self.P.bias.requires_grad = False;
+        self.P.weight.requires_grad = False;
+ 
+        self.even_index = range(0,2*M,2);
+        self.uneven_index = range(1,2*M,2);
+        
+
+    def set_layers(self, denoi, Cov):
+        """
+            Allows initalisation of reconstructor at specified values of 
+            Denoised layer, denoiser, and completion layer
+            """
+        self.conv = denoi;
+        
+        diag_index = np.diag_indices(self.n**2);
+        Sigma = Cov[diag_index];
+        Sigma = Sigma[:self.M]
+        Sig_1 = Cov[:self.M,:self.M]
+        Sig_21 = Cov[self.M:,:self.M]
+        Sig_sc = np.dot(Sig_21, np.linalg.inv(Sig_1));
+    
+        self.completion_layer.weight.data = torch.from_numpy(Sig_sc)
+        self.completion_layer.weight.data=self.completion_layer.weight.data.float();
+    
+        for i in range(self.n_iter):
+            print(i)
+            self.denoise_list[i].weight.data = torch.from_numpy(Sigma)
+            self.denoise_list[i].weight.data=self.denoise_list[i].weight.data.float();
+   
+
+    def forward(self,x ,b ,c ,h, w, x0, var):
+        for i in range(self.n_iter):
+            x = self.conv(x, b ,c ,h ,w ,x0, var)
+
+            m_sim = (x.view(b*c, 1, h, w)+1)/2;
+            m_sim = self.P(m_sim);
+            m_sim = m_sim.view(b*c,1, 2*self.M); 
+            var = 1/self.N0*(m_sim[:,:,self.even_index] + m_sim[:,:,self.uneven_index]);
+
+            z = self.Pconv(x);
+            z = z.view(b*c,self.M);
+            
+            y1 = torch.mul(self.denoise_list[i](var.view(b*c,self.M)), x0.view(b*c,self.M)-z);
+            #y1 = torch.mul(self.denoise_layer(var.view(b*c,self.M)), x0.view(b*c,self.M)-z);
+            y1 = y1.view(b*c,1,self.M)
+            y2 = self.completion_layer(y1);
+
+            y = torch.cat((y1,y2),-1) 
+            y = y.view(b*c, 1, h, w);
+            y = self.Pinvtot(y);
+            y = y.view(b*c, 1, h, w);
+            
+            x = y + x
+        x = self.conv(x, b ,c ,h ,w ,x0, var)
+        return x
+
+
+class EM_net_unshared(nn.Module):
+    def __init__(self,  M, n, Cov, H = None,denoi = None, n_iter = 5):
+        super(EM_net_unshared,self).__init__()
+        self.n = n;
+        self.M = M;
+        self.n_iter = n_iter
+        if denoi == None:
+            denoi = ConvNet()
+        # Hadamard matrix
+        if type(H)==type(None):
+            H = Hadamard_Transform_Matrix(self.n)
+        H = n*H; #fht hadamard transform needs to be normalized
+        self.H=H
+        #-- Hadamard patterns (undersampled basis)
+        Var = Cov2Var(Cov)
+        Perm = Permutation_Matrix(Var)
+        self.Pmatfull = np.dot(Perm,H);
+        self.Pinvtot = matrix2conv((1/n**2)*np.transpose(self.Pmatfull));
+        self.Pinvtot.weight.requires_grad = False;
+        #self.Pinvtot.weight.data=self.Pinvtot.weight.data.float();
+        
+  
+        self.Pmat = self.Pmatfull[:M,:];
+        self.Pconv = matrix2conv(self.Pmat);
+        self.Pconv.weight.requires_grad = False
+        self.C = 0;
+        self.s = 0;
+        self.g = 1;
+        self.N0 = 10;
+
+        P, _ = split(self.Pconv, 1);
+        self.P = P;
+        self.P.bias.requires_grad = False;
+        self.P.weight.requires_grad = False;
+ 
+        self.even_index = range(0,2*M,2);
+        self.uneven_index = range(1,2*M,2);
+ 
+
+        denoise_list = [];
+        conv_list = [];
+        for i in range(n_iter):
+            denoise_list.append(Denoise_layer(M));
+            conv_list.append(copy.deepcopy(denoi));
+        conv_list.append(copy.deepcopy(denoi));
+        self.denoise_list = nn.ModuleList(denoise_list);
+        self.conv = nn.ModuleList(conv_list);
+        
+        self.completion_layer = nn.Linear(M, n**2-M, False);
+        self.completion_layer.weight.requires_grad = False;
+
+
+
+    def set_layers(self, denoi,Cov):
+        """
+            Allows initalisation of reconstructor at specified values of 
+            Denoised layer, denoiser, and completion layer
+            """
+        diag_index = np.diag_indices(self.n**2);
+        Sigma = Cov[diag_index];
+        Sigma = Sigma[:self.M]
+        Sig_1 = Cov[:self.M,:self.M]
+        Sig_21 = Cov[self.M:,:self.M]
+        Sig_sc = np.dot(Sig_21, np.linalg.inv(Sig_1));
+    
+        self.completion_layer.weight.data = torch.from_numpy(Sig_sc)
+        self.completion_layer.weight.data=self.completion_layer.weight.data.float();
+    
+        for i in range(self.n_iter):
+            print(i)
+            self.conv[i] = copy.deepcopy(denoi);
+            self.denoise_list[i].weight.data = torch.from_numpy(Sigma)
+            self.denoise_list[i].weight.data=self.denoise_list[i].weight.data.float();
+
+
+    def forward(self,x ,b ,c ,h, w, x0, var):
+        for i in range(self.n_iter):
+            x = self.conv[i](x, b ,c ,h ,w ,x0, var)
+
+            m_sim = (x.view(b*c, 1, h, w)+1)/2;
+            m_sim = self.P(m_sim);
+            m_sim = m_sim.view(b*c,1, 2*self.M); 
+            var = 1/self.N0*(m_sim[:,:,self.even_index] + m_sim[:,:,self.uneven_index]);
+
+            z = self.Pconv(x);
+            z = z.view(b*c,self.M);
+            
+            y1 = torch.mul(self.denoise_list[i](var.view(b*c,self.M)), x0.view(b*c,self.M)-z);
+            #y1 = torch.mul(self.denoise_layer(var.view(b*c,self.M)), x0.view(b*c,self.M)-z);
+            y1 = y1.view(b*c,1,self.M)
+            y2 = self.completion_layer(y1);
+
+            y = torch.cat((y1,y2),-1) 
+            y = y.view(b*c, 1, h, w);
+            y = self.Pinvtot(y);
+            y = y.view(b*c, 1, h, w);
+            
+            x = y + x
+        x = self.conv[-1](x, b ,c ,h ,w ,x0, var)
+        return x
+
+
 def Stat_net(dataloader, root, model, device, transform, save = False):
     """ 
         Computes Mean Hadamard Image over the whole dataset + 
