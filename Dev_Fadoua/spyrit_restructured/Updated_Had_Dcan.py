@@ -149,7 +149,6 @@ class Generalized_Orthogonal_Tikhonov(nn.Module):# permet de revenir à l'espace
 # 
     def __init__(self, H, n, M, variant):
         nn.Module.__init__(self)
-        preprocess.__init__(self, H, n, M)
         Pinv.__init__(self, H, n, M)
         
         #-- Measurement to image domain
