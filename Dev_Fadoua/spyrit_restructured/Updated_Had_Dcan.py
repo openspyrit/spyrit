@@ -51,6 +51,11 @@ class Forward_operator(nn.Module):
         # x.shape[b*c,N]
         x = self.Hsub(x)    
         return x
+
+    def Forward_op(self,x):
+        # x.shape[b*c,N]
+        x = self.Hsub(x)    
+        return x
     
     def adjoint(self,x):
         # x.shape[b*c,M]
@@ -58,6 +63,36 @@ class Forward_operator(nn.Module):
         x = self.Hsub_adjoint(x)            
         return x
 
+# ==================================================================================
+class Split_Forward_operator(Forward_operator):
+# ==================================================================================
+# Faire le produit H*f sans bruit, linear (pytorch) 
+    def __init__(self, Hsub):           
+        # [H^+, H^-]
+        super().__init__(Hsub)
+       
+        self.M = Hsub.shape[0];
+        self.N = Hsub.shape[1] ;
+        
+        H_pos = np.zeros(Hsub.shape);
+        H_neg = np.zeros(Hsub.shape);
+        H_pos[Hsub>0] = Hsub[Hsub>0];
+        H_neg[Hsub<0] = -Hsub[Hsub<0];
+        Hposneg = np.zeros((2*self.M,self.N));
+        Hposneg[:self.M,:] = H_pos;
+        Hposneg[self.M:,:] = H_neg;
+        
+        self.Hpos_neg = nn.Linear(self.N, 2*self.M, False) 
+        self.Hpos_neg.weight.data=torch.from_numpy(Hposneg)
+        self.Hpos_neg.weight.data=self.Hpos_neg.weight.data.float()
+        self.Hpos_neg.weight.requires_grad=False
+              
+    def forward(self, x): # --> simule la mesure sous-chantillonnée
+        # x.shape[b*c,N]
+        # output shape : [b*c, 2*M]
+        x = self.Hpos_neg(x)    
+        return x
+   
 # ==================================================================================        
 class Acquisition(nn.Module):
 # ==================================================================================
@@ -78,7 +113,7 @@ class Acquisition(nn.Module):
         # output x.shape - [b*c,M] 
         #--Scale input image
         x = (x+1)/2;         
-        x = FO(x); 
+        x = self.FO.Forward_op(x); 
         # x is the product of Hsub-sampled*f ?
         return x
 # ==================================================================================
@@ -88,7 +123,7 @@ class Bruit_Poisson_approx_Gauss(Acquisition):
         super().__init__(FO)
         self.alpha = alpha
         
-    def forward(x, b, c, h, w):
+    def forward(x, b, c, h, w): # Enlever
 
         #--Scale input image      
 
@@ -96,7 +131,7 @@ class Bruit_Poisson_approx_Gauss(Acquisition):
         
         #--Acquisition
         x = x.view(b*c, 1, h, w);
-        x = self.H(x);
+        x = self.FO.Forward_op(x);
         # par rapport aux potentielles faibles valeurs négatives
         x = F.relu(x);     # x[:,:,1] = -1/N0 ????
         x = x.view(b, c, 2*self.M); # x[:,:,1] < 0??? 
@@ -118,7 +153,7 @@ class Bruit_Poisson_Pytorch(Acquisition):
         
         #--Acquisition
         x = x.view(b*c, 1, h, w);
-        x = self.H(x);
+        x = self.FO.Forward_op(x);
         # par rapport aux potentielles faibles valeurs négatives
         x = F.relu(x);     # x[:,:,1] = -1/N0 ????
         x = x.view(b, c, 2*self.M); # x[:,:,1] < 0??? 
@@ -222,3 +257,5 @@ class Preprocess(nn.Module): # ça va aller dans le main ??
         x = x[:,:,self.even_index] + x[:,:,self.uneven_index]
         x = 4*x/self.N0**2
         return x
+
+
