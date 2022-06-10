@@ -2,6 +2,7 @@ __pycache__
 *.py[co]
 *.swp
 *.pdf
+*.png
 *.sh
 *.ipynb
 
