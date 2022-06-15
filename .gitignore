@@ -16,4 +16,4 @@ build
 spyrit.egg-info
 docs
 stats_walsh
-*/.ipynb_checkpoints/*
+**/.ipynb_checkpoints/*
