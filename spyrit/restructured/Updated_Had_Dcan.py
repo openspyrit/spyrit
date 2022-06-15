@@ -11,7 +11,7 @@ from scipy.sparse.linalg import aslinearoperator
 from pylops_gpu import Diagonal, LinearOperator
 from pylops_gpu.optimization.cg import cg
 
-from ..spyrit.misc.walsh_hadamard import walsh2_torch
+from ..misc.walsh_hadamard import walsh2_torch
 
 
 # ==================================================================================
