@@ -139,3 +139,7 @@ git push origin --delete <branch name>
 ```
 git mv old_filename new_filename
 ```
+* If you add data with many memory requirements and wish to remove it from history
+```
+git filter-branch -f --index-filter "git rm -rf --cached --ignore-unmatch path_to_file" HEAD 
+```
