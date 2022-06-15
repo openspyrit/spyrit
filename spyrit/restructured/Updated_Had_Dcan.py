@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-
 from torch import poisson
 from scipy.sparse.linalg import aslinearoperator
 from pylops_gpu import Diagonal, LinearOperator
@@ -33,7 +32,7 @@ class Forward_operator(nn.Module):
         self.Hsub.weight.data=torch.from_numpy(Hsub)
         self.Hsub.weight.data=self.Hsub.weight.data.float()
         self.Hsub.weight.requires_grad=False
-        
+
         # adjoint
         self.Hsub_adjoint = nn.Linear(self.M, self.N, False)
         self.Hsub_adjoint.weight.data=torch.from_numpy(Hsub.transpose())
@@ -68,16 +67,20 @@ class Split_Forward_operator(Forward_operator):
     def __init__(self, Hsub):           
         # [H^+, H^-]
         super().__init__(Hsub)
+        
+        even_index = range(0,2*self.M,2);
+        odd_index = range(1,2*self.M,2);
+
         H_pos = np.zeros(Hsub.shape);
         H_neg = np.zeros(Hsub.shape);
         H_pos[Hsub>0] = Hsub[Hsub>0];
         H_neg[Hsub<0] = -Hsub[Hsub<0];
         Hposneg = np.zeros((2*self.M,self.N));
-        Hposneg[:self.M,:] = H_pos;
-        Hposneg[self.M:,:] = H_neg;
+        Hposneg[even_index,:] = H_pos;
+        Hposneg[odd_index,:] = H_neg;
         
         self.Hpos_neg = nn.Linear(self.N, 2*self.M, False) 
-        self.Hpos_neg.weight.data=torch.from_numpy(Hposneg.T)
+        self.Hpos_neg.weight.data=torch.from_numpy(Hposneg)
         self.Hpos_neg.weight.data=self.Hpos_neg.weight.data.float()
         self.Hpos_neg.weight.requires_grad=False
               
@@ -119,7 +122,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
         b, N = x.shape
         x = self.Perm(x);
         if n is None:
-            n = int(sqrt(N));
+            n = int(np.sqrt(N));
         x = x.view(b, 1, n, n);
         x = walsh2_torch(x);
         x = x.view(b, N);
@@ -129,7 +132,6 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
 # ==================================================================================
 # Acquisition
 # ==================================================================================
-  
 # ==================================================================================        
 class Acquisition(nn.Module):
 # ==================================================================================
@@ -210,7 +212,7 @@ class Split_diag_poisson_preprocess(nn.Module):
     and also allows to compute var = 2*Diag(m_+ + m_-)/N0**2
     """
     def __init__(self, N0, M, N):
-        super().__init()
+        super().__init__()
         self.N0 = N0;
                 
         self.N = N;
@@ -218,19 +220,20 @@ class Split_diag_poisson_preprocess(nn.Module):
         
         self.even_index = range(0,2*M,2);
         self.odd_index = range(1,2*M,2);
- 
+
+
     def forward(self, x, FO):
         # Input shape [b*c,2*M]
         # Output shape [b*c,M]
-        x = x[:,self.even_index] - x[:,self.uneven_index]
+        x = x[:,self.even_index] - x[:,self.odd_index]
         x = 2*x/self.N0 - FO.Forward_op(torch.ones(x.shape[0], self.N).to(x.device))
         return x
     
     def sigma(self, x):
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
-        x = x[:,:,self.even_index] + x[:,:,self.uneven_index]
-        x = 4*x/self.N0**2
+        x = x[:,self.even_index] + x[:,self.odd_index]
+        x = 4*x/(self.N0**2)
         return x
 
 
