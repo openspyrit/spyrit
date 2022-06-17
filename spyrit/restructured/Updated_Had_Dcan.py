@@ -8,7 +8,8 @@ import numpy as np
 from torch import poisson
 from scipy.sparse.linalg import aslinearoperator
 from pylops_gpu import Diagonal, LinearOperator
-from pylops_gpu.optimization.cg import cg
+# from pylops_gpu.optimization.cg import cg --- currently not working
+from pylops_gpu.optimization.leastsquares import NormalEquationsInversion
 
 from ..misc.walsh_hadamard import walsh2_torch
 
@@ -297,7 +298,7 @@ class Tikhonov_cg(nn.Module):
         # FO = Forward Operator - Works for ANY forward operator
         self.FO = FO;
         self.n_iter = n_iter
-        self.mu = nn.Parameter(torch.tensor([mu], requires_grad=True)) #need device maybe?
+        self.mu = nn.Parameter(torch.tensor([float(mu)], requires_grad=True)) #need device maybe?
         # if user wishes to keep mu constant, then he can change requires gard to false 
 
     def A(self,x):
@@ -325,35 +326,8 @@ class Tikhonov_cg(nn.Module):
         # x_0 - input (b*c, N) - previous estimate
         # z - output (b*c, N)
         # n_step steps of Conjugate gradient to solve \|Ax-b\|^2 + mu \|x - x_0\|^2
-        y = x-self.FO.Foward_op(x);
+        y = x-self.FO.Forward_op(x_0);
         x = self.CG(y, x.shape, x.device);
-        x = x_0 + self.FO.adjoint(x)
-        return x
-
-
-# ==================================================================================
-class Tikhonov_cg_pylops(nn.Module):
-# ==================================================================================
-    def __init__(self, FO, n_iter = 5, mu = 0.1):
-        super().__init__()
-        # FO = Forward Operator - Needs to be pylops compatible!!
-        #-- Pseudo-inverse to determine levels of noise.
-        # Not sure about the support of learnable mu!!! (to be tested)
-        self.FO = FO;
-        self.mu = mu;
-        self.n_iter = n_iter
-
-    def A(self):
-        return self.FO.OP*self.FO.OP.H + self.mu*Diagonal(torch.ones(self.FO.M).to(self.FO.OP.device))
-        
-    def forward(self, x, x_0):
-        # x - input (b*c, M) - measurement vector
-        # x_0 - input (b*c, N) - previous estimate
-        # z - output (b*c, N)
-        
-        # Conjugate gradient to solve \|Ax-b\|^2 + mu \|x - x_0\|^2
-        y = self.FO.Forward_op(x_0)-x;
-        x,_ = cg(self.A(), y, niter = self.n_iter) #see pylops gpu conjugate gradient
         x = x_0 + self.FO.adjoint(x)
         return x
 
@@ -366,12 +340,12 @@ class Tikhonov_solve(nn.Module):
         # FO = Forward Operator - Needs to be matrix-storing
         #-- Pseudo-inverse to determine levels of noise.
         self.FO = FO;
-        self.mu = nn.Parameter(torch.tensor([mu], requires_grad=True)) #need device maybe?
+        self.mu = nn.Parameter(torch.tensor([float(mu)], requires_grad=True)) #need device maybe?
     
     def solve(self, x):
-        A = self.FO.Mat()@torch.transpose(self.FO.Mat())+self.mu*torch.eye(self.FO.M);
+        A = self.FO.Mat()@torch.transpose(self.FO.Mat(), 0,1)+self.mu*torch.eye(self.FO.M);
         A = A.view(1, self.FO.M, self.FO.M);
-        A = A.repeat(x.shape[0],1); # Not optimal
+        A = A.repeat(x.shape[0],1, 1); # Not optimal
         x = torch.linalg.solve(A, x);
         return x;
 
@@ -381,24 +355,52 @@ class Tikhonov_solve(nn.Module):
         # z - output (b*c, N)
         
         # uses torch.linalg.solve [As of Pytorch 1.9 autograd supports solve!!]
-        x = self.FO.Forward_op(x_0)-x;
+        x = x - self.FO.Forward_op(x_0);
         x = self.solve(x);
         x = x_0 + self.FO.adjoint(x)
         return x
 
 # ==================================================================================
+class Orthogonal_Tikhonov(nn.Module):
+# ==================================================================================
+    def __init__(self, FO, mu = 0.1):
+        super().__init__()
+        # FO = Forward Operator
+        #-- Pseudo-inverse to determine levels of noise.
+        self.FO = FO;
+        self.mu = nn.Parameter(torch.tensor([float(mu)], requires_grad=True)) #need device maybe?
+        
+    def forward(self, x, x_0):
+        # x - input (b*c, M) - measurement vector
+        # x_0 - input (b*c, N) - previous estimate
+        # z - output (b*c, N)
+        
+        x = x - self.FO.Forward_op(x_0);
+        #x = torch.div(x,(self.mu+1));
+        x = x*(1/(self.FO.N+self.mu));# for hadamard, otherwise, line above
+        x = self.FO.adjoint(x) + x_0;
+        return x;
+
+
+# ==================================================================================
 class Generalised_Tikhonov_cg(nn.Module):# not inheriting from Tikhonov_cg because 
 #                           the of the way var is called in CG
 # ==================================================================================
-    def __init__(self, FO, Sigma_prior, n_iter):
+    def __init__(self, FO, Sigma_prior, n_iter = 6):
         super().__init__()
         # FO = Forward Operator - Works for ANY forward operator
         # if user wishes to keep mu constant, then he can change requires gard to false 
         self.FO = FO;
-        self.Sigma_prior = ... # linear and follow
+        self.n_iter = n_iter;
+
+        self.Sigma_prior = nn.Linear(self.FO.N, self.FO.N, False); 
+        self.Sigma_prior.weight.data=torch.from_numpy(Sigma_prior)
+        self.Sigma_prior.weight.data=self.Sigma_prior.weight.data.float()
+        self.Sigma_prior.weight.requires_grad=False
+
 
     def A(self,x, var):
-        return self.FO.Forward_op(self.Sigma_prior(self.FO.adjoint(x))) + torch.mul(x,var);
+        return self.FO.Forward_op(self.Sigma_prior(self.FO.adjoint(x))) + torch.mul(x,var); # the first part can be precomputed for optimisation
 
     def CG(self, y, var, shape, device):
         x = torch.ones(shape).to(device); 
@@ -423,35 +425,10 @@ class Generalised_Tikhonov_cg(nn.Module):# not inheriting from Tikhonov_cg becau
         # var_noise - input (b*c, M) - estimated variance of noise
         # z - output (b*c, N)
         # n_step steps of Conjugate gradient to solve 
-        # \|Ax-b\|^2_{sigma_prior^-1} + mu \|x - x_0\|^2_{var_noise^-1}
-        y = x-self.FO.Foward_op(x);
-        x = self.CG(y, var, x.shape, x.device);
+        # \|Ax-b\|^2_{sigma_prior^-1} + \|x - x_0\|^2_{var_noise^-1}
+        y = x-self.FO.Forward_op(x_0);
+        x = self.CG(y, var_noise, x.shape, x.device);
         x = x_0 + self.Sigma_prior(self.FO.adjoint(x))
-        return x
-
-
-# ==================================================================================
-class Generalised_Tikhonov_cg_pylops(nn.Module):
-# ==================================================================================
-    def __init__(self, FO, Sigma_prior, n_steps):
-        super().__init__()
-        # FO = Forward Operator - pylops compatible! Does not allow to
-        # optimise the matrices Sigma_prior yet
-        self.FO = FO;
-        self.Sigma_prior = LinearOperator(aslinearoperator(Sigma_prior), self.FO.OP.device, dtype = self.FO.OP.dtype)
-
-    def A(self, var):
-        return self.FO.OP*self.Sigma_prior*self.FO.OP.H + Diagonal(var.to(self.FO.OP.device));
-        
-    def forward(self, x, x_0, var_noise):
-        # x - input (b*c, M) - measurement vector
-        # x_0 - input (b*c, N) - previous estimate
-        # z - output (b*c, N)
-        
-        # Conjugate gradient to solve \|Ax-b\|^2_Var_noise + \|x - x_0\|^2_Sigma_prior
-        y = self.FO.Forward_op(x_0)-x;
-        x,_ = cg(self.A(var_noise), y, niter = self.n_iter)
-        x = x_0 + self.Sigma_prior(self.FO.adjoint(x)) # to check that cast works well!!!
         return x
 
 
@@ -461,49 +438,30 @@ class Generalised_Tikhonov_solve(nn.Module):
     def __init__(self, FO, Sigma_prior):
         super().__init__()
         # FO = Forward Operator - Needs to be matrix-storing
-        #-- Pseudo-inverse to determine levels of noise.
+        # -- Pseudo-inverse to determine levels of noise.
         self.FO = FO;
-        #self.mu = mu;
-        self.Sigma_prior = ... #Needs to be a matrix format
-    
+        self.Sigma_prior = nn.Parameter(torch.from_numpy(Sigma_prior), requires_grad=True)
+
     def solve(self, x, var):
-        A = self.FO.Mat()@Sigma_prior@torch.transpose(self.FO.Mat())+self.mu*torch.diag(var);#to check
+        A = self.FO.Mat()@Sigma_prior@torch.transpose(self.FO.Mat(),0,1)+torch.diag(var);
         A = A.view(1, self.FO.M, self.FO.M);
-        A = A.repeat(x.shape[0],1);
+        A = A.repeat(x.shape[0],1,1);
         x = torch.linalg.solve(A, x);
         return x;
 
-    def forward(self, x, x_0):
+    def forward(self, x, x_0, var_noise):
         # x - input (b*c, M) - measurement vector
         # x_0 - input (b*c, N) - previous estimate
         # z - output (b*c, N)
         
         # uses torch.linalg.solve [As of Pytorch 1.9 autograd supports solve!!]
-        x = self.FO.Forward_op(x_0)-x;
-        x = self.solve(x, var);
+        # torch linal solve uses (I believe the LU decomposition of matrix A to
+        # solve the linear system.
+
+        x = x - self.FO.Forward_op(x_0);
+        x = self.solve(x, var_noise);
         x = x_0 + self.Sigma_prior@self.FO.adjoint(x) # need to check that this is correct
         return x
-
-
-# ==================================================================================
-class Orthogonal_Tikhonov(nn.Module):
-# ==================================================================================
-    def __init__(self, FO, mu = 0.1):
-        super().__init__()
-        # FO = Forward Operator
-        #-- Pseudo-inverse to determine levels of noise.
-        self.FO = FO;
-        self.mu = nn.Parameter(torch.tensor([mu], requires_grad=True)) #need device maybe?
-        
-    def forward(self, x, x_0):
-        # x - input (b*c, M) - measurement vector
-        # x_0 - input (b*c, N) - previous estimate
-        # z - output (b*c, N)
-        
-        x = x - self.FO.Forward_op(x_0);
-        x = torch.div(x,(self.mu+1));
-        x = self.FO.adjoint(x) + x_0;
-        return x;
 
 
 # ===========================================================================================
@@ -732,3 +690,80 @@ class DConvNet(nn.Module):
     def forward(self,x):
         x = self.convnet(x)
         return x
+
+
+
+
+
+# DOES NOT WORK YET BECAUSE MatrixLinearOperator are not subscriptable
+#
+## ==================================================================================
+#class Tikhonov_cg_pylops(nn.Module):
+## ==================================================================================
+#    def __init__(self, FO, n_iter = 5, mu = 0.1):
+#        super().__init__()
+#        # FO = Forward Operator - Needs to be pylops compatible!!
+#        #-- Pseudo-inverse to determine levels of noise.
+#        # Not sure about the support of learnable mu!!! (to be tested)
+#        self.FO = FO;
+#        self.mu = mu;
+#        self.n_iter = n_iter
+#
+#    def A(self):
+#        print(type(self.FO.Op))
+#        # self.FO.Op.H NOT WORKING FOR NOW - I believe it's a bug, but here it isa
+#        #
+#        #File ~/.conda/envs/spyrit-env/lib/python3.8/site-packages/pylops_gpu/LinearOperator.py:336, in LinearOperator._adjoint(self)
+#        #    334 def _adjoint(self):
+#        #    335     """Default implementation of _adjoint; defers to rmatvec."""
+#        #--> 336     shape = (self.shape[1], self.shape[0])
+#        #    337     return _CustomLinearOperator(shape, matvec=self.rmatvec,
+#        #    338                                  rmatvec=self.matvec,
+#        #    339                                  dtype=self.dtype, explicit=self.explicit,
+#        #    340                                  device=self.device, tocpu=self.tocpu,
+#        #    341                                  togpu=self.togpu)
+#        #
+#        #TypeError: 'MatrixLinearOperator' object is not subscriptable
+#        # Potentially needs to be improved
+#        return self.FO.Op*self.FO.Op.T + self.mu*Diagonal(torch.ones(self.FO.M).to(self.FO.OP.device))
+#        
+#    def forward(self, x, x_0):
+#        # x - input (b*c, M) - measurement vector
+#        # x_0 - input (b*c, N) - previous estimate
+#        # z - output (b*c, N)
+#        
+#        # Conjugate gradient to solve \|Ax-b\|^2 + mu \|x - x_0\|^2
+#        #y = self.FO.Forward_op(x_0)-x;
+#        #x,_ = cg(self.A(), y, niter = self.n_iter) #see pylops gpu conjugate gradient
+#        #x = x_0 + self.FO.adjoint(x)
+#        x = NormalEquationsInversion(Op = self.FO.Op, Regs = None, data = x, \
+#                epsI = self.mu, x0 = x_0, device = self.FO.Op.device, \
+#                **dict(niter = self.n_iter))
+#        return x
+#
+# DOES NOT WORK YET BECAUSE MatrixLinearOperator are not subscriptable
+#
+## ==================================================================================
+#class Generalised_Tikhonov_cg_pylops(nn.Module):
+## ==================================================================================
+#    def __init__(self, FO, Sigma_prior, n_steps):
+#        super().__init__()
+#        # FO = Forward Operator - pylops compatible! Does not allow to
+#        # optimise the matrices Sigma_prior yet
+#        self.FO = FO;
+#        self.Sigma_prior = LinearOperator(aslinearoperator(Sigma_prior), self.FO.OP.device, dtype = self.FO.OP.dtype)
+#
+#    def A(self, var):
+#        return self.FO.OP*self.Sigma_prior*self.FO.OP.H + Diagonal(var.to(self.FO.OP.device));
+#        
+#    def forward(self, x, x_0, var_noise):
+#        # x - input (b*c, M) - measurement vector
+#        # x_0 - input (b*c, N) - previous estimate
+#        # z - output (b*c, N)
+#        
+#        # Conjugate gradient to solve \|Ax-b\|^2_Var_noise + \|x - x_0\|^2_Sigma_prior
+#        y = self.FO.Forward_op(x_0)-x;
+#        x,_ = cg(self.A(var_noise), y, niter = self.n_iter)
+#        x = x_0 + self.Sigma_prior(self.FO.adjoint(x)) # to check that cast works well!!!
+#        return x
+#
