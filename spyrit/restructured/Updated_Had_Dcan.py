@@ -4,12 +4,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import math
 
 from torch import poisson
 from scipy.sparse.linalg import aslinearoperator
-from pylops_gpu import Diagonal, LinearOperator
-# from pylops_gpu.optimization.cg import cg --- currently not working
-from pylops_gpu.optimization.leastsquares import NormalEquationsInversion
+#from pylops_gpu import Diagonal, LinearOperator
+#from pylops_gpu.optimization.cg import cg --- currently not working
+#from pylops_gpu.optimization.leastsquares import NormalEquationsInversion
 
 from ..misc.walsh_hadamard import walsh2_torch
 
@@ -90,16 +91,16 @@ class Split_Forward_operator(Forward_operator):
         # output shape : [b*c, 2*M]
         x = self.Hpos_neg(x)    
         return x
-
-# ==================================================================================
-class Split_Forward_operator_pylops(Split_Forward_operator):
-# ==================================================================================
-# Pylops compatible split forward operator 
-    def __init__(self, Hsub, device = "cpu"):           
-        # [H^+, H^-]
-        super().__init__(Hsub)
-        self.Op = LinearOperator(aslinearoperator(Hsub), device = device, dtype = torch.float32)
-
+#
+## ==================================================================================
+#class Split_Forward_operator_pylops(Split_Forward_operator):
+## ==================================================================================
+## Pylops compatible split forward operator 
+#    def __init__(self, Hsub, device = "cpu"):           
+#        # [H^+, H^-]
+#        super().__init__(Hsub)
+#        self.Op = LinearOperator(aslinearoperator(Hsub), device = device, dtype = torch.float32)
+#
 
 # ==================================================================================
 class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform hadamard
@@ -125,7 +126,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
         if n is None:
             n = int(np.sqrt(N));
         x = x.view(b, 1, n, n);
-        x = walsh2_torch(x);
+        x = 1/self.N*walsh2_torch(x);#to apply the inverse transform
         x = x.view(b, N);
         return x;
 
@@ -234,7 +235,7 @@ class Split_diag_poisson_preprocess(nn.Module):
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
         x = x[:,self.even_index] + x[:,self.odd_index]
-        x = 4*x/(self.N0**2)
+        x = x/(4*self.N0**2)
         return x
 
 
@@ -293,32 +294,36 @@ class gradient_step(nn.Module):
 # ==================================================================================
 class Tikhonov_cg(nn.Module):
 # ==================================================================================
-    def __init__(self, FO, n_iter = 5, mu = 0.1):
+    def __init__(self, FO, n_iter = 5, mu = 0.1, eps = 1e-6):
         super().__init__()
         # FO = Forward Operator - Works for ANY forward operator
         self.FO = FO;
         self.n_iter = n_iter
         self.mu = nn.Parameter(torch.tensor([float(mu)], requires_grad=True)) #need device maybe?
         # if user wishes to keep mu constant, then he can change requires gard to false 
+        self.eps = eps;
+
 
     def A(self,x):
-        return self.FO.Forward_op(self.FO.adjoint(x)) - self.mu*x;
+        return self.FO.Forward_op(self.FO.adjoint(x)) + self.mu*x;
 
     def CG(self, y, shape, device):
-        x = torch.ones(shape).to(device); 
+        x = torch.zeros(shape).to(device); 
         r = y - self.A(x);
         c = r.clone()
         kold = torch.sum(r * r)
+        a = torch.ones((1));
         for i in range(self.n_iter): 
-            Ac = self.A(c)
-            cAc =  torch.sum(c * Ac)
-            a =  kold / cAc
-            x += a * c
-            r -= a * Ac
-            k = torch.sum(r * r)
-            b = k / kold
-            c = r + b * c
-            kold = k
+            if a>self.eps : # Necessary to avoid numerical issues with a = 0 -> a = NaN
+                Ac = self.A(c)
+                cAc =  torch.sum(c * Ac)
+                a =  kold / cAc
+                x += a * c
+                r -= a * Ac
+                k = torch.sum(r * r)
+                b = k / kold
+                c = r + b * c
+                kold = k
         return x
         
     def forward(self, x, x_0):
@@ -343,9 +348,9 @@ class Tikhonov_solve(nn.Module):
         self.mu = nn.Parameter(torch.tensor([float(mu)], requires_grad=True)) #need device maybe?
     
     def solve(self, x):
-        A = self.FO.Mat()@torch.transpose(self.FO.Mat(), 0,1)+self.mu*torch.eye(self.FO.M);
+        A = self.FO.Mat()@torch.transpose(self.FO.Mat(), 0,1)+self.mu*torch.eye(self.FO.M); # Can precompute H@H.T to save time!
         A = A.view(1, self.FO.M, self.FO.M);
-        A = A.repeat(x.shape[0],1, 1); # Not optimal
+        A = A.repeat(x.shape[0],1, 1); # Not optimal in terms of memory, but otherwise the torch.linalg.solve doesn't work
         x = torch.linalg.solve(A, x);
         return x;
 
@@ -386,7 +391,7 @@ class Orthogonal_Tikhonov(nn.Module):
 class Generalised_Tikhonov_cg(nn.Module):# not inheriting from Tikhonov_cg because 
 #                           the of the way var is called in CG
 # ==================================================================================
-    def __init__(self, FO, Sigma_prior, n_iter = 6):
+    def __init__(self, FO, Sigma_prior, n_iter = 6, eps = 1e-6):
         super().__init__()
         # FO = Forward Operator - Works for ANY forward operator
         # if user wishes to keep mu constant, then he can change requires gard to false 
@@ -397,26 +402,29 @@ class Generalised_Tikhonov_cg(nn.Module):# not inheriting from Tikhonov_cg becau
         self.Sigma_prior.weight.data=torch.from_numpy(Sigma_prior)
         self.Sigma_prior.weight.data=self.Sigma_prior.weight.data.float()
         self.Sigma_prior.weight.requires_grad=False
+        self.eps = eps;
 
 
     def A(self,x, var):
         return self.FO.Forward_op(self.Sigma_prior(self.FO.adjoint(x))) + torch.mul(x,var); # the first part can be precomputed for optimisation
 
     def CG(self, y, var, shape, device):
-        x = torch.ones(shape).to(device); 
+        x = torch.zeros(shape).to(device); 
         r = y - self.A(x, var);
         c = r.clone()
         kold = torch.sum(r * r)
-        for i in range(self.n_iter): 
-            Ac = self.A(c, var)
-            cAc =  torch.sum(c * Ac)
-            a =  kold / cAc
-            x += a * c
-            r -= a * Ac
-            k = torch.sum(r * r)
-            b = k / kold
-            c = r + b * c
-            kold = k
+        a = torch.ones((1));
+        for i in range(self.n_iter):
+            if a > self.eps :
+                Ac = self.A(c, var)
+                cAc =  torch.sum(c * Ac)
+                a =  kold / cAc
+                x += a * c
+                r -= a * Ac
+                k = torch.sum(r * r)
+                b = k / kold
+                c = r + b * c
+                kold = k
         return x
         
     def forward(self, x, x_0, var_noise):
@@ -440,12 +448,14 @@ class Generalised_Tikhonov_solve(nn.Module):
         # FO = Forward Operator - Needs to be matrix-storing
         # -- Pseudo-inverse to determine levels of noise.
         self.FO = FO;
-        self.Sigma_prior = nn.Parameter(torch.from_numpy(Sigma_prior), requires_grad=True)
+        self.Sigma_prior = nn.Parameter(\
+                torch.from_numpy(Sigma_prior.astype("float32")), requires_grad=True)
 
     def solve(self, x, var):
-        A = self.FO.Mat()@Sigma_prior@torch.transpose(self.FO.Mat(),0,1)+torch.diag(var);
+        A = self.FO.Mat()@self.Sigma_prior@torch.transpose(self.FO.Mat(), 0,1)
         A = A.view(1, self.FO.M, self.FO.M);
-        A = A.repeat(x.shape[0],1,1);
+        A = A.repeat(x.shape[0],1,1);# this could be precomputed maybe
+        A += torch.diag_embed(var);
         x = torch.linalg.solve(A, x);
         return x;
 
@@ -460,7 +470,7 @@ class Generalised_Tikhonov_solve(nn.Module):
 
         x = x - self.FO.Forward_op(x_0);
         x = self.solve(x, var_noise);
-        x = x_0 + self.Sigma_prior@self.FO.adjoint(x) # need to check that this is correct
+        x = x_0 + torch.matmul(self.Sigma_prior,self.FO.adjoint(x).T).T
         return x
 
 
@@ -472,22 +482,23 @@ class Generalized_Orthogonal_Tikhonov(nn.Module):
         # FO = Forward Operator - needs foward operator with defined inverse transform
         #-- Pseudo-inverse to determine levels of noise.
         self.FO = FO;
-        self.comp = nn.Linear(self.FO.M, self.FO.N, False)
+        self.comp = nn.Linear(self.FO.M, self.FO.N-self.FO.M, False)
         self.denoise_layer = Denoise_layer(self.FO.M);
         
-        diag_index = np.diag_indices(self.n**2);
+        diag_index = np.diag_indices(self.FO.N);
         var_prior = sigma_prior[diag_index];
+        var_prior = var_prior[:self.FO.M]
 
         self.denoise_layer.weight.data = torch.from_numpy(var_prior)
         self.denoise_layer.weight.data = self.denoise_layer.weight.data.float();
         self.denoise_layer.weight.requires_grad = False
 
-        Sigma1 = Sigma[:self.FO.M,:self.FO.M];
-        Sigma21 = Sigma[self.FO.M:,:self.FO.M];
+        Sigma1 = sigma_prior[:self.FO.M,:self.FO.M];
+        Sigma21 = sigma_prior[self.FO.M:,:self.FO.M];
         W = Sigma21@np.linalg.inv(Sigma1);
-
-        self.comp.weight.data=torch.from_numpy(W.T)
-        self.comp.weight.data=self.fc1.weight.data.float()
+        
+        self.comp.weight.data=torch.from_numpy(W)
+        self.comp.weight.data=self.comp.weight.data.float()
         self.comp.weight.requires_grad=False
         
     def forward(self, x, x_0, var):
@@ -499,14 +510,15 @@ class Generalized_Orthogonal_Tikhonov(nn.Module):
 
         x = x - self.FO.Forward_op(x_0);
         y1 = torch.mul(self.denoise_layer(var),x);
-        #y1 = y1.view(x.shape[0],self.FO.M) # Careful about shapes
         y2 = self.comp(y1);
 
         y = torch.cat((y1,y2),-1);
-        x = x_0+FO.inverse(y) 
+        x = x_0+self.FO.inverse(y) 
         return x;
 
+# ===========================================================================================
 class Denoise_layer(nn.Module):
+# ===========================================================================================
     r"""Applies a transformation to the incoming data: :math:`y = A^2/(A^2+x) `
     Args:
         in_features: size of each input sample
@@ -542,12 +554,6 @@ class Denoise_layer(nn.Module):
     def extra_repr(self):
         return 'in_features={}'.format(self.in_features)
 
-
-# ==================================================================================
-# Image Domain denoising layers
-# ==================================================================================
-
-
 def tikho(inputs, weight):
     # type: (Tensor, Tensor) -> Tensor
     r"""
@@ -564,8 +570,12 @@ def tikho(inputs, weight):
     return ret
 
 
-
+# ==================================================================================
+# Image Domain denoising layers
+# ==================================================================================
+# ===========================================================================================
 class Unet(nn.Module):
+# ===========================================================================================
     def __init__(self, in_channel=1, out_channel=1):
         super(Unet, self).__init__()
         #Descending branch
@@ -606,7 +616,7 @@ class Unet(nn.Module):
                     torch.nn.ConvTranspose2d(in_channels=mid_channel, out_channels=out_channels, kernel_size=kernel_size, stride=2,padding=padding, output_padding=1)
                     )
 
-            return  block
+            return block
     
 
     def concat(self, upsampled, bypass):
@@ -657,7 +667,9 @@ class Unet(nn.Module):
         x = self.final_layer(x)      
         return x
     
+# ===========================================================================================
 class ConvNet(nn.Module):
+# ===========================================================================================
     def __init__(self):
         super(ConvNet,self).__init__()
         self.convnet = nn.Sequential(OrderedDict([
@@ -672,7 +684,9 @@ class ConvNet(nn.Module):
         x = self.convnet(x)
         return x
     
+# ===========================================================================================
 class DConvNet(nn.Module):  
+# ===========================================================================================
     def __init__(self):
         super(DConvNet,self).__init__()
         self.convnet = nn.Sequential(OrderedDict([
@@ -691,6 +705,17 @@ class DConvNet(nn.Module):
         x = self.convnet(x)
         return x
 
+
+
+
+
+# ==================================================================================
+# Complete Reconstruction method
+# ==================================================================================
+# ===========================================================================================
+class DC_Net(nn.Module):
+# ===========================================================================================
+    def __init__(self, in_channel=1, out_channel=1):
 
 
 
