@@ -226,8 +226,16 @@ class Split_diag_poisson_preprocess(nn.Module):
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
         x = x[:,self.even_index] + x[:,self.odd_index]
-        x = x/(4*self.N0**2)
+        x = x/(self.N0**2)
         return x
+
+    def sigma_from_image(self, x, FO):
+        # x - image. Input shape (b*c, N)
+        # FO - Forward operator.
+        x = FO.Forward_op(x);
+        x = x[:,self.even_index] + x[:,self.odd_index]
+        x = x/(self.N0) # here the N0 Contribution is not squared.
+        return x;
 
 
 # ==================================================================================
@@ -246,6 +254,7 @@ class Pinv_orthogonal(nn.Module):
         # output (b*c, N)
         x = (1/FO.N)*FO.adjoint(x);
         return x
+
 
 # ==================================================================================
 class learned_measurement_to_image(nn.Module):
@@ -501,6 +510,74 @@ class Generalized_Orthogonal_Tikhonov(nn.Module):
         return x;
 
 # ===========================================================================================
+class List_Generalized_Orthogonal_Tikhonov(nn.Module): 
+# ===========================================================================================   
+    def __init__(self, sigma_prior_list, M, N, n_comp = None, n_denoi=None):
+        super().__init__()
+        # FO = Forward Operator - needs foward operator with defined inverse transform
+        #-- Pseudo-inverse to determine levels of noise.
+       
+        if n_denoi is None :
+            n_denoi = len(sigma_prior_list)
+        self.n_denoi = n_denoi
+       
+        if n_comp is None :
+            n_comp = len(sigma_prior_list)
+        self.n_comp = n_comp
+      
+
+        comp_list = [];
+        for i in range(self.n_comp):
+            comp_list.append(nn.Linear(M, N-M, False))
+            
+            index = min(i,len(sigma_prior_list)-1)
+            Sigma1 = sigma_prior_list[index][:M,:M];
+            Sigma21 = sigma_prior_list[index][M:,:M];
+            
+            W = Sigma21@np.linalg.inv(Sigma1);
+
+            comp_list[i].weight.data=torch.from_numpy(W)
+            comp_list[i].weight.data=comp_list[i].weight.data.float()
+            comp_list[i].weight.requires_grad=False
+ 
+        self.comp_list = nn.ModuleList(comp_list);
+       
+        denoise_list = [];
+        for i in range(self.n_denoi):
+            denoise_list.append(Denoise_layer(M))
+            
+            index = min(i,len(sigma_prior_list)-1)
+        
+            diag_index = np.diag_indices(N);
+            var_prior = sigma_prior_list[index][diag_index];
+            var_prior = var_prior[:M]
+     
+            denoise_list[i].weight.data = torch.from_numpy(var_prior)
+            denoise_list[i].weight.data = denoise_list[i].weight.data.float();
+            denoise_list[i].weight.requires_grad = True;
+        self.denoise_list = nn.ModuleList(denoise_list);
+ 
+     
+    def forward(self, x, x_0, var, FO, iterate):
+        # x - input (b*c, M) - measurement vector
+        # var - input (b*c, M) - measurement variance
+        # x_0 - input (b*c, N) - previous estimate
+        # z - output (b*c, N)
+        #
+
+        i = min(iterate, self.n_denoi-1)
+        j = min(iterate, self.n_comp-1)
+
+        x = x - FO.Forward_op(x_0);
+        y1 = torch.mul(self.denoise_list[i](var),x);
+        y2 = self.comp_list[j](y1);
+
+        y = torch.cat((y1,y2),-1);
+        x = x_0+FO.inverse(y) 
+        return x;
+
+
+# ===========================================================================================
 class Denoise_layer(nn.Module):
 # ===========================================================================================
     r"""Applies a transformation to the incoming data: :math:`y = A^2/(A^2+x) `
@@ -688,6 +765,24 @@ class DConvNet(nn.Module):
     def forward(self,x):
         x = self.convnet(x)
         return x
+    
+# ===========================================================================================
+class List_denoi(nn.Module):  
+# ===========================================================================================
+    def __init__(self, Denoi, n_denoi):
+        super(List_denoi,self).__init__()
+        self.n_denoi = n_denoi;
+        conv_list = [];
+        for i in range(n_denoi):
+            conv_list.append(copy.deepcopy(denoi));
+        self.conv = nn.ModuleList(conv_list);
+        
+    def forward(self,x,iterate):
+        index = min(iterate, self.n_denoi-1); 
+        x = self.conv[index](x);
+        return x
+
+
 
 
 
@@ -783,8 +878,222 @@ class DC_Net(nn.Module):
         return x;
 
 
+# ===========================================================================================
+class Pinv_Net(nn.Module):
+# ===========================================================================================
+    def __init__(self, Acq, PreP, DC_layer, Denoi):
+        super().__init__()
+        self.Acq = Acq; # must be a split operator for now
+        self.PreP = PreP;
+        self.DC_layer = DC_layer; # must be Pinv
+        self.Denoi = Denoi;
+
+    def forward(self, x):
+        # x - of shape [b,c,h,w]
+        b,c,h,w = x.shape;
+
+        # Acquisition
+        x = x.view(b*c,h*w); # shape x = [b*c,h*w] = [b*c,N]
+        x_0 = torch.zeros_like(x).to(x.device);
+        x = self.Acq(x); #  shape x = [b*c, 2*M]
+
+        # Preprocessing
+        sigma_noi = self.PreP.sigma(x);
+        x = self.PreP(x, self.Acq.FO); # shape x = [b*c, M]
+
+        # Data consistency layer
+        # measurements to the image domain 
+        x = self.DC_layer(x, self.Acq.FO); # shape x = [b*c, N]
+
+        # Image-to-image mapping via convolutional networks 
+        # Image domain denoising 
+        x = x.view(b*c,1,h,w);
+        x = self.Denoi(x); # shape stays the same
+
+        x = x.view(b,c,h,w);
+        return x;
+
+    def forward_mmse(self, x):
+        # x - of shape [b,c,h,w]
+        b,c,h,w = x.shape;
+
+        # Acquisition
+        x = x.view(b*c,h*w); # shape x = [b*c,h*w] = [b*c,N]
+        x_0 = torch.zeros_like(x).to(x.device);
+        x = self.Acq(x); #  shape x = [b*c, 2*M]
+
+        # Preprocessing
+        sigma_noi = self.PreP.sigma(x);
+        x = self.PreP(x, self.Acq.FO); # shape x = [b*c, M]
+
+        # Data consistency layer
+        # measurements to the image domain 
+        x = self.DC_layer(x, self.Acq.FO); # shape x = [b*c, N]
+
+        # Image-to-image mapping via convolutional networks 
+        # Image domain denoising 
+        x = x.view(b*c,1,h,w);
+        return x;
+
+    def reconstruct(self, x, h = None, w = None):
+        # x - of shape [b,c, 2M]
+        b, c, M2 = x.shape;
+        
+        if h is None :
+            h = int(np.sqrt(self.Acq.FO.N));           
+        
+        if w is None :
+            w = int(np.sqrt(self.Acq.FO.N));        
+        
+        x = x.view(b*c, M2)
+        x_0 = torch.zeros((b*c, self.Acq.FO.N)).to(x.device);
+
+        # Preprocessing
+        sigma_noi = self.PreP.sigma(x);
+        x = self.PreP(x, self.Acq.FO); # shape x = [b*c, M]
+
+        # Data consistency layer
+        # measurements to the image domain 
+        x = self.DC_layer(x, self.Acq.FO); # shape x = [b*c, N]
+
+        # Image-to-image mapping via convolutional networks 
+        # Image domain denoising 
+        x = x.view(b*c,1,h,w);
+        x = self.Denoi(x); # shape stays the same
+
+        x = x.view(b,c,h,w);
+        return x;
 
 
+
+# ===========================================================================================
+class MoDL(nn.Module):
+# ===========================================================================================
+    def __init__(self, Acq, PreP, DC_layer, Denoi, n_iter):
+        super().__init__()
+        self.Acq = Acq; 
+        self.PreP = PreP;
+        self.DC_layer = DC_layer; #must be a non-generalized Tikhonov
+        self.Denoi = Denoi;
+        self.n_iter = n_iter
+
+    def forward(self, x):
+        # x - of shape [b,c,h,w]
+        b,c,h,w = x.shape;
+        
+        # Acquisition
+        x = x.view(b*c,h*w); # shape x = [b*c,h*w] = [b*c,N]
+        x_0 = torch.zeros_like(x).to(x.device);
+        x = self.Acq(x); #  shape x = [b*c, 2*M]
+
+        # Preprocessing
+        m = self.PreP(x, self.Acq.FO); # shape x = [b*c, M]
+
+        # Data consistency layer
+        # measurements to the image domain
+        for i in range(self.n_iter):
+            x = self.DC_layer(m, x_0, self.Acq.FO); # shape x = [b*c, N]
+            # Image-to-image mapping via convolutional networks 
+            # Image domain denoising 
+            x = x.view(b*c,1,h,w);
+            x = self.Denoi(x); # shape stays the same
+            x = x.view(b*c,h*w); # shape x = [b*c,h*w] = [b*c,N]
+            x_0 = x;
+        x = self.DC_layer(m, x_0, self.Acq.FO); # shape x = [b*c, N]
+        x = x.view(b,c,h,w);
+        return x;
+
+    def forward_mmse(self, x):
+        # x - of shape [b,c,h,w]
+        b,c,h,w = x.shape;
+
+        # Acquisition
+        x = x.view(b*c,h*w); # shape x = [b*c,h*w] = [b*c,N]
+        x_0 = torch.zeros_like(x).to(x.device);
+        x = self.Acq(x); #  shape x = [b*c, 2*M]
+
+        # Preprocessing
+        x = self.PreP(x, self.Acq.FO); # shape x = [b*c, M]
+
+        # Data consistency layer
+        # measurements to the image domain 
+        x = self.DC_layer(x, x_0, self.Acq.FO); # shape x = [b*c, N]
+
+        # Image-to-image mapping via convolutional networks 
+        # Image domain denoising 
+        x = x.view(b*c,1,h,w);
+        return x;
+
+    def reconstruct(self, x, h = None, w = None):
+        # x - of shape [b,c, 2M]
+        b, c, M2 = x.shape;
+        
+        if h is None :
+            h = int(np.sqrt(self.Acq.FO.N));           
+        
+        if w is None :
+            w = int(np.sqrt(self.Acq.FO.N));        
+        
+        x = x.view(b*c, M2)
+        x_0 = torch.zeros((b*c, self.Acq.FO.N)).to(x.device);
+
+        # Preprocessing
+        sigma_noi = self.PreP.sigma(x);
+        m = self.PreP(x, self.Acq.FO); # shape x = [b*c, M]
+        # Data consistency layer
+        # measurements to the image domain
+        for i in range(self.n_iter):
+            x = self.DC_layer(m, x_0, self.Acq.FO); # shape x = [b*c, N]
+            # Image-to-image mapping via convolutional networks 
+            # Image domain denoising 
+            x = x.view(b*c,1,h,w);
+            x = self.Denoi(x); # shape stays the same
+            x = x.view(b*c,h*w); # shape x = [b*c,h*w] = [b*c,N]
+            x_0 = x;
+
+        x = self.DC_layer(m, x_0, self.Acq.FO); # shape x = [b*c, N]
+        x = x.view(b,c,h,w);
+        return x;
+
+
+# ===========================================================================================
+class EM_net(nn.Module):
+# ===========================================================================================
+    def __init__(self, Acq, PreP, DC_layer, Denoi, n_iter, est_var = True):
+        super().__init__()
+        self.Acq = Acq; 
+        self.PreP = PreP;
+        self.DC_layer = DC_layer; # must be a tikhonov-list
+        self.Denoi = Denoi; # Must be a denoi-list
+        self.n_iter = n_iter
+
+    def forward(self, x):
+        # x - of shape [b,c,h,w]
+        b,c,h,w = x.shape;
+        
+        # Acquisition
+        x = x.view(b*c,h*w); # shape x = [b*c,h*w] = [b*c,N]
+        x_0 = torch.zeros_like(x).to(x.device);
+        x = self.Acq(x); #  shape x = [b*c, 2*M]
+
+        # Preprocessing
+        var_noi = self.PreP.sigma(x);
+        m = self.PreP(x, self.Acq.FO); # shape x = [b*c, M]
+
+        # Data consistency layer
+        # measurements to the image domain
+        for i in range(self.n_iter):
+            if est_var :
+                var_noi = self.PreP.sigma_from_image(x, self.Acq.FO)
+            x = self.DC_layer(m, x_0, self.Acq.FO, iterate = i); # shape x = [b*c, N]
+            # Image-to-image mapping via convolutional networks 
+            # Image domain denoising 
+            x = x.view(b*c,1,h,w);
+            x = self.Denoi(x, iterate = i); # shape stays the same
+            x = x.view(b*c,h*w); # shape x = [b*c,h*w] = [b*c,N]
+            x_0 = x;
+        x = x.view(b,c,h,w);
+        return x;
 
 
 
