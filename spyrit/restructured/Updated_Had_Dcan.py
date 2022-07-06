@@ -42,7 +42,7 @@ class Forward_operator(nn.Module):
         self.Hsub_adjoint.weight.data = self.Hsub_adjoint.weight.data.float()
         self.Hsub_adjoint.weight.requires_grad = False
                
-    def forward(self, x): # --> simule la mesure sous-chantillonnée
+    def forward(self, x): 
         """
         """
         # x.shape[b*c,N]
@@ -57,7 +57,7 @@ class Forward_operator(nn.Module):
     def adjoint(self,x):
         # x.shape[b*c,M]
         #Pmat.transpose()*f
-        x = self.Hsub_adjoint(x)            
+        x = self.Hsub_adjoint(x)        
         return x
 
     def Mat(self):
@@ -66,7 +66,6 @@ class Forward_operator(nn.Module):
 # ==================================================================================
 class Split_Forward_operator(Forward_operator):
 # ==================================================================================
-# Faire le produit H*f sans bruit, linear (pytorch) 
     def __init__(self, Hsub):           
         # [H^+, H^-]
         super().__init__(Hsub)
@@ -103,7 +102,9 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
         self.Perm.weight.data=torch.from_numpy(Perm.T)
         self.Perm.weight.data=self.Perm.weight.data.float()
         self.Perm.weight.requires_grad=False
- 
+        # Build H - 1D, store and give it as argument
+        #self.H_1_D = ; 
+    
     def inverse(self, x, n = None):
         # rearrange the terms + inverse transform
         # maybe needs to be initialised with a permutation matrix as well!
@@ -118,6 +119,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
             n = int(np.sqrt(N));
         x = x.view(b, 1, n, n);
         x = 1/self.N*walsh2_torch(x);#to apply the inverse transform
+        # Build H - 1D, store and give it as argument
         x = x.view(b, N);
         return x;
 
@@ -192,7 +194,6 @@ class Bruit_Poisson_Pytorch(Acquisition):
         #--Measurement noise imported from Pytorch
         x = poisson(x) 
         return x           
-       
  
 # ==================================================================================
 # Preprocessing
@@ -242,7 +243,7 @@ class Split_diag_poisson_preprocess(nn.Module):
 # Data consistency
 # ==================================================================================
 # ==================================================================================
-class Pinv_orthogonal(nn.Module):
+class Pinv_orthogonal(nn.Module): # For A.T @ A  = n*Id (ex : Hadamard, Fourier...
 # ==================================================================================
     def __init__(self):
         super().__init__()
@@ -284,25 +285,27 @@ class gradient_step(nn.Module):
         # x - input (b*c, M) - measurement vector
         # x_0 - input (b*c, N) - previous estimate
         # z - output (b*c, N)
-        # z = x_0 - mu*A^T(Ax_0-x)
+        # z = x_0 - mu*A^T(A*x_0-x)
         x = FO.Forward_op(x_0)-x;
         x = x_0 - self.mu*FO.adjoint(x);
         return x
  
+
+
 # ==================================================================================
 class Tikhonov_cg(nn.Module):
 # ==================================================================================
     def __init__(self, n_iter = 5, mu = 0.1, eps = 1e-6):
         super().__init__()
         # FO = Forward Operator - Works for ANY forward operator
-        self.n_iter = n_iter
+        self.n_iter = n_iter;
         self.mu = nn.Parameter(torch.tensor([float(mu)], requires_grad=True)) #need device maybe?
         # if user wishes to keep mu constant, then he can change requires gard to false 
         self.eps = eps;
-
+        # self.FO = FO
 
     def A(self,x, FO):
-        return FO.Forward_op(FO.adjoint(x)) + self.mu*x;
+        return FO.Forward_op(FO.adjoint(x)) + self.mu*x
 
     def CG(self, y, FO, shape, device):
         x = torch.zeros(shape).to(device); 
@@ -328,11 +331,24 @@ class Tikhonov_cg(nn.Module):
         # x_0 - input (b*c, N) - previous estimate
         # z - output (b*c, N)
         # n_step steps of Conjugate gradient to solve \|Ax-b\|^2 + mu \|x - x_0\|^2
+        # FO could be inside the class 
+
         y = x-FO.Forward_op(x_0);
         x = self.CG(y, FO, x.shape, x.device);
         x = x_0 + FO.adjoint(x)
         return x
-
+#        
+#    def forward(self, x, x_0):
+#        # x - input (b*c, M) - measurement vector
+#        # x_0 - input (b*c, N) - previous estimate
+#        # z - output (b*c, N)
+#        # n_step steps of Conjugate gradient to solve \|Ax-b\|^2 + mu \|x - x_0\|^2
+#
+#        y = x-self.FO.Forward_op(x_0);
+#        x = self.CG(y, x.shape, x.device);
+#        x = x_0 + self.FO.adjoint(x)
+#        return x
+#
 
 # ==================================================================================
 class Tikhonov_solve(nn.Module):
@@ -345,8 +361,8 @@ class Tikhonov_solve(nn.Module):
     
     def solve(self, x, FO):
         A = FO.Mat()@torch.transpose(FO.Mat(), 0,1)+self.mu*torch.eye(FO.M); # Can precompute H@H.T to save time!
-        A = A.view(1, FO.M, FO.M);
-        A = A.repeat(x.shape[0],1, 1); # Not optimal in terms of memory, but otherwise the torch.linalg.solve doesn't work
+        A = A.view(1, FO.M, FO.M); # Instead of reshaping A, reshape x in the batch-final dimension
+        A = A.repeat(x.shape[0],1, 1); # Not optimal in terms of memory
         x = torch.linalg.solve(A, x);
         return x;
 
@@ -376,7 +392,6 @@ class Orthogonal_Tikhonov(nn.Module):
         # z - output (b*c, N)
         
         x = x - FO.Forward_op(x_0);
-        #x = torch.div(x,(self.mu+1));
         x = x*(1/(FO.N+self.mu));# for hadamard, otherwise, line above
         x = FO.adjoint(x) + x_0;
         return x;
@@ -774,7 +789,7 @@ class List_denoi(nn.Module):
         self.n_denoi = n_denoi;
         conv_list = [];
         for i in range(n_denoi):
-            conv_list.append(copy.deepcopy(denoi));
+            conv_list.append(copy.deepcopy(Denoi));
         self.conv = nn.ModuleList(conv_list);
         
     def forward(self,x,iterate):
@@ -1084,7 +1099,7 @@ class EM_net(nn.Module):
         # measurements to the image domain
         for i in range(self.n_iter):
             if est_var :
-                var_noi = self.PreP.sigma_from_image(x, self.Acq.FO)
+                var_noi = self.PreP.sigma_from_image(x, self.Acq.FO);
             x = self.DC_layer(m, x_0, self.Acq.FO, iterate = i); # shape x = [b*c, N]
             # Image-to-image mapping via convolutional networks 
             # Image domain denoising 
@@ -1101,7 +1116,52 @@ class EM_net(nn.Module):
 
 
 
-
+## ==================================================================================
+#class Tikhonov_cg_test(nn.Module):
+## ==================================================================================
+#    def __init__(self, FO, n_iter = 5, mu = 0.1, eps = 1e-6):
+#        super().__init__()
+#        # FO = Forward Operator - Works for ANY forward operator
+#        self.n_iter = n_iter;
+#        self.mu = nn.Parameter(torch.tensor([float(mu)], requires_grad=True)) #need device maybe?
+#        # if user wishes to keep mu constant, then he can change requires gard to false 
+#        self.eps = eps;
+#        self.FO = FO
+#
+#    def A(self,x, FO):
+#        return FO.Forward_op(FO.adjoint(x)) + self.mu*x
+#
+#    def CG(self, y, FO, shape, device):
+#        x = torch.zeros(shape).to(device); 
+#        r = y - self.A(x, FO);
+#        c = r.clone()
+#        kold = torch.sum(r * r)
+#        a = torch.ones((1));
+#        for i in range(self.n_iter): 
+#            if a>self.eps : # Necessary to avoid numerical issues with a = 0 -> a = NaN
+#                Ac = self.A(c, FO)
+#                cAc =  torch.sum(c * Ac)
+#                a =  kold / cAc
+#                x += a * c
+#                r -= a * Ac
+#                k = torch.sum(r * r)
+#                b = k / kold
+#                c = r + b * c
+#                kold = k
+#        return x
+#        
+#    def forward(self, x, x_0, FO):
+#        # x - input (b*c, M) - measurement vector
+#        # x_0 - input (b*c, N) - previous estimate
+#        # z - output (b*c, N)
+#        # n_step steps of Conjugate gradient to solve \|Ax-b\|^2 + mu \|x - x_0\|^2
+#        y = x-FO.Forward_op(x_0);
+#        print(id(FO))
+#        print(FO.Hsub.weight.data.data_ptr())
+#        x = self.CG(y, FO, x.shape, x.device);
+#        x = x_0 + FO.adjoint(x)
+#        return x
+#
 
 
 
