@@ -123,8 +123,31 @@ def sequency_perm(X, ind=None):
         ind = sequency_perm_ind(len(X))
 
     Y = np.zeros(X.shape)
+    #Y = X[ind,] # returns dtype = object ?!
     for i in range(X.shape[0]):
         Y[i,] = X[ind[i],]
+    return Y
+
+def sequency_perm_torch(X, ind=None):
+    """ Permute the last dimension of a tensor to get sequency order    
+    Args:
+        X (torch.tensor): -by-n input matrix
+        ind : index list of length n
+
+    Returns:
+        torch.tensor: -by-n input matrix 
+        
+    Example :
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
+        >>> x = x[None, None, :]
+        >>> x = wh.sequency_perm_torch(x)
+        >>> print(x)
+    """ 
+    if ind is None:
+        ind = sequency_perm_ind(X.shape[-1])
+
+    Y = X[...,ind]
     return Y
 
 def sequency_perm_matrix(n):
@@ -795,6 +818,342 @@ def walsh2_S_unfold(X):
 #------------------------------------------------------------------------------
 #-- PyTorch functions ---------------------------------------------------------
 #------------------------------------------------------------------------------
+def fwht_torch(x, order=True):
+    """Fast Walsh-Hadamard transform of x
+    
+    Args:
+        x (np.ndarray): -by-n input signal, where n is a power of two.
+        order (bool, optional): True for sequency (default), False for natural.
+        order (list, optional): permutation indices.
+    
+    Returns:
+        np.ndarray: n-by-1 transformed signal
+    
+    Example 1:
+        Fast sequency-ordered (i.e., Walsh) Hadamard transform
+        
+        >>> import torch
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
+        >>> x = x[None,:]
+        >>> y = wh.fwht_torch(x)
+        >>> print(y)
+        
+    Example 2:
+        Fast Hadamard transform
+        
+        >>> import torch
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
+        >>> x = x[None,:]
+        >>> y = wh.fwht_torch(x, False)
+        >>> print(y)
+    
+    Example 3:
+        Permuted fast Hadamard transform
+        
+        >>> import numpy as np
+        >>> import torch
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
+        >>> ind = [1, 0, 3, 2, 7, 4, 5, 6]
+        >>> y = wh.fwht_torch(x, ind)
+        >>> print(y)
+        
+    Example 4:
+        Comparison with the numpy transform
+        
+        >>> import numpy as np
+        >>> import torch
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = np.array([1, 3, 0, -1, 7, 5, 1, -2])
+        >>> y_np = wh.fwht(x)
+        >>> x_torch = torch.from_numpy(x).to(torch.device('cuda:0'))
+        >>> y_torch = wh.fwht_torch(x_torch)
+        >>> print(y_np)
+        >>> print(y_torch)
+
+        
+    Example 5: 
+        Computation times for a signal of length 2**12
+        
+        >>> import timeit
+        >>> import torch
+        >>> import numpy as np
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = np.random.rand(2**12,1)
+        >>> t = timeit.timeit(lambda: wh.fwht(x,False), number=200)
+        >>> print(f"Fast Hadamard transform numpy CPU (200x): {t:.4f} seconds")
+        >>> x_torch = torch.from_numpy(x)
+        >>> t = timeit.timeit(lambda: wh.fwht_torch(x_torch,False), number=200)
+        >>> print(f"Fast Hadamard transform pytorch CPU (200x): {t:.4f} seconds")
+        >>> x_torch = torch.from_numpy(x).to(torch.device('cuda:0'))
+        >>> t = timeit.timeit(lambda: wh.fwht_torch(x_torch,False), number=200)
+        >>> print(f"Fast Hadamard transform pytorch GPU (200x): {t:.4f} seconds")
+        
+    Example 6:         
+        CPU vs GPU: Computation times for 512 signals of length 2**12
+        
+        >>> import timeit
+        >>> import torch
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x_cpu = torch.rand(512,2**12)
+        >>> t = timeit.timeit(lambda: wh.fwht_torch(x_cpu,False), number=10)
+        >>> print(f"Fast Hadamard transform pytorch CPU (10x): {t:.4f} seconds")
+        >>> x_gpu = x_cpu.to(torch.device('cuda:0'))
+        >>> t = timeit.timeit(lambda: wh.fwht_torch(x_gpu,False), number=10)
+        >>> print(f"Fast Hadamard transform pytorch GPU (10x): {t:.4f} seconds")
+    
+    Example 7:    
+        Repeating the Walsh-ordered transform using input indices is faster  
+        
+        >>> import timeit
+        >>> import torch
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = torch.rand(256,2**12).to(torch.device('cuda:0'))
+        >>> t = timeit.timeit(lambda: wh.fwht_torch(x), number=100)
+        >>> print(f"No indices as inputs (100x): {t:.3f} seconds")
+        >>> ind = wh.sequency_perm_ind(x.shape[-1])
+        >>> t = timeit.timeit(lambda: wh.fwht_torch(x,ind), number=100)
+        >>> print(f"With indices as inputs (100x): {t:.3f} seconds")
+    """ 
+    n = x.shape[-1]
+        
+    m = int(np.log2(n))
+    assert n == 1 << m, 'n must be a power of 2'
+    y = x[..., None]
+
+    for d in range(m)[::-1]:
+        y = torch.cat((y[..., ::2, :] + y[..., 1::2, :], y[..., ::2, :] - y[..., 1::2, :]), dim=-1)
+    y = y.squeeze(-2)
+
+        
+    # Arbitrary order
+    if type(order)==list:
+        y = sequency_perm_torch(y,order)
+    # Sequency (aka Walsh) order
+    elif order: 
+        y = sequency_perm_torch(y)
+    # Hadamard order, otherwise
+    return y
+
+
+def fwalsh_G_torch(x,ind=True): 
+    """Fast Walsh G-transform of x
+
+    Args:
+        :attr:`x` (torch.tensor):  input signal with shape `(*, n)`. `n`+1 
+                                should be a power of two.
+        :attr:`ind` (bool, optional): True for sequency (default)
+        :attr:`ind` (list, optional): permutation indices. This is faster than
+                                True when repeating the sequency-ordered 
+                                transform multilple times.  
+
+    Returns:
+        torch.tensor: S-transformed signal with shape `(*, n)`.
+    
+    Example 1:
+        Walsh-ordered G-transform of a signal of length 7
+
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import torch        
+        >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1])
+        >>> s = wh.fwalsh_G_torch(x)
+        >>> print(s)
+    
+    Example 2:
+        Permuted fast G-transform
+        
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import torch        
+        >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1])
+        >>> ind = [0, 1, 3, 2, 7, 4, 5, 6]
+        >>> y = wh.fwalsh_G_torch(x, ind)
+        >>> print(y)
+        
+    Example 3:
+        Comparison with the numpy transform
+        
+        >>> import numpy as np
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = np.array([1, 3, 0, -1, 7, 5, 1])
+        >>> y_np = wh.fwalsh_G(x)
+        >>> x_torch = torch.from_numpy(x).to(torch.device('cuda:0'))
+        >>> y_torch = wh.fwalsh_G_torch(x_torch)
+        >>> print(y_np)
+        >>> print(y_torch)
+    
+    Example 3:
+        Repeating the Walsh-ordered G-transform using input indices is faster  
+        
+        >>> import timeit
+        >>> x = torch.rand(512,2**12-1, device=torch.device('cuda:0'))
+        >>> t = timeit.timeit(lambda: wh.fwalsh_G_torch(x), number=10)
+        >>> print(f"No indices as inputs (10x): {t:.3f} seconds")
+        >>> ind = wh.sequency_perm_ind(x.shape[-1]+1)
+        >>> t = timeit.timeit(lambda: wh.fwalsh_G_torch(x,ind), number=10)
+        >>> print(f"With indices as inputs (10x): {t:.3f} seconds")
+        
+    """
+    # Concatenate with zeros
+    z = torch.zeros(x.shape[:-1], device = x.device) 
+    z = z[..., None]
+    x = torch.cat((z, x), dim=-1)
+    # Fast Hadamard transform
+    y = fwht_torch(x,ind)
+    # Remove 0th entries
+    y = y[...,1:]
+    return y
+
+def fwalsh_S_torch(x,ind=True): 
+    """Fast Walsh S-transform of x
+
+    Args:
+        :attr:`x` (torch.tensor):  input signal with shape `(*, n)`. `n`+1
+                            should be a power of two.
+        ind (bool, optional): True for sequency (default)
+        ind (list, optional): permutation indices. This is faster than True 
+                            when repeating the sequency-ordered transform 
+                            multilple times.  
+
+    Returns:
+        torch.tensor: -by-n S-transformed signal
+    
+    Example 1:
+        Walsh-ordered S-transform of a signal of length 7
+
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import torch      
+        >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1])
+        >>> s = wh.fwalsh_S_torch(x)
+        >>> print(s)
+         
+    
+    Example 2:
+        Repeating the Walsh-ordered S-transform using input indices is faster  
+        
+        >>> import timeit
+        >>> import torch
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = torch.rand(512, 2**14-1, device=torch.device('cuda:0'))
+        >>> t = timeit.timeit(lambda: wh.fwalsh_S_torch(x), number=10)
+        >>> print(f"No indices as inputs (10x): {t:.3f} seconds")
+        >>> ind = wh.sequency_perm_ind(x.shape[-1]+1)
+        >>> t = timeit.timeit(lambda: wh.fwalsh_S_torch(x,ind), number=10)
+        >>> print(f"With indices as inputs (10x): {t:.3f} seconds")
+    """
+    j = torch.sum(x, -1, keepdim=True)
+    s = fwalsh_G_torch(x, ind)
+    s = (j-s)/2
+    return s
+
+def fwalsh2_S_torch(X,ind=True): #not validated!
+    """Fast Walsh S-transform of X in "2D"
+
+    Args:
+        :attr:`X` (torch.tensor):  input image with shape `(*, n, n)`. `n`**2 
+                                    should be a power of two.
+        :attr:`ind` (bool, optional): True for sequency (default)
+        :attr:`ind` (list, optional): permutation indices.
+
+    Returns:
+        torch.tensor: S-transformed signal with shape `(*, n, n)`
+    
+    Examples:
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> X = torch.tensor([[1, 3, 0, 8],[7, 5, 1, 2],[2, 3, 6, 1],[4, 6, 8, 0]])
+        >>> wh.fwalsh2_S_torch(X)
+        
+    Example 2:
+        Repeating the Walsh-ordered S-transform using input indices is faster  
+        
+        >>> import timeit
+        >>> import torch
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> X = torch.rand(128, 2**6, 2**6, device=torch.device('cuda:0'))
+        >>> t = timeit.timeit(lambda: wh.fwalsh2_S_torch(X), number=10)
+        >>> print(f"No indices as inputs (10x): {t:.3f} seconds")
+        >>> ind = wh.sequency_perm_ind(X.shape[-1]*X.shape[-2])
+        >>> t = timeit.timeit(lambda: wh.fwalsh2_S_torch(X,ind), number=10)
+        >>> print(f"With indices as inputs (10x): {t:.3f} seconds")
+        
+    """    
+    x = walsh2_S_unfold_torch(X)
+    s = fwalsh_S_torch(x,ind)
+    S = walsh2_S_fold_torch(s)
+    return S
+
+def walsh2_S_fold_torch(x):
+    """Fold a signal to get a "2d" s-transformed representation 
+    
+    Note: the top left (first) pixel is arbitrarily set to zero
+
+    Args:
+        :attr:`x` (torch.tensor): input signal with shape `(*, n)`. n is 
+        such that n+1 = N*N, where N is a power of two. n = 2**(2b) - 1, 
+        where b is an integer. 
+
+    Returns:
+        torch.tensor: output matrix with shape `(*, N, N)`
+        
+    Example 1:
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import torch
+        >>> S = wh.walsh2_S_matrix(4)
+        >>> X = torch.from_numpy(S[2:4,:])
+        >>> Y = wh.walsh2_S_fold_torch(X)
+        >>> print(Y)
+    """
+    
+    # N and n should be consistent with doc
+    N = x.shape[-1]
+    n = (N+1)**0.5
+    assert math.log2(n)%1 == 0, f"N+1 = n*n, where n={n:.2f} must be a power of two"
+    n = int(n)
+
+    # Concatenate with zeros
+    z = torch.zeros(x.shape[:-1], device = x.device) 
+    z = z[..., None]
+    X = torch.cat((z, x), dim=-1) # Extra memory allocated here
+
+    # Reshape to get images
+    new_shape = torch.Size([*x.shape[:-1], n, n])
+    X = X.view(new_shape)
+    return X
+
+def walsh2_S_unfold_torch(X):
+    """Unfold a signal from a "2d" s-transformed representation 
+    
+    Note: Return a view of X
+
+    Args:
+        :attr:`X` (torch.tensor): input image with shape `(*, n,n)`.
+
+    Returns:
+        output signal with shape `(*, n*n-1)`
+        
+    Example 1:
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import torch
+        >>> X = torch.tensor([[1, 3, 0, 8],[7, 5, 1, 2]])
+        >>> x = wh.walsh2_S_unfold_torch(X)
+        >>> print(X)
+        >>> print(x)
+        
+    Example 2:
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import torch
+        >>> X = torch.randint(10,(3,4,4))
+        >>> x = wh.walsh2_S_unfold_torch(X)
+        >>> print(X)
+        >>> print(x)
+    
+    """
+    x = X.view(*(X.size()[:-2]),-1)
+    x = x[...,1:]
+    return x
+
+
 def walsh2_torch(im,H=None):
     """Return 2D Walsh-ordered Hadamard transform of an image
 

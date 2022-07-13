@@ -8,6 +8,72 @@ import time
 import spyrit.misc.walsh_hadamard as wh
 import numpy as np
 
+def stat_fwalsh_S(dataloader, device, root): # NOT validated!
+    
+    # Get dimensions and estimate total number of images in the dataset
+    inputs, classes = next(iter(dataloader))
+    (b, c, nx, ny) = inputs.shape
+    tot_num = len(dataloader)*b
+    
+    # 1. Mean
+    
+    # Init
+    n = 0
+    mean = torch.zeros((nx,ny), dtype=torch.float32)
+    
+    # Send to device (e.g., cuda)
+    mean = mean.to(device)
+    ind = wh.sequency_perm_ind(nx*ny)
+    
+    # Accumulate sum over all images in dataset
+    for inputs,_ in dataloader:
+        inputs = inputs.to(device);
+        trans = wh.fwalsh2_S_torch(inputs,ind)
+        mean = mean.add(torch.sum(trans,0))
+        # print
+        n = n + inputs.shape[0]
+        print(f'Mean:  {n} / (less than) {tot_num} images', end='\n')
+    print('', end='\n')
+    
+    # Normalize
+    mean = mean/n
+    mean = torch.squeeze(mean)
+    #torch.save(mean, root+'Average_{}x{}'.format(nx,ny)+'.pth')
+
+    path = root / Path('Average_{}x{}'.format(nx,ny)+'.npy')
+    if not root.exists():
+        root.mkdir()
+    np.save(path, mean.cpu().detach().numpy())
+    
+    # 2. Covariance
+    
+    # Init
+    n = 0
+    cov = torch.zeros((nx*ny,nx*ny), dtype=torch.float32)
+    cov = cov.to(device)
+    
+    # Accumulate (im - mu)*(im - mu)^T over all images in dataset
+    for inputs,_ in dataloader:
+        inputs = inputs.to(device)
+        trans = wh.fwalsh2_S_torch(inputs,ind)
+        trans = trans - mean.repeat(inputs.shape[0],1,1,1)
+        trans = trans.view(inputs.shape[0], nx*ny, 1)
+        cov = torch.addbmm(cov, trans, trans.view(inputs.shape[0], 1, nx*ny))
+        # print
+        n += inputs.shape[0]
+        print(f'Cov:  {n} / (less than) {tot_num} images', end='\n')
+    print('', end='\n')
+    
+    # Normalize
+    cov = cov/(n-1)
+    #torch.save(cov, root+'Cov_{}x{}'.format(nx,ny)+'.pth') # todo?
+
+    path = root / Path('Cov_{}x{}'.format(nx,ny)+'.npy')
+    if not root.exists():
+        root.mkdir()
+    np.save(path, cov.cpu().detach().numpy())
+    
+    return mean, cov
 
 def stat_walsh(dataloader, device, root):
     
@@ -265,6 +331,51 @@ def stat_walsh_stl10(stat_root = Path('./stats/'), data_root = Path('./data/'),
     # Walsh ordered transforms
     time_start = time.perf_counter()
     stat_walsh(dataloaders['train'], device, stat_root)
+    time_elapsed = (time.perf_counter() - time_start)
+    print(time_elapsed)
+
+def stat_fwalsh_S_stl10(stat_root = Path('./stats/'), data_root = Path('./data/'),
+                    img_size = 64, batch_size = 1024):
+    
+    """Fast Walsh S-transform of X in "2D"
+
+    Args:
+        :attr:`X` (torch.tensor):  input image with shape `(*, n, n)`. `n`**2 
+                                    should be a power of two.
+
+
+    Returns:
+        torch.tensor: S-transformed signal with shape `(*, n, n)`
+    
+    Examples:
+        >>> import spyrit.misc.statistics as st
+        >>> st.stat_fwalsh_S_stl10()
+        
+    """ 
+
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    torch.manual_seed(7) # for reproductibility
+
+    transform = torchvision.transforms.Compose(
+        [torchvision.transforms.functional.to_grayscale,
+        torchvision.transforms.Resize((img_size, img_size)),
+        torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize([0.5], [0.5])])
+
+    trainset = \
+        torchvision.datasets.STL10(root=data_root, split='train+unlabeled',download=True, transform=transform)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,shuffle=True)
+
+    testset = \
+        torchvision.datasets.STL10(root=data_root, split='test',download=True, transform=transform)
+    testloader =  torch.utils.data.DataLoader(testset, batch_size=batch_size,shuffle=False)
+
+    dataloaders = {'train':trainloader, 'val':testloader}
+
+    # Walsh ordered transforms
+    time_start = time.perf_counter()
+    stat_fwalsh_S(dataloaders['train'], device, stat_root)
     time_elapsed = (time.perf_counter() - time_start)
     print(time_elapsed)
     
