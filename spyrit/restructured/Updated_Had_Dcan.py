@@ -862,8 +862,28 @@ class DC_Net(nn.Module):
         # Image domain denoising 
         x = x.view(b*c,1,h,w);
         return x;
-
+    
     def reconstruct(self, x, h = None, w = None):
+        # x - of shape [b,c, 2M]
+        b, c, M2 = x.shape;
+        
+        if h is None :
+            h = int(np.sqrt(self.Acq.FO.N));           
+        
+        if w is None :
+            w = int(np.sqrt(self.Acq.FO.N));        
+        
+        # MMSE reconstruction    
+        x = self.reconstruct_mmse(x, h, w)
+        
+        # Image-to-image mapping via convolutional networks 
+        # Image domain denoising 
+        x = x.view(b*c,1,h,w);
+        x = self.Denoi(x); # shape stays the same
+        x = x.view(b,c,h,w);
+        return x;
+    
+    def reconstruct_mmse(self, x, h = None, w = None):
         # x - of shape [b,c, 2M]
         b, c, M2 = x.shape;
         
@@ -884,13 +904,73 @@ class DC_Net(nn.Module):
         # measurements to the image domain 
         x = self.DC_layer(x, x_0, sigma_noi, self.Acq.FO); # shape x = [b*c, N]
 
-        # Image-to-image mapping via convolutional networks 
-        # Image domain denoising 
-        x = x.view(b*c,1,h,w);
-        x = self.Denoi(x); # shape stays the same
-
         x = x.view(b,c,h,w);
         return x;
+    
+    
+    # def forward(self, x):
+    #     # x has shape [b,c,h,w]
+    #     b,c,h,w = x.shape
+    #     x = self.forward_mmse(x, b, c, h, w)   # x is (b*c,1,h,w)
+    #     x = self.Denoi(x)                      # x is (b*c,1,h,w)
+    #     x = x.view(b,c,h,w)
+    #     return x
+
+    # def forward_mmse(self, x, b, c, h, w):
+        
+    #     # Acquisition
+    #     x = x.view(b*c,h*w);    # shape x = [b*c,h*w] = [b*c,N]
+    #     x_0 = torch.zeros_like(x).to(x.device)
+    #     x = self.Acq(x);        #  shape x = [b*c, 2*M]
+
+    #     # Reconstruction
+    #     x = self.reconstruct_mmse(x, x_0, b, c, h, w)
+        
+    #     return x
+
+    # def reconstruct(self, x, h = None, w = None):
+    #     # x - of shape [b,c, 2M]
+    #     b, c, M2 = x.shape;
+        
+    #     if h is None :
+    #         h = int(np.sqrt(self.Acq.FO.N));           
+        
+    #     if w is None :
+    #         w = int(np.sqrt(self.Acq.FO.N));        
+        
+    #     x = x.view(b*c, M2)
+    #     x_0 = torch.zeros((b*c, self.Acq.FO.N)).to(x.device)
+
+    #     # Preprocessing
+    #     sigma_noi = self.PreP.sigma(x)
+    #     x = self.PreP(x, self.Acq.FO) # shape x = [b*c, M]
+
+    #     # Data consistency layer
+    #     # measurements to the image domain 
+    #     x = self.DC_layer(x, x_0, sigma_noi, self.Acq.FO); # shape x = [b*c, N]
+
+    #     # Image-to-image mapping via convolutional networks 
+    #     # Image domain denoising 
+    #     x = x.view(b*c,1,h,w)
+    #     x = self.Denoi(x) # shape stays the same
+
+    #     x = x.view(b,c,h,w)
+    #     return x
+    
+    # def reconstruct_mmse(self, x, x_0, b, c, h, w):
+        
+    #     # Preprocessing
+    #     sigma_noi = self.PreP.sigma(x)
+    #     x = self.PreP(x, self.Acq.FO); # shape x = [b*c, M]
+
+    #     # Data consistency layer
+    #     # measurements to the image domain 
+    #     x = self.DC_layer(x, x_0, sigma_noi, self.Acq.FO); # shape x = [b*c, N]
+
+    #     # 
+    #     x = x.view(b*c,1,h,w); # why not x.view(b,c,h,w) ??
+        
+    #     return x
 
 
 # ===========================================================================================
