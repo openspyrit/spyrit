@@ -362,7 +362,8 @@ class Tikhonov_solve(nn.Module):
     def solve(self, x, FO):
         A = FO.Mat()@torch.transpose(FO.Mat(), 0,1)+self.mu*torch.eye(FO.M); # Can precompute H@H.T to save time!
         A = A.view(1, FO.M, FO.M); # Instead of reshaping A, reshape x in the batch-final dimension
-        A = A.repeat(x.shape[0],1, 1); # Not optimal in terms of memory
+        #A = A.repeat(x.shape[0],1, 1); # Not optimal in terms of memory
+        A = A.expand(x.shape[0],-1, -1); # Not optimal in terms of memory
         x = torch.linalg.solve(A, x);
         return x;
 
@@ -462,8 +463,9 @@ class Generalised_Tikhonov_solve(nn.Module):
     def solve(self, x, var, FO):
         A = FO.Mat()@self.Sigma_prior@torch.transpose(FO.Mat(), 0,1)
         A = A.view(1, FO.M, FO.M);
-        A = A.repeat(x.shape[0],1,1);# this could be precomputed maybe
-        A += torch.diag_embed(var);
+        #A = A.repeat(x.shape[0],1,1);# this could be precomputed maybe
+        #A += torch.diag_embed(var);
+        A = A.expand(x.shape[0],-1,-1)+torch.diag_embed(var);
         x = torch.linalg.solve(A, x);
         return x;
 
