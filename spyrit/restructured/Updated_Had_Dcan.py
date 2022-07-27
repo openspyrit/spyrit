@@ -126,28 +126,26 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
         # Build H - 1D, store and give it as argument
         x = x.view(b, N);
         return x;
-    
+
 # ==================================================================================
-class Forward_operator_shift_had(Forward_operator):
+class Forward_operator_shift(Forward_operator):
 # ==================================================================================
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub)
         
         # Todo: Use index rather than permutation (see misc.walsh_hadamard)
         self.Perm = nn.Linear(self.N, self.N, False)
-        self.Perm.weight.data=torch.from_numpy(Perm.T)
-        self.Perm.weight.data=self.Perm.weight.data.float()
-        self.Perm.weight.requires_grad=False
+        self.Perm.weight.data = torch.from_numpy(Perm.T)
+        self.Perm.weight.data = self.Perm.weight.data.float()
+        self.Perm.weight.requires_grad = False
         
         H_shift = torch.cat(
-            (torch.ones((1,self.N))/2,(self.Hsub.weight.data+1)/2))
+            (torch.ones((1,self.N)),(self.Hsub.weight.data+1)/2))
         
         self.H_shift = nn.Linear(self.N, self.M+1, False) 
-        self.H_shift.weight.data = H_shift
+        self.H_shift.weight.data = H_shift      # include the all-one pattern
         self.H_shift.weight.data = self.H_shift.weight.data.float() # keep ?
-        self.H_shift.weight.requires_grad=False
-        
-      
+        self.H_shift.weight.requires_grad = False
          
     def forward(self, x):
         # input x is a set of images with shape (b*c, N)
@@ -156,6 +154,34 @@ class Forward_operator_shift_had(Forward_operator):
         return x
               
         #x_shift = super().forward(x) - x_dark.expand(x.shape[0],self.M) # (H-1/2)x
+        
+# ==================================================================================
+class Forward_operator_pos(Forward_operator):
+# ==================================================================================
+    def __init__(self, Hsub, Perm):           
+        super().__init__(Hsub)
+        
+        # Todo: Use index rather than permutation (see misc.walsh_hadamard)
+        self.Perm = nn.Linear(self.N, self.N, False)
+        self.Perm.weight.data = torch.from_numpy(Perm.T)
+        self.Perm.weight.data = self.Perm.weight.data.float()
+        self.Perm.weight.requires_grad = False
+        
+    def forward(self, x):
+        # input x is a set of images with shape (b*c, N)
+        # output is a set of measurement vectors with shape (b*c, M)
+        
+        # compute 1/2(H+1)x = 1/2 HX + 1/2 1x
+        x = super().forward(x) + x.sum(dim=1,keepdim=True).expand(-1, self.M)
+        x *= 0.5
+        
+        return x
+    
+# ==================================================================================
+class Forward_operator_shift_had(Forward_operator_shift):
+# ==================================================================================
+    def __init__(self, Hsub, Perm):           
+        super().__init__(Hsub, Perm)
     
     def inverse(self, x, n = None):
         # rearrange the terms + inverse transform
@@ -218,11 +244,11 @@ class Bruit_Poisson_approx_Gauss(Acquisition):
         # Output shape [b*c, 2*M]
 
         #--Scale input image      
-        x = self.alpha*(x+1)/2;
+        x = self.alpha*(x+1)/2
         
         #--Acquisition
-        x = self.FO(x);
-        x = F.relu(x);# to remove small negative values that stem from numerical issue
+        x = self.FO(x)
+        x = F.relu(x)       # remove small negative values
         
         #--Measurement noise (Gaussian approximation of Poisson)
         x = x + torch.sqrt(x)*torch.randn_like(x);  
@@ -240,11 +266,11 @@ class Bruit_Poisson_Pytorch(Acquisition):
         # Output shape [b*c, 2*M]
 
         #--Scale input image      
-        x = self.alpha*(x+1)/2;
+        x = self.alpha*(x+1)/2
         
         #--Acquisition
-        x = self.FO(x);
-        x = F.relu(x);  
+        x = self.FO(x)
+        x = F.relu(x)  
         
         #--Measurement noise imported from Pytorch
         x = poisson(x) 
@@ -292,14 +318,37 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         x = x[:,self.even_index] + x[:,self.odd_index]
         x = x/(self.N0) # here the N0 Contribution is not squared.
         return x;
+
+
+# ==================================================================================
+class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
+# ==================================================================================
+    r"""Preprocess the measurements acquired using shifted patterns corrupted 
+    by Poisson noise
     
-# ==================================================================================
-class Preprocess_shift_poisson(nn.Module):  
-# ==================================================================================
+    The output value of the layer with input size :math:`(B*C, M+1)` can be 
+    described as:
+
+    .. math::
+        \text{out}((B*C)_i, M_j}) = 2*\text{input}((B*C)_i, M_{j+1}) -
+        \text{input}((B*C)_i, M_0}), \quad 0 \le j \le M-1
+ 
+    The output size of the layer is :math:`(B*C, M)` 
+
+    Note:
+        This module ...
+
+    Args:
+        in_channels (int): Number of ...
+        
+    Warning:
+        The offset measurement is the 0-th entry of the raw measurements
+    """
+    
     """
     Computes 
-        m = (m_shift - m_offset)/N_0
-        var = 2*Diag(m_shift + m_offset)/N0**2
+        m = (2 m_shift - m_offset)/N_0
+        var = 4*Diag(m_shift + m_offset)/N0**2
         
     Warning: dark measurement is assumed to be the 0-th entry of raw measurements
     """
@@ -312,24 +361,86 @@ class Preprocess_shift_poisson(nn.Module):
     def forward(self, x, FO):
         # Input  has shape (b*c, M+1)
         # Output has shape (b*c, M)
-        x = x[:,1:] - x[:,0,None].expand(x.shape[0],self.M) # Warning: dark measurement is the 0-th entry
-        x = 2*x/self.N0 - FO.Forward_op(torch.ones(x.shape[0], self.N).to(x.device))
+        y = self.offset(x)
+        x = 2*x[:,1:] - y.expand(x.shape[0],self.M) # Warning: dark measurement is the 0-th entry
+        x = x/self.N0
+        x = 2*x - FO.Forward_op(torch.ones(x.shape[0], self.N).to(x.device)) # to shift images in [-1,1]^N
         return x
     
     def sigma(self, x):
         # input x is a set of measurement vectors with shape (b*c, M+1)
         # output is a set of measurement vectors with shape (b*c,M)
-        x = x[:,1:] + x[:,0,None].expand(x.shape[0],self.M)
+        y = self.offset(x)
+        x = 4*x[:,1:] + y.expand(x.shape[0],self.M)
         x = x/(self.N0**2)
+        x = 4*x         # to shift images in [-1,1]^N
+        return x
+    
+    def cov(self, x): #return a full matrix ? It is such that Diag(a) + b
         return x
 
-    def sigma_from_image(self, x, FO):
+    def sigma_from_image(self, x, FO): # should check this!
         # input x is a set of images with shape (b*c, N)
         # input FO is a Forward_operator
         x = FO.Forward_op(x)
-        x = x[:,1:] + x[:,0,None].expand(x.shape[0],self.M)
+        y = self.offset(x)
+        x = x[:,1:] + y.expand(x.shape[0],self.M)
         x = x/(self.N0)     # here the N0 contribution is not squared.
         return x
+    
+    def offset(self, x):
+        # Input  has shape (b*c, M+1)
+        # Output has shape (b*c, 1)
+        y = x[:,0,None]
+        return y
+    
+# ==================================================================================
+class Preprocess_pos_poisson(nn.Module):  # header needs to be updated!
+# ==================================================================================
+    r"""Preprocess the measurements acquired using positive (shifted) patterns 
+    corrupted by Poisson noise
+    
+    The output value of the layer with input size :math:`(B*C, M)` can be 
+    described as:
+
+    .. math::
+        \text{out}((B*C)_i, M_j}) = 2*\text{input}((B*C)_i, M_j}) -
+        \sum_{k = 1}^{M-1} \text{input}((B*C)_i, M_k})
+ 
+    The output size of the layer is :math:`(B*C, M)`, which is the imput size 
+
+    Note:
+        This module ...
+
+    Args:
+        in_channels (int): Number of ...
+        
+    Warning:
+        dark measurement is assumed to be the 0-th entry of raw measurements
+    """
+    def __init__(self, N0, M, N):
+        super().__init__()
+        self.N0 = N0
+        self.N = N
+        self.M = M
+
+    def forward(self, x, FO):
+        # Input  has shape (b*c, M)
+        # Output has shape (b*c, M)
+        
+        y = self.offset(x)
+        print(x.shape)
+        print(y.expand(-1,self.M).shape)
+        x = 2*x - y.expand(-1,self.M)
+        x = x/self.N0
+        x = 2*x - FO.Forward_op(torch.ones(x.shape[0], self.N).to(x.device)) # to shift images in [-1,1]^N
+        return x
+    
+    def offset(self, x):
+        # Input  has shape (b*c, M)
+        # Output has shape (b*c, 1)
+        y = 2/(self.M-2)*x[:,1:].sum(dim=1,keepdim=True)
+        return y
 
 # ==================================================================================
 # Data consistency
@@ -551,7 +662,7 @@ class Generalised_Tikhonov_solve(nn.Module):
                 torch.from_numpy(Sigma_prior.astype("float32")), requires_grad=True)
 
     def solve(self, x, var, FO):
-        A = FO.Mat()@self.Sigma_prior@torch.transpose(FO.Mat(), 0,1)
+        A = FO.Mat() @ self.Sigma_prior @ torch.transpose(FO.Mat(), 0,1)
         A = A.view(1, FO.M, FO.M);
         #A = A.repeat(x.shape[0],1,1);# this could be precomputed maybe
         #A += torch.diag_embed(var);
@@ -575,7 +686,7 @@ class Generalised_Tikhonov_solve(nn.Module):
 
 
 # ===========================================================================================
-class Generalized_Orthogonal_Tikhonov(nn.Module): 
+class Generalized_Orthogonal_Tikhonov(nn.Module): # todo: rename with _diag
 # ===========================================================================================   
     def __init__(self, sigma_prior, M, N):
         super().__init__()
@@ -889,12 +1000,6 @@ class List_denoi(nn.Module):
         x = self.conv[index](x);
         return x
 
-
-
-
-
-
-
 # ==================================================================================
 # Complete Reconstruction method
 # ==================================================================================
@@ -960,19 +1065,19 @@ class DC_Net(nn.Module):
         b, c, M2 = x.shape;
         
         if h is None :
-            h = int(np.sqrt(self.Acq.FO.N));           
+            h = int(np.sqrt(self.Acq.FO.N))         
         
         if w is None :
-            w = int(np.sqrt(self.Acq.FO.N));        
+            w = int(np.sqrt(self.Acq.FO.N))       
         
         # MMSE reconstruction    
         x = self.reconstruct_mmse(x, h, w)
         
         # Image-to-image mapping via convolutional networks 
         # Image domain denoising 
-        x = x.view(b*c,1,h,w);
-        x = self.Denoi(x); # shape stays the same
-        x = x.view(b,c,h,w);
+        x = x.view(b*c,1,h,w)
+        x = self.Denoi(x)   # shape stays the same
+        x = x.view(b,c,h,w)
         return x;
     
     def reconstruct_mmse(self, x, h = None, w = None):
@@ -980,89 +1085,24 @@ class DC_Net(nn.Module):
         b, c, M2 = x.shape;
         
         if h is None :
-            h = int(np.sqrt(self.Acq.FO.N));           
+            h = int(np.sqrt(self.Acq.FO.N))   
         
         if w is None :
-            w = int(np.sqrt(self.Acq.FO.N));        
+            w = int(np.sqrt(self.Acq.FO.N))
         
         x = x.view(b*c, M2)
-        x_0 = torch.zeros((b*c, self.Acq.FO.N)).to(x.device);
+        x_0 = torch.zeros((b*c, self.Acq.FO.N)).to(x.device)
 
         # Preprocessing
-        sigma_noi = self.PreP.sigma(x);
-        x = self.PreP(x, self.Acq.FO); # shape x = [b*c, M]
+        sigma_noi = self.PreP.sigma(x)
+        x = self.PreP(x, self.Acq.FO) # shape x = [b*c, M]
 
         # Data consistency layer
         # measurements to the image domain 
-        x = self.DC_layer(x, x_0, sigma_noi, self.Acq.FO); # shape x = [b*c, N]
+        x = self.DC_layer(x, x_0, sigma_noi, self.Acq.FO) # shape x = [b*c, N]
 
-        x = x.view(b,c,h,w);
-        return x;
-    
-    
-    # def forward(self, x):
-    #     # x has shape [b,c,h,w]
-    #     b,c,h,w = x.shape
-    #     x = self.forward_mmse(x, b, c, h, w)   # x is (b*c,1,h,w)
-    #     x = self.Denoi(x)                      # x is (b*c,1,h,w)
-    #     x = x.view(b,c,h,w)
-    #     return x
-
-    # def forward_mmse(self, x, b, c, h, w):
-        
-    #     # Acquisition
-    #     x = x.view(b*c,h*w);    # shape x = [b*c,h*w] = [b*c,N]
-    #     x_0 = torch.zeros_like(x).to(x.device)
-    #     x = self.Acq(x);        #  shape x = [b*c, 2*M]
-
-    #     # Reconstruction
-    #     x = self.reconstruct_mmse(x, x_0, b, c, h, w)
-        
-    #     return x
-
-    # def reconstruct(self, x, h = None, w = None):
-    #     # x - of shape [b,c, 2M]
-    #     b, c, M2 = x.shape;
-        
-    #     if h is None :
-    #         h = int(np.sqrt(self.Acq.FO.N));           
-        
-    #     if w is None :
-    #         w = int(np.sqrt(self.Acq.FO.N));        
-        
-    #     x = x.view(b*c, M2)
-    #     x_0 = torch.zeros((b*c, self.Acq.FO.N)).to(x.device)
-
-    #     # Preprocessing
-    #     sigma_noi = self.PreP.sigma(x)
-    #     x = self.PreP(x, self.Acq.FO) # shape x = [b*c, M]
-
-    #     # Data consistency layer
-    #     # measurements to the image domain 
-    #     x = self.DC_layer(x, x_0, sigma_noi, self.Acq.FO); # shape x = [b*c, N]
-
-    #     # Image-to-image mapping via convolutional networks 
-    #     # Image domain denoising 
-    #     x = x.view(b*c,1,h,w)
-    #     x = self.Denoi(x) # shape stays the same
-
-    #     x = x.view(b,c,h,w)
-    #     return x
-    
-    # def reconstruct_mmse(self, x, x_0, b, c, h, w):
-        
-    #     # Preprocessing
-    #     sigma_noi = self.PreP.sigma(x)
-    #     x = self.PreP(x, self.Acq.FO); # shape x = [b*c, M]
-
-    #     # Data consistency layer
-    #     # measurements to the image domain 
-    #     x = self.DC_layer(x, x_0, sigma_noi, self.Acq.FO); # shape x = [b*c, N]
-
-    #     # 
-    #     x = x.view(b*c,1,h,w); # why not x.view(b,c,h,w) ??
-        
-    #     return x
+        x = x.view(b,c,h,w)
+        return x
 
 
 # ===========================================================================================
@@ -1080,13 +1120,11 @@ class Pinv_Net(nn.Module):
         b,c,h,w = x.shape;
 
         # Acquisition
-        x = x.view(b*c,h*w); # shape x = [b*c,h*w] = [b*c,N]
-        x_0 = torch.zeros_like(x).to(x.device);
-        x = self.Acq(x); #  shape x = [b*c, 2*M]
+        x = x.view(b*c,h*w) # shape x = [b*c,h*w] = [b*c,N]
+        x = self.Acq(x)    #  shape x = [b*c, 2*M]
 
         # Preprocessing
-        sigma_noi = self.PreP.sigma(x);
-        x = self.PreP(x, self.Acq.FO); # shape x = [b*c, M]
+        x = self.PreP(x, self.Acq.FO) # shape x = [b*c, M]
 
         # Data consistency layer
         # measurements to the image domain 
@@ -1094,63 +1132,72 @@ class Pinv_Net(nn.Module):
 
         # Image-to-image mapping via convolutional networks 
         # Image domain denoising 
-        x = x.view(b*c,1,h,w);
-        x = self.Denoi(x); # shape stays the same
+        x = x.view(b*c,1,h,w)
+        x = self.Denoi(x) # shape stays the same
 
         x = x.view(b,c,h,w);
         return x;
 
     def forward_mmse(self, x):
         # x - of shape [b,c,h,w]
-        b,c,h,w = x.shape;
+        b,c,h,w = x.shape
 
         # Acquisition
-        x = x.view(b*c,h*w); # shape x = [b*c,h*w] = [b*c,N]
-        x_0 = torch.zeros_like(x).to(x.device);
-        x = self.Acq(x); #  shape x = [b*c, 2*M]
+        x = x.view(b*c,h*w)     # shape x = [b*c,h*w] = [b*c,N]
+        x = self.Acq(x)         # shape x = [b*c, 2*M]
 
         # Preprocessing
-        sigma_noi = self.PreP.sigma(x);
-        x = self.PreP(x, self.Acq.FO); # shape x = [b*c, M]
+        x = self.PreP(x, self.Acq.FO)       # shape x = [b*c, M]
 
         # Data consistency layer
         # measurements to the image domain 
-        x = self.DC_layer(x, self.Acq.FO); # shape x = [b*c, N]
+        x = self.DC_layer(x, self.Acq.FO)   # shape x = [b*c, N]
 
         # Image-to-image mapping via convolutional networks 
         # Image domain denoising 
-        x = x.view(b*c,1,h,w);
-        return x;
+        x = x.view(b*c,1,h,w)
+        return x
 
     def reconstruct(self, x, h = None, w = None):
         # x - of shape [b,c, 2M]
-        b, c, M2 = x.shape;
+        b, c, M2 = x.shape
         
         if h is None :
-            h = int(np.sqrt(self.Acq.FO.N));           
+            h = int(np.sqrt(self.Acq.FO.N))           
         
         if w is None :
-            w = int(np.sqrt(self.Acq.FO.N));        
+            w = int(np.sqrt(self.Acq.FO.N))
+
+        x = self.reconstruct_mmse(x, h, w)
         
-        x = x.view(b*c, M2)
-        x_0 = torch.zeros((b*c, self.Acq.FO.N)).to(x.device);
-
-        # Preprocessing
-        sigma_noi = self.PreP.sigma(x);
-        x = self.PreP(x, self.Acq.FO); # shape x = [b*c, M]
-
-        # Data consistency layer
-        # measurements to the image domain 
-        x = self.DC_layer(x, self.Acq.FO); # shape x = [b*c, N]
-
         # Image-to-image mapping via convolutional networks 
         # Image domain denoising 
-        x = x.view(b*c,1,h,w);
-        x = self.Denoi(x); # shape stays the same
+        x = x.view(b*c,1,h,w)
+        x = self.Denoi(x)       # shape stays the same
+        x = x.view(b,c,h,w)
+        return x
 
-        x = x.view(b,c,h,w);
-        return x;
-
+    def reconstruct_mmse(self, x, h = None, w = None):
+        # x - of shape [b,c, 2M]
+        b, c, M2 = x.shape
+        
+        if h is None :
+            h = int(np.sqrt(self.Acq.FO.N))
+        
+        if w is None :
+            w = int(np.sqrt(self.Acq.FO.N))
+        
+        x = x.view(b*c, M2)
+    
+        # Preprocessing
+        x = self.PreP(x, self.Acq.FO) # shape x = [b*c, M]
+    
+        # Data consistency layer
+        # measurements to the image domain 
+        x = self.DC_layer(x, self.Acq.FO) # shape x = [b*c, N]
+        x = x.view(b,c,h,w)
+        
+        return x
 
 
 # ===========================================================================================
