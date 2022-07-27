@@ -307,8 +307,8 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
     def sigma(self, x):
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
-        x = x[:,self.even_index] + x[:,self.odd_index]
-        x = x/(self.N0**2)
+        x = x[:,self.even_index] + x[:,self.odd_index];
+        x = 4*x/(self.N0**2); # Cov is in [-1,1] so *4
         return x
 
     def sigma_from_image(self, x, FO):
@@ -316,7 +316,7 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         # FO - Forward operator.
         x = FO.Forward_op(x);
         x = x[:,self.even_index] + x[:,self.odd_index]
-        x = x/(self.N0) # here the N0 Contribution is not squared.
+        x = 4*x/(self.N0) # here the N0 Contribution is not squared.
         return x;
 
 
@@ -700,7 +700,7 @@ class Generalized_Orthogonal_Tikhonov(nn.Module): # todo: rename with _diag
         var_prior = sigma_prior[diag_index];
         var_prior = var_prior[:M]
 
-        self.denoise_layer.weight.data = torch.from_numpy(var_prior)
+        self.denoise_layer.weight.data = torch.from_numpy(np.sqrt(var_prior));
         self.denoise_layer.weight.data = self.denoise_layer.weight.data.float();
         self.denoise_layer.weight.requires_grad = False
 
@@ -720,7 +720,8 @@ class Generalized_Orthogonal_Tikhonov(nn.Module): # todo: rename with _diag
         #
 
         x = x - FO.Forward_op(x_0);
-        y1 = torch.mul(self.denoise_layer(var),x);
+        y1 = torch.mul(self.denoise_layer(var),x); 
+        # Could put in in Denoise layer
         y2 = self.comp(y1);
 
         y = torch.cat((y1,y2),-1);
@@ -770,7 +771,7 @@ class List_Generalized_Orthogonal_Tikhonov(nn.Module):
             var_prior = sigma_prior_list[index][diag_index];
             var_prior = var_prior[:M]
      
-            denoise_list[i].weight.data = torch.from_numpy(var_prior)
+            denoise_list[i].weight.data = torch.from_numpy(np.sqrt(var_prior));
             denoise_list[i].weight.data = denoise_list[i].weight.data.float();
             denoise_list[i].weight.requires_grad = True;
         self.denoise_list = nn.ModuleList(denoise_list);
@@ -839,11 +840,14 @@ def tikho(inputs, weight):
     Applies a transformation to the incoming data: :math:`y = A^2/(A^2+x)`.
     Shape:
         - Input: :math:`(N, *, in\_features)` where `*` means any number of
-          additional dimensions
-        - Weight: :math:`(in\_features)`
+          additional dimensions - Variance of measurements
+        - Weight: :math:`(in\_features)` - corresponds to the standard deviation
+          of our prior.
         - Output: :math:`(N, in\_features)`
     """
-    sigma = weight**2;
+    sigma = weight**2; # prefer to square it, because when leant, it can got to the 
+    #negative, which we do not want to happen.
+    # TO BE Potentially done : square inputs.
     den = sigma + inputs;
     ret = sigma/den;
     return ret
@@ -998,6 +1002,16 @@ class List_denoi(nn.Module):
     def forward(self,x,iterate):
         index = min(iterate, self.n_denoi-1); 
         x = self.conv[index](x);
+        return x
+
+
+# ===========================================================================================
+class Identity(nn.Module):  # Can be useful for ablation study
+# ===========================================================================================
+    def __init__(self):
+        super(self).__init__()
+        
+    def forward(self,x):
         return x
 
 # ==================================================================================

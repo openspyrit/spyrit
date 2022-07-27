@@ -8,26 +8,17 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-#import torch.optim as optim
 import numpy as np
-#import torchvision
-#from torchvision import datasets, models, transforms
-#import matplotlib.pyplot as plt
-#import time
-#import os
-#import copy
 from ..misc.pattern_choice import Hadamard, matrix2conv, split
 from collections import OrderedDict
-#import cv2
 from scipy.stats import rankdata
-#from itertools import cycle;
-#from pathlib import Path
 
 from ..misc.disp import *
+#from ..misc.statistics import *
 #import spyrit.misc.walsh_hadamard as wh
-from spyrit.misc.statistics import *
+#from spyrit.misc.statistics import *
+from spyrit.misc.statistics import Cov2Var
 import math
-
 
 #######################################################################
 # 1. Determine the important Hadamard Coefficients
