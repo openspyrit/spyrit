@@ -3,7 +3,7 @@ import torch
 import torchvision
 #from torchvision import datasets, transforms
 from pathlib import Path
-from spyrit.learning.model_Had_DCAN import *
+#from spyrit.learning.model_Had_DCAN import *
 import time
 import spyrit.misc.walsh_hadamard as wh
 import numpy as np
