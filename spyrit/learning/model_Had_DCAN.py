@@ -578,7 +578,6 @@ class noiCompNet(compNet):
         x_est = self.pinv(x, b, c, h, w);
         N0 = self.max(x_est)
         N0 = N0.view(b,c,1)
-        print(N0)
         
         #--
         N0_est = N0.repeat(1,1,self.M)
@@ -637,8 +636,6 @@ class DenoiCompNet(noiCompNet):
         return x
     
     def forward_reconstruct_mmse_expe(self, x, b, c, h, w, mu=0, sig=0, K=1):
-        
-        
         # If C, s, g are arrays, they must have the same dimensions as  x
         if not np.isscalar(mu):
             mu = mu.view(b*c, 1, 1)
