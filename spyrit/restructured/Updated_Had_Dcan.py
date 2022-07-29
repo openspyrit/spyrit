@@ -1331,7 +1331,7 @@ class EM_net(nn.Module):
         # Data consistency layer
         # measurements to the image domain
         for i in range(self.n_iter):
-            if est_var :
+            if self.est_var :
                 var_noi = self.PreP.sigma_from_image(x, self.Acq.FO);
             x = self.DC_layer(m, x_0, self.Acq.FO, iterate = i); # shape x = [b*c, N]
             # Image-to-image mapping via convolutional networks 
