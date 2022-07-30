@@ -716,17 +716,16 @@ class Generalized_Orthogonal_Tikhonov(nn.Module): # todo: rename with _diag
         # x - input (b*c, M) - measurement vector
         # var - input (b*c, M) - measurement variance
         # x_0 - input (b*c, N) - previous estimate
-        # z - output (b*c, N)
+        # output has dimension (b*c, N)
         #
 
-        x = x - FO.Forward_op(x_0);
-        y1 = torch.mul(self.denoise_layer(var),x); 
-        # Could put in in Denoise layer
-        y2 = self.comp(y1);
+        x = x - FO.Forward_op(x_0)
+        y1 = torch.mul(self.denoise_layer(var),x) # Should be in denoising layer
+        y2 = self.comp(y1)
 
-        y = torch.cat((y1,y2),-1);
-        x = x_0+FO.inverse(y) 
-        return x;
+        y = torch.cat((y1,y2),-1)
+        x = x_0 + FO.inverse(y) 
+        return x
 
 # ===========================================================================================
 class List_Generalized_Orthogonal_Tikhonov(nn.Module): 

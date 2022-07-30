@@ -305,6 +305,37 @@ def Cov2Var(Cov):
     Var = np.reshape(Var, (int(np.sqrt(Nx)),int(np.sqrt(Nx))) );
     return Var
 
+# NOT TESTED YET !!
+def stat_walsh_ImageNet(stat_root = Path('./stats/'), data_root = Path('./data/'),
+                    img_size = 128, batch_size = 256):
+
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    torch.manual_seed(7) # for reproductibility
+
+    # TODO !!
+    # transform = torchvision.transforms.Compose(
+    #     [torchvision.transforms.functional.to_grayscale,
+    #     torchvision.transforms.RandomCrop(img_size),
+    #     torchvision.transforms.ToTensor(),
+    #     torchvision.transforms.Normalize([0.5], [0.5])])
+
+    trainset = \
+        torchvision.datasets.ImageNet(root=data_root, split='test',transform=transform)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,shuffle=True)
+
+    testset = \
+        torchvision.datasets.ImageNet(root=data_root, split='val', transform=transform)
+    testloader =  torch.utils.data.DataLoader(testset, batch_size=batch_size,shuffle=False)
+
+    dataloaders = {'train':trainloader, 'val':testloader}
+
+    # Walsh ordered transforms
+    time_start = time.perf_counter()
+    stat_walsh(dataloaders['train'], device, stat_root)
+    time_elapsed = (time.perf_counter() - time_start)
+    print(time_elapsed)
+
 def stat_walsh_stl10(stat_root = Path('./stats/'), data_root = Path('./data/'),
                     img_size = 64, batch_size = 1024):
 
