@@ -706,7 +706,7 @@ class Generalized_Orthogonal_Tikhonov(nn.Module): # todo: rename with _diag
 
         Sigma1 = sigma_prior[:M,:M];
         Sigma21 = sigma_prior[M:,:M];
-        W = Sigma21@np.linalg.inv(Sigma1);
+        W = Sigma21 @ np.linalg.inv(Sigma1);
         
         self.comp.weight.data=torch.from_numpy(W)
         self.comp.weight.data=self.comp.weight.data.float()
