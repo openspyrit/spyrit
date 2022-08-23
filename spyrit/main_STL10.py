@@ -88,7 +88,7 @@ inputs = inputs.to(device)
 b, c, h, w = inputs.shape
 b = 1
 # -- Image test selection
-num_img = 230 # 97, 70, 4, 115, 116, 117, 34, 64 (low frequencies and 2 ph: 9, 19) (high frequencies : 217, 21, 76, 177, 48, 245)
+num_img = 19 # 97, 70, 4, 115, 116, 117, 34, 64 (low frequencies and 2 ph: 9, 19) (high frequencies : 217, 21, 76, 177, 48, 245)
 img_test = inputs[num_img, 0, :, :].view([b, c, h, w])
 # numpy ground-true : We select an image for visual test
 GT = img_test.view([h, w]).cpu().detach().numpy()
@@ -115,7 +115,7 @@ f_nvms = []
 f_full = []
 
 # Noise test level
-N0_test = [2500, 100, 25, 10]
+N0_test = [100, 10, 5, 1]
 
 for i in range(len(N0_test)):
     # Calculate the Noise Variance Matrix Stabilization
