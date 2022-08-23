@@ -321,14 +321,19 @@ class compNet(nn.Module):
         
         self.n = n;
         self.M = M;
+
         
         self.even_index = range(0,2*M,2);
         self.uneven_index = range(1,2*M,2);
-        
+
+        self.Cov = Cov
+
         #-- Hadamard patterns (full basis)
         if type(H)==type(None):
             H = wh.walsh2_matrix(self.n)/self.n
         H = n*H; #fht hadamard transform needs to be normalized
+
+        self.H = H
         
         #-- Hadamard patterns (undersampled basis)
         if type(Ord)==type(None):         
@@ -337,6 +342,7 @@ class compNet(nn.Module):
         Perm = Permutation_Matrix(Ord)
         Pmat = np.dot(Perm,H);
         Pmat = Pmat[:M,:];
+        self.Pmat = Pmat
         Pconv = matrix2conv(Pmat);
 
         #-- Denoising parameters 
