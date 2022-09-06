@@ -8,6 +8,68 @@ import time
 import spyrit.misc.walsh_hadamard as wh
 import numpy as np
 
+
+def data_loaders_ImageNet(train_root, val_root, img_size=64, batch_size=512, seed=7): 
+    """ 
+    Both 'train_root' and 'val_root' need to have images in a subfolder
+    
+    The output of torchvision datasets are PILImage images in the range [0, 1].
+    We transform them to Tensors in the range [-1, 1]. Also RGB images are 
+    converted into grayscale images.   
+    """
+
+    torch.manual_seed(seed) # reproductibility of random crop
+    #    
+    transform = torchvision.transforms.Compose(
+        [torchvision.transforms.functional.to_grayscale,
+         torchvision.transforms.RandomCrop(
+             size=(img_size, img_size), pad_if_needed=True, padding_mode='edge'),
+         torchvision.transforms.ToTensor(),
+         torchvision.transforms.Normalize([0.5], [0.5])
+        ])
+    
+    trainset = \
+        torchvision.datasets.ImageFolder(root=train_root, transform=transform)
+    trainloader =  torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=False)
+    
+    valset = \
+        torchvision.datasets.ImageFolder(root=val_root, transform=transform)
+    valloader =  torch.utils.data.DataLoader(valset, batch_size=batch_size, shuffle=False)
+    
+    
+    dataloaders = {'train':trainloader, 'val':valloader}
+    
+    return dataloaders
+
+def data_loaders_STL10(data_root, img_size=64, batch_size=512, seed=7): 
+    """ 
+    The output of torchvision datasets are PILImage images in the range [0, 1].
+    We transform them to Tensors in the range [-1, 1]. Also RGB images are 
+    converted into grayscale images.
+        
+    """
+    transform = torchvision.transforms.Compose(
+        [torchvision.transforms.functional.to_grayscale,
+         torchvision.transforms.RandomCrop(img_size),
+         torchvision.transforms.ToTensor(),
+         torchvision.transforms.Normalize([0.5], [0.5])])
+
+    trainset = \
+          torchvision.datasets.STL10(root=data_root, split='train+unlabeled',download=False, transform=transform)
+    trainloader = \
+        torch.utils.data.DataLoader(trainset, batch_size=batch_size,shuffle=False)
+ 
+    testset = \
+            torchvision.datasets.STL10(root=data_root, split='test',download=False, transform=transform)
+    
+    testloader = \
+         torch.utils.data.DataLoader(testset, batch_size=batch_size,shuffle=False)
+    
+    dataloaders = {'train':trainloader, 'val':testloader}
+    
+    return dataloaders
+
+
 def stat_fwalsh_S(dataloader, device, root): # NOT validated!
     
     # Get dimensions and estimate total number of images in the dataset
@@ -75,15 +137,17 @@ def stat_fwalsh_S(dataloader, device, root): # NOT validated!
     
     return mean, cov
 
-def stat_walsh(dataloader, device, root):
+
+# /!\ NOT tested yet!
+def stat_walsh(dataloader, device, root, n_loop=1):
     
     # Get dimensions and estimate total number of images in the dataset
     inputs, classes = next(iter(dataloader))
     (b, c, nx, ny) = inputs.shape
     tot_num = len(dataloader)*b
-    
+    #--------------------------------------------------------------------------
     # 1. Mean
-    
+    #--------------------------------------------------------------------------
     # Init
     n = 0
     mean = torch.zeros((nx,ny), dtype=torch.float32)
@@ -94,49 +158,133 @@ def stat_walsh(dataloader, device, root):
     H = torch.from_numpy(H).to(device)
     
     # Accumulate sum over all images in dataset
-    for inputs,_ in dataloader:
-        inputs = inputs.to(device);
-        trans = wh.walsh2_torch(inputs,H)
-        mean = mean.add(torch.sum(trans,0))
-        # print
-        n = n + inputs.shape[0]
-        print(f'Mean:  {n} / (less than) {tot_num} images', end='\n')
-    print('', end='\n')
+    for i in range(n_loop):
+        torch.manual_seed(i)
+        for inputs,_ in dataloader:
+            inputs = inputs.to(device)
+            trans = wh.walsh2_torch(inputs,H)
+            mean = mean.add(torch.sum(trans,0))
+            # print
+            n = n + inputs.shape[0]
+            print(f'Mean:  {n} / (less than) {tot_num*n_loop} images', end='')#'\n')
+            # test
+            print(f' | {inputs[53,0,33,49]}', end='\n')
+        print('', end='\n')
     
     # Normalize
     mean = mean/n
     mean = torch.squeeze(mean)
-    #torch.save(mean, root+'Average_{}x{}'.format(nx,ny)+'.pth')
-
-    path = root / Path('Average_{}x{}'.format(nx,ny)+'.npy')
+    
+    # Save
+    if n_loop==1:
+        path = root / Path('Average_{}x{}'.format(nx,ny)+'.npy')
+    else:
+        path = root / Path('Average_{}_{}x{}'.format(n_loop,nx,ny)+'.npy')
+        
     if not root.exists():
         root.mkdir()
     np.save(path, mean.cpu().detach().numpy())
-    
+    #--------------------------------------------------------------------------
     # 2. Covariance
-    
+    #--------------------------------------------------------------------------
     # Init
     n = 0
     cov = torch.zeros((nx*ny,nx*ny), dtype=torch.float32)
     cov = cov.to(device)
     
     # Accumulate (im - mu)*(im - mu)^T over all images in dataset
-    for inputs,_ in dataloader:
-        inputs = inputs.to(device)
-        trans = wh.walsh2_torch(inputs,H)
-        trans = trans - mean.repeat(inputs.shape[0],1,1,1)
-        trans = trans.view(inputs.shape[0], nx*ny, 1)
-        cov = torch.addbmm(cov, trans, trans.view(inputs.shape[0], 1, nx*ny))
-        # print
-        n += inputs.shape[0]
-        print(f'Cov:  {n} / (less than) {tot_num} images', end='\n')
-    print('', end='\n')
+    for i in range(n_loop):
+        torch.manual_seed(i)
+        for inputs,_ in dataloader:
+            inputs = inputs.to(device)
+            trans = wh.walsh2_torch(inputs,H)
+            trans = trans - mean.repeat(inputs.shape[0],1,1,1)
+            trans = trans.view(inputs.shape[0], nx*ny, 1)
+            cov = torch.addbmm(cov, trans, trans.view(inputs.shape[0], 1, nx*ny))
+            # print
+            n += inputs.shape[0]
+            print(f'Cov:  {n} / (less than) {tot_num*n_loop} images', end='')#'\n')
+            # test
+            print(f' | {inputs[53,0,33,49]}', end='\n')
+        print('', end='\n')
     
     # Normalize
     cov = cov/(n-1)
     #torch.save(cov, root+'Cov_{}x{}'.format(nx,ny)+'.pth') # todo?
 
-    path = root / Path('Cov_{}x{}'.format(nx,ny)+'.npy')
+    # Save
+    if n_loop==1:
+        path = root / Path('Cov_{}x{}'.format(nx,ny)+'.npy')
+    else:
+        path = root / Path('Cov_{}_{}x{}'.format(n_loop,nx,ny)+'.npy')
+        
+    if not root.exists():
+        root.mkdir()
+    np.save(path, cov.cpu().detach().numpy())
+    
+    return mean, cov
+
+# /!\ NOT tested yet!
+def cov_walsh_random(dataloader, device, root, n_loop=1):
+    
+    # Get dimensions and estimate total number of images in the dataset
+    inputs, classes = next(iter(dataloader))
+    (b, c, nx, ny) = inputs.shape
+    tot_num = len(dataloader)*b
+    
+    
+    H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
+    H = torch.from_numpy(H).to(device)
+    
+    #--------------------------------------------------------------------------
+    # 1. Mean
+    #--------------------------------------------------------------------------
+    # Save
+    if n_loop==1:
+        path = root / Path('Average_{}x{}'.format(nx,ny)+'.npy')
+    else:
+        path = root / Path('Average_{}_{}x{}'.format(n_loop,nx,ny)+'.npy')
+        
+    mean = np.load(path)
+    mean = torch.from_numpy(mean.astype('float32'))
+    mean = mean.to(device)
+    
+    print(f'Mean uploaded from file ({path})')
+    
+    #--------------------------------------------------------------------------
+    # 2. Covariance
+    #--------------------------------------------------------------------------
+    # Init
+    n = 0
+    cov = torch.zeros((nx*ny,nx*ny), dtype=torch.float32)
+    cov = cov.to(device)
+    
+    # Accumulate (im - mu)*(im - mu)^T over all images in dataset
+    for i in range(n_loop):
+        torch.manual_seed(i)
+        for inputs,_ in dataloader:
+            inputs = inputs.to(device)
+            trans = wh.walsh2_torch(inputs,H)
+            trans = trans - mean.repeat(inputs.shape[0],1,1,1)
+            trans = trans.view(inputs.shape[0], nx*ny, 1)
+            cov = torch.addbmm(cov, trans, trans.view(inputs.shape[0], 1, nx*ny))
+            # print
+            n += inputs.shape[0]
+            print(f'Cov:  {n} / (less than) {tot_num*n_loop} images', end='')#'\n')
+            # test
+            print(f' | {inputs[53,0,33,49]}', end='\n')
+        print('', end='\n')
+    
+    # Normalize
+    cov = cov/(n-1)
+    #torch.save(cov, root+'Cov_{}x{}'.format(nx,ny)+'.pth') # todo?
+
+    # Save
+    if n_loop==1:
+        path = root / Path('Cov_{}x{}'.format(nx,ny)+'.npy')
+    else:
+        path = root / Path('Cov_{}_{}x{}'.format(n_loop,nx,ny)+'.npy')
+        
     if not root.exists():
         root.mkdir()
     np.save(path, cov.cpu().detach().numpy())
@@ -306,33 +454,37 @@ def Cov2Var(Cov):
     return Var
 
 # NOT TESTED YET !!
-def stat_walsh_ImageNet(stat_root = Path('./stats/'), data_root = Path('./data/'),
-                    img_size = 128, batch_size = 256):
+def stat_walsh_ImageNet(stat_root = Path('./stats/'), 
+                        data_root = Path('./data/ILSVRC2012_img_test_v10102019/'),
+                        img_size = 128, 
+                        batch_size = 256, 
+                        n_loop=1,
+                        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+                        ):
 
-
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(7) # for reproductibility
 
-    # TODO !!
-    # transform = torchvision.transforms.Compose(
-    #     [torchvision.transforms.functional.to_grayscale,
-    #     torchvision.transforms.RandomCrop(img_size),
-    #     torchvision.transforms.ToTensor(),
-    #     torchvision.transforms.Normalize([0.5], [0.5])])
-
-    trainset = \
-        torchvision.datasets.ImageNet(root=data_root, split='test',transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,shuffle=True)
+    #    
+    transform = torchvision.transforms.Compose(
+        [torchvision.transforms.functional.to_grayscale,
+         torchvision.transforms.RandomCrop(
+             size=(img_size, img_size), pad_if_needed=True, padding_mode='edge'),
+         torchvision.transforms.ToTensor(),
+         torchvision.transforms.Normalize([0.5], [0.5])
+        ])
 
     testset = \
-        torchvision.datasets.ImageNet(root=data_root, split='val', transform=transform)
-    testloader =  torch.utils.data.DataLoader(testset, batch_size=batch_size,shuffle=False)
+        torchvision.datasets.ImageFolder(root=data_root, transform=transform)
+    testloader =  torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False)
+    
+    dataloaders = data_loaders_ImageNet(train_root, val_root, img_size=img_size, 
+                                        batch_size=batch_size, seed=7)
 
-    dataloaders = {'train':trainloader, 'val':testloader}
 
     # Walsh ordered transforms
     time_start = time.perf_counter()
-    stat_walsh(dataloaders['train'], device, stat_root)
+    stat_walsh(testloader, device, stat_root, n_loop)
     time_elapsed = (time.perf_counter() - time_start)
     print(time_elapsed)
 
@@ -353,6 +505,7 @@ def stat_walsh_stl10(stat_root = Path('./stats/'), data_root = Path('./data/'),
         torchvision.datasets.STL10(root=data_root, split='train+unlabeled',download=True, transform=transform)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,shuffle=True)
 
+    # todo: remove test loader that is unused
     testset = \
         torchvision.datasets.STL10(root=data_root, split='test',download=True, transform=transform)
     testloader =  torch.utils.data.DataLoader(testset, batch_size=batch_size,shuffle=False)
