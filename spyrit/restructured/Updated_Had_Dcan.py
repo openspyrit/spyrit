@@ -40,10 +40,18 @@ def Permutation_Matrix(mat):
 # ==================================================================================
 # ==================================================================================
 class Forward_operator(nn.Module):
+        r""" Defines Forward and backward propagationfully connected layers given an input matrix Hsub.
+
+        Args:
+            Hsub (np.ndarray): M-by-N matrix.
+        Returns:
+            Pytorch Object of the parent-class nn.Module with two main methods: 
+                - Forward
+                - adjoint
+        """
 # ==================================================================================
 # Faire le produit H*f sans bruit, linear (pytorch) 
     def __init__(self, Hsub):           
-        # récupérer la méthode __init__ de la classe parent nn.Module et créer un objet de cette classe
         super().__init__()
 
         # instancier nn.linear        
@@ -62,7 +70,12 @@ class Forward_operator(nn.Module):
         self.Hsub_adjoint.weight.requires_grad = False
                
     def forward(self, x): 
-        """
+        r""" Forward propagate x through fully connected layer.
+
+        Args:
+            x (np.ndarray): M-by-N matrix.
+        Returns:
+            nn.Linear Pytorch Fully Connecter Layer that has input shape of N and output shape of M 
         """
         # x.shape[b*c,N]
         x = self.Hsub(x)    
