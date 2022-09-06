@@ -81,7 +81,7 @@ class Forward_operator(nn.Module):
         x = self.Hsub(x)    
         return x
 
-    def Forward_op(self,x): # todo: Remove capital letter
+    def Forward_op(self,x):     # todo: Rename to "direct"
         # x.shape[b*c,N]
         x = self.Hsub(x)    
         return x
@@ -698,7 +698,7 @@ class Generalised_Tikhonov_solve(nn.Module):
         A = A.view(1, FO.M, FO.M);
         #A = A.repeat(x.shape[0],1,1);# this could be precomputed maybe
         #A += torch.diag_embed(var);
-        A = A.expand(x.shape[0],-1,-1)+torch.diag_embed(var);
+        A = A.expand(x.shape[0],-1,-1) + torch.diag_embed(var);
         x = torch.linalg.solve(A, x);
         return x;
 
@@ -719,10 +719,11 @@ class Generalised_Tikhonov_solve(nn.Module):
 
 # ===========================================================================================
 class Generalized_Orthogonal_Tikhonov(nn.Module): # todo: rename with _diag
+#class Tikhonov_Orthogonal_Diag(nn.Module):
 # ===========================================================================================   
     def __init__(self, sigma_prior, M, N):
         super().__init__()
-        # FO = Forward Operator - needs foward operator with defined inverse transform
+        # FO = Forward Operator - needs foward operator with full inverse transform
         #-- Pseudo-inverse to determine levels of noise.
         
         self.comp = nn.Linear(M, N-M, False)
