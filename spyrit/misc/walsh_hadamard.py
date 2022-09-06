@@ -64,7 +64,8 @@ def perm_matrix_from_ind(l): # generate a matrix of zero and ones from list of i
         P[i, l[i]] = 1
     return P
     
-def gray_code_permutation(n): # Generate the N grey code permutation matrix
+def gray_code_permutation(n): # Generate the N grey code 
+
     N = int(math.log(n, 2))
     graycode = GrayCode(N)
     graycode_list = list(graycode.generate_gray())

@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import math
-
+from scipy.stats import rankdata
 from torch import poisson
 from collections import OrderedDict
 #from scipy.sparse.linalg import aslinearoperator
@@ -15,6 +15,25 @@ from collections import OrderedDict
 
 from ..misc.walsh_hadamard import walsh2_torch
 
+# ===========================================================
+#           Matrix Operations - Hadamard
+# ===========================================================
+def Permutation_Matrix(mat):
+    """
+        Returns permutation matrix from sampling map
+        
+    Args:
+        mat (np.ndarray): A a n-by-n sampling map, where high value means high significance.
+        
+    Returns:
+        P (np.ndarray): A n*n-by-n*n permutation matrix
+    """
+    (nx, ny) = mat.shape;
+    Reorder = rankdata(-mat, method = 'ordinal');
+    Columns = np.array(range(nx*ny));
+    P = np.zeros((nx*ny, nx*ny));
+    P[Reorder-1, Columns] = 1;
+    return P
 
 # ==================================================================================
 # Forward operators
