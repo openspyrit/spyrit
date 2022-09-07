@@ -40,7 +40,7 @@ def Permutation_Matrix(mat):
 # ==================================================================================
 # ==================================================================================
 class Forward_operator(nn.Module):
-        r""" Defines Forward and backward propagation fully connected layers given an input matrix Hsub.
+    r""" Defines Forward and backward propagation fully connected layers given an input matrix Hsub.
 
         Args:
             Hsub (np.ndarray): M-by-N matrix.
@@ -48,10 +48,10 @@ class Forward_operator(nn.Module):
             Pytorch Object of the parent-class nn.Module with two main methods: 
                 - Forward: Forward propagation
                 - adjoint: Back-propagation
-        """
-# ==================================================================================
-# Faire le produit H*f sans bruit, linear (pytorch) 
-    def __init__(self, Hsub):           
+    """
+    # ==================================================================================
+    # Faire le produit H*f sans bruit, linear (pytorch) 
+    def __init__(self, Hsub):
         super().__init__()
 
         # instancier nn.linear        
@@ -324,7 +324,7 @@ class Bruit_Poisson_Pytorch(Acquisition):
 # ==================================================================================        
 class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
 # ==================================================================================
-    """
+    r"""
     computes m = (m_+-m_-)/N_0
     and also allows to compute var = 2*Diag(m_+ + m_-)/N0**2
     """
@@ -842,17 +842,21 @@ class List_Generalized_Orthogonal_Tikhonov(nn.Module):
 class Denoise_layer(nn.Module):
 # ===========================================================================================
     r"""Applies a transformation to the incoming data: :math:`y = A^2/(A^2+x) `
+
     Args:
         in_features: size of each input sample
+
     Shape:
         - Input: :math:`(N, *, H_{in})` where :math:`*` means any number of
           additional dimensions and :math:`H_{in} = \text{in\_features}`
         - Output: :math:`(N, *, H_{in})`.
+
     Attributes:
         weight: the learnable weights of the module of shape
             :math:`(\text{out\_features}, 1)`. The values are
             initialized from :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`, where
             :math:`k = \frac{1}{\text{in\_features}}`
+
     Examples::
         >>> m = Denoise_layer(30)
         >>> input = torch.randn(128, 30)
@@ -880,6 +884,7 @@ def tikho(inputs, weight):
     # type: (Tensor, Tensor) -> Tensor
     r"""
     Applies a transformation to the incoming data: :math:`y = A^2/(A^2+x)`.
+
     Shape:
         - Input: :math:`(N, *, in\_features)` where `*` means any number of
           additional dimensions - Variance of measurements
