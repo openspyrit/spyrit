@@ -21,7 +21,7 @@ spyrit.restructured.model\_Had\_DCAN-sauvegarde\_10mai\_avant\_antonio module
    :show-inheritance:
 
 spyrit.restructured.model\_Had\_DCAN module
-------------------------------------------
+-------------------------------------------
 
 .. automodule:: spyrit.restructured.model_Had_DCAN.py
    :members:

@@ -52,6 +52,14 @@ spyrit.misc.pattern\_choice module
    :undoc-members:
    :show-inheritance:
 
+spyrit.misc.statistics module
+------------------------
+
+.. automodule:: spyrit.misc.statistics
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 spyrit.misc.walsh\_hadamard module
 ----------------------------------
 
