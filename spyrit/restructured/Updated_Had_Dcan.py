@@ -279,13 +279,6 @@ class Forward_operator_shift_had(Forward_operator_shift):
 # ==================================================================================
 # ==================================================================================        
 class Acquisition(nn.Module):
-# ==================================================================================
-#                      Forward multiply with Hadamard matrix H * f
-# ==================================================================================
-# exemple:
-# on calcule Pmat --> on écrit H = Forward_operator(Pmat)
-# acq = Acquisition(H)
-# avec une image x, m = acq.forward(x) (ce qui est équivalent à m = acq(x)) Syntax Pytorch
 
     def __init__(self, FO):
         super().__init__()
