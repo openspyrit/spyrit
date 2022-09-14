@@ -40,26 +40,25 @@ def Permutation_Matrix(mat):
 # ==================================================================================
 # ==================================================================================
 class Forward_operator(nn.Module):
-    r""" Defines Forward and backward propagation fully connected layers given an input matrix Hsub.
-
-        Args:
-            Hsub (np.ndarray): M-by-N matrix.
-        Returns:
-            Pytorch Object of the parent-class nn.Module with two main methods: 
-                - Forward: Forward propagation
-                - adjoint: Back-propagation
-    """
-    # ==================================================================================
-    # Faire le produit H*f sans bruit, linear (pytorch) 
-    def __init__(self, Hsub):
+# ==================================================================================
+# Faire le produit H*f sans bruit, linear (pytorch) 
+    def __init__(self, Hsub):  
         super().__init__()
-
+        r""" Defines different fully connected layers that take weights from Hsub matrix
+            Args:
+                Hsub (np.ndarray): M-by-N matrix.
+            Returns:
+                Pytorch Object of the parent-class nn.Module with two main methods: 
+                    - Forward: Forward propagation nn.Linear layer that assigns weights from Hsub matrix
+                    - adjoint: Back-propagation pytorch nn.Linear layer obtained from Hsub.transpose() as it is orthogonal
+        """
         # instancier nn.linear        
         # Pmat --> (torch) --> Poids ()
         self.M = Hsub.shape[0];
-        self.N = Hsub.shape[1] ;
+        self.N = Hsub.shape[1];
         self.Hsub = nn.Linear(self.N, self.M, False); 
         self.Hsub.weight.data=torch.from_numpy(Hsub)
+        # Data must be of type float (or double) rather than the default float64 when creating torch tensor
         self.Hsub.weight.data=self.Hsub.weight.data.float()
         self.Hsub.weight.requires_grad=False
 
@@ -80,12 +79,9 @@ class Forward_operator(nn.Module):
             >>> Input_Matrix = np.array(np.random.random([100,32]))
             >>> Forwad_OP = Forward_operator(Input_Matrix)
             >>> print('Input Matrix shape:', Input_Matrix.shape)
-            >>> print('Forward propagation layer:',  Forwad_OP.Hsub)
-            >>> print('Backpropagaton layer:', Forwad_OP.Hsub_adjoint)
-            
+            >>> print('Forward propagation layer:',  Forwad_OP.Hsub) 
             Input Matrix shape: (100, 32)
             Forward propagation layer: Linear(in_features=32, out_features=100, bias=False)
-            Backpropagaton layer: Linear(in_features=100, out_features=32, bias=False
         """
         # x.shape[b*c,N]
         x = self.Hsub(x)    
@@ -97,6 +93,21 @@ class Forward_operator(nn.Module):
         return x
     
     def adjoint(self,x):
+        r""" Backpropagate x through fully connected layer.
+
+        Args:
+            x (np.ndarray): M-by-N matrix.
+        Returns:
+            nn.Linear Pytorch Fully Connecter Layer that has input shape of N and output shape of M 
+        Example:
+            >>> Input_Matrix = np.array(np.random.random([100,32]))
+            >>> Forwad_OP = Forward_operator(Input_Matrix)
+            >>> print('Input Matrix shape:', Input_Matrix.shape)
+            >>> print('Backpropagaton layer:', Forwad_OP.Hsub_adjoint)
+            
+            Input Matrix shape: (100, 32)
+            Backpropagaton layer: Linear(in_features=100, out_features=32, bias=False
+        """
         # x.shape[b*c,M]
         #Pmat.transpose()*f
         x = self.Hsub_adjoint(x)        
@@ -111,10 +122,24 @@ class Forward_operator(nn.Module):
 # ==================================================================================
 class Split_Forward_operator(Forward_operator):
 # ==================================================================================
-    def __init__(self, Hsub):           
-        # [H^+, H^-]
+    def __init__(self, Hsub): 
         super().__init__(Hsub)
-        
+        r""" Splits Forward Operator obtained from Hadamard Matrix into Positive and Negative arrays.
+
+            Args:
+                x (np.ndarray): M-by-N matrix.
+            Returns:
+                nn.Linear Pytorch Fully Connecter Layer that has input shape of N and output shape of 2*M 
+            Example:
+                >>> Input_Matrix = np.array(np.random.random([100,32]))
+                >>> Split_Forwad_OP =  Split_Forward_operator(Input_Matrix)
+                >>> print('Split Forward propagation layer:', Split_Forwad_OP.Hpos_neg)
+
+                Split Forward propagation layer: Linear(in_features=32, out_features=200, bias=False)
+
+        """
+        # [H^+, H^-]
+                
         even_index = range(0,2*self.M,2);
         odd_index = range(1,2*self.M,2);
 
@@ -122,6 +147,8 @@ class Split_Forward_operator(Forward_operator):
         H_neg = np.zeros(Hsub.shape);
         H_pos[Hsub>0] = Hsub[Hsub>0];
         H_neg[Hsub<0] = -Hsub[Hsub<0];
+        
+        # pourquoi 2 *M ?
         Hposneg = np.zeros((2*self.M,self.N));
         Hposneg[even_index,:] = H_pos;
         Hposneg[odd_index,:] = H_neg;
