@@ -386,7 +386,17 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         x = FO.Forward_op(x);
         x = x[:,self.even_index] + x[:,self.odd_index]
         x = 4*x/(self.N0) # here the N0 Contribution is not squared.
-        return x;
+        return x
+    
+    def estimate_intensity(self, x, FO):
+        # x - image. Input shape (b*c, N)
+
+        x = FO.Forward_op(x)
+        x = x[:,self.even_index] + x[:,self.odd_index]
+        x = 4*x/(self.N0) # here the N0 Contribution is not squared.
+        return x
+    
+    
 
 
 # ==================================================================================
@@ -1096,34 +1106,34 @@ class DC_Net(nn.Module):
 # ===========================================================================================
     def __init__(self, Acq, PreP, DC_layer, Denoi):
         super().__init__()
-        self.Acq = Acq; # must be a split operator for now
-        self.PreP = PreP;
-        self.DC_layer = DC_layer;
-        self.Denoi = Denoi;
+        self.Acq = Acq  # must be a split operator for now
+        self.PreP = PreP
+        self.DC_layer = DC_layer
+        self.Denoi = Denoi
 
     def forward(self, x):
         # x - of shape [b,c,h,w]
-        b,c,h,w = x.shape;
+        b,c,h,w = x.shape
 
         # Acquisition
-        x = x.view(b*c,h*w); # shape x = [b*c,h*w] = [b*c,N]
-        x_0 = torch.zeros_like(x).to(x.device);
-        x = self.Acq(x); #  shape x = [b*c, 2*M]
+        x = x.view(b*c,h*w)    # shape x = [b*c,h*w] = [b*c,N]
+        x_0 = torch.zeros_like(x).to(x.device)
+        x = self.Acq(x) #  shape x = [b*c, 2*M]
 
         # Preprocessing
-        sigma_noi = self.PreP.sigma(x);
-        x = self.PreP(x, self.Acq.FO); # shape x = [b*c, M]
+        sigma_noi = self.PreP.sigma(x)
+        x = self.PreP(x, self.Acq.FO) # shape x = [b*c, M]
 
         # Data consistency layer
         # measurements to the image domain 
-        x = self.DC_layer(x, x_0, sigma_noi, self.Acq.FO); # shape x = [b*c, N]
+        x = self.DC_layer(x, x_0, sigma_noi, self.Acq.FO) # shape x = [b*c, N]
 
         # Image-to-image mapping via convolutional networks 
         # Image domain denoising 
-        x = x.view(b*c,1,h,w);
+        x = x.view(b*c,1,h,w)
         x = self.Denoi(x); # shape stays the same
 
-        x = x.view(b,c,h,w);
+        x = x.view(b,c,h,w)
         return x;
 
     def forward_mmse(self, x):
@@ -1191,6 +1201,33 @@ class DC_Net(nn.Module):
 
         x = x.view(b,c,h,w)
         return x
+    
+    def reconstruct_expe(self, x, h = None, w = None):
+        # x - of shape [b,c, 2M]
+        b, c, M2 = x.shape;
+        
+        if h is None :
+            h = int(np.sqrt(self.Acq.FO.N))         
+        
+        if w is None :
+            w = int(np.sqrt(self.Acq.FO.N))     
+        
+        x = x.view(b*c, M2)
+        x_0 = torch.zeros((b*c, self.Acq.FO.N)).to(x.device)
+
+        # Preprocessing
+        sigma_noi = self.PreP.sigma(x)
+        x = self.PreP(x, self.Acq.FO) # shape x = [b*c, M]
+        
+        Pinv = Pinv_orthogonal()
+        Pinv(x,self.Acq)
+        
+        # Image-to-image mapping via convolutional networks 
+        # Image domain denoising 
+        x = x.view(b*c,1,h,w)
+        x = self.Denoi(x)   # shape stays the same
+        x = x.view(b,c,h,w)
+        return x;
 
 
 # ===========================================================================================
