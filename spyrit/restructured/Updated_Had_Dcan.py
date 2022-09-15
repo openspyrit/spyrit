@@ -103,8 +103,7 @@ class Forward_operator(nn.Module):
             >>> Input_Matrix = np.array(np.random.random([100,32]))
             >>> Forwad_OP = Forward_operator(Input_Matrix)
             >>> print('Input Matrix shape:', Input_Matrix.shape)
-            >>> print('Backpropagaton layer:', Forwad_OP.Hsub_adjoint)
-            
+            >>> print('Backpropagaton layer:', Forwad_OP.Hsub_adjoint)            
             Input Matrix shape: (100, 32)
             Backpropagaton layer: Linear(in_features=100, out_features=32, bias=False
         """
@@ -134,7 +133,6 @@ class Split_Forward_operator(Forward_operator):
                 >>> Input_Matrix = np.array(np.random.random([100,32]))
                 >>> Split_Forwad_OP =  Split_Forward_operator(Input_Matrix)
                 >>> print('Split Forward propagation layer:', Split_Forwad_OP.Hpos_neg)
-
                 Split Forward propagation layer: Linear(in_features=32, out_features=200, bias=False)
 
         """
@@ -166,6 +164,13 @@ class Split_Forward_operator(Forward_operator):
 
 # ==================================================================================
 class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform hadamard
+    r""" Split_Forward_operator object that contains:
+        Args:
+            Hsub (np.ndarray) :  M-by-N matrix
+            Perm (np.ndarray) :  N-by-N matrix
+        Returns:
+            *inverse* method            
+    """
 # ==================================================================================
 # Forward operator with implemented inverse transform and a permutation matrix
     def __init__(self, Hsub, Perm):
@@ -178,8 +183,14 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
         #self.H_1_D = ; 
     
     def inverse(self, x, n = None):
+        r""" Inverse transform of x:
+            Args:
+                x :  (torch.tensor) : b*c-by-N
+            Returns:
+                   
+        """
         # rearrange the terms + inverse transform
-        # maybe needs to be initialised with a permutation matrix as well!
+        # maybe needs to be initialized with a permutation matrix as well!
         # Permutation matrix may be sparsified when sparse tensors are no longer in
         # beta (as of pytorch 1.11, it is still in beta).
         
@@ -279,7 +290,13 @@ class Forward_operator_shift_had(Forward_operator_shift):
 # ==================================================================================
 # ==================================================================================        
 class Acquisition(nn.Module):
-
+    r"""
+        Sub-class of nn.Module that forward propagates torch.tensor through an nn.Linear
+        Args:
+            x (torch.tensor): b*c-by-N
+        Returns:
+            x (torch.tensor): 
+    """
     def __init__(self, FO):
         super().__init__()
         # FO = forward operator
@@ -345,8 +362,11 @@ class Bruit_Poisson_Pytorch(Acquisition):
 class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
 # ==================================================================================
     r"""
-    computes m = (m_+-m_-)/N_0
-    and also allows to compute var = 2*Diag(m_+ + m_-)/N0**2
+        computes m = (m_+-m_-)/N_0
+        and also allows to compute var = 2*Diag(m_+ + m_-)/N0**2
+        Args:
+            N0 (scalar)  : Number of photons
+            N, M (scalar): Dimension of input matrix
     """
     def __init__(self, N0, M, N):
         super().__init__()
@@ -360,6 +380,9 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
 
 
     def forward(self, x, FO):
+        r"""
+            
+        """
         # Input shape [b*c,2*M]
         # Output shape [b*c,M]
         x = x[:,self.even_index] - x[:,self.odd_index]
@@ -367,6 +390,8 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         return x
     
     def sigma(self, x):
+        r"""
+        """
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
         x = x[:,self.even_index] + x[:,self.odd_index];
@@ -374,6 +399,8 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         return x
 
     def sigma_from_image(self, x, FO):
+        r"""
+        """
         # x - image. Input shape (b*c, N)
         # FO - Forward operator.
         x = FO.Forward_op(x);
