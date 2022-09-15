@@ -1035,6 +1035,25 @@ class ConvNet(nn.Module):
         return x
     
 # ===========================================================================================
+class ConvNetBN(nn.Module):  
+# ===========================================================================================
+    def __init__(self):
+        super(ConvNetBN,self).__init__()
+        self.convnet = nn.Sequential(OrderedDict([
+                ('conv1', nn.Conv2d(1,64,kernel_size=9, stride=1, padding=4)),
+                ('relu1', nn.ReLU()),
+                ('BN1', nn.BatchNorm2d(64)),
+                ('conv2', nn.Conv2d(64,32,kernel_size=1, stride=1, padding=0)),
+                ('relu2', nn.ReLU()),
+                ('BN2', nn.BatchNorm2d(32)),
+                ('conv3', nn.Conv2d(32,1,kernel_size=5, stride=1, padding=2))
+                ]))
+        
+    def forward(self,x):
+        x = self.convnet(x)
+        return x
+    
+# ===========================================================================================
 class DConvNet(nn.Module):  
 # ===========================================================================================
     def __init__(self):

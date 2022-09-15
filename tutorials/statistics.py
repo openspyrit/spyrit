@@ -10,8 +10,8 @@ from spyrit.misc.statistics import data_loaders_ImageNet
 
 img_size = 64 # image size
 batch_size = 128
-data_root =  Path('../datasets/ILSVRC2012_v10102019')
-stat_root =  Path('../stat/ILSVRC2012_v10102019')
+data_root =  Path('../../datasets/ILSVRC2012_v10102019')
+stat_root =  Path('../../stat/ILSVRC2012_v10102019')
 dataloaders = data_loaders_ImageNet(data_root / 'test', data_root / 'val', 
                                     img_size=img_size, 
                                     batch_size=batch_size, 
@@ -40,8 +40,8 @@ imagesc(img)
 #%% Compute covariance matrix from stl10
 img_size = 64 # image size
 batch_size = 1024
-data_root =  Path('../datasets/')
-stat_root =  Path('../stat/stl10')
+data_root =  Path('../../datasets/')
+stat_root =  Path('../../stat/stl10')
 
 from spyrit.misc.statistics import stat_walsh_stl10
 stat_walsh_stl10(stat_root = stat_root, 
@@ -52,8 +52,8 @@ stat_walsh_stl10(stat_root = stat_root,
 #%% Compute covariance matrix from ImageNet
 img_size = 64 # image size
 batch_size = 1024
-data_root =  Path('../datasets/ILSVRC2012_v10102019/test')
-stat_root =  Path('../stat/ILSVRC2012_v10102019')
+data_root =  Path('../../datasets/ILSVRC2012_v10102019/test')
+stat_root =  Path('../../stat/ILSVRC2012_v10102019')
 
 from spyrit.misc.statistics import stat_walsh_ImageNet
 

@@ -7,6 +7,7 @@ from pathlib import Path
 import time
 import spyrit.misc.walsh_hadamard as wh
 import numpy as np
+from scipy.stats import rankdata
 
 def stat_walsh_ImageNet(stat_root = Path('./stats/'), 
                         data_root = Path('./data/ILSVRC2012_img_test_v10102019/'),
@@ -328,6 +329,17 @@ def Cov2Var(Cov):
     Var = Cov[diag_index];
     Var = np.reshape(Var, (int(np.sqrt(Nx)),int(np.sqrt(Nx))) );
     return Var
+
+
+def img2mask(Ord, M):
+    """
+    Returns subsampling mask from order matrix
+    """
+    (nx, ny) = Ord.shape;
+    msk = np.ones((nx, ny));
+    ranked_data = np.reshape(rankdata(-Ord, method = 'ordinal'),(nx, ny));
+    msk[np.absolute(ranked_data)>M]=0;
+    return msk
 
 
 # todo: rewrite in a fashion similar to stat_walsh_stl10
