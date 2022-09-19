@@ -13,7 +13,7 @@ from collections import OrderedDict
 #from pylops_gpu.optimization.cg import cg --- currently not working
 #from pylops_gpu.optimization.leastsquares import NormalEquationsInversion
 
-from ..misc.walsh_hadamard import walsh2_torch
+from spyrit.misc.walsh_hadamard import walsh2_torch
 
 # ===========================================================
 #           Matrix Operations - Hadamard
@@ -46,7 +46,7 @@ class Forward_operator(nn.Module):
         super().__init__()
         r""" Defines different fully connected layers that take weights from Hsub matrix
             Args:
-                Hsub (np.ndarray): M-by-N matrix.
+                Hsub (np.ndarray): M-by-N matrix
             Returns:
                 Pytorch Object of the parent-class nn.Module with two main methods: 
                     - Forward: Forward propagation nn.Linear layer that assigns weights from Hsub matrix
@@ -168,16 +168,23 @@ class Split_Forward_operator(Forward_operator):
 class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform hadamard
 # ==================================================================================
 # Forward operator with implemented inverse transform and a permutation matrix
-    def __init__(self, Hsub, Perm):
+    def __init__(self, Hsub, Perm, h, w):
+        """
+            h, w (int): image height and width such that self.N = h*w
+        """
         super().__init__(Hsub);
         self.Perm = nn.Linear(self.N, self.N, False)
         self.Perm.weight.data=torch.from_numpy(Perm.T)
         self.Perm.weight.data=self.Perm.weight.data.float()
         self.Perm.weight.requires_grad=False
+        
+        self.h = h
+        self.w = w
+        
         # Build H - 1D, store and give it as argument
         #self.H_1_D = ; 
     
-    def inverse(self, x, n = None):
+    def inverse(self, x):
         # rearrange the terms + inverse transform
         # maybe needs to be initialised with a permutation matrix as well!
         # Permutation matrix may be sparsified when sparse tensors are no longer in
@@ -186,15 +193,17 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
         # input - x - shape [b*c, N]
         # output - x - shape [b*c, N]
         b, N = x.shape
-        x = self.Perm(x);
-        if n is None:
-            n = int(np.sqrt(N));
-        x = x.view(b, 1, n, n);
+        x = self.Perm(x)
+        x = x.view(b, 1, self.h, self.w)
         x = 1/self.N*walsh2_torch(x)    #to apply the inverse transform
                                         # todo: initialize with 1D transform to speed up
         # Build H - 1D, store and give it as argument
         x = x.view(b, N);
-        return x;
+        return x
+    
+    def pinv(self, x):
+        x = self.adjoint(x)/self.N
+        return x
 
 # ==================================================================================
 class Forward_operator_shift(Forward_operator):
@@ -357,19 +366,24 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
     """
     def __init__(self, N0, M, N):
         super().__init__()
-        self.N0 = N0;
+        self.N0 = N0
                 
-        self.N = N;
-        self.M = M;
+        self.N = N
+        self.M = M
         
-        self.even_index = range(0,2*M,2);
-        self.odd_index = range(1,2*M,2);
-
+        self.even_index = range(0,2*M,2)
+        self.odd_index  = range(1,2*M,2)
+        
+        self.max = nn.MaxPool1d(N)
 
     def forward(self, x, FO):
-        # Input shape [b*c,2*M]
-        # Output shape [b*c,M]
+        """ 
+            Input shape [b*c,2*M]
+            Output shape [b*c,M]
+        """
+        # unsplit
         x = x[:,self.even_index] - x[:,self.odd_index]
+        # normalize
         x = 2*x/self.N0 - FO.Forward_op(torch.ones(x.shape[0], self.N).to(x.device))
         return x
     
@@ -388,16 +402,44 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         x = 4*x/(self.N0) # here the N0 Contribution is not squared.
         return x
     
-    def estimate_intensity(self, x, FO):
-        # x - image. Input shape (b*c, N)
-
-        x = FO.Forward_op(x)
-        x = x[:,self.even_index] + x[:,self.odd_index]
-        x = 4*x/(self.N0) # here the N0 Contribution is not squared.
+    def forward_expe(self, x, FO):
+        """ 
+            Input shape [b*c,2*M]
+            Output shape [b*c,M]
+        """
+        bc = x.shape[0]
+        
+        # unsplit
+        x = x[:,self.even_index] - x[:,self.odd_index]
+        
+        # estimate N0 #x_pinv = FO.adjoint(x)
+        x_pinv = FO.pinv(x)
+        N0_est = self.max(x_pinv)
+        N0_est = N0_est.expand(bc,self.M) # shape is (b*c, M)
+        
+        # normalize
+        x = torch.div(x, N0_est)
+        x = 2*x - FO.Forward_op(torch.ones(bc, self.N).to(x.device))
+        
+        N0_est = N0_est[:,0]    # shape is (b*c,)
+        
+        return x, N0_est
+    
+    def denormalize_expe(self, x, N0, h, w):
+        """ 
+            x has shape (b*c,1,h,w)
+            N0 has shape (b*c,)
+            
+            Output has shape (b*c,1,h,w)
+        """
+        bc = x.shape[0]
+        
+        # Denormalization
+        N0 = N0.view(bc,1,1,1)
+        N0 = N0.expand(bc,1,h,w)
+        x = (x+1)*N0/2 
+        
         return x
-    
-    
-
 
 # ==================================================================================
 class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
@@ -1188,7 +1230,7 @@ class DC_Net(nn.Module):
             w = int(np.sqrt(self.Acq.FO.N))       
         
         # MMSE reconstruction    
-        x = self.reconstruct_mmse(x, h, w)
+        x = self.reconstruct_meas2im(x, h, w)
         
         # Image-to-image mapping via convolutional networks 
         # Image domain denoising 
@@ -1197,7 +1239,7 @@ class DC_Net(nn.Module):
         x = x.view(b,c,h,w)
         return x;
     
-    def reconstruct_mmse(self, x, h = None, w = None):
+    def reconstruct_meas2im(self, x, h = None, w = None):
         # x - of shape [b,c, 2M]
         b, c, M2 = x.shape;
         
@@ -1225,28 +1267,34 @@ class DC_Net(nn.Module):
         # x - of shape [b,c, 2M]
         b, c, M2 = x.shape;
         
-        if h is None :
-            h = int(np.sqrt(self.Acq.FO.N))         
+        if h is None:
+            h = int(np.sqrt(self.Acq.FO.N))   
         
-        if w is None :
-            w = int(np.sqrt(self.Acq.FO.N))     
+        if w is None:
+            w = int(np.sqrt(self.Acq.FO.N))
         
         x = x.view(b*c, M2)
         x_0 = torch.zeros((b*c, self.Acq.FO.N)).to(x.device)
 
-        # Preprocessing
+        # Preprocessing experimental data
         sigma_noi = self.PreP.sigma(x)
-        x = self.PreP(x, self.Acq.FO) # shape x = [b*c, M]
+        x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # shape x = [b*c, M]
+
+        # Measurement to image domain 
+        x = self.DC_layer(x, x_0, sigma_noi, self.Acq.FO) # shape x = [b*c, N]
+        x = x.view(b,c,h,w)
         
-        Pinv = Pinv_orthogonal()
-        Pinv(x,self.Acq)
-        
-        # Image-to-image mapping via convolutional networks 
         # Image domain denoising 
         x = x.view(b*c,1,h,w)
         x = self.Denoi(x)   # shape stays the same
         x = x.view(b,c,h,w)
-        return x;
+        
+        # Denormalization
+        N0_est = N0_est.view(b*c,1,1,1)
+        N0_est = N0_est.expand(b*c,1,h,w)
+        x = (x+1)*N0_est/2  
+        
+        return x
 
 
 # ===========================================================================================
@@ -1260,89 +1308,82 @@ class Pinv_Net(nn.Module):
         self.Denoi = Denoi;
 
     def forward(self, x):
-        # x - of shape [b,c,h,w]
-        b,c,h,w = x.shape;
+        # x is of shape [b,c,h,w]
+        b,c,_,_ = x.shape
 
         # Acquisition
-        x = x.view(b*c,h*w) # shape x = [b*c,h*w] = [b*c,N]
-        x = self.Acq(x)    #  shape x = [b*c, 2*M]
+        x = x.view(b,c,self.Acq.FO.N) 
+        x = x.view(b*c,self.Acq.FO.N)       # shape x = [b*c,h*w] = [b*c,N]
+        x = self.Acq(x)                     # shape x = [b*c, 2*M]
 
-        # Preprocessing
-        x = self.PreP(x, self.Acq.FO) # shape x = [b*c, M]
+        # Reconstruction 
+        x = self.reconstruct(x)             # shape x = [bc, 1, h,w]
+        x = x.view(b,c,self.Acq.FO.h, self.Acq.FO.w)
+        
+        return x
 
-        # Data consistency layer
-        # measurements to the image domain 
-        x = self.DC_layer(x, self.Acq.FO); # shape x = [b*c, N]
-
-        # Image-to-image mapping via convolutional networks 
-        # Image domain denoising 
-        x = x.view(b*c,1,h,w)
-        x = self.Denoi(x) # shape stays the same
-
-        x = x.view(b,c,h,w);
-        return x;
-
-    def forward_mmse(self, x):
-        # x - of shape [b,c,h,w]
-        b,c,h,w = x.shape
+    def forward_meas2im(self, x):
+        # x is of shape [b,c,h,w]
+        b,c,_,_ = x.shape
 
         # Acquisition
-        x = x.view(b*c,h*w)     # shape x = [b*c,h*w] = [b*c,N]
-        x = self.Acq(x)         # shape x = [b*c, 2*M]
+        x = x.view(b,c,self.Acq.FO.N) 
+        x = x.view(b*c,self.Acq.FO.N)           # shape x = [b*c,h*w] = [b*c,N]
+        x = self.Acq(x)                         # shape x = [b*c, 2*M]
 
-        # Preprocessing
-        x = self.PreP(x, self.Acq.FO)       # shape x = [b*c, M]
-
-        # Data consistency layer
-        # measurements to the image domain 
-        x = self.DC_layer(x, self.Acq.FO)   # shape x = [b*c, N]
-
-        # Image-to-image mapping via convolutional networks 
-        # Image domain denoising 
-        x = x.view(b*c,1,h,w)
+        # Reconstruction 
+        x = self.reconstruct_meas2im(x)         # shape x = [bc,1,h,w]
+        x = x.view(b,c,self.Acq.FO.h, self.Acq.FO.w)
+        
         return x
 
-    def reconstruct(self, x, h = None, w = None):
-        # x - of shape [b,c, 2M]
-        b, c, M2 = x.shape
+    def reconstruct(self, x):
+        """
+        input x is of shape [b*c, 2M]
+        """
+        # Measurement to image domain mapping
+        x = self.reconstruct_meas2im(x)         # shape x = [b*c,1,h,w]
         
-        if h is None :
-            h = int(np.sqrt(self.Acq.FO.N))           
+        # Image domain denoising
+        x = self.Denoi(x)                       # shape stays the same
         
-        if w is None :
-            w = int(np.sqrt(self.Acq.FO.N))
-
-        x = self.reconstruct_mmse(x, h, w)
-        
-        # Image-to-image mapping via convolutional networks 
-        # Image domain denoising 
-        x = x.view(b*c,1,h,w)
-        x = self.Denoi(x)       # shape stays the same
-        x = x.view(b,c,h,w)
         return x
 
-    def reconstruct_mmse(self, x, h = None, w = None):
-        # x - of shape [b,c, 2M]
-        b, c, M2 = x.shape
-        
-        if h is None :
-            h = int(np.sqrt(self.Acq.FO.N))
-        
-        if w is None :
-            w = int(np.sqrt(self.Acq.FO.N))
-        
-        x = x.view(b*c, M2)
+    def reconstruct_meas2im(self, x):
+        # x of shape [b*c, 2M]
+        bc, _ = x.shape
     
         # Preprocessing
         x = self.PreP(x, self.Acq.FO) # shape x = [b*c, M]
     
-        # Data consistency layer
-        # measurements to the image domain 
-        x = self.DC_layer(x, self.Acq.FO) # shape x = [b*c, N]
-        x = x.view(b,c,h,w)
+        # measurements to image domain processing
+        x = self.DC_layer(x, self.Acq.FO)               # shape x = [b*c,N]
+        x = x.view(bc,1,self.Acq.FO.h, self.Acq.FO.w)   # shape x = [b*c,1,h,w]
         
         return x
 
+
+    def reconstruct_expe(self, x):
+        """
+        output image is denormalized with units of photon counts
+        """
+        # x of shape [b*c, 2M]
+        bc, _ = x.shape
+    
+        # Preprocessing
+        x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # shape x = [b*c, M]
+    
+        # measurements to image domain processing
+        x = self.DC_layer(x, self.Acq.FO)               # shape x = [b*c,N]
+        x = x.view(bc,1,self.Acq.FO.h, self.Acq.FO.w)   # shape x = [b*c,1,h,w]
+
+        # Image domain denoising
+        x = self.Denoi(x)                               # shape x = [b*c,1,h,w]
+        
+        # Denormalization 
+        x = self.PreP.denormalize_expe(x, N0_est, self.Acq.FO.h, self.Acq.FO.w)
+        
+        return x
 
 # ===========================================================================================
 class MoDL(nn.Module):
