@@ -412,15 +412,20 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         x = 4*x/(self.N0**2); # Cov is in [-1,1] so *4
         return x
     
-    def sigma_expe(self, x, gain=1, mudark=0, sigdark=0):
+    def sigma_expe(self, x, gain=1, mudark=0, sigdark=0, nbin=1):
         r"""
         returns estimated variance of **NOT** normalized measurements
         
+        gain in count/electron
+        mudark: average dark current in counts
+        sigdark: standard deviation or dark current in counts
+        nbin: number of raw bin in each spectral channel (if input x results 
+        from the sommation/binning of the raw data)
         """
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
         x = x[:,self.even_index] + x[:,self.odd_index]
-        x = gain*(x - 2*mudark) + 2*sigdark**2
+        x = gain*(x - 2*nbin*mudark) + 2*nbin*sigdark**2
         x = 4*x     # to get the cov of an image in [-1,1], not in [0,1]
 
         return x
