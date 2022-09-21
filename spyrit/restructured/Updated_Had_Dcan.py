@@ -402,11 +402,26 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
     
     def sigma(self, x):
         r"""
+        returns variance
+        
         """
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
         x = x[:,self.even_index] + x[:,self.odd_index];
         x = 4*x/(self.N0**2); # Cov is in [-1,1] so *4
+        return x
+    
+    def sigma_expe(self, x, gain=1, mudark=0, sigdark=0):
+        r"""
+        returns estimated variance of **NOT** normalized measurements
+        
+        """
+        # Input shape (b*c, 2*M)
+        # output shape (b*c, M)
+        x = x[:,self.even_index] + x[:,self.odd_index]
+        x = gain*(x - 2*mudark) + 2*sigdark**2
+        x = 4*x     # to get the cov of an image in [-1,1], not in [0,1]
+
         return x
 
     def sigma_from_image(self, x, FO):
@@ -440,7 +455,10 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         
         N0_est = N0_est[:,0]    # shape is (b*c,)
         
+        print(N0_est)
+        
         return x, N0_est
+   
     
     def denormalize_expe(self, x, N0, h, w):
         """ 
@@ -1256,6 +1274,33 @@ class DC_Net(nn.Module):
         x = x.view(b,c,h,w)
         return x;
     
+    def reconstruct2(self, x):
+        """
+        input x is of shape [b*c, 2M]
+        """
+        # Measurement to image domain mapping
+        x = self.reconstruct_meas2im2(x)         # shape x = [b*c,1,h,w]
+        
+        # Image domain denoising
+        x = self.Denoi(x)                       # shape stays the same
+        return x
+    
+    def reconstruct_meas2im2(self, x):
+        # x of shape [b*c, 2M]
+        bc, _ = x.shape
+    
+        # Preprocessing
+        sigma_noi = self.PreP.sigma(x)
+        x = self.PreP(x, self.Acq.FO) # shape x = [b*c, M]
+        x_0 = torch.zeros((bc, self.Acq.FO.N)).to(x.device)
+        #x_0 = torch.zeros_like(x).to(x.device)
+        
+        # measurements to image domain processing
+        x = self.DC_layer(x, x_0, sigma_noi, self.Acq.FO) # shape x = [b*c, N]
+        x = x.view(bc,1,self.Acq.FO.h, self.Acq.FO.w)   # shape x = [b*c,1,h,w]
+        
+        return x
+    
     def reconstruct_meas2im(self, x, h = None, w = None):
         # x - of shape [b,c, 2M]
         b, c, M2 = x.shape;
@@ -1282,7 +1327,7 @@ class DC_Net(nn.Module):
     
     def reconstruct_expe(self, x, h = None, w = None):
         # x - of shape [b,c, 2M]
-        b, c, M2 = x.shape;
+        bc, _ = x.shape;
         
         if h is None:
             h = int(np.sqrt(self.Acq.FO.N))   
@@ -1290,25 +1335,68 @@ class DC_Net(nn.Module):
         if w is None:
             w = int(np.sqrt(self.Acq.FO.N))
         
-        x = x.view(b*c, M2)
-        x_0 = torch.zeros((b*c, self.Acq.FO.N)).to(x.device)
+        #x = x.view(bc, M2)
+        x_0 = torch.zeros((bc, self.Acq.FO.N)).to(x.device)
 
         # Preprocessing experimental data
-        sigma_noi = self.PreP.sigma(x)
+        #var_noi = self.PreP.sigma(x)
+        #x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # shape x = [b*c, M]
+        
+        var_noi = self.PreP.sigma(x)
         x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # shape x = [b*c, M]
-
+        #var_noi = torch.div(var_noi, N0_est**2)
+        
         # Measurement to image domain 
-        x = self.DC_layer(x, x_0, sigma_noi, self.Acq.FO) # shape x = [b*c, N]
-        x = x.view(b,c,h,w)
+        x = self.DC_layer(x, x_0, var_noi, self.Acq.FO) # shape x = [b*c, N]
+        #x = x.view(b,c,h,w)
         
         # Image domain denoising 
-        x = x.view(b*c,1,h,w)
+        x = x.view(bc,1,h,w)
         x = self.Denoi(x)   # shape stays the same
-        x = x.view(b,c,h,w)
+        #x = x.view(b,c,h,w)
         
         # Denormalization
-        N0_est = N0_est.view(b*c,1,1,1)
-        N0_est = N0_est.expand(b*c,1,h,w)
+        N0_est = N0_est.view(bc,1,1,1)
+        N0_est = N0_est.expand(bc,1,h,w)
+        x = (x+1)*N0_est/2  
+        
+        return x
+    
+    
+    def reconstruct_expe2(self, x, h = None, w = None):
+        # x - of shape [b,c, 2M]
+        bc, _ = x.shape;
+        
+        if h is None:
+            h = int(np.sqrt(self.Acq.FO.N))   
+        
+        if w is None:
+            w = int(np.sqrt(self.Acq.FO.N))
+        
+        #x = x.view(bc, M2)
+        x_0 = torch.zeros((bc, self.Acq.FO.N)).to(x.device)
+
+        # Preprocessing experimental data
+        #var_noi = self.PreP.sigma(x)
+        #x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # shape x = [b*c, M]
+        
+        var_noi = self.PreP.sigma_expe(x, gain=1, mudark=700, sigdark=17)
+        x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # shape x = [b*c, M]
+        N0_div = N0_est.view(bc,1).expand(bc,self.Acq.FO.M)
+        var_noi = torch.div(var_noi, N0_div**2)
+        
+        # Measurement to image domain 
+        x = self.DC_layer(x, x_0, var_noi, self.Acq.FO) # shape x = [b*c, N]
+        #x = x.view(b,c,h,w)
+        
+        # Image domain denoising 
+        x = x.view(bc,1,h,w)
+        x = self.Denoi(x)   # shape stays the same
+        #x = x.view(b,c,h,w)
+        
+        # Denormalization
+        N0_est = N0_est.view(bc,1,1,1)
+        N0_est = N0_est.expand(bc,1,h,w)
         x = (x+1)*N0_est/2  
         
         return x
@@ -1396,6 +1484,54 @@ class Pinv_Net(nn.Module):
 
         # Image domain denoising
         x = self.Denoi(x)                               # shape x = [b*c,1,h,w]
+        
+        # Denormalization 
+        x = self.PreP.denormalize_expe(x, N0_est, self.Acq.FO.h, self.Acq.FO.w)
+        
+        return x
+    
+# ===========================================================================================
+class DC2_Net(Pinv_Net):
+# ===========================================================================================
+    def __init__(self, Acq, PreP, DC_layer, Denoi):
+        super().__init__(Acq, PreP, DC_layer, Denoi)
+
+    def reconstruct_meas2im(self, x):
+        # x of shape [b*c, 2M]
+        bc, _ = x.shape
+    
+        # Preprocessing
+        var_noi = self.PreP.sigma(x)
+        x = self.PreP(x, self.Acq.FO) # shape x = [b*c, M]
+    
+        # measurements to image domain processing
+        x_0 = torch.zeros((bc, self.Acq.FO.N)).to(x.device)
+        x = self.DC_layer(x, x_0, var_noi, self.Acq.FO)
+        x = x.view(bc,1,self.Acq.FO.h, self.Acq.FO.w)   # shape x = [b*c,1,h,w]
+        
+        return x
+
+    def reconstruct_expe(self, x, gain=1, mudark=0, sigdark=0):
+        """
+        The output images are denormalized, i.e., they have units of photon counts. 
+        The estimated image intensity N0 is used for both normalizing the raw 
+        data and computing the variance of the normalized data.
+        """
+        # x of shape [b*c, 2M]
+        bc, _ = x.shape
+        
+        # Preprocessing expe
+        var_noi = self.PreP.sigma_expe(x, gain, mudark, sigdark)
+        x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # shape x = [b*c, M]
+        var_noi = torch.div(var_noi, (gain*N0_est.view(-1,1).expand(bc,self.Acq.FO.M))**2)
+    
+        # measurements to image domain processing
+        x_0 = torch.zeros((bc, self.Acq.FO.N)).to(x.device)
+        x = self.DC_layer(x, x_0, var_noi, self.Acq.FO)
+        x = x.view(bc,1,self.Acq.FO.h, self.Acq.FO.w)       # shape x = [b*c,1,h,w]
+
+        # Image domain denoising
+        x = self.Denoi(x)                                  # shape x = [b*c,1,h,w]
         
         # Denormalization 
         x = self.PreP.denormalize_expe(x, N0_est, self.Acq.FO.h, self.Acq.FO.w)
