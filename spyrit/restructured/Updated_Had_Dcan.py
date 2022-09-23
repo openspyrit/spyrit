@@ -98,7 +98,7 @@ class Forward_operator(nn.Module):
         Args:
             x (np.ndarray): M-by-N matrix.
         Returns:
-            nn.Linear Pytorch Fully Connecter Layer that has input shape of N and output shape of M 
+            nn.Linear: N-by-M operator. 
         Example:
             >>> Input_Matrix = np.array(np.random.random([100,32]))
             >>> Forwad_OP = Forward_operator(Input_Matrix)
@@ -128,7 +128,7 @@ class Split_Forward_operator(Forward_operator):
             Args:
                 x (np.ndarray): M-by-N matrix.
             Returns:
-                nn.Linear Pytorch Fully Connecter Layer that has input shape of N and output shape of 2*M 
+                nn.Linear: N-by-2*M operator.
             Example:
                 >>> Input_Matrix = np.array(np.random.random([100,32]))
                 >>> Split_Forwad_OP =  Split_Forward_operator(Input_Matrix)
@@ -164,12 +164,7 @@ class Split_Forward_operator(Forward_operator):
 
 # ==================================================================================
 class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform hadamard
-    r""" Split_Forward_operator object that contains:
-        Args:
-            Hsub (np.ndarray) :  M-by-N matrix
-            Perm (np.ndarray) :  N-by-N matrix
-        Returns:
-            *inverse* method            
+    r""" Split_Forward_operator:           
     """
 # ==================================================================================
 # Forward operator with implemented inverse transform and a permutation matrix
@@ -300,11 +295,7 @@ class Forward_operator_shift_had(Forward_operator_shift):
 # ==================================================================================        
 class Acquisition(nn.Module):
     r"""
-        Sub-class of nn.Module that forward propagates torch.tensor through an nn.Linear
-        Args:
-            x (torch.tensor): b*c-by-N
-        Returns:
-            x (torch.tensor): 
+        Simulates acquisition by applying Forward_operator to a scaled image
     """
     def __init__(self, FO):
         super().__init__()
@@ -312,6 +303,12 @@ class Acquisition(nn.Module):
         self.FO = FO
     
     def forward(self, x):
+        r"""
+        Args:
+            x (torch.tensor): b*c-by-N
+        Returns:
+            torch.tensor: b*c-by-N
+        """
         # input x.shape - [b*c,h*w] - [b*c,N] 
         # output x.shape - [b*c,M] 
         #--Scale input image
@@ -321,13 +318,33 @@ class Acquisition(nn.Module):
         return x
 
 # ==================================================================================
-class Bruit_Poisson_approx_Gauss(Acquisition):
+class Acquisition_Poisson_approx_Gauss(Acquisition):
+    r"""
+    Acquisition with scaled and noisy image with Gaussian-approximated Poisson noise 
+    model based on noice level (Image intensity in photons).
+    Args:
+        alpha (python scalar)
+        FO (nn.Linear): N-by-2*M operator
+    """
 # ==================================================================================    
     def __init__(self, alpha, FO):
         super().__init__(FO)
         self.alpha = alpha
         
     def forward(self, x):
+        r"""
+        Forward propagates x after scaling and simulating Gauss-approximated Poisson noise.
+        Args:
+            x (torch.tensor): b*c-by-N
+        Returns:
+            torch.tensor: b*c-by-2*M
+        Examples:
+            >>> alpha = 5
+            >>> Input_Matrix = np.array(np.random.random([100,32]))
+            >>> Split_Forwad_OP =  Split_Forward_operator(Input_Matrix)
+            >>> Acq_PoissGauss = Acquisition_Poisson_approx_Gauss(alpha, Split_Forwad_OP)
+            
+        """
         # Input shape [b*c, N]  
         # Output shape [b*c, 2*M]
 
@@ -343,7 +360,7 @@ class Bruit_Poisson_approx_Gauss(Acquisition):
         return x  
     
 # ==================================================================================
-class Bruit_Poisson_Pytorch(Acquisition):
+class Acquisition_Poisson_Pytorch(Acquisition):
 # ==================================================================================           
     def __init__(self, alpha, H):
         super().__init__(H)
