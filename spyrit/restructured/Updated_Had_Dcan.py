@@ -412,6 +412,15 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         return x
     
     def set_expe(self, gain=1, mudark=0, sigdark=0, nbin=1):
+        r"""
+        set experimental noise parameters
+        
+        gain in count/electron
+        mudark: average dark current in counts
+        sigdark: standard deviation or dark current in counts
+        nbin: number of raw bin in each spectral channel (if input x results 
+        from the sommation/binning of the raw data)
+        """
         self.gain = gain
         self.mudark = mudark
         self.sigdark = sigdark
@@ -420,12 +429,6 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
     def sigma_expe(self, x):
         r"""
         returns estimated variance of **NOT** normalized measurements
-        
-        gain in count/electron
-        mudark: average dark current in counts
-        sigdark: standard deviation or dark current in counts
-        nbin: number of raw bin in each spectral channel (if input x results 
-        from the sommation/binning of the raw data)
         """
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
@@ -474,8 +477,6 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
             x has shape (b*c,1,h,w)
             norm has shape (b*c,). Typically N0*gain where N0 is the inmage 
             intensity in photon ang gain is in counts/electron
-            
-            Output has shape (b*c,1,h,w)
         """
         bc = x.shape[0]
         
