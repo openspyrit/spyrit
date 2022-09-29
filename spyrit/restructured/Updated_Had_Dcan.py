@@ -411,7 +411,13 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         x = 4*x/(self.N0**2); # Cov is in [-1,1] so *4
         return x
     
-    def sigma_expe(self, x, gain=1, mudark=0, sigdark=0, nbin=1):
+    def set_expe(self, gain=1, mudark=0, sigdark=0, nbin=1):
+        self.gain = gain
+        self.mudark = mudark
+        self.sigdark = sigdark
+        self.nbin = nbin
+    
+    def sigma_expe(self, x):
         r"""
         returns estimated variance of **NOT** normalized measurements
         
@@ -424,7 +430,7 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
         x = x[:,self.even_index] + x[:,self.odd_index]
-        x = gain*(x - 2*nbin*mudark) + 2*nbin*sigdark**2
+        x = self.gain*(x - 2*self.nbin*self.mudark) + 2*self.nbin*self.sigdark**2
         x = 4*x     # to get the cov of an image in [-1,1], not in [0,1]
 
         return x
@@ -460,24 +466,23 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         
         N0_est = N0_est[:,0]    # shape is (b*c,)
         
-        print(N0_est)
-        
         return x, N0_est
    
     
-    def denormalize_expe(self, x, N0, h, w):
+    def denormalize_expe(self, x, norm, h, w):
         """ 
             x has shape (b*c,1,h,w)
-            N0 has shape (b*c,)
+            norm has shape (b*c,). Typically N0*gain where N0 is the inmage 
+            intensity in photon ang gain is in counts/electron
             
             Output has shape (b*c,1,h,w)
         """
         bc = x.shape[0]
         
         # Denormalization
-        N0 = N0.view(bc,1,1,1)
-        N0 = N0.expand(bc,1,h,w)
-        x = (x+1)*N0/2 
+        norm = norm.view(bc,1,1,1)
+        norm = norm.expand(bc,1,h,w)
+        x = (x+1)/2*norm
         
         return x
 
@@ -1514,9 +1519,9 @@ class DC2_Net(Pinv_Net):
         x = self.DC_layer(x, x_0, var_noi, self.Acq.FO)
         x = x.view(bc,1,self.Acq.FO.h, self.Acq.FO.w)   # shape x = [b*c,1,h,w]
         
-        return x
-
-    def reconstruct_expe(self, x, gain=1, mudark=0, sigdark=0):
+        return x        
+        
+    def reconstruct_expe(self, x):
         """
         The output images are denormalized, i.e., they have units of photon counts. 
         The estimated image intensity N0 is used for both normalizing the raw 
@@ -1526,9 +1531,13 @@ class DC2_Net(Pinv_Net):
         bc, _ = x.shape
         
         # Preprocessing expe
-        var_noi = self.PreP.sigma_expe(x, gain, mudark, sigdark)
-        x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # shape x = [b*c, M]
-        var_noi = torch.div(var_noi, (gain*N0_est.view(-1,1).expand(bc,self.Acq.FO.M))**2)
+        var_noi = self.PreP.sigma_expe(x)
+        x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # x <- x/N0_est
+        x = x/self.PreP.gain
+        norm = self.PreP.gain*N0_est
+        
+        # variance of preprocessed measurements
+        var_noi = torch.div(var_noi, (norm.view(-1,1).expand(bc,self.Acq.FO.M))**2)
     
         # measurements to image domain processing
         x_0 = torch.zeros((bc, self.Acq.FO.N)).to(x.device)
@@ -1539,7 +1548,7 @@ class DC2_Net(Pinv_Net):
         x = self.Denoi(x)                                  # shape x = [b*c,1,h,w]
         
         # Denormalization 
-        x = self.PreP.denormalize_expe(x, N0_est, self.Acq.FO.h, self.Acq.FO.w)
+        x = self.PreP.denormalize_expe(x, norm, self.Acq.FO.h, self.Acq.FO.w)
         
         return x
 
