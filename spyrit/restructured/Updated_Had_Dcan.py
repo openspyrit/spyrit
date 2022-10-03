@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import math
-from scipy.stats import rankdata
 from torch import poisson
 from collections import OrderedDict
 #from scipy.sparse.linalg import aslinearoperator
@@ -18,23 +17,23 @@ from spyrit.misc.walsh_hadamard import walsh2_torch
 # ===========================================================
 #           Matrix Operations - Hadamard
 # ===========================================================
-def Permutation_Matrix(mat):
-    """
-        Returns permutation matrix from sampling map
+# def Permutation_Matrix(mat: np.ndarray) -> np.ndarray:
+#     """
+#         Returns permutation matrix from sampling map
         
-    Args:
-        mat: nd.ndarray): An n-by-n sampling map, where high value means high significance.
+#     Args:
+#         mat: 
         
-    Shape:
-    - Input: (n,n)
-    - Output: (n*n, n*n)
-    """
-    (nx, ny) = mat.shape;
-    Reorder = rankdata(-mat, method = 'ordinal');
-    Columns = np.array(range(nx*ny));
-    P = np.zeros((nx*ny, nx*ny));
-    P[Reorder-1, Columns] = 1;
-    return P
+#     Shape:
+#     - Input: (n,n)
+#     - Output: (n*n, n*n)
+#     """
+#     (nx, ny) = mat.shape;
+#     Reorder = rankdata(-mat, method = 'ordinal');
+#     Columns = np.array(range(nx*ny));
+#     P = np.zeros((nx*ny, nx*ny));
+#     P[Reorder-1, Columns] = 1;
+#     return P
 
 # ==================================================================================
 # Forward operators
@@ -43,10 +42,10 @@ def Permutation_Matrix(mat):
 class Forward_operator(nn.Module):
 # ==================================================================================
     r""" Defines backward and forward propagation layers that inherit weights from Hsub matrix
+    
         Args:
             Hsub: weight matrix, such as a sub-sampled Hadamard matrix.
-        Shape:
-            - Input: (N,M) = dim(Hsub)
+            
     """
 # Faire le produit H*f sans bruit, linear (pytorch) 
     def __init__(self, Hsub):  
@@ -67,15 +66,15 @@ class Forward_operator(nn.Module):
         self.Hsub_adjoint.weight.data = self.Hsub_adjoint.weight.data.float()
         self.Hsub_adjoint.weight.requires_grad = False
                
-    def forward(self, x): 
-        r""" Forward propagate x through fully connected layer.
+    def forward(self, x: torch.tensor) -> torch.tensor: 
+        r""" Applies Linear transform such that :math:`y = xHsub^T`
 
         Args:
-            x : nd.array 
+            x : image vector of length M
             
         Shape:
-            - Input: (M,N)
-            - Output: (N,M)
+            - Input: (*, M)
+            - Output: (*, N)
             
         Example::
         
@@ -128,7 +127,7 @@ class Forward_operator(nn.Module):
 # ==================================================================================
 class Split_Forward_operator(Forward_operator):
 # ==================================================================================
-    def __init__(self, Hsub): 
+    def __init__(self, Hsub: np.ndarray) -> nn.Linear : 
         super().__init__(Hsub)
         r""" Splits Forward Operator obtained from Hadamard Matrix into Positive and Negative arrays.
 
