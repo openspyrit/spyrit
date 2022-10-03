@@ -76,7 +76,7 @@ class Forward_operator(nn.Module):
             - Input: (*, M)
             - Output: (*, N)
             
-        Example::
+        Example:
         
             >>> Input_Matrix = np.array(np.random.random([100,32]))
             >>> Forwad_OP = Forward_operator(Input_Matrix)
