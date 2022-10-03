@@ -44,11 +44,13 @@ class Forward_operator(nn.Module):
     r""" Defines backward and forward propagation layers that inherit weights from Hsub matrix
     
         Args:
-            Hsub: weight matrix, such as a sub-sampled Hadamard matrix.
+            Hsub: Such as a sub-sampled Hadamard matrix. It is a weight matrix of size (M, N) with M the number of simulated measurements and N the global image size (img_x*img_y)
+        Shape:
+            Input: (M, N) 
             
     """
 # Faire le produit H*f sans bruit, linear (pytorch) 
-    def __init__(self, Hsub):  
+    def __init__(self, Hsub: np.ndarray):  
         super().__init__()
         # instancier nn.linear        
         # Pmat --> (torch) --> Poids ()
@@ -70,18 +72,18 @@ class Forward_operator(nn.Module):
         r""" Applies Linear transform such that :math:`y = xHsub^T`
 
         Args:
-            x : image vector of length M
+            x : image vector of length N where :math: 'N=image_x*image_y'
             
         Shape:
-            - Input: (*, M)
-            - Output: (*, N)
+            - Input: (*, N) where * denotes the batch size
+            - Output: (*, M) where * denotes the batch size
             
         Example:        
-            >>> Input_Matrix = np.array(np.random.random([100,32]))
+            >>> Input_Matrix = np.array(np.random.random([100,32*32]))
             >>> Forwad_OP = Forward_operator(Input_Matrix)
             >>> print('Input Matrix shape:', Input_Matrix.shape)
             >>> print('Forward propagation layer:',  Forwad_OP.Hsub) 
-            Input Matrix shape: (100, 32)
+            Input Matrix shape: (100, 32*32)
             Forward propagation layer: Linear(in_features=32, out_features=100, bias=False)
             
         """
@@ -95,14 +97,14 @@ class Forward_operator(nn.Module):
         return x
     
     def adjoint(self,x):
-        r""" Linearly propagates x according to weights from Hsub adjoint matrix 
+        r""" Applies Linear transform such that :math:`y = xHsub^T`
 
         Args:
-            x: np.ndarray
+            x: convolved-image vector of length N
             
         Shape:
-            - Input: (N,M)
-            - Output: (M,N)
+            - Input: (*,N)
+            - Output: (*,M)
             
         Example:
             >>> Input_Matrix = np.array(np.random.random([100,32]))
