@@ -14,37 +14,16 @@ from collections import OrderedDict
 
 from spyrit.misc.walsh_hadamard import walsh2_torch
 
-# ===========================================================
-#           Matrix Operations - Hadamard
-# ===========================================================
-# def Permutation_Matrix(mat: np.ndarray) -> np.ndarray:
-#     """
-#         Returns permutation matrix from sampling map
-        
-#     Args:
-#         mat: 
-        
-#     Shape:
-#     - Input: (n,n)
-#     - Output: (n*n, n*n)
-#     """
-#     (nx, ny) = mat.shape;
-#     Reorder = rankdata(-mat, method = 'ordinal');
-#     Columns = np.array(range(nx*ny));
-#     P = np.zeros((nx*ny, nx*ny));
-#     P[Reorder-1, Columns] = 1;
-#     return P
-
 # ==================================================================================
 # Forward operators
 # ==================================================================================
 # ==================================================================================
 class Forward_operator(nn.Module):
 # ==================================================================================
-    r""" Defines backward and forward propagation layers that inherit weights from Hsub matrix
+    r""" Computes Linear transform of image batch x such that :math:`y = xHsub^T` in order to simulate a sub-sampled image acquisition method.
     
         Args:
-            Hsub: Such as a sub-sampled Hadamard matrix. It is a weight matrix of size (M, N) with M the number of simulated measurements and N the global image size (img_x*img_y)
+            Hsub: such as "sub-sampled Hadamard matrix". It is a weight matrix of size (M, N) with M the number of simulated measurements and N the global image size (img_x*img_y)
         Shape:
             Input: (M, N) 
             
@@ -72,19 +51,26 @@ class Forward_operator(nn.Module):
         r""" Applies Linear transform such that :math:`y = xHsub^T`
 
         Args:
-            x : image vector of length N where :math: 'N=image_x*image_y'
+            x : Batch of images of size N where :math: 'N=img_x*img_y'
             
         Shape:
-            - Input: (*, N) where * denotes the batch size
-            - Output: (*, M) where * denotes the batch size
+            - Input: (*, N) where * denotes the batch size and N the image size
+            - Output: (*, M) where * denotes the batch size and M the number of simulated measurements
             
         Example:        
-            >>> Input_Matrix = np.array(np.random.random([100,32*32]))
+            >>> img_size = 32*32
+            >>> nb_measurements = 400
+            >>> batch_size = 100
+            >>> Input_Matrix = np.array(np.random.random([batch_size,img_size]))
             >>> Forwad_OP = Forward_operator(Input_Matrix)
-            >>> print('Input Matrix shape:', Input_Matrix.shape)
-            >>> print('Forward propagation layer:',  Forwad_OP.Hsub) 
-            Input Matrix shape: (100, 32*32)
-            Forward propagation layer: Linear(in_features=32, out_features=100, bias=False)
+            >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)
+            >>> y = Forwad_OP(x)
+            >>> print('Hsub shape:', Hsub.shape)
+            >>> print('input shape:', x.shape)
+            >>> print('output shape:', y.shape)
+            Hsub shape: (400, 1024)
+            input shape: torch.Size([100, 1024])
+            output shape: torch.Size([100, 400])
             
         """
         # x.shape[b*c,N]
@@ -96,23 +82,22 @@ class Forward_operator(nn.Module):
         x = self.Hsub(x)    
         return x
     
-    def adjoint(self,x):
-        r""" Applies Linear transform such that :math:`y = xHsub^T`
+    def adjoint(self,x: torch.tensor) -> torch.tensor:
+        r""" Applies Linear transform such that :math:`y = xHsub`
 
         Args:
-            x: convolved-image vector of length N
+            x:  batch of sub-sampled and convolved images
             
         Shape:
-            - Input: (*,N)
-            - Output: (*,M)
+            - Input: (*, M)
+            - Output: (*, N)
             
         Example:
-            >>> Input_Matrix = np.array(np.random.random([100,32]))
-            >>> Forwad_OP = Forward_operator(Input_Matrix)
-            >>> print('Input Matrix shape:', Input_Matrix.shape)
-            >>> print('Backpropagaton layer:', Forwad_OP.Hsub_adjoint)            
-            Input Matrix shape: (100, 32)
-            Backpropagaton layer: Linear(in_features=100, out_features=32, bias=False
+            >>> y = Forwad_OP(x)
+            >>> x_back = Forwad_OP.adjoint(y)
+            >>> print('adjoint output shape:', x_back.shape)
+            adjoint output shape: torch.Size([100, 1024])
+            
         """
         # x.shape[b*c,M]
         #Pmat.transpose()*f
