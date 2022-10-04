@@ -20,12 +20,12 @@ from spyrit.misc.walsh_hadamard import walsh2_torch
 # ==================================================================================
 class Forward_operator(nn.Module):
 # ==================================================================================
-    r""" Computes Linear transform of image batch x such that :math:`y = xHsub^T` in order to simulate a sub-sampled image acquisition method.
+    r""" Computes Linear transform of image batch x such that :math:`y = H_{sub}x` in order to simulate a sub-sampled image acquisition method.
     
         Args:
-            Hsub: such as "sub-sampled Hadamard matrix". It is a weight matrix of size (M, N) with M the number of simulated measurements and N the global image size (img_x*img_y)
+            Hsub: such as "sub-sampled Hadamard matrix". It is a weight matrix of size :math:'(M, N)' with :math:'M' the number of simulated measurements and :math:'N' the global image size :math:'(img_x*img_y)'
         Shape:
-            Input: (M, N) 
+            Input: :math:'(M, N)'
             
     """
 # Faire le produit H*f sans bruit, linear (pytorch) 
@@ -48,22 +48,22 @@ class Forward_operator(nn.Module):
         self.Hsub_adjoint.weight.requires_grad = False
                
     def forward(self, x: torch.tensor) -> torch.tensor: 
-        r""" Applies Linear transform such that :math:`y = xHsub^T`
+        r""" Applies Linear transform such that :math:`y = H_{sub}x`
 
         Args:
-            x : Batch of images of size N where :math: 'N=img_x*img_y'
+            x : Batch of images of size :math:'N' where :math:'N=img_x*img_y'
             
         Shape:
-            - Input: (*, N) where * denotes the batch size and N the image size
-            - Output: (*, M) where * denotes the batch size and M the number of simulated measurements
+            - Input: :math:'(*, N)' where * denotes the batch size and N the image size
+            - Output: :math:'(*, M)' where * denotes the batch size and M the number of simulated measurements
             
         Example:        
             >>> img_size = 32*32
             >>> nb_measurements = 400
             >>> batch_size = 100
-            >>> Input_Matrix = np.array(np.random.random([batch_size,img_size]))
-            >>> Forwad_OP = Forward_operator(Input_Matrix)
-            >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)
+            >>> Hsub = np.array(np.random.random([batch_size,img_size]))
+            >>> Forwad_OP = Forward_operator(Hsub)
+            >>> x = torch.tensor(np.random.rand([batch_size,img_size]), dtype=torch.float)
             >>> y = Forwad_OP(x)
             >>> print('Hsub shape:', Hsub.shape)
             >>> print('input shape:', x.shape)
@@ -78,12 +78,15 @@ class Forward_operator(nn.Module):
         return x
 
     def Forward_op(self,x):     # todo: Rename to "direct"
+        r""" same as forward.
+        
+        """
         # x.shape[b*c,N]
         x = self.Hsub(x)    
         return x
     
-    def adjoint(self,x: torch.tensor) -> torch.tensor:
-        r""" Applies Linear transform such that :math:`y = xHsub`
+    def adjoint(self, x: torch.tensor) -> torch.tensor:
+        r""" Applies Linear transform such that :math:`y = H_{sub}.Tx`
 
         Args:
             x:  batch of sub-sampled and convolved images
@@ -93,6 +96,12 @@ class Forward_operator(nn.Module):
             - Output: (*, N)
             
         Example:
+            >>> img_size = 32*32
+            >>> nb_measurements = 400
+            >>> batch_size = 100
+            >>> Hsub = np.array(np.random.rand([batch_size,img_size]))
+            >>> Forwad_OP = Forward_operator(Hsub)
+            >>> x = torch.tensor(np.random.rand([batch_size,img_size]), dtype=torch.float)        
             >>> y = Forwad_OP(x)
             >>> x_back = Forwad_OP.adjoint(y)
             >>> print('adjoint output shape:', x_back.shape)
@@ -105,6 +114,8 @@ class Forward_operator(nn.Module):
         return x
 
     def Mat(self):          # todo: Remove capital letter
+        r""" Provides :math:'H_{sub}' matrix weigths.
+        """
         return self.Hsub.weight.data;
 
 
