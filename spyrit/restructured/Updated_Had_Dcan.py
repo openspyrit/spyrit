@@ -125,7 +125,7 @@ class Forward_operator(nn.Module):
 # ==================================================================================
 class Split_Forward_operator(Forward_operator):
 # ==================================================================================
-    r""" Simulates measurements according to :math:`m=m^{+}-m^{-}` where :math:`m^{+}` is the measurement obtained for the positive part of Hsub and :math:`m^{-}` from its negative values. See *Antonio Lorente Mur, Marien Ochoa, Jérémy E Cohen, Xavier Intes, Nicolas Ducros. Handling negative patterns for fast single-pixel lifetime imaging. 2019 - Molecular-Guided Surgery: Molecules, Devices, and Applications V, Feb 2019, San Francisco, United States. pp.1-10, `[10.1117/12.2511123]<https://hal.archives-ouvertes.fr/hal-02017598/document>`_. ⟨hal-02017598v2⟩*
+    r""" Simulates measurements according to :math:`m=m^{+}-m^{-}` where :math:`m^{+}` is the measurement obtained for the positive part of Hsub and :math:`m^{-}` from its negative values. See *Antonio Lorente Mur, Marien Ochoa, Jérémy E Cohen, Xavier Intes, Nicolas Ducros. Handling negative patterns for fast single-pixel lifetime imaging. 2019 - Molecular-Guided Surgery: Molecules, Devices, and Applications V, Feb 2019, San Francisco, United States. pp.1-10, `[10.1117/12.2511123] <https://hal.archives-ouvertes.fr/hal-02017598/document>`_. ⟨hal-02017598v2⟩*
 
         Args:
             Hsub:  Global pattern matrix with both positive and negative values
