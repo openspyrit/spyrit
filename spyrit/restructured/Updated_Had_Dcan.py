@@ -414,7 +414,7 @@ class Acquisition_Poisson_Pytorch(Acquisition):
         #--Measurement noise imported from Pytorch
         x = poisson(x) 
         return x           
- 
+    
 # ==================================================================================
 # Preprocessing
 # ==================================================================================
@@ -422,11 +422,12 @@ class Acquisition_Poisson_Pytorch(Acquisition):
 class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
 # ==================================================================================
     r"""
-        computes m = (m_+-m_-)/N_0
-        and also allows to compute var = 2*Diag(m_+ + m_-)/N0**2
+        computes :math`m = (m_{+}-m_{-})/N_0`
+        and also allows to compute :math:`var = 2*Diag(m_{+} + m_{-})/N0^{2}`
         Args:
-            N0 (scalar)  : Number of photons
-            N, M (scalar): Dimension of input matrix
+            N0 : Number of photons
+            N: Matrix Height
+            M : Matrix Width
     """
     def __init__(self, N0, M, N):
         super().__init__()
