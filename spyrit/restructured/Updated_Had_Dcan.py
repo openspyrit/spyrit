@@ -188,7 +188,7 @@ class Split_Forward_operator(Forward_operator):
         return x
 
 # ==================================================================================
-class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform hadamard
+class Split_Forward_operator_ft_had(Split_Forward_operator): 
     r""" Forward operator with implemented inverse transform and a permutation matrix.
     
         Args:
@@ -203,7 +203,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
     """
 # ==================================================================================
 # Forward operator with implemented inverse transform and a permutation matrix
-    def __init__(self, Hsub -> np.ndarray, Perm -> np.ndarray, h -> int, w -> int):
+    def __init__(self, Hsub: np.ndarray, Perm: np.ndarray, h: int, w: int):
 
         super().__init__(Hsub);
         self.Perm = nn.Linear(self.N, self.N, False)
@@ -217,14 +217,21 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
         # Build H - 1D, store and give it as argument
         #self.H_1_D = ; 
     
-    def inverse(self, x):
+    def inverse(self, x -> torch.tensor) -> torch.tensor:
         r""" Inverse transform of x with permutation matrix.
             Args:
                 x :  batch of images
                 
             Shape:
                 - Input: :math:`(b*c, N) with b the batch size, c the number of channels, and N the number of pixels in the image.
-                - Output: same as input.                            
+                - Output: same as input.      
+                
+            Example:
+                >>>
+                >>>
+                >>>
+                >>>
+                >>>
         """
         # rearrange the terms + inverse transform
         # maybe needs to be initialized with a permutation matrix as well!
@@ -242,7 +249,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
         x = x.view(b, N);
         return x
     
-    def pinv(self, x):
+    def pinv(self, x -> torch.tensor) -> torch.tensor:
         r""" Inverse transform of x using Forward_Operator adjoint method.        
         """
         x = self.adjoint(x)/self.N
