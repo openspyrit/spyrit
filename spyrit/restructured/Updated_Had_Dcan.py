@@ -159,7 +159,7 @@ class Split_Forward_operator(Forward_operator):
         self.Hpos_neg.weight.requires_grad=False
               
     def forward(self, x: torch.tensor) -> torch.tensor: # --> simule la mesure sous-chantillonnée
-        r""" Linear transform of batch of images x such that :math:`y =Hposneg*x` where :math:`Hposneg = \begin{matrix}{Hpos}\\{Hneg}\end{matrix}`.
+        r""" Linear transform of batch of images x such that :math:`y =Hposneg*x` where :math:`Hposneg = [\begin{matrix}{Hpos}\\{Hneg}\end{matrix}]`
         
         Args:
             Hsub: Global pattern matrix with both positive and negative values
