@@ -190,14 +190,22 @@ class Split_Forward_operator(Forward_operator):
 
 # ==================================================================================
 class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform hadamard
-    r""" Split_Forward_operator:           
+    r""" Split_Forward_operator:
+    
+        Args:
+            Perm: Permutation matrix
+            h: image height
+            w: image width 
+            
+        Shape:
+            - Input2: :math:`(N,N)`
+            - Input3: scalar
+            - Input4: scalar
     """
 # ==================================================================================
 # Forward operator with implemented inverse transform and a permutation matrix
-    def __init__(self, Hsub, Perm, h, w):
-        """
-            h, w (int): image height and width such that self.N = h*w
-        """
+    def __init__(self, Hsub -> np.ndarray, Perm -> np.ndarray, h -> int, w -> int):
+
         super().__init__(Hsub);
         self.Perm = nn.Linear(self.N, self.N, False)
         self.Perm.weight.data=torch.from_numpy(Perm.T)
