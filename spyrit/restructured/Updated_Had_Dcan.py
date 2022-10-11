@@ -218,7 +218,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
         #self.H_1_D = ; 
     
     def inverse(self, x):
-        r""" Inverse transform of x:
+        r""" Inverse transform of x with permutation matrix.
             Args:
                 x :  batch of images
                 
@@ -243,6 +243,8 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
         return x
     
     def pinv(self, x):
+        r""" Inverse transform of x using Forward_Operator adjoint method.        
+        """
         x = self.adjoint(x)/self.N
         return x
 
