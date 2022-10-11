@@ -180,8 +180,7 @@ class Split_Forward_operator(Forward_operator):
             >>> print('output shape:', x_output.shape)
             input shape: torch.Size([100, 1024])
             output shape: torch.Size([100, 800])
-            
-        
+                    
         """
         # x.shape[b*c,N]
         # output shape : [b*c, 2*M]
@@ -190,7 +189,7 @@ class Split_Forward_operator(Forward_operator):
 
 # ==================================================================================
 class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform hadamard
-    r""" Split_Forward_operator:
+    r""" Forward operator with implemented inverse transform and a permutation matrix.
     
         Args:
             Perm: Permutation matrix
@@ -221,9 +220,11 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
     def inverse(self, x):
         r""" Inverse transform of x:
             Args:
-                x :  (torch.tensor) : b*c-by-N
-            Returns:
-                   
+                x :  batch of images
+                
+            Shape:
+                - Input: :math:`(b*c, N) with b the batch size, c the number of channels, and N the number of pixels in the image.
+                - Output: same as input.                            
         """
         # rearrange the terms + inverse transform
         # maybe needs to be initialized with a permutation matrix as well!
