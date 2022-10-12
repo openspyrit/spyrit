@@ -203,7 +203,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
     """
 # ==================================================================================
 # Forward operator with implemented inverse transform and a permutation matrix
-    def __init__(self, Hsub: np.ndarray, Perm: np.ndarray, h: int, w: int):
+    def __init__(self, Hsub: np.ndarray, Perm: np.ndarray, h: int, w: int) -> torch.tensor:
 
         super().__init__(Hsub);
         self.Perm = nn.Linear(self.N, self.N, False)
@@ -217,7 +217,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
         # Build H - 1D, store and give it as argument
         #self.H_1_D = ; 
     
-    def inverse(self, x -> torch.tensor) -> torch.tensor:
+    def inverse(self, x: torch.tensor) -> torch.tensor:
         r""" Inverse transform of x with permutation matrix.
             Args:
                 x :  batch of images
@@ -227,11 +227,20 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
                 - Output: same as input.      
                 
             Example:
-                >>>
-                >>>
-                >>>
-                >>>
-                >>>
+                >>> h, w = 32, 32
+                >>> img_size = h*w
+                >>> nb_measurements = 400
+                >>> batch_size = 100
+                >>> Hcomplete = np.array(np.random.random([img_size,img_size]))
+                >>> Perm = np.array(np.random.random([img_size,img_size]))
+                >>> Permuted_H = np.dot(Perm,Hcomplete)
+                >>> Hsub = Permuted_H[:nb_measurements,:]
+                >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)
+                >>> x_inverse = FO_Had.inverse(x)
+                >>> print(x.shape)
+                >>> print(x_inverse.shape)
+                torch.Size([100, 1024])
+                torch.Size([100, 1024])
         """
         # rearrange the terms + inverse transform
         # maybe needs to be initialized with a permutation matrix as well!
@@ -249,8 +258,34 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
         x = x.view(b, N);
         return x
     
-    def pinv(self, x -> torch.tensor) -> torch.tensor:
-        r""" Inverse transform of x using Forward_Operator adjoint method.        
+    def pinv(self, x: torch.tensor) -> torch.tensor:
+        r""" Inverse transform of x using Forward_Operator adjoint method.
+        
+            Args:
+                x :  batch of images
+                
+            Shape:
+                - Input: :math:`(b*c, N) with b the batch size, c the number of channels, and N the number of pixels in the image.
+                - Output: same as input.      
+                
+            Example:
+                >>> h, w = 32, 32
+                >>> img_size = h*w
+                >>> nb_measurements = 400
+                >>> batch_size = 100
+                >>> Hcomplete = np.array(np.random.random([img_size,img_size]))
+                >>> Perm = np.array(np.random.random([img_size,img_size]))
+                >>> Permuted_H = np.dot(Perm,Hcomplete)
+                >>> Hsub = Permuted_H[:nb_measurements,:]
+                >>> FO = Forward_operator(Hsub)
+                >>> x = torch.tensor(np.random.rand([batch_size,img_size]), dtype=torch.float)
+                >>> y = FO(x)
+                >>> FO_Had = Split_Forward_operator_ft_had(Hsub, Perm, h, w)  
+                >>> x_pinv = FO_Had.pinv(y)
+                >>> print(x.shape)
+                >>> print(x_pinv.shape)
+                torch.Size([100, 1024])
+                torch.Size([100, 1024])
         """
         x = self.adjoint(x)/self.N
         return x
