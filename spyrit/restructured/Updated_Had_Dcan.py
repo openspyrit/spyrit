@@ -55,7 +55,7 @@ class Forward_operator(nn.Module):
             x : Batch of images of size :math:`N` where :math:`N=img_x*img_y`
             
         Shape:
-            - Input: :math:`(*, N)` where * denotes the batch size and `N` the image size
+            - Input: :math:`(*, N)` where * denotes the batch size scipy.linalg.hadamardand `N` the image size
             - Output: :math:`(*, M)` where * denotes the batch size and `M` the number of simulated measurements
             
         Example:        
@@ -125,13 +125,13 @@ class Forward_operator(nn.Module):
 # ==================================================================================
 class Split_Forward_operator(Forward_operator):
 # ==================================================================================
-    r""" Simulates measurements according to :math:`m=m^{+}-m^{-}` where :math:`m^{+}` is the measurement obtained for the positive part of Hsub and :math:`m^{-}` from its negative values. See *Antonio Lorente Mur, Marien Ochoa, Jérémy E Cohen, Xavier Intes, Nicolas Ducros. Handling negative patterns for fast single-pixel lifetime imaging. 2019 - Molecular-Guided Surgery: Molecules, Devices, and Applications V, Feb 2019, San Francisco, United States. pp.1-10, \href{https://hal.archives-ouvertes.fr/hal-02017598/document}{[10.1117/12.2511123]}. ⟨hal-02017598v2⟩*
+    r""" Simulates measurements according to :math:`m=m^{+}-m^{-}` where :math:`m^{+}` is the measurement obtained for the positive part of Hsub and :math:`m^{-}` from its negative values. See *Antonio Lorente Mur, Marien Ochoa, Jérémy E Cohen, Xavier Intes, Nicolas Ducros. Handling negative patterns for fast single-pixel lifetime imaging. 2019 - Molecular-Guided Surgery: Molecules, Devices, and Applications V, Feb 2019, San Francisco, United States. pp.1-10, _[10.1117/12.2511123]: https://hal.archives-ouvertes.fr/hal-02017598/document/ .*
 
         Args:
             Hsub:  Global pattern matrix with both positive and negative values
 
         Shape:
-            - Input: (M,N)
+            - Input: :math:`(M,N)`
             
      """
 
@@ -192,9 +192,9 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
     r""" Forward operator with implemented inverse transform and a permutation matrix.
     
         Args:
-            Perm: Permutation matrix
-            h: image height
-            w: image width 
+            Perm: Permutation matrix.
+            h: image height.
+            w: image width.
             
         Shape:
             - Input2: :math:`(N,N)`
@@ -204,7 +204,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
 # ==================================================================================
 # Forward operator with implemented inverse transform and a permutation matrix
     def __init__(self, Hsub: np.ndarray, Perm: np.ndarray, h: int, w: int) -> torch.tensor:
-
+        
         super().__init__(Hsub);
         self.Perm = nn.Linear(self.N, self.N, False)
         self.Perm.weight.data=torch.from_numpy(Perm.T)
@@ -223,7 +223,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
                 x :  batch of images
                 
             Shape:
-                - Input: :math:`(b*c, N) with b the batch size, c the number of channels, and N the number of pixels in the image.
+                - Input: :math:`(b*c, N)` with b the batch size, c the number of channels, and N the number of pixels in the image.
                 - Output: same as input.      
                 
             Example:
@@ -231,11 +231,13 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
                 >>> img_size = h*w
                 >>> nb_measurements = 400
                 >>> batch_size = 100
-                >>> Hcomplete = np.array(np.random.random([img_size,img_size]))
+                >>> from scipy.linalg import hadamard
+                >>> Hcomplete = hadamard(img_size)
                 >>> Perm = np.array(np.random.random([img_size,img_size]))
-                >>> Permuted_H = np.dot(Perm,Hcomplete)
-                >>> Hsub = Permuted_H[:nb_measurements,:]
+                >>> Permuted_Hcomplete = np.dot(Perm,Hcomplete)
+                >>> Hsub = Permuted_Hcomplete[:nb_measurements,:]
                 >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)
+                >>> FO_Had = Split_Forward_operator_ft_had(Hsub, Perm, h, w)  
                 >>> x_inverse = FO_Had.inverse(x)
                 >>> print(x.shape)
                 >>> print(x_inverse.shape)
@@ -273,7 +275,8 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
                 >>> img_size = h*w
                 >>> nb_measurements = 400
                 >>> batch_size = 100
-                >>> Hcomplete = np.array(np.random.random([img_size,img_size]))
+                >>> from scipy.linalg import hadamard
+                >>> Hcomplete = hadamard(img_size)
                 >>> Perm = np.array(np.random.random([img_size,img_size]))
                 >>> Permuted_H = np.dot(Perm,Hcomplete)
                 >>> Hsub = Permuted_H[:nb_measurements,:]
