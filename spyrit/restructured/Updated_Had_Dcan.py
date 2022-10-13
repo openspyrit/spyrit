@@ -23,7 +23,7 @@ class Forward_operator(nn.Module):
     r""" Computes Linear transform of image batch x such that :math:`y = H_{sub}x` in order to simulate a single-pixel image acquisition.
     
         Args:
-            Hsub: such as "sub-sampled Hadamard matrix". It is a pattern matrix of size :math:`(M, N)` to be modulated with an image of size :math:`N` pixels, equivament to :math:`N = img_x*img_y`. M stands for the number of simulated measurements.
+            :math:`Hsub: such as "sub-sampled Hadamard matrix". It is a pattern matrix of size :math:`(M, N)` to be modulated with an image of size :math:`N` pixels, equivament to :math:`N = img_x*img_y`. M stands for the number of simulated measurements.
             
         Shape:
             Input: :math:`(M, N)`
@@ -52,7 +52,7 @@ class Forward_operator(nn.Module):
         r""" Applies Linear transform such that :math:`y = H_{sub}x`
 
         Args:
-            x : Batch of images of size :math:`N` where :math:`N=img_x*img_y`
+            math:`x` : Batch of images of size :math:`N` where :math:`N=img_x*img_y`
             
         Shape:
             - Input: :math:`(*, N)` where * denotes the batch size scipy.linalg.hadamardand `N` the image size
@@ -90,7 +90,7 @@ class Forward_operator(nn.Module):
         r""" Applies Linear transform such that :math:`y = H_{sub}^{T}x`
 
         Args:
-            x:  batch of sub-sampled and convolved images
+            :math:`x`:  batch of sub-sampled and convolved images
             
         Shape:
             - Input: :math:`(*, M)`
@@ -125,7 +125,7 @@ class Forward_operator(nn.Module):
 # ==================================================================================
 class Split_Forward_operator(Forward_operator):
 # ==================================================================================
-    r""" Simulates measurements according to :math:`m=m^{+}-m^{-}` where :math:`m^{+}` is the measurement obtained for the positive part of Hsub and :math:`m^{-}` from its negative values. See *Antonio Lorente Mur, Marien Ochoa, Jérémy E Cohen, Xavier Intes, Nicolas Ducros. Handling negative patterns for fast single-pixel lifetime imaging. 2019 - Molecular-Guided Surgery: Molecules, Devices, and Applications V, Feb 2019, San Francisco, United States. pp.1-10, _[10.1117/12.2511123]: https://hal.archives-ouvertes.fr/hal-02017598/document/ .*
+    r""" Simulates measurements according to :math:`m=m^{+}-m^{-}` where :math:`m^{+}` is the measurement obtained for the positive part of Hsub and :math:`m^{-}` from its negative values. See Antonio Lorente Mur, Marien Ochoa, Jérémy E Cohen, Xavier Intes, Nicolas Ducros. Handling negative patterns for fast single-pixel lifetime imaging. 2019 - Molecular-Guided Surgery: Molecules, Devices, and Applications V, Feb 2019, San Francisco, United States. pp.1-10, `10.1117/12.2511123 <https://hal.archives-ouvertes.fr/hal-02017598/document/>`_
 
         Args:
             Hsub:  Global pattern matrix with both positive and negative values
