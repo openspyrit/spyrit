@@ -23,7 +23,7 @@ class Forward_operator(nn.Module):
     r""" Computes Linear transform of image batch x such that :math:`y = H_{sub}x` in order to simulate a single-pixel image acquisition.
     
         Args:
-            :math:`Hsub: such as "sub-sampled Hadamard matrix". It is a pattern matrix of size :math:`(M, N)` to be modulated with an image of size :math:`N` pixels, equivament to :math:`N = img_x*img_y`. M stands for the number of simulated measurements.
+            :math:`Hsub`: such as "sub-sampled Hadamard matrix". It is a pattern matrix of size :math:`(M, N)` to be modulated with an image of size :math:`N` pixels, equivalent to :math:`N = img_x*img_y`. :math:`M` stands for the number of simulated measurements.
             
         Shape:
             Input: :math:`(M, N)`
@@ -55,7 +55,7 @@ class Forward_operator(nn.Module):
             math:`x` : Batch of images of size :math:`N` where :math:`N=img_x*img_y`
             
         Shape:
-            - Input: :math:`(*, N)` where * denotes the batch size scipy.linalg.hadamardand `N` the image size
+            - Input: :math:`(*, N)` where * denotes the batch size and `N` the image size
             - Output: :math:`(*, M)` where * denotes the batch size and `M` the number of simulated measurements
             
         Example:        
@@ -100,9 +100,9 @@ class Forward_operator(nn.Module):
             >>> img_size = 32*32
             >>> nb_measurements = 400
             >>> batch_size = 100
-            >>> Hsub = np.array(np.random.rand([batch_size,img_size]))
+            >>> Hsub = np.array(np.random.random([batch_size,img_size]))
             >>> Forwad_OP = Forward_operator(Hsub)
-            >>> x = torch.tensor(np.random.rand([batch_size,img_size]), dtype=torch.float)        
+            >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)        
             >>> y = Forwad_OP(x)
             >>> x_back = Forwad_OP.adjoint(y)
             >>> print('adjoint output shape:', x_back.shape)
@@ -125,11 +125,11 @@ class Forward_operator(nn.Module):
 # ==================================================================================
 class Split_Forward_operator(Forward_operator):
 # ==================================================================================
-    r""" Simulates measurements according to :math:`m=m^{+}-m^{-}` where :math:`m^{+}` is the measurement obtained for the positive part of Hsub and :math:`m^{-}` from its negative values. See Antonio Lorente Mur, Marien Ochoa, Jérémy E Cohen, Xavier Intes, Nicolas Ducros. Handling negative patterns for fast single-pixel lifetime imaging. 2019 - Molecular-Guided Surgery: Molecules, Devices, and Applications V, Feb 2019, San Francisco, United States. pp.1-10, `10.1117/12.2511123 <https://hal.archives-ouvertes.fr/hal-02017598/document/>`_
+    r""" Simulates measurements according to :math:`m=m^{+}-m^{-}` where :math:`m^{+}` is the measurement obtained for the positive part of Hsub and :math:`m^{-}` from its negative values. See Antonio Lorente Mur et. al. Handling negative patterns for fast single-pixel lifetime imaging. 2019 - Molecular-Guided Surgery: Molecules, Devices, and Applications V, Feb 2019, San Francisco, United States. pp.1-10, `10.1117/12.2511123 <https://hal.archives-ouvertes.fr/hal-02017598/document/>`_
 
         Args:
-            Hsub:  Global pattern matrix with both positive and negative values
-
+            :math:`Hsub`:  Global pattern matrix with both positive and negative values
+            
         Shape:
             - Input: :math:`(M,N)`
             
@@ -296,6 +296,13 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
 # ==================================================================================
 class Forward_operator_shift(Forward_operator):
 # ==================================================================================
+    r""" Creates forward operator by adding one dimension to weight matrix corresponding to a bias.
+        Args:
+            Perm: Permutation matrix.
+        Shape:
+            Input2: math:`(N,N)`
+    
+    """
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub)
         
@@ -314,6 +321,8 @@ class Forward_operator_shift(Forward_operator):
         self.H_shift.weight.requires_grad = False
          
     def forward(self, x):
+        r""" Applies Linear transform such that :math:`y = \begin{matrix}{{1}{H_{sub}}}\end{matrix}x`
+        """
         # input x is a set of images with shape (b*c, N)
         # output input is a set of measurement vector with shape (b*c, M+1)
         x = self.H_shift(x) 
