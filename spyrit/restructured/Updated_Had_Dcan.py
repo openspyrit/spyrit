@@ -162,7 +162,7 @@ class Split_Forward_operator(Forward_operator):
         r""" Linear transform of batch of images x such that :math:`y =Hposneg*x` where :math:`Hposneg = \begin{bmatrix}{Hpos}\\{Hneg}\end{bmatrix}`
         
         Args:
-            Hsub: Global pattern matrix with both positive and negative values
+            :math:`Hsub`: Global pattern matrix with both positive and negative values
             
         Shape:
             - Input: :math:`(*,N)`
@@ -192,9 +192,9 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
     r""" Forward operator with implemented inverse transform and a permutation matrix.
     
         Args:
-            Perm: Permutation matrix.
-            h: image height.
-            w: image width.
+            :math:`Perm`: Permutation matrix.
+            :math:`h: image height.
+            :math:`w`: image width.
             
         Shape:
             - Input2: :math:`(N,N)`
@@ -220,7 +220,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
     def inverse(self, x: torch.tensor) -> torch.tensor:
         r""" Inverse transform of x with permutation matrix.
             Args:
-                x :  batch of images
+                :math:`x` :  batch of images
                 
             Shape:
                 - Input: :math:`(b*c, N)` with b the batch size, c the number of channels, and N the number of pixels in the image.
@@ -264,7 +264,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
         r""" Inverse transform of x using Forward_Operator adjoint method.
         
             Args:
-                x :  batch of images
+                :math:`x` :  batch of images
                 
             Shape:
                 - Input: :math:`(b*c, N) with b the batch size, c the number of channels, and N the number of pixels in the image.
@@ -296,7 +296,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
 # ==================================================================================
 class Forward_operator_shift(Forward_operator):
 # ==================================================================================
-    r""" Creates forward operator by adding one dimension to weight matrix corresponding to a bias.
+    r""" Creates forward operator by adding one dimension to weight matrix, corresponding to a bias, and by modifying :math:`Hsub` weights according to: :math:`H_{sub}(i,j) = \frac{H_{sub}(i,j)+1}{2}`.
         Args:
             Perm: Permutation matrix.
         Shape:
@@ -322,6 +322,29 @@ class Forward_operator_shift(Forward_operator):
          
     def forward(self, x):
         r""" Applies Linear transform such that :math:`y = \begin{matrix}{{1}{H_{sub}}}\end{matrix}x`
+            Args:
+                :math:`x`: batch of images
+                
+            Shape:
+                Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
+                Output: :math:`(b*c, M+1)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`M+1` the number of measurements + 1.
+                
+            Example:
+                >>> from scipy.linalg import hadamard
+                >>> h, w = 32, 32
+                >>> img_size = h*w
+                >>> nb_measurements = 400
+                >>> batch_size = 100
+                >>> Hcomplete = hadamard(img_size)
+                >>> Perm = np.array(np.random.random([img_size,img_size]))
+                >>> Permuted_H = np.dot(Perm,Hcomplete)
+                >>> Hsub = Permuted_H[:nb_measurements,:]
+                >>> FO_Shift = Forward_operator_shift(Hsub, Perm)
+                >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)
+                >>> y = FO_Shift(x)
+                >>> print(x.shape)
+                >>> print(y.shape)
+            
         """
         # input x is a set of images with shape (b*c, N)
         # output input is a set of measurement vector with shape (b*c, M+1)
