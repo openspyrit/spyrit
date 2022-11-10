@@ -405,7 +405,7 @@ class Forward_operator_shift_had(Forward_operator_shift):
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub, Perm)
     
-    def inverse(self, x: torch.tensor, n = None: int) -> torch.tensor:
+    def inverse(self, x: torch.tensor, n = None) -> torch.tensor:
         r""" Inverse transform such that :math:`x = \frac{1}{N}H_{sub}y`.
         
         Args:
