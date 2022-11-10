@@ -299,7 +299,7 @@ class Forward_operator_shift(Forward_operator):
             :math:`Perm`: Permutation matrix.
             
         Shape:
-            Input2: :math:`(N,N)`
+            - Input2: :math:`(N,N)`
     
     """
     def __init__(self, Hsub, Perm):           
@@ -320,14 +320,14 @@ class Forward_operator_shift(Forward_operator):
         self.H_shift.weight.requires_grad = False
          
     def forward(self, x: torch.tensor) -> torch.tensor:
-        r""" Applies Linear transform such that :math:`y = \begin{matrix}{{1\\H_{sub}}}\end{matrix}x`.
+        r""" Applies Linear transform such that :math:`y = \begin{bmatrix}{{1\\H_{sub}}}\end{bmatrix}x`.
         
             Args:
                 :math:`x`: batch of images.
                 
             Shape:
-                Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
-                Output: :math:`(b*c, M+1)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`M+1` the number of measurements + 1.
+                - Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
+                - Output: :math:`(b*c, M+1)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`M+1` the number of measurements + 1.
                 
             Example:
                 >>> h, w = 32, 32
@@ -370,8 +370,8 @@ class Forward_operator_pos(Forward_operator):
             :math:`x`: batch of images.
             
         Shape:
-            Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
-            Output: :math:`(b*c, M)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`M` the number of measurements.
+            - Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
+            - Output: :math:`(b*c, M)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`M` the number of measurements.
             
         Example:
             >>> h, w = 32, 32
@@ -412,8 +412,8 @@ class Forward_operator_shift_had(Forward_operator_shift):
             :math:`x`: batch of measurements.
             
         Shape:
-            Input: math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of measurements.
-            Output: math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of reconstructed pixels.
+            - Input: math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of measurements.
+            - Output: math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of reconstructed pixels.
             
         Example:
             >>> h, w = 32, 32
