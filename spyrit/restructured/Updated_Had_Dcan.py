@@ -11,8 +11,7 @@ from collections import OrderedDict
 #from pylops_gpu import Diagonal, LinearOperator
 #from pylops_gpu.optimization.cg import cg --- currently not working
 #from pylops_gpu.optimization.leastsquares import NormalEquationsInversion
-
-from spyrit.misc.walsh_hadamard import walsh2_torch
+from spyrit.misc.walsh_hadamard import walsh2_torch, walsh_matrix
 
 # ==================================================================================
 # Forward operators
@@ -128,11 +127,10 @@ class Split_Forward_operator(Forward_operator):
     r""" Simulates measurements according to :math:`m=m^{+}-m^{-}` where :math:`m^{+}` is the measurement obtained for the positive part of Hsub and :math:`m^{-}` from its negative values. See Antonio Lorente Mur et. al. Handling negative patterns for fast single-pixel lifetime imaging. 2019 - Molecular-Guided Surgery: Molecules, Devices, and Applications V, Feb 2019, San Francisco, United States. pp.1-10, `10.1117/12.2511123 <https://hal.archives-ouvertes.fr/hal-02017598/document/>`_
 
         Args:
-            :math:`Hsub`:  Global pattern matrix with both positive and negative values
+            :math:`Hsub`:  Global pattern matrix with both positive and negative values.
             
         Shape:
-            - Input: :math:`(M,N)`
-            
+            - Input: :math:`(M,N)`            
      """
 
     def __init__(self, Hsub: np.ndarray): 
@@ -159,10 +157,10 @@ class Split_Forward_operator(Forward_operator):
         self.Hpos_neg.weight.requires_grad=False
               
     def forward(self, x: torch.tensor) -> torch.tensor: # --> simule la mesure sous-chantillonnée
-        r""" Linear transform of batch of images x such that :math:`y =Hposneg*x` where :math:`Hposneg = \begin{bmatrix}{Hpos}\\{Hneg}\end{bmatrix}`
+        r""" Linear transform of batch of images :math:`x` such that :math:`y =H_{posneg}*x` where :math:`H_{posneg} = \begin{bmatrix}{H_{pos}}\\{H{_neg}}\end{bmatrix}`.
         
         Args:
-            :math:`Hsub`: Global pattern matrix with both positive and negative values
+            :math:`H_{sub}`: Global pattern matrix with both positive and negative values.
             
         Shape:
             - Input: :math:`(*,N)`
@@ -193,7 +191,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
     
         Args:
             :math:`Perm`: Permutation matrix.
-            :math:`h: image height.
+            :math:`h`: image height.
             :math:`w`: image width.
             
         Shape:
@@ -219,11 +217,12 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
     
     def inverse(self, x: torch.tensor) -> torch.tensor:
         r""" Inverse transform of x with permutation matrix.
+        
             Args:
                 :math:`x` :  batch of images
                 
             Shape:
-                - Input: :math:`(b*c, N)` with b the batch size, c the number of channels, and N the number of pixels in the image.
+                - Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
                 - Output: same as input.      
                 
             Example:
@@ -231,8 +230,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
                 >>> img_size = h*w
                 >>> nb_measurements = 400
                 >>> batch_size = 100
-                >>> from scipy.linalg import hadamard
-                >>> Hcomplete = hadamard(img_size)
+                >>> Hcomplete = walsh_matrix(img_size)
                 >>> Perm = np.array(np.random.random([img_size,img_size]))
                 >>> Permuted_Hcomplete = np.dot(Perm,Hcomplete)
                 >>> Hsub = Permuted_Hcomplete[:nb_measurements,:]
@@ -267,7 +265,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
                 :math:`x` :  batch of images
                 
             Shape:
-                - Input: :math:`(b*c, N) with b the batch size, c the number of channels, and N the number of pixels in the image.
+                - Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
                 - Output: same as input.      
                 
             Example:
@@ -275,8 +273,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
                 >>> img_size = h*w
                 >>> nb_measurements = 400
                 >>> batch_size = 100
-                >>> from scipy.linalg import hadamard
-                >>> Hcomplete = hadamard(img_size)
+                >>> Hcomplete = walsh_matrix(img_size)
                 >>> Perm = np.array(np.random.random([img_size,img_size]))
                 >>> Permuted_H = np.dot(Perm,Hcomplete)
                 >>> Hsub = Permuted_H[:nb_measurements,:]
@@ -296,11 +293,13 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
 # ==================================================================================
 class Forward_operator_shift(Forward_operator):
 # ==================================================================================
-    r""" Creates forward operator by adding one dimension to weight matrix, corresponding to a bias, and by modifying :math:`Hsub` weights according to: :math:`H_{sub}(i,j) = \frac{H_{sub}(i,j)+1}{2}`.
+    r""" Creates forward operator with shifted pattern matrix according to: :math:`H_{sub}(i,j) = \frac{H_{sub}(i,j)+1}{2}`.
+        
         Args:
-            Perm: Permutation matrix.
+            :math:`Perm`: Permutation matrix.
+            
         Shape:
-            Input2: math:`(N,N)`
+            Input2: :math:`(N,N)`
     
     """
     def __init__(self, Hsub, Perm):           
@@ -320,22 +319,22 @@ class Forward_operator_shift(Forward_operator):
         self.H_shift.weight.data = self.H_shift.weight.data.float() # keep ?
         self.H_shift.weight.requires_grad = False
          
-    def forward(self, x):
-        r""" Applies Linear transform such that :math:`y = \begin{matrix}{{1}{H_{sub}}}\end{matrix}x`
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r""" Applies Linear transform such that :math:`y = \begin{matrix}{{1\\H_{sub}}}\end{matrix}x`.
+        
             Args:
-                :math:`x`: batch of images
+                :math:`x`: batch of images.
                 
             Shape:
                 Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
                 Output: :math:`(b*c, M+1)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`M+1` the number of measurements + 1.
                 
             Example:
-                >>> from scipy.linalg import hadamard
                 >>> h, w = 32, 32
                 >>> img_size = h*w
                 >>> nb_measurements = 400
                 >>> batch_size = 100
-                >>> Hcomplete = hadamard(img_size)
+                >>> Hcomplete = walsh_matrix(img_size)
                 >>> Perm = np.array(np.random.random([img_size,img_size]))
                 >>> Permuted_H = np.dot(Perm,Hcomplete)
                 >>> Hsub = Permuted_H[:nb_measurements,:]
@@ -343,8 +342,7 @@ class Forward_operator_shift(Forward_operator):
                 >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)
                 >>> y = FO_Shift(x)
                 >>> print(x.shape)
-                >>> print(y.shape)
-            
+                >>> print(y.shape)            
         """
         # input x is a set of images with shape (b*c, N)
         # output input is a set of measurement vector with shape (b*c, M+1)
@@ -365,7 +363,33 @@ class Forward_operator_pos(Forward_operator):
         self.Perm.weight.data = self.Perm.weight.data.float()
         self.Perm.weight.requires_grad = False
         
-    def forward(self, x):
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r"""Computes :math:`y` according to :math:`y=0.5(H_{sub}x+\sum_{j=1}^{N}x_{j})` where :math:`j` is the pixel (column) index of :math:`x`.
+        
+        Args:
+            :math:`x`: batch of images.
+            
+        Shape:
+            Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
+            Output: :math:`(b*c, M)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`M` the number of measurements.
+            
+        Example:
+            >>> h, w = 32, 32
+            >>> img_size = h*w
+            >>> nb_measurements = 400
+            >>> batch_size = 100
+            >>> Hcomplete = walsh_matrix(img_size)
+            >>> Perm = np.array(np.random.random([img_size,img_size]))
+            >>> Permuted_H = np.dot(Perm,Hcomplete)
+            >>> Hsub = Permuted_H[:nb_measurements,:]
+            >>> Forward_OP_pos = Forward_operator_pos(Hsub, Perm)
+            >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)
+            >>> y = Forward_OP_pos(x)
+            >>> print(x.shape)
+            >>> print(y.shape)
+            torch.Size([100, 1024])
+            torch.Size([100, 400]) 
+        """
         # input x is a set of images with shape (b*c, N)
         # output is a set of measurement vectors with shape (b*c, M)
         
@@ -381,7 +405,35 @@ class Forward_operator_shift_had(Forward_operator_shift):
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub, Perm)
     
-    def inverse(self, x, n = None):
+    def inverse(self, x: torch.tensor, n = None: int) -> torch.tensor:
+        r""" Inverse transform such that :math:`x = \frac{1}{N}H_{sub}y`.
+        
+        Args:
+            :math:`x`: batch of measurements.
+            
+        Shape:
+            Input: math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of measurements.
+            Output: math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of reconstructed pixels.
+            
+        Example:
+            >>> h, w = 32, 32
+            >>> img_size = h*w
+            >>> nb_measurements = 400
+            >>> batch_size = 100
+            >>> Hcomplete = walsh_matrix(img_size)
+            >>> Perm = np.array(np.random.random([img_size,img_size]))
+            >>> Permuted_H = np.dot(Perm,Hcomplete)
+            >>> Hsub = Permuted_H[:nb_measurements,:]
+            >>> FO_Shift = Forward_operator_shift(Hsub, Perm)
+            >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)
+            >>> y = FO_Shift(x)
+            >>> FO_Shift_Had = Forward_operator_shift_had(Hsub, Perm)
+            >>> x_reconstruct = FO_Shift_Had(y)
+            >>> print(x.shape)
+            >>> print(y.shape)
+            >>> print(x_reconstruct.shape)
+            
+        """
         # rearrange the terms + inverse transform
         # maybe needs to be initialised with a permutation matrix as well!
         # Permutation matrix may be sparsified when sparse tensors are no longer in
@@ -391,6 +443,8 @@ class Forward_operator_shift_had(Forward_operator_shift):
         
         # input x is a set of **measurements** with shape (b*c, N)
         # output is a set of **images** with shape (b*c, N)
+        
+        # Fadoua: ici j'ai envie de mettre M au lieu de N ??
         bc, N = x.shape
         x = self.Perm(x);
         
@@ -499,7 +553,7 @@ class Acquisition_Poisson_Pytorch(Acquisition):
 # Preprocessing
 # ==================================================================================
 # ==================================================================================        
-class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
+class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
 # ==================================================================================
     r"""
         computes :math`m = (m_{+}-m_{-})/N_0`
