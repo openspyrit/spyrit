@@ -158,7 +158,7 @@ class Split_Forward_operator(Forward_operator):
         self.Hpos_neg.weight.requires_grad=False
               
     def forward(self, x: torch.tensor) -> torch.tensor: # --> simule la mesure sous-chantillonnée
-        r""" Linear transform of batch of images :math:`x` such that :math:`y =H_{posneg}*x` where :math:`H_{posneg} = \begin{bmatrix}{H_{pos}}\\{H{_neg}}\end{bmatrix}`.
+        r""" Linear transform of batch of images :math:`x` such that :math:`y =H_{posneg}*x` where :math:`H_{posneg} = \begin{bmatrix}{H_{pos}}\\{H_{neg}}\end{bmatrix}`.
         
         Args:
             :math:`H_{sub}`: Global pattern matrix with both positive and negative values.
@@ -321,7 +321,7 @@ class Forward_operator_shift(Forward_operator):
         self.H_shift.weight.requires_grad = False
          
     def forward(self, x: torch.tensor) -> torch.tensor:
-        r""" Applies Linear transform such that :math:`y = \begin{bmatrix}{{1}\\{H_{sub}}}\end{bmatrix}x`.
+        r""" Applies Linear transform such that :math:`y = \begin{bmatrix}{1}\\{H_{sub}}\end{bmatrix}x`.
         
             Args:
                 :math:`x`: batch of images.
@@ -477,8 +477,8 @@ class Acquisition(nn.Module):
             :math:`x`: Batch of images.
             
         Shape:
-            Input: :math:`(bc, N)` 
-            Output: :math:`(bc, M)`
+            - Input: :math:`(bc, N)` 
+            - Output: :math:`(bc, M)`
             
         Example:
             >>> dataset = torchvision.datasets.STL10(root=data_root, split='test',download=False, transform=transform)
