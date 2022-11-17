@@ -321,7 +321,7 @@ class Forward_operator_shift(Forward_operator):
         self.H_shift.weight.requires_grad = False
          
     def forward(self, x: torch.tensor) -> torch.tensor:
-        r""" Applies Linear transform such that :math:`y = \begin{bmatrix}{{1}//{H_{sub}}}\end{bmatrix}x`.
+        r""" Applies Linear transform such that :math:`y = \begin{bmatrix}{{1}\\{H_{sub}}}\end{bmatrix}x`.
         
             Args:
                 :math:`x`: batch of images.
@@ -557,7 +557,7 @@ class Acquisition_Poisson_Pytorch(Acquisition):
 class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
 # ==================================================================================
     r"""
-        computes :math`m = (m_{+}-m_{-})/N_0`
+        Computes :math`m = (m_{+}-m_{-})/N_0`
         and also allows to compute :math:`var = 2*Diag(m_{+} + m_{-})/N0^{2}`
         Args:
             N0 : Number of photons
