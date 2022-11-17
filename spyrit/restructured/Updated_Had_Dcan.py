@@ -320,7 +320,7 @@ class Forward_operator_shift(Forward_operator):
         self.H_shift.weight.requires_grad = False
          
     def forward(self, x: torch.tensor) -> torch.tensor:
-        r""" Applies Linear transform such that :math:`y = \begin{bmatrix}{{1}\\{H_{sub}}}\end{bmatrix}x`.
+        r""" Applies Linear transform such that :math:`y = \begin{bmatrix}{{1}//{H_{sub}}}\end{bmatrix}x`.
         
             Args:
                 :math:`x`: batch of images.
@@ -405,7 +405,7 @@ class Forward_operator_shift_had(Forward_operator_shift):
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub, Perm)
     
-    def inverse(self, x: torch.tensor, n = None) -> torch.tensor:
+    def inverse(self, x: torch.tensor, n = None: Union(None, int)) -> torch.tensor:
         r""" Inverse transform such that :math:`x = \frac{1}{N}H_{sub}y`.
         
         Args:
