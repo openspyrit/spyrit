@@ -464,25 +464,43 @@ class Forward_operator_shift_had(Forward_operator_shift):
 # ==================================================================================        
 class Acquisition(nn.Module):
     r"""
-        Simulates acquisition by applying Forward_operator to a scaled image
+        Simulates acquisition by applying Forward_operator to a scaled image such that :math:`y = H_{sub}\frac{1+x}{2}`
     """
-    def __init__(self, FO):
+    def __init__(self, FO: Forward_operator):
         super().__init__()
         # FO = forward operator
         self.FO = FO
     
-    def forward(self, x):
+    def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
         Args:
-            x (torch.tensor): b*c-by-N
-        Returns:
-            torch.tensor: b*c-by-N
+            :math:`x`: Batch of images.
+            
+        Shape:
+            Input: :math:`(bc, N)` 
+            Output: :math:`(bc, M)`
+            
+        Example:
+            >>> dataset = torchvision.datasets.STL10(root=data_root, split='test',download=False, transform=transform)
+            >>> dataloader =  torch.utils.data.DataLoader(testset, batch_size=c, shuffle=False)
+            >>> inputs, _ = next(iter(dataloader))
+            >>> img_size = 64 
+            >>> nb_measurements = 1024   
+            >>> Hsub = Hsub # This is the subsampled Hadamard Matrix of size (M, N)
+            >>> F0 = Forward_operator(Hsub)
+            >>> Acq = Acquisition(FO)
+            >>> y = Acq(x)
+            >>> print(x.shape)
+            >>> print(y.shape)
+            torch.Size([10, 4096])
+            torch.Size([10, 1024])
+            
         """
         # input x.shape - [b*c,h*w] - [b*c,N] 
         # output x.shape - [b*c,M] 
         #--Scale input image
         x = (x+1)/2; 
-        x = self.FO.Forward_op(x); 
+        x = self.FO.forward(x); 
         # x is the product of Hsub-sampled*f ?
         return x
 
