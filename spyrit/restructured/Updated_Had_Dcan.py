@@ -26,7 +26,7 @@ class Forward_operator(nn.Module):
             :math:`Hsub`: such as "sub-sampled Hadamard matrix". It is a pattern matrix of size :math:`(M, N)` to be modulated with an image of size :math:`N` pixels, equivalent to :math:`N = img_x*img_y`. :math:`M` stands for the number of simulated measurements.
             
         Shape:
-            Input: :math:`(M, N)`
+            - Input: :math:`(M, N)`
             
     """
 # Faire le produit H*f sans bruit, linear (pytorch) 
@@ -368,7 +368,7 @@ class Forward_operator_pos(Forward_operator):
         r"""Computes :math:`y` according to :math:`y=0.5(H_{sub}x+\sum_{j=1}^{N}x_{j})` where :math:`j` is the pixel (column) index of :math:`x`.
         
         Args:
-            :math:`x`: batch of images.
+            :math:`x`: Batch of images.
             
         Shape:
             - Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
@@ -410,7 +410,7 @@ class Forward_operator_shift_had(Forward_operator_shift):
         r""" Inverse transform such that :math:`x = \frac{1}{N}H_{sub}y`.
         
         Args:
-            :math:`x`: batch of measurements.
+            :math:`x`: Batch of measurements.
             
         Shape:
             - Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of measurements.
@@ -477,13 +477,15 @@ class Acquisition(nn.Module):
             :math:`x`: Batch of images.
             
         Shape:
-            - Input: :math:`(bc, N)` 
-            - Output: :math:`(bc, M)`
+            - Input: :math:`(b*c, N)` 
+            - Output: :math:`(b*c, M)`
             
         Example:
             >>> dataset = torchvision.datasets.STL10(root=data_root, split='test',download=False, transform=transform)
             >>> dataloader =  torch.utils.data.DataLoader(testset, batch_size=c, shuffle=False)
             >>> inputs, _ = next(iter(dataloader))
+            >>> b,c,h,w = inputs.shape
+            >>> x = inputs.view(b*c,w*h)
             >>> img_size = 64 
             >>> nb_measurements = 1024   
             >>> Hsub = Hsub # This is the subsampled Hadamard Matrix of size (M, N)
@@ -507,29 +509,46 @@ class Acquisition(nn.Module):
 # ==================================================================================
 class Acquisition_Poisson_approx_Gauss(Acquisition):
     r"""
-    Acquisition with scaled and noisy image with Gaussian-approximated Poisson noise 
-    model based on noice level (Image intensity in photons).
+    Acquisition with scaled and noisy image with Gaussian-approximated Poisson noise.
     Args:
-        alpha (python scalar)
-        FO (nn.Linear): N-by-2*M operator
+        \alpha: Noise level (Image intensity in photons).
+        FO: Forward Operator.
+        
+    Shape:
+        - Input1: python scalar.
+        - Input2: :math:`(N, 2*M)`.
     """
 # ==================================================================================    
-    def __init__(self, alpha, FO):
+    def __init__(self, alpha: float, FO: Forward_operator):
         super().__init__(FO)
         self.alpha = alpha
         
-    def forward(self, x):
+    def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
-        Forward propagates x after scaling and simulating Gauss-approximated Poisson noise.
+        Forward propagates image after scaling and simulating Gauss-approximated Poisson noise. See Lorente Mur et. al, A Deep Network for Reconstructing Images from Undersampled Poisson data, [Research Report] Insa Lyon. 2020. `<https://hal.archives-ouvertes.fr/hal-02944869v1>`_
         Args:
-            x (torch.tensor): b*c-by-N
-        Returns:
-            torch.tensor: b*c-by-2*M
+            :math:`x`: Batch of images.
+            
+        Shape:
+            - Input: :math:`(b*c, N)`.
+            - Output: :math:`(b*c, 2*M)`.
+            
         Examples:
-            >>> alpha = 5
-            >>> Input_Matrix = np.array(np.random.random([100,32]))
-            >>> Split_Forwad_OP =  Split_Forward_operator(Input_Matrix)
-            >>> Acq_PoissGauss = Acquisition_Poisson_approx_Gauss(alpha, Split_Forwad_OP)
+            >>> dataset = torchvision.datasets.STL10(root=data_root, split='test',download=False, transform=transform)
+            >>> dataloader =  torch.utils.data.DataLoader(testset, batch_size=c, shuffle=False)
+            >>> inputs, _ = next(iter(dataloader))
+            >>> b,c,h,w = inputs.shape
+            >>> M = 1024 # number of measurements
+            >>> x = inputs.view(b*c,w*h) 
+            >>> Hsub = Hsub # This is the subsampled Hadamard Matrix of size (M, N) where N = h*w
+            >>> F0 = Forward_operator(Hsub)
+            >>> alpha = 9
+            >>> Acq_Poisson_approx_Gauss = Acquisition_Poisson_approx_Gauss(alpha, FO)
+            >>> x_out = Acq_Poisson_approx_Gauss(x)
+            >>> print(x.shape)
+            >>> print(x_out.shape)
+            torch.Size([10, 4096])
+            torch.Size([10, 1024])
             
         """
         # Input shape [b*c, N]  
