@@ -12,6 +12,7 @@ from collections import OrderedDict
 #from pylops_gpu.optimization.cg import cg --- currently not working
 #from pylops_gpu.optimization.leastsquares import NormalEquationsInversion
 from spyrit.misc.walsh_hadamard import walsh2_torch, walsh_matrix
+from typing import Union
 
 # ==================================================================================
 # Forward operators
@@ -405,7 +406,7 @@ class Forward_operator_shift_had(Forward_operator_shift):
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub, Perm)
     
-    def inverse(self, x: torch.tensor, n = None: Union(None, int)) -> torch.tensor:
+    def inverse(self, x: torch.tensor, n: Union[None, int]) -> torch.tensor:
         r""" Inverse transform such that :math:`x = \frac{1}{N}H_{sub}y`.
         
         Args:
