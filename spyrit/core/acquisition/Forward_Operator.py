@@ -1,3 +1,4 @@
+# ==================================================================================
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -5,11 +6,8 @@ import numpy as np
 import math
 from torch import poisson
 from collections import OrderedDict
-#from scipy.sparse.linalg import aslinearoperator
-#from pylops_gpu import Diagonal, LinearOperator
-#from pylops_gpu.optimization.cg import cg --- currently not working
-#from pylops_gpu.optimization.leastsquares import NormalEquationsInversion
-from walsh_hadamard import walsh2_torch, walsh_matrix
+from spyrit.core.misc.walsh_hadamard import walsh2_torch, walsh_matrix
+from typing import Union
 
 # ==================================================================================
 # Forward operators
@@ -23,7 +21,7 @@ class Forward_operator(nn.Module):
             :math:`Hsub`: such as "sub-sampled Hadamard matrix". It is a pattern matrix of size :math:`(M, N)` to be modulated with an image of size :math:`N` pixels, equivalent to :math:`N = img_x*img_y`. :math:`M` stands for the number of simulated measurements.
             
         Shape:
-            Input: :math:`(M, N)`
+            - Input: :math:`(M, N)`
             
     """
 # Faire le produit H*f sans bruit, linear (pytorch) 
@@ -155,7 +153,7 @@ class Split_Forward_operator(Forward_operator):
         self.Hpos_neg.weight.requires_grad=False
               
     def forward(self, x: torch.tensor) -> torch.tensor: # --> simule la mesure sous-chantillonnée
-        r""" Linear transform of batch of images :math:`x` such that :math:`y =H_{posneg}*x` where :math:`H_{posneg} = \begin{bmatrix}{H_{pos}}\\{H{_neg}}\end{bmatrix}`.
+        r""" Linear transform of batch of images :math:`x` such that :math:`y =H_{posneg}*x` where :math:`H_{posneg} = \begin{bmatrix}{H_{pos}}\\{H_{neg}}\end{bmatrix}`.
         
         Args:
             :math:`H_{sub}`: Global pattern matrix with both positive and negative values.
@@ -365,7 +363,7 @@ class Forward_operator_pos(Forward_operator):
         r"""Computes :math:`y` according to :math:`y=0.5(H_{sub}x+\sum_{j=1}^{N}x_{j})` where :math:`j` is the pixel (column) index of :math:`x`.
         
         Args:
-            :math:`x`: batch of images.
+            :math:`x`: Batch of images.
             
         Shape:
             - Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
@@ -403,11 +401,11 @@ class Forward_operator_shift_had(Forward_operator_shift):
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub, Perm)
     
-    def inverse(self, x: torch.tensor, n = None: Union(None, int)) -> torch.tensor:
+    def inverse(self, x: torch.tensor, n: Union[None, int]) -> torch.tensor:
         r""" Inverse transform such that :math:`x = \frac{1}{N}H_{sub}y`.
         
         Args:
-            :math:`x`: batch of measurements.
+            :math:`x`: Batch of measurements.
             
         Shape:
             - Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of measurements.
@@ -441,8 +439,6 @@ class Forward_operator_shift_had(Forward_operator_shift):
         
         # input x is a set of **measurements** with shape (b*c, N)
         # output is a set of **images** with shape (b*c, N)
-        
-        # Fadoua: ici j'ai envie de mettre M au lieu de N ??
         bc, N = x.shape
         x = self.Perm(x);
         
