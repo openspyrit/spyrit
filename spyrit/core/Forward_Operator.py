@@ -401,7 +401,7 @@ class Forward_operator_shift_had(Forward_operator_shift):
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub, Perm)
     
-    def inverse(self, x: torch.tensor, n: Union[None, int]) -> torch.tensor:
+    def inverse(self, x: torch.tensor, n: Union[None, int] = None) -> torch.tensor:
         r""" Inverse transform such that :math:`x = \frac{1}{N}H_{sub}y`.
         
         Args:
@@ -412,23 +412,23 @@ class Forward_operator_shift_had(Forward_operator_shift):
             - Output: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of reconstructed. pixels.
             
         Example:
-            >>> h, w = 32, 32
-            >>> img_size = h*w
-            >>> nb_measurements = 400
-            >>> batch_size = 100
+            >>> img_size = 64*64
+            >>> M = 1024
+            >>> batch_size = 10
             >>> Hcomplete = walsh_matrix(img_size)
+            >>> Hsub = Hcomplete[:M,:]
             >>> Perm = np.array(np.random.random([img_size,img_size]))
-            >>> Permuted_H = np.dot(Perm,Hcomplete)
-            >>> Hsub = Permuted_H[:nb_measurements,:]
             >>> FO_Shift = Forward_operator_shift(Hsub, Perm)
             >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)
-            >>> y = FO_Shift(x)
+            >>> y = FO_Shift(x) # y: belongs to Hadamard domain, which is square matrix
+            >>> # as Hsub is not square, a completion by padding is proposed to implement the inverse recosntruction
+            >>> y_pad = F.pad(y, (img_size-(M+1),0), "constant", 0)
             >>> FO_Shift_Had = Forward_operator_shift_had(Hsub, Perm)
-            >>> x_reconstruct = FO_Shift_Had(y)
+            >>> x_reconstruct = FO_Shift_Had.inverse(y_pad) 
             >>> print(x.shape)
-            >>> print(y.shape)
             >>> print(x_reconstruct.shape)
-            
+            torch.Size([10, 4096])
+            torch.Size([10, 4096])          
         """
         # rearrange the terms + inverse transform
         # maybe needs to be initialised with a permutation matrix as well!
