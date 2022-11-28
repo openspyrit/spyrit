@@ -5,8 +5,8 @@ import numpy as np
 import math
 from torch import poisson
 from collections import OrderedDict
-from spyrit.core.misc.walsh_hadamard import walsh2_torch, walsh_matrix
-from spyrit.core.acquisition.Forward_Operator import *
+from spyrit.misc.walsh_hadamard import walsh2_torch, walsh_matrix
+from spyrit.core.Forward_Operator import *
 
 # =====================================================================================================================
 # Acquisition
