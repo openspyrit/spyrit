@@ -24,8 +24,7 @@ class Forward_operator(nn.Module):
             - Input: :math:`(M, N)`
             
         Example:
-            >>> Hcomplete = walsh_matrix(32*32)
-            >>> Hsub = Hcomplete[0:400,:]
+            >>> Hsub = np.array(np.random.random([400,32*32]))
             >>> Forward_OP = Forward_operator(Hsub)             
     """
 # Faire le produit H*f sans bruit, linear (pytorch) 
@@ -116,7 +115,11 @@ class Split_Forward_operator(Forward_operator):
             :math:`Hsub`:  Global pattern matrix with both positive and negative values.
             
         Shape:
-            - Input: :math:`(M,N)`            
+            - Input: :math:`(M,N)`  
+            
+        Example:
+            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> Split_Forwad_OP =  Split_Forward_operator(Hsub)
      """
 
     def __init__(self, Hsub: np.ndarray): 
@@ -153,17 +156,10 @@ class Split_Forward_operator(Forward_operator):
             - Output: :math:`(*, 2M)`
         
         Example:
-            >>> img_size = 32*32
-            >>> nb_measurements = 400
-            >>> batch_size = 100
-            >>> Hsub = np.array(np.random.random([nb_measurements,img_size]))
-            >>> Split_Forwad_OP =  Split_Forward_operator(Hsub)
-            >>> x = torch.tensor(np.random.rand([batch_size,img_size]), dtype=torch.float)
+            >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
             >>> x_output = Split_Forwad_OP(x)
-            >>> print('input shape:', x.shape)
             >>> print('output shape:', x_output.shape)
-            input shape: torch.Size([100, 1024])
-            output shape: torch.Size([100, 800])
+            output shape: torch.Size([10, 800])
                     
         """
         # x.shape[b*c,N]
@@ -184,6 +180,11 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
             - Input2: :math:`(N,N)`
             - Input3: scalar
             - Input4: scalar
+        
+        Example:
+            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> Perm = np.array(np.random.random([32*32,32*32]))
+            >>> FO_Had = Split_Forward_operator_ft_had(Hsub, Perm, 32, 32)
     """
 # ==================================================================================
 # Forward operator with implemented inverse transform and a permutation matrix
@@ -212,21 +213,11 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
                 - Output: same as input.      
                 
             Example:
-                >>> h, w = 32, 32
-                >>> img_size = h*w
-                >>> nb_measurements = 400
-                >>> batch_size = 100
-                >>> Hcomplete = walsh_matrix(img_size)
-                >>> Perm = np.array(np.random.random([img_size,img_size]))
-                >>> Permuted_Hcomplete = np.dot(Perm,Hcomplete)
-                >>> Hsub = Permuted_Hcomplete[:nb_measurements,:]
-                >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)
-                >>> FO_Had = Split_Forward_operator_ft_had(Hsub, Perm, h, w)  
+
+                >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)  
                 >>> x_inverse = FO_Had.inverse(x)
-                >>> print(x.shape)
                 >>> print(x_inverse.shape)
-                torch.Size([100, 1024])
-                torch.Size([100, 1024])
+                torch.Size([10, 1024])
         """
         # rearrange the terms + inverse transform
         # maybe needs to be initialized with a permutation matrix as well!
@@ -255,23 +246,10 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
                 - Output: same as input.      
                 
             Example:
-                >>> h, w = 32, 32
-                >>> img_size = h*w
-                >>> nb_measurements = 400
-                >>> batch_size = 100
-                >>> Hcomplete = walsh_matrix(img_size)
-                >>> Perm = np.array(np.random.random([img_size,img_size]))
-                >>> Permuted_H = np.dot(Perm,Hcomplete)
-                >>> Hsub = Permuted_H[:nb_measurements,:]
-                >>> FO = Forward_operator(Hsub)
-                >>> x = torch.tensor(np.random.rand([batch_size,img_size]), dtype=torch.float)
-                >>> y = FO(x)
-                >>> FO_Had = Split_Forward_operator_ft_had(Hsub, Perm, h, w)  
+                >>> x = torch.Tensor(np.random.random([10,400]))  
                 >>> x_pinv = FO_Had.pinv(y)
-                >>> print(x.shape)
                 >>> print(x_pinv.shape)
-                torch.Size([100, 1024])
-                torch.Size([100, 1024])
+                torch.Size([10, 1024])
         """
         x = self.adjoint(x)/self.N
         return x
