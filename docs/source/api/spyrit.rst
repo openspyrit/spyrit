@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
 
    spyrit.acquisiton
+   spyrit.core
    spyrit.former
    spyrit.learning
    spyrit.misc
