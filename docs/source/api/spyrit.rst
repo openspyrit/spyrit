@@ -1,4 +1,4 @@
-spyrit package
+﻿spyrit package
 ==============
 
 Subpackages
@@ -13,6 +13,7 @@ Subpackages
    spyrit.pre_processing
    spyrit.reconstruction
    spyrit.restructured
+   spyrit.core
 
 
 Module contents
