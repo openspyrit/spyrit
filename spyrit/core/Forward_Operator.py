@@ -23,6 +23,10 @@ class Forward_operator(nn.Module):
         Shape:
             - Input: :math:`(M, N)`
             
+        Example:
+            >>> Hcomplete = walsh_matrix(32*32)
+            >>> Hsub = Hcomplete[0:400,:]
+            >>> Forward_OP = Forward_operator(Hsub)             
     """
 # Faire le produit H*f sans bruit, linear (pytorch) 
     def __init__(self, Hsub: np.ndarray):  
@@ -54,19 +58,11 @@ class Forward_operator(nn.Module):
             - Output: :math:`(*, M)` where * denotes the batch size and `M` the number of simulated measurements
             
         Example:        
-            >>> img_size = 32*32
-            >>> nb_measurements = 400
-            >>> batch_size = 100
-            >>> Hsub = np.array(np.random.random([batch_size,img_size]))
-            >>> Forwad_OP = Forward_operator(Hsub)
-            >>> x = torch.tensor(np.random.rand([batch_size,img_size]), dtype=torch.float)
-            >>> y = Forwad_OP(x)
-            >>> print('Hsub shape:', Hsub.shape)
-            >>> print('input shape:', x.shape)
+            >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
+            >>> y = Forward_OP(x)
             >>> print('output shape:', y.shape)
-            Hsub shape: (400, 1024)
-            input shape: torch.Size([100, 1024])
-            output shape: torch.Size([100, 400])
+            input shape: torch.Size([10, 1024])
+            output shape: torch.Size([10, 400])
             
         """
         # x.shape[b*c,N]
@@ -92,16 +88,10 @@ class Forward_operator(nn.Module):
             - Output: :math:`(*, N)`
             
         Example:
-            >>> img_size = 32*32
-            >>> nb_measurements = 400
-            >>> batch_size = 100
-            >>> Hsub = np.array(np.random.random([batch_size,img_size]))
-            >>> Forward_OP = Forward_operator(Hsub)
-            >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)        
-            >>> y = Forward_OP(x)
-            >>> x_back = Forward_OP.adjoint(y)
+            >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float)        
+            >>> x_back = Forward_OP.adjoint(x)
             >>> print('adjoint output shape:', x_back.shape)
-            adjoint output shape: torch.Size([100, 1024])
+            adjoint output shape: torch.Size([10, 1024])
             
         """
         # x.shape[b*c,M]
