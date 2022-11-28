@@ -6,7 +6,7 @@ import numpy as np
 import math
 from torch import poisson
 from collections import OrderedDict
-from spyrit.core.misc.walsh_hadamard import walsh2_torch, walsh_matrix
+from spyrit.misc.walsh_hadamard import walsh2_torch, walsh_matrix
 from typing import Union
 
 # ==================================================================================
