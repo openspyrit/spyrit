@@ -96,10 +96,10 @@ class Forward_operator(nn.Module):
             >>> nb_measurements = 400
             >>> batch_size = 100
             >>> Hsub = np.array(np.random.random([batch_size,img_size]))
-            >>> Forwad_OP = Forward_operator(Hsub)
+            >>> Forward_OP = Forward_operator(Hsub)
             >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)        
-            >>> y = Forwad_OP(x)
-            >>> x_back = Forwad_OP.adjoint(y)
+            >>> y = Forward_OP(x)
+            >>> x_back = Forward_OP.adjoint(y)
             >>> print('adjoint output shape:', x_back.shape)
             adjoint output shape: torch.Size([100, 1024])
             
