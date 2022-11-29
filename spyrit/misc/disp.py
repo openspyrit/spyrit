@@ -191,7 +191,7 @@ def plot(x,y,title='',xlabel='', ylabel='', color='black'):
     plt.ylabel(ylabel);
     plt.show();
     
-def add_colorbar(mappable):
+def add_colorbar(mappable, position = "right"):
     """
     Example: 
         f, axs = plt.subplots(1, 2)
@@ -200,19 +200,29 @@ def add_colorbar(mappable):
         im = axs[0].imshow(img2, cmap='gray') 
         add_colorbar(im)
     """
+    if position=="bottom":
+        orientation = 'horizontal'
+    else:
+        orientation = 'vertical'
+    
     last_axes = plt.gca()
     ax = mappable.axes
     fig = ax.figure
     divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    cbar = fig.colorbar(mappable, cax=cax)
+    cax = divider.append_axes(position, size="5%", pad=0.05)
+    cbar = fig.colorbar(mappable, cax=cax, orientation=orientation)
     plt.sca(last_axes)
     return cbar
 
 def noaxis(axs):
-    for ax in axs:
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
+    if type(axs) is np.ndarray:
+        for ax in axs:
+            ax.get_xaxis().set_visible(False)
+            ax.get_yaxis().set_visible(False)
+    else:
+        axs.get_xaxis().set_visible(False)
+        axs.get_yaxis().set_visible(False)
+                
     
 def string_mean_std(x, prec = 3):
     return "{:.{p}f} +/- {:.{p}f}".format(np.mean(x), np.std(x), p=prec)

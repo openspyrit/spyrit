@@ -167,7 +167,9 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
     r""" Split_Forward_operator object that contains:
         Args:
             Hsub (np.ndarray) :  M-by-N matrix
-            Perm (np.ndarray) :  N-by-N matrix
+            Perm (np.ndarray) :  N-by-N permutation matrix, such that 
+            Perm @ meas is the ordered measurement vector
+            
         Returns:
             *inverse* method            
     """
@@ -192,7 +194,9 @@ class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform 
     def inverse(self, x):
         r""" Inverse transform of x:
             Args:
-                x :  (torch.tensor) : b*c-by-N
+                x (torch.tensor) : b*c-by-N, which represents an image in 
+                the ordered measurement domain
+                
             Returns:
                    
         """
@@ -1201,7 +1205,7 @@ class List_denoi(nn.Module):
 class Identity(nn.Module):  # Can be useful for ablation study
 # ===========================================================================================
     def __init__(self):
-        super(self).__init__()
+        super(Identity,self).__init__()
         
     def forward(self,x):
         return x
@@ -1489,6 +1493,8 @@ class Pinv_Net(nn.Module):
     
         # Preprocessing
         x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # shape x = [b*c, M]
+        
+        print(N0_est)
     
         # measurements to image domain processing
         x = self.DC_layer(x, self.Acq.FO)               # shape x = [b*c,N]
@@ -1496,6 +1502,8 @@ class Pinv_Net(nn.Module):
 
         # Image domain denoising
         x = self.Denoi(x)                               # shape x = [b*c,1,h,w]
+        
+        print(x.max())
         
         # Denormalization 
         x = self.PreP.denormalize_expe(x, N0_est, self.Acq.FO.h, self.Acq.FO.w)
