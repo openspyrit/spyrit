@@ -433,7 +433,10 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
     def sigma_expe(self, x):
         r"""
         returns estimated variance of **NOT** normalized measurements
+<<<<<<< HEAD
 
+=======
+>>>>>>> 2b3eb00d1d8ddd1380eb12832b777117fb7170ca
         """
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
@@ -473,7 +476,7 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         x = 2*x - FO.Forward_op(torch.ones(bc, self.N).to(x.device))
         
         N0_est = N0_est[:,0]    # shape is (b*c,)
-    
+
         return x, N0_est
    
     

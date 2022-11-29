@@ -685,4 +685,40 @@ class Weight_Decay_Loss(nn.Module):
         mse = self.loss(x,y);
         return mse
 
+class Variance_Loss(nn.Module):
+    def __init__(self, loss, mean_net):
+        super(Variance_Loss,self).__init__()
+        self.loss = loss;
+        self.mean_net = mean_net;
+        #self.mean_net.eval()
+        for param in self.mean_net.parameters():
+            param.requires_grad = False;
+
+    def forward(self,x,y, net):
+        cond_mean = self.mean_net(x);
+        var = torch.mul((x-cond_mean),(x-cond_mean));
+        mse=self.loss(var, y);
+        return mse
+
+class Covariance_Loss(nn.Module):
+    def __init__(self, loss, mean_net):
+        super(Covariance_Loss,self).__init__()
+        self.loss = loss;
+        self.mean_net = mean_net;
+        #self.mean_net.eval()
+        for param in self.mean_net.parameters():
+            param.requires_grad = False;
+
+    def forward(self,x,y, net):
+        b, c, h, w = x.shape;
+        cond_mean = self.mean_net(x);
+        x = x.reshape(b*c, 1, h*w, 1);
+        cond_mean = cond_mean.reshape(b*c, 1, h*w, 1);
+        Cov = (x-cond_mean)*torch.transpose((x-cond_mean), -2, -1);
+       
+        y = y.reshape(b*c, 1, h*w, 1);
+        cov_est = y*torch.transpose(y, -2,-1);
+
+        mse=self.loss(Cov, cov_est);
+        return mse
 
