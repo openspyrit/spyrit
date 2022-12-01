@@ -15,13 +15,7 @@ from typing import Union
 # ==================================================================================
 class Forward_operator(nn.Module):
 # ==================================================================================
-    r""" Computes Linear transform of image batch x such that :math:`y = H_{sub}x` in order to simulate a single-pixel image acquisition.
-    
-        Args:
-            :math:`Hsub`: such as "sub-sampled Hadamard matrix". It is a pattern matrix of size :math:`(M, N)` to be modulated with an image of size :math:`N` pixels, equivalent to :math:`N = img_x*img_y`. :math:`M` stands for the number of simulated measurements.
-            
-        Shape:
-            - Input: :math:`(M, N)`
+    r""" Computes Linear transform of image batch x such that :math:`y = H_{sub}x` where :math:`Hsub` (standing for "sub-sampled Hadamard") is a an :math:`M` by  :math:`N` matrix. :math:`N` is the number of pixels per image, and :math:`M` is the number of measurements.
             
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
@@ -60,7 +54,6 @@ class Forward_operator(nn.Module):
             >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
             >>> y = Forward_OP(x)
             >>> print('output shape:', y.shape)
-            input shape: torch.Size([10, 1024])
             output shape: torch.Size([10, 400])
             
         """
@@ -80,7 +73,7 @@ class Forward_operator(nn.Module):
         r""" Applies Linear transform such that :math:`y = H_{sub}^{T}x`
 
         Args:
-            :math:`x`:  batch of sub-sampled and convolved images
+            :math:`x`:  batch of sub-sampled and convolved images.
             
         Shape:
             - Input: :math:`(*, M)`
@@ -104,22 +97,17 @@ class Forward_operator(nn.Module):
         return self.Hsub.weight.data;
 
 
-## Merge Split_Forward_operator and Split_Forward_operator_ft_had -> Forward_operator_shift_had
+## Merge Forward_operator_Split and Forward_operator_Split_ft_had -> Forward_operator_shift_had
 
 # ==================================================================================
-class Split_Forward_operator(Forward_operator):
+class Forward_operator_Split(Forward_operator):
 # ==================================================================================
-    r""" Simulates measurements according to :math:`m=m^{+}-m^{-}` where :math:`m^{+}` is the measurement obtained for the positive part of Hsub and :math:`m^{-}` from its negative values. See Antonio Lorente Mur et. al. Handling negative patterns for fast single-pixel lifetime imaging. 2019 - Molecular-Guided Surgery: Molecules, Devices, and Applications V, Feb 2019, San Francisco, United States. pp.1-10, `10.1117/12.2511123 <https://hal.archives-ouvertes.fr/hal-02017598/document/>`_
-
-        Args:
-            :math:`Hsub`:  Global pattern matrix with both positive and negative values.
-            
-        Shape:
-            - Input: :math:`(M,N)`  
+    r""" Child class of Forward_operator. It splits :math:`H_{sub}` into :math:`H_{pos}` and :math:`H_{neg}` before it applies a linear transform to a batch of images denoted :math:`x`.
+    See Antonio Lorente Mur et. al. Handling negative patterns for fast single-pixel lifetime imaging. 2019 - Molecular-Guided Surgery: Molecules, Devices, and Applications V, Feb 2019, San Francisco, United States. pp.1-10, `10.1117/12.2511123 <https://hal.archives-ouvertes.fr/hal-02017598/document/>`_.
             
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
-            >>> Split_Forwad_OP =  Split_Forward_operator(Hsub)
+            >>> Forward_Op_Split =  Forward_operator_Split(Hsub)
      """
 
     def __init__(self, Hsub: np.ndarray): 
@@ -157,7 +145,7 @@ class Split_Forward_operator(Forward_operator):
         
         Example:
             >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
-            >>> x_output = Split_Forwad_OP(x)
+            >>> x_output = Forward_Op_Split(x)
             >>> print('output shape:', x_output.shape)
             output shape: torch.Size([10, 800])
                     
@@ -168,23 +156,14 @@ class Split_Forward_operator(Forward_operator):
         return x
 
 # ==================================================================================
-class Split_Forward_operator_ft_had(Split_Forward_operator): 
-    r""" Forward operator with implemented inverse transform and a permutation matrix.
-    
-        Args:
-            - :math:`Perm`: Permutation matrix.
-            - :math:`h`: image height.
-            - :math:`w`: image width.
-            
-        Shape:
-            - Input2: :math:`(N,N)`
-            - Input3: scalar
-            - Input4: scalar
+class Forward_operator_Split_ft_had(Forward_operator_Split): 
+    r""" Child class of Forward_operator_Split with implemented inverse transform and a permutation matrix. It is instantiated by :math:`H_{sub}` matrix of size :math:`(M,N)`, :math:`Perm` matrix of size :math:`(N,N)`, :math:`h`, and :math:`w` that verify :math:`N = h*w`.
+
         
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
             >>> Perm = np.array(np.random.random([32*32,32*32]))
-            >>> FO_Had = Split_Forward_operator_ft_had(Hsub, Perm, 32, 32)
+            >>> FO_Had = Forward_operator_Split_ft_had(Hsub, Perm, 32, 32)
     """
 # ==================================================================================
 # Forward operator with implemented inverse transform and a permutation matrix
@@ -247,7 +226,7 @@ class Split_Forward_operator_ft_had(Split_Forward_operator):
                 
             Example:
                 >>> x = torch.Tensor(np.random.random([10,400]))  
-                >>> x_pinv = FO_Had.pinv(y)
+                >>> x_pinv = FO_Had.pinv(x)
                 >>> print(x_pinv.shape)
                 torch.Size([10, 1024])
         """
@@ -259,11 +238,10 @@ class Forward_operator_shift(Forward_operator):
 # ==================================================================================
     r""" Creates forward operator with shifted pattern matrix according to: :math:`H_{sub}(i,j) = \frac{H_{sub}(i,j)+1}{2}`.
         
-        Args:
-            :math:`Perm`: Permutation matrix.
-            
-        Shape:
-            - Input2: :math:`(N,N)`
+        Example:
+            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> Perm = np.array(np.random.random([32*32,32*32]))
+            >>> FO_Shift = Forward_operator_shift(Hsub, Perm)
     
     """
     def __init__(self, Hsub, Perm):           
@@ -294,18 +272,8 @@ class Forward_operator_shift(Forward_operator):
                 - Output: :math:`(b*c, M+1)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`M+1` the number of measurements + 1.
                 
             Example:
-                >>> h, w = 32, 32
-                >>> img_size = h*w
-                >>> nb_measurements = 400
-                >>> batch_size = 100
-                >>> Hcomplete = walsh_matrix(img_size)
-                >>> Perm = np.array(np.random.random([img_size,img_size]))
-                >>> Permuted_H = np.dot(Perm,Hcomplete)
-                >>> Hsub = Permuted_H[:nb_measurements,:]
-                >>> FO_Shift = Forward_operator_shift(Hsub, Perm)
-                >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)
+                >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
                 >>> y = FO_Shift(x)
-                >>> print(x.shape)
                 >>> print(y.shape)            
         """
         # input x is a set of images with shape (b*c, N)
