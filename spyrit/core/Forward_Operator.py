@@ -102,7 +102,7 @@ class Forward_operator(nn.Module):
 # ==================================================================================
 class Forward_operator_Split(Forward_operator):
 # ==================================================================================
-    r""" Child class of Forward_operator. It splits :math:`H_{sub}` into :math:`H_{pos}` and :math:`H_{neg}` before it applies a linear transform to a batch of images denoted :math:`x`.
+    r""" Forward_operator with a :math:`H_{pos_neg}` matrix of size :math:`(2*M,N).
     See Antonio Lorente Mur et. al. Handling negative patterns for fast single-pixel lifetime imaging. 2019 - Molecular-Guided Surgery: Molecules, Devices, and Applications V, Feb 2019, San Francisco, United States. pp.1-10, `10.1117/12.2511123 <https://hal.archives-ouvertes.fr/hal-02017598/document/>`_.
             
         Example:
@@ -137,7 +137,7 @@ class Forward_operator_Split(Forward_operator):
         r""" Linear transform of batch of images :math:`x` such that :math:`y =H_{posneg}*x` where :math:`H_{posneg} = \begin{bmatrix}{H_{pos}}\\{H_{neg}}\end{bmatrix}`.
         
         Args:
-            :math:`H_{sub}`: Global pattern matrix with both positive and negative values.
+            :math:`x`: Batch of images.
             
         Shape:
             - Input: :math:`(*,N)`
@@ -146,8 +146,8 @@ class Forward_operator_Split(Forward_operator):
         Example:
             >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
             >>> x_output = Forward_Op_Split(x)
-            >>> print('output shape:', x_output.shape)
-            output shape: torch.Size([10, 800])
+            >>> print(x_output.shape)
+            torch.Size([10, 800])
                     
         """
         # x.shape[b*c,N]
@@ -157,8 +157,7 @@ class Forward_operator_Split(Forward_operator):
 
 # ==================================================================================
 class Forward_operator_Split_ft_had(Forward_operator_Split): 
-    r""" Child class of Forward_operator_Split with implemented inverse transform and a permutation matrix. It is instantiated by :math:`H_{sub}` matrix of size :math:`(M,N)`, :math:`Perm` matrix of size :math:`(N,N)`, :math:`h`, and :math:`w` that verify :math:`N = h*w`.
-
+    r""" Forward_operator_Split with implemented inverse transform and a permutation matrix: :math:`Perm` of size :math:`(N,N)`.
         
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
@@ -189,7 +188,7 @@ class Forward_operator_Split_ft_had(Forward_operator_Split):
                 
             Shape:
                 - Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
-                - Output: same as input.      
+                - Output: math:`(b*c, N)`      
                 
             Example:
 
@@ -236,7 +235,7 @@ class Forward_operator_Split_ft_had(Forward_operator_Split):
 # ==================================================================================
 class Forward_operator_shift(Forward_operator):
 # ==================================================================================
-    r""" Creates forward operator with shifted pattern matrix according to: :math:`H_{sub}(i,j) = \frac{H_{sub}(i,j)+1}{2}`.
+    r""" Forward_operator with shifted pattern matrix of size :math:`(M+1,N)` and :math:`Perm` matrix of size :math:`(N,N)`.
         
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
@@ -274,7 +273,8 @@ class Forward_operator_shift(Forward_operator):
             Example:
                 >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
                 >>> y = FO_Shift(x)
-                >>> print(y.shape)            
+                >>> print(y.shape)
+                torch.Size([10, 401])
         """
         # input x is a set of images with shape (b*c, N)
         # output input is a set of measurement vector with shape (b*c, M+1)
@@ -286,6 +286,13 @@ class Forward_operator_shift(Forward_operator):
 # ==================================================================================
 class Forward_operator_pos(Forward_operator):
 # ==================================================================================
+    r""" Forward_operator with Permutation Matrix :math:`Perm` of size :math:`(N,N)`.
+    
+    Example:
+        >>> Hsub = np.array(np.random.random([400,32*32]))
+        >>> Perm = np.array(np.random.random([32*32,32*32]))
+        >>> Forward_OP_pos = Forward_operator_pos(Hsub, Perm)
+    """
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub)
         
@@ -306,20 +313,9 @@ class Forward_operator_pos(Forward_operator):
             - Output: :math:`(b*c, M)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`M` the number of measurements.
             
         Example:
-            >>> h, w = 32, 32
-            >>> img_size = h*w
-            >>> nb_measurements = 400
-            >>> batch_size = 100
-            >>> Hcomplete = walsh_matrix(img_size)
-            >>> Perm = np.array(np.random.random([img_size,img_size]))
-            >>> Permuted_H = np.dot(Perm,Hcomplete)
-            >>> Hsub = Permuted_H[:nb_measurements,:]
-            >>> Forward_OP_pos = Forward_operator_pos(Hsub, Perm)
-            >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)
+            >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
             >>> y = Forward_OP_pos(x)
-            >>> print(x.shape)
             >>> print(y.shape)
-            torch.Size([100, 1024])
             torch.Size([100, 400]) 
         """
         # input x is a set of images with shape (b*c, N)
@@ -334,6 +330,13 @@ class Forward_operator_pos(Forward_operator):
 # ==================================================================================
 class Forward_operator_shift_had(Forward_operator_shift):
 # ==================================================================================
+    r""" Forward_operator_shift operator with inverse method.
+    
+    Example:
+        >>> Hsub = np.array(np.random.random([400,32*32]))
+        >>> Perm = np.array(np.random.random([32*32,32*32]))
+        >>> FO_Shift_Had = Forward_operator_shift_had(Hsub, Perm)
+    """
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub, Perm)
     
@@ -341,30 +344,17 @@ class Forward_operator_shift_had(Forward_operator_shift):
         r""" Inverse transform such that :math:`x = \frac{1}{N}H_{sub}y`.
         
         Args:
-            :math:`x`: Batch of measurements.
+            :math:`x`: Batch of completed measurements.
             
         Shape:
             - Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of measurements.
             - Output: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of reconstructed. pixels.
             
         Example:
-            >>> img_size = 64*64
-            >>> M = 1024
-            >>> batch_size = 10
-            >>> Hcomplete = walsh_matrix(img_size)
-            >>> Hsub = Hcomplete[:M,:]
-            >>> Perm = np.array(np.random.random([img_size,img_size]))
-            >>> FO_Shift = Forward_operator_shift(Hsub, Perm)
-            >>> x = torch.tensor(np.random.random([batch_size,img_size]), dtype=torch.float)
-            >>> y = FO_Shift(x) # y: belongs to Hadamard domain, which is square matrix
-            >>> # as Hsub is not square, a completion by padding is proposed to implement the inverse recosntruction
-            >>> y_pad = F.pad(y, (img_size-(M+1),0), "constant", 0)
-            >>> FO_Shift_Had = Forward_operator_shift_had(Hsub, Perm)
+            >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
             >>> x_reconstruct = FO_Shift_Had.inverse(y_pad) 
-            >>> print(x.shape)
             >>> print(x_reconstruct.shape)
-            torch.Size([10, 4096])
-            torch.Size([10, 4096])          
+            torch.Size([10, 1024])          
         """
         # rearrange the terms + inverse transform
         # maybe needs to be initialised with a permutation matrix as well!
