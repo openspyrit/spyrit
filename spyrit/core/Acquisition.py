@@ -7,13 +7,19 @@ from torch import poisson
 from collections import OrderedDict
 from spyrit.misc.walsh_hadamard import walsh2_torch, walsh_matrix
 from spyrit.core.Forward_Operator import *
+import pdb
 
 # =====================================================================================================================
 # Acquisition
 # =====================================================================================================================       
 class Acquisition(nn.Module):
     r"""
-        Simulates acquisition by applying Forward_operator to a scaled image such that :math:`y = H_{sub}\frac{1+x}{2}`
+        Simulates acquisition by applying Forward_operator to a scaled image such that :math:`y = H_{sub}\frac{1+x}{2}`.
+        
+        Example:
+            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> Forward_OP = Forward_operator(Hsub)
+            >>> Acq = Acquisition(FO)
     """
     def __init__(self, FO: Forward_operator):
         super().__init__()
@@ -30,19 +36,10 @@ class Acquisition(nn.Module):
             - Output: :math:`(b*c, M)`
             
         Example:
-            >>> dataset = torchvision.datasets.STL10(root=data_root, split='test',download=False, transform=transform)
-            >>> dataloader =  torch.utils.data.DataLoader(testset, batch_size=10, shuffle=False)
-            >>> inputs, _ = next(iter(dataloader))
-            >>> b,c,h,w = inputs.shape
-            >>> x = inputs.view(b*c,w*h)
-            >>> Hsub = walsh_matrix(w*h)
-            >>> F0 = Forward_operator(Hsub)
-            >>> Acq = Acquisition(FO)
+            >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
             >>> y = Acq(x)
-            >>> print(x.shape)
             >>> print(y.shape)
-            torch.Size([10, 1024])
-            torch.Size([10, 1024])
+            torch.Size([10, 400])
             
         """
         # input x.shape - [b*c,h*w] - [b*c,N] 
@@ -56,14 +53,14 @@ class Acquisition(nn.Module):
 # ==================================================================================
 class Acquisition_Poisson_approx_Gauss(Acquisition):
     r"""
-    Acquisition with scaled and noisy image with Gaussian-approximated Poisson noise.
-    Args:
-        \alpha: Noise level (Image intensity in photons).
-        FO: Forward Operator.
-        
-    Shape:
-        - Input1: python scalar.
-        - Input2: :math:`(N, 2*M)`.
+    Acquisition with scaled and noisy image with Gaussian-approximated Poisson noise of level alpha.
+    Lorente Mur et. al, A Deep Network for Reconstructing Images from Undersampled Poisson data, [Research Report] Insa Lyon. 2020. `<https://hal.archives-ouvertes.fr/hal-02944869v1>`_
+    
+    Example:
+        >>> Hsub = np.array(np.random.random([400,32*32]))
+        >>> Forward_OP = Forward_operator(Hsub)
+        >>> Acq_Poisson_approx_Gauss = Acquisition_Poisson_approx_Gauss(9, Forward_OP)
+
     """
 # ==================================================================================    
     def __init__(self, alpha: float, FO: Forward_operator):
@@ -72,29 +69,20 @@ class Acquisition_Poisson_approx_Gauss(Acquisition):
         
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
-        Forward propagates image after scaling and simulating Gauss-approximated Poisson noise. See Lorente Mur et. al, A Deep Network for Reconstructing Images from Undersampled Poisson data, [Research Report] Insa Lyon. 2020. `<https://hal.archives-ouvertes.fr/hal-02944869v1>`_
+        Simulates image acquisition with scaling and Gauss-approximated Poisson noise of level alpha. 
+        
         Args:
             :math:`x`: Batch of images.
             
         Shape:
             - Input: :math:`(b*c, N)`.
-            - Output: :math:`(b*c, 2*M)`.
+            - Output: :math:`(b*c, M)`.
             
         Examples:
-            >>> dataset = torchvision.datasets.STL10(root=data_root, split='test',download=False, transform=transform)
-            >>> dataloader =  torch.utils.data.DataLoader(testset, batch_size=c, shuffle=False)
-            >>> inputs, _ = next(iter(dataloader))
-            >>> b,c,h,w = inputs.shape
-            >>> x = inputs.view(b*c,w*h)
-            >>> Hsub = walsh_matrix(w*h)
-            >>> F0 = Forward_operator(Hsub)
-            >>> alpha = 9
-            >>> Acq_Poisson_approx_Gauss = Acquisition_Poisson_approx_Gauss(alpha, FO)
+            >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
             >>> y = Acq_Poisson_approx_Gauss(x)
-            >>> print(x.shape)
             >>> print(y.shape)
-            torch.Size([10, 1024])
-            torch.Size([10, 1024])
+            torch.Size([10, 400])
             
         """
         # Input shape [b*c, N]  
@@ -112,19 +100,41 @@ class Acquisition_Poisson_approx_Gauss(Acquisition):
         return x  
     
 # ==================================================================================
-class Acquisition_Poisson_Pytorch(Acquisition):
-# ==================================================================================           
-    def __init__(self, alpha, H):
-        super().__init__(H)
+class Acquisition_Poisson(Acquisition):
+# ================================================================================== 
+    r""" Acquisition with scaled and noisy image with Poisson noise from torch library.
+    
+    Example:
+        >>> Hsub = np.array(np.random.random([400,32*32]))
+        >>> FO = Forward_operator(Hsub)
+        >>> Acq_Poisson = Acquisition_Poisson(9, FO)
+    
+    """
+    def __init__(self, alpha, FO):
+        super().__init__(FO)
         self.alpha = alpha
 
     def forward(self, x):
+        r""" Simulates acquisition of images with scaling and Poisson noise simulation.
+        Args:
+            - :math:`x`: Batch of images
+        
+        Shape:
+            - Input: :math:`(b*c, N)`
+            - Output: :math:`(b*c, M)`
+            
+        Example:
+            >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
+            >>> y = Acq_Poisson(x)
+            >>> print(y.shape)
+            
+        """
         # Input shape [b*c, N]  
         # Output shape [b*c, 2*M]
 
-        #--Scale input image      
-        x = self.alpha*(x+1)/2
+        #--Scale input image    
         
+        x = self.alpha*(x+1)/2 
         #--Acquisition
         x = self.FO(x)
         x = F.relu(x)  
