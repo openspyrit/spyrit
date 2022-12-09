@@ -320,7 +320,8 @@ class Acquisition(nn.Module):
         # output x.shape - [b*c,M] 
         #--Scale input image
         x = (x+1)/2; 
-        x = self.FO.Forward_op(x); 
+        #x = self.FO.Forward_op(x)
+        x = self.FO(x)
         # x is the product of Hsub-sampled*f ?
         return x
 
@@ -344,6 +345,30 @@ class Bruit_Poisson_approx_Gauss(Acquisition):
         
         #--Measurement noise (Gaussian approximation of Poisson)
         x = x + torch.sqrt(x)*torch.randn_like(x);  
+        return x  
+
+# ==================================================================================
+class Acquisition_Poisson_GaussApprox_sameNoise(Acquisition):
+# ==================================================================================    
+# same as above except that all images in a batch are corrupted with the same 
+# noise sample
+    def __init__(self, alpha, FO):
+        super().__init__(FO)
+        self.alpha = alpha
+        
+    def forward(self, x):
+        # Input shape [b*c, N]  
+        # Output shape [b*c, 2*M]
+
+        #--Scale input image      
+        x = self.alpha*(x+1)/2
+        
+        #--Acquisition
+        x = self.FO(x)
+        x = F.relu(x)       # remove small negative values
+        
+        #--Measurement noise (Gaussian approximation of Poisson)
+        x = x + torch.sqrt(x)*torch.randn(1,x.shape[1])
         return x  
     
 # ==================================================================================
