@@ -12,6 +12,24 @@ Created on Wed Jan 15 16:37:27 2020
 @author: crombez
 """
 import numpy as np
+from scipy.stats import rankdata
+
+def Permutation_Matrix(mat):
+    r"""Returns permutation matrix from sampling map
+                
+    Args:
+        mat: sampling map, where high value means high significance.
+        
+    Shape:
+        - Input: (n,n)
+        - Output: (n*n, n*n)
+    """
+    (nx, ny) = mat.shape;
+    Reorder = rankdata(-mat, method = 'ordinal');
+    Columns = np.array(range(nx*ny));
+    P = np.zeros((nx*ny, nx*ny));
+    P[Reorder-1, Columns] = 1;
+    return P
 
 def expend_vect(Vect,N1,N2): # Expened a vectors of siez N1 to N2
     V_out = np.zeros(N2)

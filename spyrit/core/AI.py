@@ -5,406 +5,182 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import math
-from scipy.stats import rankdata
 from torch import poisson
 from collections import OrderedDict
 #from scipy.sparse.linalg import aslinearoperator
 #from pylops_gpu import Diagonal, LinearOperator
 #from pylops_gpu.optimization.cg import cg --- currently not working
 #from pylops_gpu.optimization.leastsquares import NormalEquationsInversion
+from spyrit.misc.walsh_hadamard import walsh2_torch, walsh_matrix
+from typing import Union
 
-from spyrit.misc.walsh_hadamard import walsh2_torch
-
-# ===========================================================
-#           Matrix Operations - Hadamard
-# ===========================================================
-def Permutation_Matrix(mat):
-    """
-        Returns permutation matrix from sampling map
-        
-    Args:
-        mat (np.ndarray): A a n-by-n sampling map, where high value means high significance.
-        
-    Returns:
-        P (np.ndarray): A n*n-by-n*n permutation matrix
-    """
-    (nx, ny) = mat.shape;
-    Reorder = rankdata(-mat, method = 'ordinal');
-    Columns = np.array(range(nx*ny));
-    P = np.zeros((nx*ny, nx*ny));
-    P[Reorder-1, Columns] = 1;
-    return P
-
-# ==================================================================================
-# Forward operators
-# ==================================================================================
-# ==================================================================================
-class Forward_operator(nn.Module):
-# ==================================================================================
-# Faire le produit H*f sans bruit, linear (pytorch) 
-    def __init__(self, Hsub):  
-        super().__init__()
-        r""" Defines different fully connected layers that take weights from Hsub matrix
-            Args:
-                Hsub (np.ndarray): M-by-N matrix
-            Returns:
-                Pytorch Object of the parent-class nn.Module with two main methods: 
-                    - Forward: Forward propagation nn.Linear layer that assigns weights from Hsub matrix
-                    - adjoint: Back-propagation pytorch nn.Linear layer obtained from Hsub.transpose() as it is orthogonal
-        """
-        # instancier nn.linear        
-        # Pmat --> (torch) --> Poids ()
-        self.M = Hsub.shape[0];
-        self.N = Hsub.shape[1];
-        self.Hsub = nn.Linear(self.N, self.M, False); 
-        self.Hsub.weight.data=torch.from_numpy(Hsub)
-        # Data must be of type float (or double) rather than the default float64 when creating torch tensor
-        self.Hsub.weight.data=self.Hsub.weight.data.float()
-        self.Hsub.weight.requires_grad=False
-
-        # adjoint (Not useful here ??)
-        self.Hsub_adjoint = nn.Linear(self.M, self.N, False)
-        self.Hsub_adjoint.weight.data=torch.from_numpy(Hsub.transpose())
-        self.Hsub_adjoint.weight.data = self.Hsub_adjoint.weight.data.float()
-        self.Hsub_adjoint.weight.requires_grad = False
-               
-    def forward(self, x): 
-        r""" Forward propagate x through fully connected layer.
-
-        Args:
-            x (np.ndarray): M-by-N matrix.
-        Returns:
-            nn.Linear Pytorch Fully Connecter Layer that has input shape of N and output shape of M 
-        Example:
-            >>> Input_Matrix = np.array(np.random.random([100,32]))
-            >>> Forwad_OP = Forward_operator(Input_Matrix)
-            >>> print('Input Matrix shape:', Input_Matrix.shape)
-            >>> print('Forward propagation layer:',  Forwad_OP.Hsub) 
-            Input Matrix shape: (100, 32)
-            Forward propagation layer: Linear(in_features=32, out_features=100, bias=False)
-        """
-        # x.shape[b*c,N]
-        x = self.Hsub(x)    
-        return x
-
-    def Forward_op(self,x):     # todo: Rename to "direct"
-        # x.shape[b*c,N]
-        x = self.Hsub(x)    
-        return x
+# # ==================================================================================
+# # Acquisition
+# # ==================================================================================
+# # ==================================================================================        
+# class Acquisition(nn.Module):
+#     r"""
+#         Simulates acquisition by applying Forward_operator to a scaled image such that :math:`y = H_{sub}\frac{1+x}{2}`
+#     """
+#     def __init__(self, FO: Forward_operator):
+#         super().__init__()
+#         # FO = forward operator
+#         self.FO = FO
     
-    def adjoint(self,x):
-        r""" Backpropagate x through fully connected layer.
-
-        Args:
-            x (np.ndarray): M-by-N matrix.
-        Returns:
-            nn.Linear Pytorch Fully Connecter Layer that has input shape of N and output shape of M 
-        Example:
-            >>> Input_Matrix = np.array(np.random.random([100,32]))
-            >>> Forwad_OP = Forward_operator(Input_Matrix)
-            >>> print('Input Matrix shape:', Input_Matrix.shape)
-            >>> print('Backpropagaton layer:', Forwad_OP.Hsub_adjoint)            
-            Input Matrix shape: (100, 32)
-            Backpropagaton layer: Linear(in_features=100, out_features=32, bias=False
-        """
-        # x.shape[b*c,M]
-        #Pmat.transpose()*f
-        x = self.Hsub_adjoint(x)        
-        return x
-
-    def Mat(self):          # todo: Remove capital letter
-        return self.Hsub.weight.data;
-
-
-## Merge Split_Forward_operator and Split_Forward_operator_ft_had -> Forward_operator_shift_had
-
-# ==================================================================================
-class Split_Forward_operator(Forward_operator):
-# ==================================================================================
-    def __init__(self, Hsub): 
-        super().__init__(Hsub)
-        r""" Splits Forward Operator obtained from Hadamard Matrix into Positive and Negative arrays.
-
-            Args:
-                x (np.ndarray): M-by-N matrix.
-            Returns:
-                nn.Linear Pytorch Fully Connecter Layer that has input shape of N and output shape of 2*M 
-            Example:
-                >>> Input_Matrix = np.array(np.random.random([100,32]))
-                >>> Split_Forwad_OP =  Split_Forward_operator(Input_Matrix)
-                >>> print('Split Forward propagation layer:', Split_Forwad_OP.Hpos_neg)
-                Split Forward propagation layer: Linear(in_features=32, out_features=200, bias=False)
-
-        """
-        # [H^+, H^-]
-                
-        even_index = range(0,2*self.M,2);
-        odd_index = range(1,2*self.M,2);
-
-        H_pos = np.zeros(Hsub.shape);
-        H_neg = np.zeros(Hsub.shape);
-        H_pos[Hsub>0] = Hsub[Hsub>0];
-        H_neg[Hsub<0] = -Hsub[Hsub<0];
-        
-        # pourquoi 2 *M ?
-        Hposneg = np.zeros((2*self.M,self.N));
-        Hposneg[even_index,:] = H_pos;
-        Hposneg[odd_index,:] = H_neg;
-        
-        self.Hpos_neg = nn.Linear(self.N, 2*self.M, False) 
-        self.Hpos_neg.weight.data=torch.from_numpy(Hposneg)
-        self.Hpos_neg.weight.data=self.Hpos_neg.weight.data.float()
-        self.Hpos_neg.weight.requires_grad=False
-              
-    def forward(self, x): # --> simule la mesure sous-chantillonnée
-        # x.shape[b*c,N]
-        # output shape : [b*c, 2*M]
-        x = self.Hpos_neg(x)    
-        return x
-
-# ==================================================================================
-class Split_Forward_operator_ft_had(Split_Forward_operator): # forward tranform hadamard
-    r""" Split_Forward_operator object that contains:
-        Args:
-            Hsub (np.ndarray) :  M-by-N matrix
-            Perm (np.ndarray) :  N-by-N permutation matrix, such that 
-            Perm @ meas is the ordered measurement vector
+#     def forward(self, x: torch.tensor) -> torch.tensor:
+#         r"""
+#         Args:
+#             :math:`x`: Batch of images.
             
-        Returns:
-            *inverse* method            
-    """
-# ==================================================================================
-# Forward operator with implemented inverse transform and a permutation matrix
-    def __init__(self, Hsub, Perm, h, w):
-        """
-            h, w (int): image height and width such that self.N = h*w
-        """
-        super().__init__(Hsub);
-        self.Perm = nn.Linear(self.N, self.N, False)
-        self.Perm.weight.data=torch.from_numpy(Perm.T)
-        self.Perm.weight.data=self.Perm.weight.data.float()
-        self.Perm.weight.requires_grad=False
+#         Shape:
+#             - Input: :math:`(b*c, N)` 
+#             - Output: :math:`(b*c, M)`
+            
+#         Example:
+#             >>> dataset = torchvision.datasets.STL10(root=data_root, split='test',download=False, transform=transform)
+#             >>> dataloader =  torch.utils.data.DataLoader(testset, batch_size=10, shuffle=False)
+#             >>> inputs, _ = next(iter(dataloader))
+#             >>> b,c,h,w = inputs.shape
+#             >>> x = inputs.view(b*c,w*h)
+#             >>> img_size = 64 
+#             >>> nb_measurements = 1024   
+#             >>> Hsub = Hsub # This is the subsampled Hadamard Matrix of size (M, N)
+#             >>> F0 = Forward_operator(Hsub)
+#             >>> Acq = Acquisition(FO)
+#             >>> y = Acq(x)
+#             >>> print(x.shape)
+#             >>> print(y.shape)
+#             torch.Size([10, 4096])
+#             torch.Size([10, 1024])
+            
+#         """
+#         # input x.shape - [b*c,h*w] - [b*c,N] 
+#         # output x.shape - [b*c,M] 
+#         #--Scale input image
+#         x = (x+1)/2; 
+#         #x = self.FO.Forward_op(x)
+#         x = self.FO(x)
+#         # x is the product of Hsub-sampled*f ?
+#         return x
+
+# # ==================================================================================
+# class Acquisition_Poisson_approx_Gauss(Acquisition):
+#     r"""
+#     Acquisition with scaled and noisy image with Gaussian-approximated Poisson noise.
+#     Args:
+#         \alpha: Noise level (Image intensity in photons).
+#         FO: Forward Operator.
         
-        self.h = h
-        self.w = w
+#     Shape:
+#         - Input1: python scalar.
+#         - Input2: :math:`(N, 2*M)`.
+#     """
+# # ==================================================================================    
+#     def __init__(self, alpha: float, FO: Forward_operator):
+#         super().__init__(FO)
+#         self.alpha = alpha
         
-        # Build H - 1D, store and give it as argument
-        #self.H_1_D = ; 
+#     def forward(self, x: torch.tensor) -> torch.tensor:
+#         r"""
+#         Forward propagates image after scaling and simulating Gauss-approximated Poisson noise. See Lorente Mur et. al, A Deep Network for Reconstructing Images from Undersampled Poisson data, [Research Report] Insa Lyon. 2020. `<https://hal.archives-ouvertes.fr/hal-02944869v1>`_
+#         Args:
+#             :math:`x`: Batch of images.
+            
+#         Shape:
+#             - Input: :math:`(b*c, N)`.
+#             - Output: :math:`(b*c, 2*M)`.
+            
+#         Examples:
+#             >>> dataset = torchvision.datasets.STL10(root=data_root, split='test',download=False, transform=transform)
+#             >>> dataloader =  torch.utils.data.DataLoader(testset, batch_size=c, shuffle=False)
+#             >>> inputs, _ = next(iter(dataloader))
+#             >>> b,c,h,w = inputs.shape
+#             >>> M = 1024 # number of measurements
+#             >>> x = inputs.view(b*c,w*h) 
+#             >>> Hsub = Hsub # This is the subsampled Hadamard Matrix of size (M, N) where N = h*w
+#             >>> F0 = Forward_operator(Hsub)
+#             >>> alpha = 9
+#             >>> Acq_Poisson_approx_Gauss = Acquisition_Poisson_approx_Gauss(alpha, FO)
+#             >>> x_out = Acq_Poisson_approx_Gauss(x)
+#             >>> print(x.shape)
+#             >>> print(x_out.shape)
+#             torch.Size([10, 4096])
+#             torch.Size([10, 1024])
+            
+#         """
+#         # Input shape [b*c, N]  
+#         # Output shape [b*c, 2*M]
+
+#         #--Scale input image      
+#         x = self.alpha*(x+1)/2
+        
+#         #--Acquisition
+#         x = self.FO(x)
+#         x = F.relu(x)       # remove small negative values
+        
+#         #--Measurement noise (Gaussian approximation of Poisson)
+#         x = x + torch.sqrt(x)*torch.randn_like(x);  
+#         return x  
+
+# # ==================================================================================
+# class Acquisition_Poisson_GaussApprox_sameNoise(Acquisition):
+# # ==================================================================================    
+# # same as above except that all images in a batch are corrupted with the same 
+# # noise sample
+#     def __init__(self, alpha, FO):
+#         super().__init__(FO)
+#         self.alpha = alpha
+        
+#     def forward(self, x):
+#         # Input shape [b*c, N]  
+#         # Output shape [b*c, 2*M]
+
+#         #--Scale input image      
+#         x = self.alpha*(x+1)/2
+        
+#         #--Acquisition
+#         x = self.FO(x)
+#         x = F.relu(x)       # remove small negative values
+        
+#         #--Measurement noise (Gaussian approximation of Poisson)
+#         x = x + torch.sqrt(x)*torch.randn(1,x.shape[1])
+#         return x  
     
-    def inverse(self, x):
-        r""" Inverse transform of x:
-            Args:
-                x (torch.tensor) : b*c-by-N, which represents an image in 
-                the ordered measurement domain
-                
-            Returns:
-                   
-        """
-        # rearrange the terms + inverse transform
-        # maybe needs to be initialized with a permutation matrix as well!
-        # Permutation matrix may be sparsified when sparse tensors are no longer in
-        # beta (as of pytorch 1.11, it is still in beta).
+# # ==================================================================================
+# class Acquisition_Poisson_Pytorch(Acquisition):
+# # ==================================================================================           
+#     def __init__(self, alpha, H):
+#         super().__init__(H)
+#         self.alpha = alpha
+
+#     def forward(self, x):
+#         # Input shape [b*c, N]  
+#         # Output shape [b*c, 2*M]
+
+#         #--Scale input image      
+#         x = self.alpha*(x+1)/2
         
-        # input - x - shape [b*c, N]
-        # output - x - shape [b*c, N]
-        b, N = x.shape
-        x = self.Perm(x)
-        x = x.view(b, 1, self.h, self.w)
-        x = 1/self.N*walsh2_torch(x)    #to apply the inverse transform
-                                        # todo: initialize with 1D transform to speed up
-        # Build H - 1D, store and give it as argument
-        x = x.view(b, N);
-        return x
+#         #--Acquisition
+#         x = self.FO(x)
+#         x = F.relu(x)  
+        
+#         #--Measurement noise imported from Pytorch
+#         x = poisson(x) 
+#         return x           
     
-    def pinv(self, x):
-        x = self.adjoint(x)/self.N
-        return x
-
-# ==================================================================================
-class Forward_operator_shift(Forward_operator):
-# ==================================================================================
-    def __init__(self, Hsub, Perm):           
-        super().__init__(Hsub)
-        
-        # Todo: Use index rather than permutation (see misc.walsh_hadamard)
-        self.Perm = nn.Linear(self.N, self.N, False)
-        self.Perm.weight.data = torch.from_numpy(Perm.T)
-        self.Perm.weight.data = self.Perm.weight.data.float()
-        self.Perm.weight.requires_grad = False
-        
-        H_shift = torch.cat(
-            (torch.ones((1,self.N)),(self.Hsub.weight.data+1)/2))
-        
-        self.H_shift = nn.Linear(self.N, self.M+1, False) 
-        self.H_shift.weight.data = H_shift      # include the all-one pattern
-        self.H_shift.weight.data = self.H_shift.weight.data.float() # keep ?
-        self.H_shift.weight.requires_grad = False
-         
-    def forward(self, x):
-        # input x is a set of images with shape (b*c, N)
-        # output input is a set of measurement vector with shape (b*c, M+1)
-        x = self.H_shift(x) 
-        return x
-              
-        #x_shift = super().forward(x) - x_dark.expand(x.shape[0],self.M) # (H-1/2)x
-        
-# ==================================================================================
-class Forward_operator_pos(Forward_operator):
-# ==================================================================================
-    def __init__(self, Hsub, Perm):           
-        super().__init__(Hsub)
-        
-        # Todo: Use index rather than permutation (see misc.walsh_hadamard)
-        self.Perm = nn.Linear(self.N, self.N, False)
-        self.Perm.weight.data = torch.from_numpy(Perm.T)
-        self.Perm.weight.data = self.Perm.weight.data.float()
-        self.Perm.weight.requires_grad = False
-        
-    def forward(self, x):
-        # input x is a set of images with shape (b*c, N)
-        # output is a set of measurement vectors with shape (b*c, M)
-        
-        # compute 1/2(H+1)x = 1/2 HX + 1/2 1x
-        x = super().forward(x) + x.sum(dim=1,keepdim=True).expand(-1, self.M)
-        x *= 0.5
-        
-        return x
-    
-# ==================================================================================
-class Forward_operator_shift_had(Forward_operator_shift):
-# ==================================================================================
-    def __init__(self, Hsub, Perm):           
-        super().__init__(Hsub, Perm)
-    
-    def inverse(self, x, n = None):
-        # rearrange the terms + inverse transform
-        # maybe needs to be initialised with a permutation matrix as well!
-        # Permutation matrix may be sparsified when sparse tensors are no longer in
-        # beta (as of pytorch 1.11, it is still in beta).
-        
-        # --> Use index rather than permutation (see misc.walsh_hadamard)
-        
-        # input x is a set of **measurements** with shape (b*c, N)
-        # output is a set of **images** with shape (b*c, N)
-        bc, N = x.shape
-        x = self.Perm(x);
-        
-        if n is None:
-            n = int(np.sqrt(N))
-        
-        # Inverse transform    
-        x = x.view(bc, 1, n, n)
-        x = 1/self.N*walsh2_torch(x) # todo: initialize with 1D transform to speed up
-        x = x.view(bc, N)
-        return x
-
-# ==================================================================================
-# Acquisition
-# ==================================================================================
-# ==================================================================================        
-class Acquisition(nn.Module):
-    r"""
-        Sub-class of nn.Module that forward propagates torch.tensor through an nn.Linear
-        Args:
-            x (torch.tensor): b*c-by-N
-        Returns:
-            x (torch.tensor): 
-    """
-    def __init__(self, FO):
-        super().__init__()
-        # FO = forward operator
-        self.FO = FO
-    
-    def forward(self, x):
-        # input x.shape - [b*c,h*w] - [b*c,N] 
-        # output x.shape - [b*c,M] 
-        #--Scale input image
-        x = (x+1)/2; 
-        #x = self.FO.Forward_op(x)
-        x = self.FO(x)
-        # x is the product of Hsub-sampled*f ?
-        return x
-
-# ==================================================================================
-class Bruit_Poisson_approx_Gauss(Acquisition):
-# ==================================================================================    
-    def __init__(self, alpha, FO):
-        super().__init__(FO)
-        self.alpha = alpha
-        
-    def forward(self, x):
-        # Input shape [b*c, N]  
-        # Output shape [b*c, 2*M]
-
-        #--Scale input image      
-        x = self.alpha*(x+1)/2
-        
-        #--Acquisition
-        x = self.FO(x)
-        x = F.relu(x)       # remove small negative values
-        
-        #--Measurement noise (Gaussian approximation of Poisson)
-        x = x + torch.sqrt(x)*torch.randn_like(x);  
-        return x  
-
-# ==================================================================================
-class Acquisition_Poisson_GaussApprox_sameNoise(Acquisition):
-# ==================================================================================    
-# same as above except that all images in a batch are corrupted with the same 
-# noise sample
-    def __init__(self, alpha, FO):
-        super().__init__(FO)
-        self.alpha = alpha
-        
-    def forward(self, x):
-        # Input shape [b*c, N]  
-        # Output shape [b*c, 2*M]
-
-        #--Scale input image      
-        x = self.alpha*(x+1)/2
-        
-        #--Acquisition
-        x = self.FO(x)
-        x = F.relu(x)       # remove small negative values
-        
-        #--Measurement noise (Gaussian approximation of Poisson)
-        x = x + torch.sqrt(x)*torch.randn(1,x.shape[1])
-        return x  
-    
-# ==================================================================================
-class Bruit_Poisson_Pytorch(Acquisition):
-# ==================================================================================           
-    def __init__(self, alpha, H):
-        super().__init__(H)
-        self.alpha = alpha
-
-    def forward(self, x):
-        # Input shape [b*c, N]  
-        # Output shape [b*c, 2*M]
-
-        #--Scale input image      
-        x = self.alpha*(x+1)/2
-        
-        #--Acquisition
-        x = self.FO(x)
-        x = F.relu(x)  
-        
-        #--Measurement noise imported from Pytorch
-        x = poisson(x) 
-        return x           
- 
 # ==================================================================================
 # Preprocessing
 # ==================================================================================
 # ==================================================================================        
-class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
+class Preprocess_Split_diag_poisson(nn.Module):  # Why diag ?
 # ==================================================================================
     r"""
-        computes m = (m_+-m_-)/N_0
-        and also allows to compute var = 2*Diag(m_+ + m_-)/N0**2
+        Computes :math`m = (m_{+}-m_{-})/N_0`
+        and also allows to compute :math:`var = 2*Diag(m_{+} + m_{-})/N0^{2}`
         Args:
-            N0 (scalar)  : Number of photons
-            N, M (scalar): Dimension of input matrix
+            N0 : Number of photons
+            N: Matrix Height
+            M : Matrix Width
     """
     def __init__(self, N0, M, N):
         super().__init__()
@@ -458,10 +234,6 @@ class Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
     def sigma_expe(self, x):
         r"""
         returns estimated variance of **NOT** normalized measurements
-<<<<<<< HEAD
-
-=======
->>>>>>> 2b3eb00d1d8ddd1380eb12832b777117fb7170ca
         """
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
