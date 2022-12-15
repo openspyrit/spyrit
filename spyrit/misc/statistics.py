@@ -19,6 +19,15 @@ def stat_walsh_ImageNet(stat_root = Path('./stats/'),
     """ 
     Args:
         'data_root' needs to have all images in a subfolder
+    
+    Example:
+        from pathlib import Path
+        from spyrit.misc.statistics import stat_walsh_ImageNet
+        
+        data_root =  Path('../data/ILSVRC2012_v10102019')
+        stat_root =  Path('../stat/ILSVRC2012_v10102019')
+        stat_walsh_ImageNet(stat_root = stat_root, data_root = data_root,
+                            img_size = 32, batch_size = 1024)
            
     """
 
@@ -200,9 +209,9 @@ def mean_walsh(dataloader, device, n_loop=1):
             mean = mean.add(torch.sum(trans,0))
             # print
             n = n + inputs.shape[0]
-            print(f'Mean:  {n} / (less than) {tot_num*n_loop} images', end='')#'\n')
+            print(f'Mean:  {n} / (less than) {tot_num*n_loop} images', end='\n')
             # test
-            print(f' | {inputs[53,0,33,49]}', end='\n')
+            #print(f' | {inputs[53,0,33,49]}', end='\n')
         print('', end='\n')
     
     # Normalize
@@ -243,9 +252,9 @@ def cov_walsh(dataloader, mean, device, n_loop=1):
             cov = torch.addbmm(cov, trans, trans.view(inputs.shape[0], 1, nx*ny))
             # print
             n += inputs.shape[0]
-            print(f'Cov:  {n} / (less than) {tot_num*n_loop} images', end='')#'\n')
+            print(f'Cov:  {n} / (less than) {tot_num*n_loop} images', end='\n')
             # test
-            print(f' | {inputs[53,0,33,49]}', end='\n')
+            #print(f' | {inputs[53,0,33,49]}', end='\n')
         print('', end='\n')
     
     # Normalize

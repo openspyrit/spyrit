@@ -100,6 +100,30 @@ class Acquisition_Poisson_approx_Gauss(Acquisition):
         return x  
     
 # ==================================================================================
+class Acquisition_Poisson_GaussApprox_sameNoise(Acquisition):
+# ==================================================================================    
+# same as above except that all images in a batch are corrupted with the same 
+# noise sample
+    def __init__(self, alpha, FO):
+        super().__init__(FO)
+        self.alpha = alpha
+        
+    def forward(self, x):
+        # Input shape [b*c, N]  
+        # Output shape [b*c, 2*M]
+
+        #--Scale input image      
+        x = self.alpha*(x+1)/2
+        
+        #--Acquisition
+        x = self.FO(x)
+        x = F.relu(x)       # remove small negative values
+        
+        #--Measurement noise (Gaussian approximation of Poisson)
+        x = x + torch.sqrt(x)*torch.randn(1,x.shape[1])
+        return x  
+    
+# ==================================================================================
 class Acquisition_Poisson(Acquisition):
 # ================================================================================== 
     r""" Acquisition with scaled and noisy image with Poisson noise from torch library.
