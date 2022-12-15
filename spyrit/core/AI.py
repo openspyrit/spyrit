@@ -14,140 +14,165 @@ from collections import OrderedDict
 from spyrit.misc.walsh_hadamard import walsh2_torch, walsh_matrix
 from typing import Union
 
-# ==================================================================================
-# Acquisition
-# ==================================================================================
-# ==================================================================================        
-class Acquisition(nn.Module):
-    r"""
-        Simulates acquisition by applying Forward_operator to a scaled image such that :math:`y = H_{sub}\frac{1+x}{2}`
-    """
-    def __init__(self, FO: Forward_operator):
-        super().__init__()
-        # FO = forward operator
-        self.FO = FO
+# # ==================================================================================
+# # Acquisition
+# # ==================================================================================
+# # ==================================================================================        
+# class Acquisition(nn.Module):
+#     r"""
+#         Simulates acquisition by applying Forward_operator to a scaled image such that :math:`y = H_{sub}\frac{1+x}{2}`
+#     """
+#     def __init__(self, FO: Forward_operator):
+#         super().__init__()
+#         # FO = forward operator
+#         self.FO = FO
     
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        r"""
-        Args:
-            :math:`x`: Batch of images.
+#     def forward(self, x: torch.tensor) -> torch.tensor:
+#         r"""
+#         Args:
+#             :math:`x`: Batch of images.
             
-        Shape:
-            - Input: :math:`(b*c, N)` 
-            - Output: :math:`(b*c, M)`
+#         Shape:
+#             - Input: :math:`(b*c, N)` 
+#             - Output: :math:`(b*c, M)`
             
-        Example:
-            >>> dataset = torchvision.datasets.STL10(root=data_root, split='test',download=False, transform=transform)
-            >>> dataloader =  torch.utils.data.DataLoader(testset, batch_size=10, shuffle=False)
-            >>> inputs, _ = next(iter(dataloader))
-            >>> b,c,h,w = inputs.shape
-            >>> x = inputs.view(b*c,w*h)
-            >>> img_size = 64 
-            >>> nb_measurements = 1024   
-            >>> Hsub = Hsub # This is the subsampled Hadamard Matrix of size (M, N)
-            >>> F0 = Forward_operator(Hsub)
-            >>> Acq = Acquisition(FO)
-            >>> y = Acq(x)
-            >>> print(x.shape)
-            >>> print(y.shape)
-            torch.Size([10, 4096])
-            torch.Size([10, 1024])
+#         Example:
+#             >>> dataset = torchvision.datasets.STL10(root=data_root, split='test',download=False, transform=transform)
+#             >>> dataloader =  torch.utils.data.DataLoader(testset, batch_size=10, shuffle=False)
+#             >>> inputs, _ = next(iter(dataloader))
+#             >>> b,c,h,w = inputs.shape
+#             >>> x = inputs.view(b*c,w*h)
+#             >>> img_size = 64 
+#             >>> nb_measurements = 1024   
+#             >>> Hsub = Hsub # This is the subsampled Hadamard Matrix of size (M, N)
+#             >>> F0 = Forward_operator(Hsub)
+#             >>> Acq = Acquisition(FO)
+#             >>> y = Acq(x)
+#             >>> print(x.shape)
+#             >>> print(y.shape)
+#             torch.Size([10, 4096])
+#             torch.Size([10, 1024])
             
-        """
-        # input x.shape - [b*c,h*w] - [b*c,N] 
-        # output x.shape - [b*c,M] 
-        #--Scale input image
-        x = (x+1)/2; 
-        x = self.FO.forward(x); 
-        # x is the product of Hsub-sampled*f ?
-        return x
+#         """
+#         # input x.shape - [b*c,h*w] - [b*c,N] 
+#         # output x.shape - [b*c,M] 
+#         #--Scale input image
+#         x = (x+1)/2; 
+#         #x = self.FO.Forward_op(x)
+#         x = self.FO(x)
+#         # x is the product of Hsub-sampled*f ?
+#         return x
 
-# ==================================================================================
-class Acquisition_Poisson_approx_Gauss(Acquisition):
-    r"""
-    Acquisition with scaled and noisy image with Gaussian-approximated Poisson noise.
-    Args:
-        \alpha: Noise level (Image intensity in photons).
-        FO: Forward Operator.
+# # ==================================================================================
+# class Acquisition_Poisson_approx_Gauss(Acquisition):
+#     r"""
+#     Acquisition with scaled and noisy image with Gaussian-approximated Poisson noise.
+#     Args:
+#         \alpha: Noise level (Image intensity in photons).
+#         FO: Forward Operator.
         
-    Shape:
-        - Input1: python scalar.
-        - Input2: :math:`(N, 2*M)`.
-    """
-# ==================================================================================    
-    def __init__(self, alpha: float, FO: Forward_operator):
-        super().__init__(FO)
-        self.alpha = alpha
+#     Shape:
+#         - Input1: python scalar.
+#         - Input2: :math:`(N, 2*M)`.
+#     """
+# # ==================================================================================    
+#     def __init__(self, alpha: float, FO: Forward_operator):
+#         super().__init__(FO)
+#         self.alpha = alpha
         
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        r"""
-        Forward propagates image after scaling and simulating Gauss-approximated Poisson noise. See Lorente Mur et. al, A Deep Network for Reconstructing Images from Undersampled Poisson data, [Research Report] Insa Lyon. 2020. `<https://hal.archives-ouvertes.fr/hal-02944869v1>`_
-        Args:
-            :math:`x`: Batch of images.
+#     def forward(self, x: torch.tensor) -> torch.tensor:
+#         r"""
+#         Forward propagates image after scaling and simulating Gauss-approximated Poisson noise. See Lorente Mur et. al, A Deep Network for Reconstructing Images from Undersampled Poisson data, [Research Report] Insa Lyon. 2020. `<https://hal.archives-ouvertes.fr/hal-02944869v1>`_
+#         Args:
+#             :math:`x`: Batch of images.
             
-        Shape:
-            - Input: :math:`(b*c, N)`.
-            - Output: :math:`(b*c, 2*M)`.
+#         Shape:
+#             - Input: :math:`(b*c, N)`.
+#             - Output: :math:`(b*c, 2*M)`.
             
-        Examples:
-            >>> dataset = torchvision.datasets.STL10(root=data_root, split='test',download=False, transform=transform)
-            >>> dataloader =  torch.utils.data.DataLoader(testset, batch_size=c, shuffle=False)
-            >>> inputs, _ = next(iter(dataloader))
-            >>> b,c,h,w = inputs.shape
-            >>> M = 1024 # number of measurements
-            >>> x = inputs.view(b*c,w*h) 
-            >>> Hsub = Hsub # This is the subsampled Hadamard Matrix of size (M, N) where N = h*w
-            >>> F0 = Forward_operator(Hsub)
-            >>> alpha = 9
-            >>> Acq_Poisson_approx_Gauss = Acquisition_Poisson_approx_Gauss(alpha, FO)
-            >>> x_out = Acq_Poisson_approx_Gauss(x)
-            >>> print(x.shape)
-            >>> print(x_out.shape)
-            torch.Size([10, 4096])
-            torch.Size([10, 1024])
+#         Examples:
+#             >>> dataset = torchvision.datasets.STL10(root=data_root, split='test',download=False, transform=transform)
+#             >>> dataloader =  torch.utils.data.DataLoader(testset, batch_size=c, shuffle=False)
+#             >>> inputs, _ = next(iter(dataloader))
+#             >>> b,c,h,w = inputs.shape
+#             >>> M = 1024 # number of measurements
+#             >>> x = inputs.view(b*c,w*h) 
+#             >>> Hsub = Hsub # This is the subsampled Hadamard Matrix of size (M, N) where N = h*w
+#             >>> F0 = Forward_operator(Hsub)
+#             >>> alpha = 9
+#             >>> Acq_Poisson_approx_Gauss = Acquisition_Poisson_approx_Gauss(alpha, FO)
+#             >>> x_out = Acq_Poisson_approx_Gauss(x)
+#             >>> print(x.shape)
+#             >>> print(x_out.shape)
+#             torch.Size([10, 4096])
+#             torch.Size([10, 1024])
             
-        """
-        # Input shape [b*c, N]  
-        # Output shape [b*c, 2*M]
+#         """
+#         # Input shape [b*c, N]  
+#         # Output shape [b*c, 2*M]
 
-        #--Scale input image      
-        x = self.alpha*(x+1)/2
+#         #--Scale input image      
+#         x = self.alpha*(x+1)/2
         
-        #--Acquisition
-        x = self.FO(x)
-        x = F.relu(x)       # remove small negative values
+#         #--Acquisition
+#         x = self.FO(x)
+#         x = F.relu(x)       # remove small negative values
         
-        #--Measurement noise (Gaussian approximation of Poisson)
-        x = x + torch.sqrt(x)*torch.randn_like(x);  
-        return x  
+#         #--Measurement noise (Gaussian approximation of Poisson)
+#         x = x + torch.sqrt(x)*torch.randn_like(x);  
+#         return x  
+
+# # ==================================================================================
+# class Acquisition_Poisson_GaussApprox_sameNoise(Acquisition):
+# # ==================================================================================    
+# # same as above except that all images in a batch are corrupted with the same 
+# # noise sample
+#     def __init__(self, alpha, FO):
+#         super().__init__(FO)
+#         self.alpha = alpha
+        
+#     def forward(self, x):
+#         # Input shape [b*c, N]  
+#         # Output shape [b*c, 2*M]
+
+#         #--Scale input image      
+#         x = self.alpha*(x+1)/2
+        
+#         #--Acquisition
+#         x = self.FO(x)
+#         x = F.relu(x)       # remove small negative values
+        
+#         #--Measurement noise (Gaussian approximation of Poisson)
+#         x = x + torch.sqrt(x)*torch.randn(1,x.shape[1])
+#         return x  
     
-# ==================================================================================
-class Acquisition_Poisson_Pytorch(Acquisition):
-# ==================================================================================           
-    def __init__(self, alpha, H):
-        super().__init__(H)
-        self.alpha = alpha
+# # ==================================================================================
+# class Acquisition_Poisson_Pytorch(Acquisition):
+# # ==================================================================================           
+#     def __init__(self, alpha, H):
+#         super().__init__(H)
+#         self.alpha = alpha
 
-    def forward(self, x):
-        # Input shape [b*c, N]  
-        # Output shape [b*c, 2*M]
+#     def forward(self, x):
+#         # Input shape [b*c, N]  
+#         # Output shape [b*c, 2*M]
 
-        #--Scale input image      
-        x = self.alpha*(x+1)/2
+#         #--Scale input image      
+#         x = self.alpha*(x+1)/2
         
-        #--Acquisition
-        x = self.FO(x)
-        x = F.relu(x)  
+#         #--Acquisition
+#         x = self.FO(x)
+#         x = F.relu(x)  
         
-        #--Measurement noise imported from Pytorch
-        x = poisson(x) 
-        return x           
+#         #--Measurement noise imported from Pytorch
+#         x = poisson(x) 
+#         return x           
     
 # ==================================================================================
 # Preprocessing
 # ==================================================================================
 # ==================================================================================        
-class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
+class Preprocess_Split_diag_poisson(nn.Module):  # Why diag ?
 # ==================================================================================
     r"""
         Computes :math`m = (m_{+}-m_{-})/N_0`
@@ -191,9 +216,9 @@ class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         x = 4*x/(self.N0**2); # Cov is in [-1,1] so *4
         return x
     
-    def sigma_expe(self, x, gain=1, mudark=0, sigdark=0, nbin=1):
+    def set_expe(self, gain=1, mudark=0, sigdark=0, nbin=1):
         r"""
-        returns estimated variance of **NOT** normalized measurements
+        set experimental noise parameters
         
         gain in count/electron
         mudark: average dark current in counts
@@ -201,10 +226,19 @@ class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         nbin: number of raw bin in each spectral channel (if input x results 
         from the sommation/binning of the raw data)
         """
+        self.gain = gain
+        self.mudark = mudark
+        self.sigdark = sigdark
+        self.nbin = nbin
+    
+    def sigma_expe(self, x):
+        r"""
+        returns estimated variance of **NOT** normalized measurements
+        """
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
         x = x[:,self.even_index] + x[:,self.odd_index]
-        x = gain*(x - 2*nbin*mudark) + 2*nbin*sigdark**2
+        x = self.gain*(x - 2*self.nbin*self.mudark) + 2*self.nbin*self.sigdark**2
         x = 4*x     # to get the cov of an image in [-1,1], not in [0,1]
 
         return x
@@ -239,25 +273,22 @@ class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         x = 2*x - FO.Forward_op(torch.ones(bc, self.N).to(x.device))
         
         N0_est = N0_est[:,0]    # shape is (b*c,)
-        
-        print(N0_est)
-        
+
         return x, N0_est
    
     
-    def denormalize_expe(self, x, N0, h, w):
+    def denormalize_expe(self, x, norm, h, w):
         """ 
             x has shape (b*c,1,h,w)
-            N0 has shape (b*c,)
-            
-            Output has shape (b*c,1,h,w)
+            norm has shape (b*c,). Typically N0*gain where N0 is the inmage 
+            intensity in photon ang gain is in counts/electron
         """
         bc = x.shape[0]
         
         # Denormalization
-        N0 = N0.view(bc,1,1,1)
-        N0 = N0.expand(bc,1,h,w)
-        x = (x+1)*N0/2 
+        norm = norm.view(bc,1,1,1)
+        norm = norm.expand(bc,1,h,w)
+        x = (x+1)/2*norm
         
         return x
 
@@ -974,7 +1005,7 @@ class List_denoi(nn.Module):
 class Identity(nn.Module):  # Can be useful for ablation study
 # ===========================================================================================
     def __init__(self):
-        super(self).__init__()
+        super(Identity,self).__init__()
         
     def forward(self,x):
         return x
@@ -1262,6 +1293,8 @@ class Pinv_Net(nn.Module):
     
         # Preprocessing
         x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # shape x = [b*c, M]
+        
+        print(N0_est)
     
         # measurements to image domain processing
         x = self.DC_layer(x, self.Acq.FO)               # shape x = [b*c,N]
@@ -1269,6 +1302,8 @@ class Pinv_Net(nn.Module):
 
         # Image domain denoising
         x = self.Denoi(x)                               # shape x = [b*c,1,h,w]
+        
+        print(x.max())
         
         # Denormalization 
         x = self.PreP.denormalize_expe(x, N0_est, self.Acq.FO.h, self.Acq.FO.w)
@@ -1294,9 +1329,9 @@ class DC2_Net(Pinv_Net):
         x = self.DC_layer(x, x_0, var_noi, self.Acq.FO)
         x = x.view(bc,1,self.Acq.FO.h, self.Acq.FO.w)   # shape x = [b*c,1,h,w]
         
-        return x
-
-    def reconstruct_expe(self, x, gain=1, mudark=0, sigdark=0):
+        return x        
+        
+    def reconstruct_expe(self, x):
         """
         The output images are denormalized, i.e., they have units of photon counts. 
         The estimated image intensity N0 is used for both normalizing the raw 
@@ -1306,9 +1341,13 @@ class DC2_Net(Pinv_Net):
         bc, _ = x.shape
         
         # Preprocessing expe
-        var_noi = self.PreP.sigma_expe(x, gain, mudark, sigdark)
-        x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # shape x = [b*c, M]
-        var_noi = torch.div(var_noi, (gain*N0_est.view(-1,1).expand(bc,self.Acq.FO.M))**2)
+        var_noi = self.PreP.sigma_expe(x)
+        x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # x <- x/N0_est
+        x = x/self.PreP.gain
+        norm = self.PreP.gain*N0_est
+        
+        # variance of preprocessed measurements
+        var_noi = torch.div(var_noi, (norm.view(-1,1).expand(bc,self.Acq.FO.M))**2)
     
         # measurements to image domain processing
         x_0 = torch.zeros((bc, self.Acq.FO.N)).to(x.device)
@@ -1319,7 +1358,7 @@ class DC2_Net(Pinv_Net):
         x = self.Denoi(x)                                  # shape x = [b*c,1,h,w]
         
         # Denormalization 
-        x = self.PreP.denormalize_expe(x, N0_est, self.Acq.FO.h, self.Acq.FO.w)
+        x = self.PreP.denormalize_expe(x, norm, self.Acq.FO.h, self.Acq.FO.w)
         
         return x
 
