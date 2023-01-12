@@ -11,11 +11,11 @@ import pdb
 class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
 # ==================================================================================
     r"""
-        Computes :math`m = (m_{+}-m_{-})/N_0`
-        and also allows to compute :math:`var = 2*Diag(m_{+} + m_{-})/alpha^{2}`
+        Computes :math:`m = \frac{(m_{+}-m_{-})}{N_0}`
+        and also allows to compute :math:`var = \frac{2*Diag(m_{+} + m_{-})}{\alpha^{2}}`
             
         Args:
-            - :math:`alpha`: noise level
+            - :math:`\alpha`: noise level
             - :math:`M`: number of measurements
             - :math:`N`: number of image pixels
             
@@ -48,7 +48,7 @@ class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
             
         Shape:
             - Input: :math:`(b*c,2*M)`
-            - Output: :math:`(b*c,M)
+            - Output: :math:`(b*c,M)`
             
         Example:
             >>> from spyrit.core.Forward_Operator import Forward_operator_Split
@@ -228,7 +228,22 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
         self.N = N
         self.M = M
 
-    def forward(self, x, FO):
+    def forward(self, x: torch.tensor, FO: Forward_operator) -> torch.tensor:
+        r"""
+        Args:
+            - :math:`x`: Batch of images in Hadamard domain shifted by 1
+            - :maht:`FO`: 
+            
+        Shape:
+            - Input1: :math:`(b*c, M+1)`
+            - Output: :math:`(b*c, M)`
+            
+        Example
+            >>>
+            >>>
+            >>> 
+            
+        """
         # Input  has shape (b*c, M+1)
         # Output has shape (b*c, M)
         y = self.offset(x)
