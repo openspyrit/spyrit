@@ -605,7 +605,7 @@ class List_denoi(nn.Module):
 class Identity(nn.Module):  # Can be useful for ablation study
 # ===========================================================================================
     def __init__(self):
-        super(self).__init__()
+        super(Identity,self).__init__()
         
     def forward(self,x):
         return x
@@ -893,6 +893,8 @@ class Pinv_Net(nn.Module):
     
         # Preprocessing
         x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # shape x = [b*c, M]
+        
+        print(N0_est)
     
         # measurements to image domain processing
         x = self.DC_layer(x, self.Acq.FO)               # shape x = [b*c,N]
@@ -900,6 +902,8 @@ class Pinv_Net(nn.Module):
 
         # Image domain denoising
         x = self.Denoi(x)                               # shape x = [b*c,1,h,w]
+        
+        print(x.max())
         
         # Denormalization 
         x = self.PreP.denormalize_expe(x, N0_est, self.Acq.FO.h, self.Acq.FO.w)
@@ -925,9 +929,9 @@ class DC2_Net(Pinv_Net):
         x = self.DC_layer(x, x_0, var_noi, self.Acq.FO)
         x = x.view(bc,1,self.Acq.FO.h, self.Acq.FO.w)   # shape x = [b*c,1,h,w]
         
-        return x
-
-    def reconstruct_expe(self, x, gain=1, mudark=0, sigdark=0):
+        return x        
+        
+    def reconstruct_expe(self, x):
         """
         The output images are denormalized, i.e., they have units of photon counts. 
         The estimated image intensity N0 is used for both normalizing the raw 
@@ -937,9 +941,13 @@ class DC2_Net(Pinv_Net):
         bc, _ = x.shape
         
         # Preprocessing expe
-        var_noi = self.PreP.sigma_expe(x, gain, mudark, sigdark)
-        x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # shape x = [b*c, M]
-        var_noi = torch.div(var_noi, (gain*N0_est.view(-1,1).expand(bc,self.Acq.FO.M))**2)
+        var_noi = self.PreP.sigma_expe(x)
+        x, N0_est = self.PreP.forward_expe(x, self.Acq.FO) # x <- x/N0_est
+        x = x/self.PreP.gain
+        norm = self.PreP.gain*N0_est
+        
+        # variance of preprocessed measurements
+        var_noi = torch.div(var_noi, (norm.view(-1,1).expand(bc,self.Acq.FO.M))**2)
     
         # measurements to image domain processing
         x_0 = torch.zeros((bc, self.Acq.FO.N)).to(x.device)
@@ -950,7 +958,7 @@ class DC2_Net(Pinv_Net):
         x = self.Denoi(x)                                  # shape x = [b*c,1,h,w]
         
         # Denormalization 
-        x = self.PreP.denormalize_expe(x, N0_est, self.Acq.FO.h, self.Acq.FO.w)
+        x = self.PreP.denormalize_expe(x, norm, self.Acq.FO.h, self.Acq.FO.w)
         
         return x
 
