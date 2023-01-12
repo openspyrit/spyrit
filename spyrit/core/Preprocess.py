@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 import math
 from spyrit.core.Forward_Operator import *
+import pdb
 # ==================================================================================
 # Preprocessing
 # ==================================================================================  
@@ -12,6 +13,16 @@ class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
     r"""
         Computes :math`m = (m_{+}-m_{-})/N_0`
         and also allows to compute :math:`var = 2*Diag(m_{+} + m_{-})/alpha^{2}`
+            
+        Args:
+            - :math:`alpha`: noise level
+            - :math:`M`: number of measurements
+            - :math:`N`: number of image pixels
+            
+        Shape:
+            - Input1: scalar
+            - Input2: scalar
+            - Input3: scalar
             
         Example:
             >>> SPP = Preprocess_Split_diag_poisson_preprocess(10, 400, 32*32)
@@ -115,6 +126,7 @@ class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         r"""
         
         """
+        pdb.set_trace()
         # x - image. Input shape (b*c, N)
         # FO - Forward operator.
         x = FO.Forward_op(x);
@@ -193,8 +205,22 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
     Computes 
         m = (2 m_shift - m_offset)/N_0
         var = 4*Diag(m_shift + m_offset)/alpha**2
-        
-    Warning: dark measurement is assumed to be the 0-th entry of raw measurements
+        Warning: dark measurement is assumed to be the 0-th entry of raw measurements
+    """
+    r"""
+    
+        Args:
+            - :math:`alpha`: noise level
+            - :math:`M`: number of measurements
+            - :math:`N`: number of image pixels
+            
+        Shape:
+            - Input1: scalar
+            - Input2: scalar
+            - Input3: scalar
+            
+        Example:
+            >>> PSP = Preprocess_shift_poisson(10, 400, 32*32)
     """
     def __init__(self, alpha, M, N):
         super().__init__()
