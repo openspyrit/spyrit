@@ -163,18 +163,14 @@ class Preprocess_Split_diag_poisson(nn.Module):  # Why diag ?
         x = 2*x - FO.Forward_op(torch.ones(bc, self.N).to(x.device))
         
         alpha_est = alpha_est[:,0]    # shape is (b*c,)
-        
-        print(alpha_est)
-        
+
         return x, alpha_est
    
     
     def denormalize_expe(self, x, norm, h, w):
         """ 
             x has shape (b*c,1,h,w)
-            alpha has shape (b*c,)
             
-            Output has shape (b*c,1,h,w)
         """
         bc = x.shape[0]
         
