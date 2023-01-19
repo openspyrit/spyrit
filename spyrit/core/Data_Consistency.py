@@ -1,3 +1,8 @@
+import torch
+import torch.nn as nn
+import numpy as np
+import math
+
 # ==================================================================================
 # Data consistency
 # ==================================================================================
@@ -14,7 +19,6 @@ class Pinv_orthogonal(nn.Module): # For A.T @ A  = n*Id (ex : Hadamard, Fourier.
         # output (b*c, N)
         x = (1/FO.N)*FO.adjoint(x);
         return x
-
 
 # ==================================================================================
 class learned_measurement_to_image(nn.Module):
@@ -395,7 +399,7 @@ class Denoise_layer(nn.Module):
         return 'in_features={}'.format(self.in_features)
 
 def tikho(inputs, weight):
-    # type: (Tensor, Tensor) -> Tensor
+    # type: (torch.Tensor, torch.Tensor) -> torch.Tensor
     r"""
     Applies a transformation to the incoming data: :math:`y = A^2/(A^2+x)`.
 
