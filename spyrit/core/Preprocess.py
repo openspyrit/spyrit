@@ -25,7 +25,7 @@ class Preprocess_Split_diag_poisson(nn.Module):  # Why diag ?
             - Input3: scalar
             
         Example:
-            >>> SPP = Preprocess_Split_diag_poisson_preprocess(10, 400, 32*32)
+            >>> SPP = Preprocess_Split_diag_poisson(10, 400, 32*32)
 
     """
     def __init__(self, alpha: float, M: int, N: int):
@@ -106,7 +106,8 @@ class Preprocess_Split_diag_poisson(nn.Module):  # Why diag ?
         self.sigdark = sigdark
         self.nbin = nbin
         
-    def sigma_expe(self, x):
+        
+    def sigma_expe(self, x: torch.tensor) -> torch.tensor:
         r"""
         returns estimated variance of **NOT** normalized measurements
         
@@ -119,14 +120,14 @@ class Preprocess_Split_diag_poisson(nn.Module):  # Why diag ?
             
         Example:
             >>> x = torch.tensor(np.random.random([10,2*32*32]), dtype=torch.float)
-            >>> Sig_exp_x = SPP.sigma_expe(x, gain=1, mudark=0, sigdark=0, nbin=1)
+            >>> Sig_exp_x = SPP.sigma_expe(x)
             >>> print(Sig_exp_x.shape)
             torch.Size([10, 400])
         """
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
         x = x[:,self.even_index] + x[:,self.odd_index]
-        x = x = self.gain*(x - 2*self.nbin*self.mudark) + 2*self.nbin*self.sigdark**2
+        x = self.gain*(x - 2*self.nbin*self.mudark) + 2*self.nbin*self.sigdark**2
         x = 4*x     # to get the cov of an image in [-1,1], not in [0,1]
 
         return x
@@ -138,12 +139,13 @@ class Preprocess_Split_diag_poisson(nn.Module):  # Why diag ?
         pdb.set_trace()
         # x - image. Input shape (b*c, N)
         # FO - Forward operator.
+        
         x = FO.Forward_op(x);
         x = x[:,self.even_index] + x[:,self.odd_index]
         x = 4*x/(self.alpha) # here the alpha Contribution is not squared.
         return x
     
-    def forward_expe(self, x, FO):
+    def forward_expe(self, x: torch.tensor, FO: Forward_operator_Split_ft_had) -> torch.tensor:
         """ 
             Input shape [b*c,2*M]
             Output shape [b*c,M]
