@@ -38,12 +38,12 @@ def hadamard_opt_spc(M ,root, nx, ny):
     return conv
 
 
-def img2mask(Value_map, M):
-    (nx, ny) = Value_map.shape;
-    msk = np.ones((nx, ny));
-    ranked_data = np.reshape(rankdata(-Value_map, method = 'ordinal'),(nx, ny));
-    msk[np.absolute(ranked_data)>M]=0;
-    return msk
+# def img2mask(Value_map, M):
+#     (nx, ny) = Value_map.shape;
+#     msk = np.ones((nx, ny));
+#     ranked_data = np.reshape(rankdata(-Value_map, method = 'ordinal'),(nx, ny));
+#     msk[np.absolute(ranked_data)>M]=0;
+#     return msk
 
 
 def Permutation_Matrix_root(root):
@@ -54,23 +54,6 @@ def Permutation_Matrix_root(root):
     had_mat = np.load(root);
     (nx, ny) = had_mat.shape;
     Reorder = rankdata(-had_mat, method = 'ordinal');
-    Columns = np.array(range(nx*ny));
-    P = np.zeros((nx*ny, nx*ny));
-    P[Reorder-1, Columns] = 1;
-    return P
-
-def Permutation_Matrix(mat):
-    """
-        Returns permutation matrix from sampling map
-        
-    Args:
-        mat (np.ndarray): A a n-by-n sampling map, where high value means high significance.
-        
-    Returns:
-        P (np.ndarray): A n*n-by-n*n permutation matrix
-    """
-    (nx, ny) = mat.shape;
-    Reorder = rankdata(-mat, method = 'ordinal');
     Columns = np.array(range(nx*ny));
     P = np.zeros((nx*ny, nx*ny));
     P[Reorder-1, Columns] = 1;
@@ -156,54 +139,6 @@ def Variance_mask(Cov,eta=0.5):
     mask[ind<M] = 1
     
     return mask
-
-    
-def meas2img(meas, Ord):
-    """Return image from measurement vector
-
-    Args:
-        meas (ndarray): Measurement vector.
-        Ord (ndarray): Order matrix
-
-    Returns:
-        Img (ndarray): Measurement image
-    """
-    y = np.pad(meas, (0, Ord.size-len(meas)))
-    Perm = Permutation_Matrix(Ord)
-    Img = np.dot(np.transpose(Perm),y).reshape(Ord.shape)
-    return Img
-
-def img2meas(img, Ord):
-    """Return measurement vector from image (not TESTED)
-
-    Args:
-        im (np.ndarray): Image.
-        Ord (np.ndarray): Order matrix
-
-    Returns:
-        meas (np.ndarray): Measurement vector
-    """
-    Perm = Permutation_Matrix(Ord)
-    meas = np.dot(Perm, np.ravel(img))
-    return meas
-
-def meas2img_torch(meas, Ord):
-    """Return image from measurement vector (NOT TESTED, requires too much memory?)
-
-    Args:
-        meas (torch.Tensor): Measurement vector.
-        Ord (np.ndarray): Order matrix
-
-    Returns:
-        Img (torch.Tensor): Measurement image
-    """
-    y = nn.functional.pad(meas, (0, Ord.size-meas.shape[2]))
-    Perm = torch.from_numpy(Permutation_Matrix(Ord).astype('float32'))
-    Perm = Perm.to(meas.device)
-    Perm = torch.transpose(Perm,0,1)
-    Img = torch.matmul(Perm,meas) # Requires too much memory
-    
-    return Img
 
 def Hadamard_stat_completion_matrices(Cov_had, Mean_had, CR):
     img_size, ny = Mean_had.shape;
