@@ -8,7 +8,7 @@ import pdb
 # ==================================================================================
 # Preprocessing
 # ==================================================================================  
-class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
+class Preprocess_Split_diag_poisson(nn.Module):  # Why diag ?
 # ==================================================================================
     r"""
         Computes :math:`m = \frac{(m_{+}-m_{-})}{N_0}`
@@ -25,7 +25,7 @@ class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
             - Input3: scalar
             
         Example:
-            >>> SPP = Preprocess_Split_diag_poisson_preprocess(10, 400, 32*32)
+            >>> SPP = Preprocess_Split_diag_poisson(10, 400, 32*32)
 
     """
     def __init__(self, alpha: float, M: int, N: int):
@@ -90,15 +90,26 @@ class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         x = 4*x/(self.alpha**2); # Cov is in [-1,1] so *4
         return x
     
-    def sigma_expe(self, x, gain=1, mudark=0, sigdark=0, nbin=1):
+    def set_expe(self, gain=1, mudark=0, sigdark=0, nbin=1):
+        r"""
+        set experimental noise parameters
+        
+        Args:        
+            - gain in count/electron
+            - mudark: average dark current in counts
+            - sigdark: standard deviation or dark current in counts
+            - nbin: number of raw bin in each spectral channel (if input x results from the sommation/binning of the raw data)
+                  
+        """
+        self.gain = gain
+        self.mudark = mudark
+        self.sigdark = sigdark
+        self.nbin = nbin
+        
+        
+    def sigma_expe(self, x: torch.tensor) -> torch.tensor:
         r"""
         returns estimated variance of **NOT** normalized measurements
-        
-        gain in count/electron
-        mudark: average dark current in counts
-        sigdark: standard deviation or dark current in counts
-        nbin: number of raw bin in each spectral channel (if input x results 
-        from the sommation/binning of the raw data)
         
         Args:
             - :math:`x`: Batch of images in Hadamard Domain.
@@ -109,15 +120,14 @@ class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
             
         Example:
             >>> x = torch.tensor(np.random.random([10,2*32*32]), dtype=torch.float)
-            >>> Sig_exp_x = SPP.sigma_expe(x, gain=1, mudark=0, sigdark=0, nbin=1)
+            >>> Sig_exp_x = SPP.sigma_expe(x)
             >>> print(Sig_exp_x.shape)
             torch.Size([10, 400])
-           
         """
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
         x = x[:,self.even_index] + x[:,self.odd_index]
-        x = gain*(x - 2*nbin*mudark) + 2*nbin*sigdark**2
+        x = self.gain*(x - 2*self.nbin*self.mudark) + 2*self.nbin*self.sigdark**2
         x = 4*x     # to get the cov of an image in [-1,1], not in [0,1]
 
         return x
@@ -129,12 +139,13 @@ class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         pdb.set_trace()
         # x - image. Input shape (b*c, N)
         # FO - Forward operator.
+        
         x = FO.Forward_op(x);
         x = x[:,self.even_index] + x[:,self.odd_index]
         x = 4*x/(self.alpha) # here the alpha Contribution is not squared.
         return x
     
-    def forward_expe(self, x, FO):
+    def forward_expe(self, x: torch.tensor, FO: Forward_operator_Split_ft_had) -> torch.tensor:
         """ 
             Input shape [b*c,2*M]
             Output shape [b*c,M]
@@ -154,25 +165,21 @@ class Preprocess_Split_diag_poisson_preprocess(nn.Module):  # Why diag ?
         x = 2*x - FO.Forward_op(torch.ones(bc, self.N).to(x.device))
         
         alpha_est = alpha_est[:,0]    # shape is (b*c,)
-        
-        print(alpha_est)
-        
+
         return x, alpha_est
    
     
-    def denormalize_expe(self, x, alpha, h, w):
+    def denormalize_expe(self, x, norm, h, w):
         """ 
             x has shape (b*c,1,h,w)
-            alpha has shape (b*c,)
             
-            Output has shape (b*c,1,h,w)
         """
         bc = x.shape[0]
         
         # Denormalization
-        alpha = alpha.view(bc,1,1,1)
-        alpha = alpha.expand(bc,1,h,w)
-        x = (x+1)*alpha/2 
+        norm = norm.view(bc,1,1,1)
+        norm = norm.expand(bc,1,h,w)
+        x = (x+1)/2*norm
         
         return x
 
