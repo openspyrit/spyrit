@@ -28,6 +28,14 @@ spyrit.misc.examples module
    :undoc-members:
    :show-inheritance:
 
+spyrit.misc.load_data module
+---------------------------
+
+.. automodule:: spyrit.misc.load_data
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 spyrit.misc.matrix\_tools module
 --------------------------------
 
@@ -45,6 +53,14 @@ spyrit.misc.metrics module
    :show-inheritance:
 
 spyrit.misc.pattern\_choice module
+----------------------------------
+
+.. automodule:: spyrit.misc.pattern_choice
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+spyrit.misc.sampling module
 ----------------------------------
 
 .. automodule:: spyrit.misc.pattern_choice
