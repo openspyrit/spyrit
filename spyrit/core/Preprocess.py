@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import math
-from spyrit.core.Forward_Operator import *
+from spyrit.core.Forward_Operator import Forward_operator, Forward_operator_Split_ft_had, Forward_operator_Split
 import pdb
 # ==================================================================================
 # Preprocessing
@@ -40,7 +40,7 @@ class Preprocess_Split_diag_poisson(nn.Module):  # Why diag ?
         
         self.max = nn.MaxPool1d(N)
 
-    def forward(self, x: torch.tensor , FO: Forward_operator) -> torch.tensor:
+    def forward(self, x: torch.tensor , FO: Forward_operator_Split) -> torch.tensor:
         """ 
         Args:
             - :math:`x`: Batch of images in Hadamard Domain
@@ -51,7 +51,6 @@ class Preprocess_Split_diag_poisson(nn.Module):  # Why diag ?
             - Output: :math:`(b*c,M)`
             
         Example:
-            >>> from spyrit.core.Forward_Operator import Forward_operator_Split
             >>> x = torch.tensor(np.random.random([10,2*32*32]), dtype=torch.float)
             >>> Hsub = np.array(np.random.random([400,32*32]))
             >>> FO_Split = Forward_operator_Split(Hsub)
@@ -136,7 +135,6 @@ class Preprocess_Split_diag_poisson(nn.Module):  # Why diag ?
         r"""
         
         """
-        pdb.set_trace()
         # x - image. Input shape (b*c, N)
         # FO - Forward operator.
         
@@ -146,9 +144,27 @@ class Preprocess_Split_diag_poisson(nn.Module):  # Why diag ?
         return x
     
     def forward_expe(self, x: torch.tensor, FO: Forward_operator_Split_ft_had) -> torch.tensor:
-        """ 
-            Input shape [b*c,2*M]
-            Output shape [b*c,M]
+        r""" 
+        Args:
+            - :math:`x`: Batch of images
+            - :math:`FO`: Object of the class Forward_operator_Split_ft_had
+        
+        Shape:
+            - Input: :math:`(bc, 2M)`
+            - Output: :math:`(bc, M)`
+        
+        Example:
+            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> Perm = np.random.random([32*32,32*32])
+            >>> FO_Split_ft_had = Forward_operator_Split_ft_had(Hsub, Perm, 32, 32)
+            >>> xsub = torch.tensor(np.random.random([10, 2*400]), dtype=torch.float)
+            >>> y_FE, alpha_est = SPP.forward_expe(xsub, FO_Split_ft_had)
+            >>> print(y_FE.shape)
+            >>> print(alpha_est)
+            torch.Size([10, 400])
+            tensor([0.0251, 0.0228, 0.0232, 0.0294, 0.0248, 0.0245, 0.0184, 0.0253, 0.0267,
+                    0.0282])
+
         """
         bc = x.shape[0]
         
@@ -170,9 +186,27 @@ class Preprocess_Split_diag_poisson(nn.Module):  # Why diag ?
    
     
     def denormalize_expe(self, x, norm, h, w):
-        """ 
-            x has shape (b*c,1,h,w)
-            
+        r""" 
+        Args:
+            - :math:`x`: Batch of expanded images.
+            - :math:`norm`: normalizarion values.
+            - :math:`h, w`: image height and width.
+        
+        Shape:
+            - Input1: :math:`(bc, 1, h, w)`
+            - Input2: :math:`(1, bc)`
+            - Input3: int
+            - Input4: int
+            - Output: :math:`(bc, 1, h, w)`
+        
+        Example:
+            >>> x = torch.tensor(np.random.random([10, 32*32]), dtype=torch.float)
+            >>> x1 = x.view(10,1,h,w)
+            >>> norm = 9*torch.tensor(np.random.random([1,10]))
+            >>> y_DE = SPP.denormalize_expe(x1, norm, 32, 32)
+            print(y_DE.shape)
+            torch.Size([10, 1, 32, 32])
+                        
         """
         bc = x.shape[0]
         
@@ -188,46 +222,24 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
 # ==================================================================================
     r"""Preprocess the measurements acquired using shifted patterns corrupted 
     by Poisson noise
-    
-    The output value of the layer with input size :math:`(B*C, M+1)` can be 
-    described as:
 
-    .. math::
-        \text{out}((B*C)_i, M_j}) = 2*\text{input}((B*C)_i, M_{j+1}) -
-        \text{input}((B*C)_i, M_0}), \quad 0 \le j \le M-1
- 
-    The output size of the layer is :math:`(B*C, M)` 
-
-    Note:
-        This module ...
+    Computes:
+    m = (2 m_shift - m_offset)/N_0
+    var = 4*Diag(m_shift + m_offset)/alpha**2
+    Warning: dark measurement is assumed to be the 0-th entry of raw measurements
 
     Args:
-        in_channels (int): Number of ...
-        
-    Warning:
-        The offset measurement is the 0-th entry of the raw measurements
-    """
-    
-    """
-    Computes 
-        m = (2 m_shift - m_offset)/N_0
-        var = 4*Diag(m_shift + m_offset)/alpha**2
-        Warning: dark measurement is assumed to be the 0-th entry of raw measurements
-    """
-    r"""
-    
-        Args:
-            - :math:`alpha`: noise level
-            - :math:`M`: number of measurements
-            - :math:`N`: number of image pixels
-            
-        Shape:
-            - Input1: scalar
-            - Input2: scalar
-            - Input3: scalar
-            
-        Example:
-            >>> PSP = Preprocess_shift_poisson(10, 400, 32*32)
+        - :math:`alpha`: noise level
+        - :math:`M`: number of measurements
+        - :math:`N`: number of image pixels
+
+    Shape:
+        - Input1: scalar
+        - Input2: scalar
+        - Input3: scalar
+
+    Example:
+        >>> PSP = Preprocess_shift_poisson(9, 400, 32*32)
     """
     def __init__(self, alpha, M, N):
         super().__init__()
@@ -236,23 +248,33 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
         self.M = M
 
     def forward(self, x: torch.tensor, FO: Forward_operator) -> torch.tensor:
-        r"""
+        r""" The output value of the layer can be described as:
+
+        .. math::
+        \text{out}((B*C)_i, M_j}) = 2*\text{input}((B*C)_i, M_{j+1}) -
+        \text{input}((B*C)_i, M_0}), \quad 0 \le j \le M-1
+ 
+        
+        Warning:
+            - The offset measurement is the 0-th entry of the raw measurements.
+
         Args:
             - :math:`x`: Batch of images in Hadamard domain shifted by 1
-            - :maht:`FO`: 
+            - :maht:`FO`: Forward_operator
             
         Shape:
-            - Input1: :math:`(b*c, M+1)`
+            - Input: :math:`(b*c, M+1)`
             - Output: :math:`(b*c, M)`
             
-        Example
-            >>>
-            >>>
-            >>> 
-            
+        Example:
+            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> FO = Forward_operator(Hsub)
+            >>> x = torch.tensor(np.random.random([10, 400+1]), dtype=torch.float)
+            >>> y_PSP = PSP(x, FO)
+            >>> print(y_PSP.shape)
+            torch.Size([10, 400])
+                         
         """
-        # Input  has shape (b*c, M+1)
-        # Output has shape (b*c, M)
         y = self.offset(x)
         x = 2*x[:,1:] - y.expand(x.shape[0],self.M) # Warning: dark measurement is the 0-th entry
         x = x/self.alpha
@@ -260,6 +282,19 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
         return x
     
     def sigma(self, x):
+        r"""
+        Args:
+            - :math:`x`: Batch of images in Hadamard domain shifted by 1
+            
+        Shape:
+            - Input: :math:`(b*c, M+1)`
+            
+        Example:
+            >>> x = torch.tensor(np.random.random([10, 400+1]), dtype=torch.float)
+            >>> sigma_PSP = PSP.sigma(x)
+            >>> print(sigma_PSP.shape)
+            torch.Size([10, 400])
+        """ 
         # input x is a set of measurement vectors with shape (b*c, M+1)
         # output is a set of measurement vectors with shape (b*c,M)
         y = self.offset(x)
@@ -281,8 +316,22 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
         return x
     
     def offset(self, x):
-        # Input  has shape (b*c, M+1)
-        # Output has shape (b*c, 1)
+        r""" Get offset component from bach of shifted images.
+        
+        Args:
+            - :math:`x`: Batch of shifted images
+        
+        Shape:
+            - Input: :math:`(bc, M+1)`
+            - Output: :math:`(bc, 1)`
+            
+        Example:
+            >>> x = torch.tensor(np.random.random([10, 400+1]), dtype=torch.float)
+            >>> y = PSP.offset(x)
+            >>> print(y.shape)
+            torch.Size([10, 1])
+        
+        """
         y = x[:,0,None]
         return y
     
@@ -301,14 +350,23 @@ class Preprocess_pos_poisson(nn.Module):  # header needs to be updated!
  
     The output size of the layer is :math:`(B*C, M)`, which is the imput size 
 
-    Note:
-        This module ...
-
-    Args:
-        in_channels (int): Number of ...
         
     Warning:
         dark measurement is assumed to be the 0-th entry of raw measurements
+        
+    Args:
+        - :math:`alpha`: noise level
+        - :math:`M`: number of measurements
+        - :math:`N`: number of image pixels
+
+    Shape:
+        - Input1: scalar
+        - Input2: scalar
+        - Input3: scalar
+        
+    Example:
+        >>> PPP = Preprocess_pos_poisson(9, 400, 32*32)
+               
     """
     def __init__(self, alpha, M, N):
         super().__init__()
@@ -316,10 +374,25 @@ class Preprocess_pos_poisson(nn.Module):  # header needs to be updated!
         self.N = N
         self.M = M
 
-    def forward(self, x, FO):
-        # Input  has shape (b*c, M)
-        # Output has shape (b*c, M)
-        
+    def forward(self, x: torch.tensor, FO: Forward_operator) -> torch.tensor:
+        r"""
+        Args:
+            - :math:`x`: noise level
+            - :math:`FO`: Forward_operator
+
+        Shape:
+            - Input1: :math:`(bc, M)`
+            - Input2: None
+            - Output: :math:`(bc, M)`
+
+        Example:
+            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> FO = Forward_operator(Hsub)
+            >>> x = torch.tensor(np.random.random([10, 400]), dtype=torch.float)
+            >>> y = PPP(x, FO)
+            torch.Size([10, 400])
+            
+        """
         y = self.offset(x)
         print(x.shape)
         print(y.expand(-1,self.M).shape)
@@ -329,7 +402,21 @@ class Preprocess_pos_poisson(nn.Module):  # header needs to be updated!
         return x
     
     def offset(self, x):
-        # Input  has shape (b*c, M)
-        # Output has shape (b*c, 1)
+        r""" Get offset component from bach of shifted images.
+        
+        Args:
+            - :math:`x`: Batch of shifted images
+        
+        Shape:
+            - Input: :math:`(bc, M)`
+            - Output: :math:`(bc, 1)`
+            
+        Example:
+            >>> x = torch.tensor(np.random.random([10, 400]), dtype=torch.float)
+            >>> y = PPP.offset(x)
+            >>> print(y.shape)
+            torch.Size([10, 1])
+        
+        """
         y = 2/(self.M-2)*x[:,1:].sum(dim=1,keepdim=True)
         return y
