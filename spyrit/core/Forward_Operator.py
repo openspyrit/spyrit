@@ -134,7 +134,9 @@ class Forward_operator_Split(Forward_operator):
         self.Hpos_neg.weight.requires_grad=False
               
     def forward(self, x: torch.tensor) -> torch.tensor: # --> simule la mesure sous-chantillonnée
-        r""" Linear transform of batch of images :math:`x` such that :math:`y =H_{posneg}*x` where :math:`H_{posneg} = \begin{bmatrix}{H_{pos}}\\{H_{neg}}\end{bmatrix}`.
+        r""" Linear transform of batch of images :math:`x` such that 
+        :math:`y =H_{posneg}*x` where :math:`H_{posneg} = \begin{bmatrix}{H_{pos}}
+        \\{H_{neg}}\end{bmatrix}`.
         
         Args:
             :math:`x`: Batch of images.
@@ -375,4 +377,92 @@ class Forward_operator_shift_had(Forward_operator_shift):
         x = x.view(bc, 1, n, n)
         x = 1/self.N*walsh2_torch(x) # todo: initialize with 1D transform to speed up
         x = x.view(bc, N)
+        return x
+
+## 1D compresssion ############################################################
+# ==================================================================================
+class Forward_operator_1d_split(nn.Module):
+# ================================================================================== 
+    r""" Compute linear transforms of the rows of an image 
+    
+    Computes :math:`y =H*x` where :math:`H = \begin{bmatrix}{H_{pos}}
+    \\{H_{neg}}\end{bmatrix}` are positive patterns and :math:`x` is a batch of
+    images. The transform applies to each row of the image :math:`x`.
+        
+    """
+
+    def __init__(self, H_pos: np.ndarray, H_neg: np.ndarray):
+        r"""
+        Args:
+            :math:`H_{pos}`: Positive component of the acquisition patterns.
+            :math:`H_{negative}`: Negative component of the acquisition patterns.
+        
+        Shape:
+            - Inputs: :math:`(M, N)` with :math:`M` the number of patterns
+            and :math:`N` is the length patterns for both inputs.
+        
+        Example:
+            >>> H_pos = np.random.rand(64,128)
+            >>> H_neg = np.random.rand(64,128)
+            >>> Forward_1d =  Forward_operator_1d_split(H_pos,H_neg)
+        
+        """            
+        
+        super().__init__()
+           
+        self.M = H_pos.shape[0]
+        self.N = H_pos.shape[1]
+        
+        # Split patterns ?
+        # N.B.: Data must be of type float (or double) rather than the default 
+        # float64 when creating torch tensor
+        even_index = range(0,2*self.M,2)
+        odd_index = range(1,2*self.M,2)
+        Hposneg = np.zeros((2*self.M,self.N))
+        Hposneg[even_index,:] = H_pos
+        Hposneg[odd_index,:] = H_neg
+        
+        self.Hpos_neg = torch.from_numpy(Hposneg).float()
+        self.Hpos_neg.requires_grad = False
+        
+        # "Unsplit" patterns
+        H = H_pos - H_neg
+        self.H = torch.from_numpy(H).float() 
+        self.H.requires_grad = False
+       
+        # adjoint (Not useful here ??)
+        # self.Hsub_adjoint = nn.Linear(self.M, self.N, False)
+        # self.Hsub_adjoint.weight.data=torch.from_numpy(Hsub.transpose())
+        # self.Hsub_adjoint.weight.data = self.Hsub_adjoint.weight.data.float()
+        # self.Hsub_adjoint.weight.requires_grad = False
+              
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r"""
+        Args:
+            :math:`x`: batch of images
+        
+        Shape:
+            - Input: :math:`(b*c, h, w)` with :math:`b` the batch size,
+            :math:`c` the number of channels, :math:`h` is the image height, and 
+            :math:`w` is the image width.
+            - Output: :math:`(b*c, 2M, w)` with :math:`b` the batch size,
+            :math:`c` the number of channels, :math:`2M` is twice the number of
+            patterns (as it includes both positive and negative components), and 
+            :math:`w` is the image width.
+            
+            .. warning::
+                The image height :math:`h`: should match the length of the patterns 
+                :math:`N`:
+
+        Example:
+            >>> H_pos = np.random.rand(24,64)
+            >>> H_neg = np.random.rand(24,64)
+            >>> A = Forward_operator_1d_split(H_pos,H_neg)
+            >>> x = np.random.rand(10,64,92)
+            >>> y = A(x)
+            >>> print(y.shape)
+            torch.Size([10,48,92])
+         
+        """
+        x = self.Hpos_neg @ x  
         return x
