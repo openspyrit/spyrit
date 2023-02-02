@@ -250,9 +250,7 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
     def forward(self, x: torch.tensor, FO: Forward_operator) -> torch.tensor:
         r""" The output value of the layer can be described as:
 
-        .. math::
-        \text{out}((B*C)_i, M_j}) = 2*\text{input}((B*C)_i, M_{j+1}) -
-        \text{input}((B*C)_i, M_0}), \quad 0 \le j \le M-1
+        \equation{((B*C)_i, M_j}) = 2*\(B*C)_i, M_{j+1} -(B*C)_i, M_0}, \quad 0 \le j \le M-1}
  
         
         Warning:
@@ -260,7 +258,7 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
 
         Args:
             - :math:`x`: Batch of images in Hadamard domain shifted by 1
-            - :maht:`FO`: Forward_operator
+            - :math:`FO`: Forward_operator
             
         Shape:
             - Input: :math:`(b*c, M+1)`
