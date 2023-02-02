@@ -6,15 +6,9 @@ Subpackages
 
 .. toctree::
 
-   spyrit.acquisiton
    spyrit.core
    spyrit.former
-   spyrit.learning
    spyrit.misc
-   spyrit.pre_processing
-   spyrit.reconstruction
-   spyrit.restructured
-   spyrit.core
 
 
 Module contents
