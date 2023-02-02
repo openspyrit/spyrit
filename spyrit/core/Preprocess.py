@@ -248,10 +248,7 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
         self.M = M
 
     def forward(self, x: torch.tensor, FO: Forward_operator) -> torch.tensor:
-        r""" The output value of the layer can be described as:
-
-        \equation{((B*C)_i, M_j}) = 2*\(B*C)_i, M_{j+1} -(B*C)_i, M_0}, \quad 0 \le j \le M-1}
- 
+        r"""  
         
         Warning:
             - The offset measurement is the 0-th entry of the raw measurements.
