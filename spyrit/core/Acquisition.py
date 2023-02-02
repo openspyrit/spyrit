@@ -18,6 +18,9 @@ class Acquisition(nn.Module):
         
         Args:
             - :math:`FO` : Forward_operator
+            
+        Shape:
+            - Input: Non-applicable.
                 
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
