@@ -16,6 +16,9 @@ class Acquisition(nn.Module):
     r"""
         Simulates acquisition by applying Forward_operator to a scaled image such that :math:`y = H_{sub}\frac{1+x}{2}`.
         
+        Args:
+            - :math:`FO` : Forward_operator
+                
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
             >>> Forward_OP = Forward_operator(Hsub)
@@ -53,9 +56,16 @@ class Acquisition(nn.Module):
 # ==================================================================================
 class Acquisition_Poisson_approx_Gauss(Acquisition):
     r"""
-    Acquisition with scaled and noisy image with Gaussian-approximated Poisson noise of level alpha.
-    Lorente Mur et. al, A Deep Network for Reconstructing Images from Undersampled Poisson data, [Research Report] Insa Lyon. 2020. `<https://hal.archives-ouvertes.fr/hal-02944869v1>`_
+    Acquisition with scaled and noisy image with Gaussian-approximated Poisson noise of level \alpha.
     
+    Args:
+        - :math:`alpha`: noise level.
+        - :math:`FO`: Forward Operator.
+        
+    Shape:
+        - Input1: scalar
+        - Input2: inapplicable
+        
     Example:
         >>> Hsub = np.array(np.random.random([400,32*32]))
         >>> Forward_OP = Forward_operator(Hsub)
@@ -102,13 +112,43 @@ class Acquisition_Poisson_approx_Gauss(Acquisition):
 # ==================================================================================
 class Acquisition_Poisson_GaussApprox_sameNoise(Acquisition):
 # ==================================================================================    
-# same as above except that all images in a batch are corrupted with the same 
-# noise sample
+    r"""same as above except that all images in a batch are corrupted with the same 
+        noise sample.
+        
+        Args:
+            - :math:`alpha`: Noise level
+            - :math:`FO`: Forward Operator
+            
+        Shape:
+            - Input1: scalar
+            - Input2: inapplicable
+        
+        Example:
+            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> Forward_OP = Forward_operator(Hsub)
+            >>> APGA_SN = Acquisition_Poisson_GaussApprox_sameNoise(9, FO)
+    """
     def __init__(self, alpha, FO):
         super().__init__(FO)
         self.alpha = alpha
         
     def forward(self, x):
+        r""" 
+        
+        Args:
+            - :math:`x`: Batch of images.
+            
+        Shape:
+            - Input: :math:`(bc, N)` where N is the number of pixels per image.
+            - Output: :math:`(bc, 2M)` where M is the number of simulated acquisitions.
+            
+        Example:
+            >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
+            >>> y = APGA_SN(x)
+            >>> print(y.shape)
+            torch.Size([10, 400])
+            
+        """
         # Input shape [b*c, N]  
         # Output shape [b*c, 2*M]
 
@@ -151,10 +191,8 @@ class Acquisition_Poisson(Acquisition):
             >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
             >>> y = Acq_Poisson(x)
             >>> print(y.shape)
-            
+            torch.Size([10, 400])            
         """
-        # Input shape [b*c, N]  
-        # Output shape [b*c, 2*M]
 
         #--Scale input image    
         
