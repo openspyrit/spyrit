@@ -394,8 +394,6 @@ class Preprocess_pos_poisson(nn.Module):  # header needs to be updated!
             
         """
         y = self.offset(x)
-        print(x.shape)
-        print(y.expand(-1,self.M).shape)
         x = 2*x - y.expand(-1,self.M)
         x = x/self.alpha
         x = 2*x - FO.Forward_op(torch.ones(x.shape[0], self.N).to(x.device)) # to shift images in [-1,1]^N
