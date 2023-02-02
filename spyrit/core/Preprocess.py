@@ -248,19 +248,14 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
         self.M = M
 
     def forward(self, x: torch.tensor, FO: Forward_operator) -> torch.tensor:
-        r""" The output value of the layer can be described as:
-
-        .. math::
-        \text{out}((B*C)_i, M_j}) = 2*\text{input}((B*C)_i, M_{j+1}) -
-        \text{input}((B*C)_i, M_0}), \quad 0 \le j \le M-1
- 
+        r"""  
         
         Warning:
             - The offset measurement is the 0-th entry of the raw measurements.
 
         Args:
             - :math:`x`: Batch of images in Hadamard domain shifted by 1
-            - :maht:`FO`: Forward_operator
+            - :math:`FO`: Forward_operator
             
         Shape:
             - Input: :math:`(b*c, M+1)`
@@ -394,8 +389,6 @@ class Preprocess_pos_poisson(nn.Module):  # header needs to be updated!
             
         """
         y = self.offset(x)
-        print(x.shape)
-        print(y.expand(-1,self.M).shape)
         x = 2*x - y.expand(-1,self.M)
         x = x/self.alpha
         x = 2*x - FO.Forward_op(torch.ones(x.shape[0], self.N).to(x.device)) # to shift images in [-1,1]^N
