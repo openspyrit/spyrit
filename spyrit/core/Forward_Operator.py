@@ -103,7 +103,6 @@ class Forward_operator(nn.Module):
 class Forward_operator_Split(Forward_operator):
 # ==================================================================================
     r""" Forward_operator with a :math:`H_{pos_neg}` matrix of size :math:`(2*M,N).
-    See Antonio Lorente Mur et. al. Handling negative patterns for fast single-pixel lifetime imaging. 2019 - Molecular-Guided Surgery: Molecules, Devices, and Applications V, Feb 2019, San Francisco, United States. pp.1-10, `10.1117/12.2511123 <https://hal.archives-ouvertes.fr/hal-02017598/document/>`_.
             
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
