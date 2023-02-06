@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import math
+from spyrit.core.Forward_Operator import *
 
 # ==================================================================================
 # Data consistency
@@ -9,12 +10,41 @@ import math
 # ==================================================================================
 class Pinv_orthogonal(nn.Module): # For A.T @ A  = n*Id (ex : Hadamard, Fourier...
 # ==================================================================================
+    r""" Orthogonal Inverse.
+    
+    Args:
+        - None
+        
+    Example:
+        >>> Pinv_ortho = Pinv_orthogonal()
+    """
     def __init__(self):
         super().__init__()
         # FO = Forward Operator
         #-- Pseudo-inverse to determine levels of noise.
         
-    def forward(self, x, FO):
+    def forward(self, x: torch.tensor, FO: Forward_operator) -> torch.tensor:
+        r""" Orthogonal Inverse.
+        
+        Args:
+            - :math:`x`: Batch of measurements
+            - :math:`FO`: Forward_operator
+        
+        Shape:
+            - Input1: :math:`(b*c, M)`
+            - Input2: Non-applicable
+            - Output: :math:`(b*c, N)`
+        
+        Example:
+            >>> from spyrit.core.Forward_Operator import Forward_operator
+            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> FO = Forward_operator(Hsub)
+            >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float)
+            >>> y = Pinv_ortho(x, FO)
+            >>> print(y.shape)
+            torch.Size([10, 1024])
+     
+        """
         # input (b*c, M)
         # output (b*c, N)
         x = (1/FO.N)*FO.adjoint(x);
@@ -23,12 +53,48 @@ class Pinv_orthogonal(nn.Module): # For A.T @ A  = n*Id (ex : Hadamard, Fourier.
 # ==================================================================================
 class learned_measurement_to_image(nn.Module):
 # ==================================================================================
+    r""" Measurement to image.
+    
+    Args:
+        - :math:`N`: number of pixels
+        - :math:`M`: number of measurements
+    
+    Shape:
+        - Input1: scalar
+        - Input2: scalar
+    
+    Example:
+        >>> Meas_to_Img = learned_measurement_to_image(32*32, 400)
+
+    """
     def __init__(self, N, M):
         super().__init__()
         # FO = Forward Operator
         self.FC = nn.Linear(M, N, True) # FC - fully connected
         
-    def forward(self, x, FO = None):
+    def forward(self, x: torch.tensor, FO : Forward_operator= None ) -> torch.tensor:
+        
+        r""" Measurement to image.
+
+        Args:
+            - :math:`x`: Batch of measurements
+            - :math:`FO`: Forward_operator
+
+        Shape:
+            - Input1: :math:`(b*c, M)`
+            - Input2: non-applicable
+            - Output: :math:`(b*c, N)`
+
+        Example:
+            >>> from spyrit.core.Forward_Operator import Forward_operator
+            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> FO = Forward_operator(Hsub)
+            >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float)
+            >>> y = Meas_to_Img(x, FO)
+            >>> print(y.shape)
+            torch.Size([10, 1024])
+
+        """
         # input (b*c, M)
         # output (b*c, N)
         x = self.FC(x);
@@ -37,6 +103,18 @@ class learned_measurement_to_image(nn.Module):
 # ==================================================================================
 class gradient_step(nn.Module):
 # ==================================================================================
+    r""" Gradient step
+    
+    Args:
+        - :math:`mu`: Mean ?
+    
+    Shape:
+        - Input: scalar
+    
+    Example:
+        >>> GS = gradient_step()
+        
+    """
     def __init__(self, mu = 0.1):
         super().__init__()
         # FO = Forward Operator
@@ -44,7 +122,30 @@ class gradient_step(nn.Module):
         self.mu = nn.Parameter(torch.tensor([mu], requires_grad=True)) #need device maybe?
         # if user wishes to keep mu constant, then he can change requires gard to false 
         
-    def forward(self, x, x_0, FO):
+    def forward(self, x: torch.tensor, x_0: torch.tensor, FO: Forward_operator) -> torch.tensor:
+        r""" Gradient step
+
+        Args:
+            - :math:`x`: measurement vector
+            - :math:`x_{0}`: previous estimate
+            - :math:`FO`: Forward_operator
+
+        Shape:
+            - Input1: :math:`(b*c, M)`
+            - Input2: :math:`(b*c, N)`
+            - Output: :math:`(b*c, N)`
+
+        Example:
+            >>> from spyrit.core.Forward_Operator import Forward_operator
+            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> FO = Forward_operator(Hsub)
+            >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
+            >>> x_0 = torch.tensor(np.random.random([10,32*32]), dtype=torch.float) 
+            >>> y = GS(x, x_0, FO)
+            >>> print(y.shape)
+            torch.Size([10, 1024])
+
+        """
         # x - input (b*c, M) - measurement vector
         # x_0 - input (b*c, N) - previous estimate
         # z - output (b*c, N)
