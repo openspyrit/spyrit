@@ -17,6 +17,10 @@ class Forward_operator(nn.Module):
 # ==================================================================================
     r""" Computes Linear transform of image batch x such that :math:`y = H_{sub}x` where :math:`Hsub` (standing for "sub-sampled Hadamard") is a an :math:`M` by  :math:`N` matrix. :math:`N` is the number of pixels per image, and :math:`M` is the number of measurements.
             
+        Args:
+            -
+        Shape:
+            -
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
             >>> Forward_OP = Forward_operator(Hsub)             
@@ -104,6 +108,12 @@ class Forward_operator_Split(Forward_operator):
 # ==================================================================================
     r""" Forward_operator with a :math:`H_{pos_neg}` matrix of size :math:`(2*M,N).
             
+        Args:
+            -
+            
+        Shape:
+            -
+            
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
             >>> Forward_Op_Split =  Forward_operator_Split(Hsub)
@@ -159,7 +169,13 @@ class Forward_operator_Split(Forward_operator):
 # ==================================================================================
 class Forward_operator_Split_ft_had(Forward_operator_Split): 
     r""" Forward_operator_Split with implemented inverse transform and a permutation matrix: :math:`Perm` of size :math:`(N,N)`.
-        
+
+        Args:
+            -
+            
+        Shape:
+            -
+            
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
             >>> Perm = np.array(np.random.random([32*32,32*32]))
