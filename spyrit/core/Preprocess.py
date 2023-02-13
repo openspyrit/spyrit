@@ -223,23 +223,23 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
     r"""Preprocess the measurements acquired using shifted patterns corrupted 
     by Poisson noise
 
-    Computes:
-    m = (2 m_shift - m_offset)/N_0
-    var = 4*Diag(m_shift + m_offset)/alpha**2
-    Warning: dark measurement is assumed to be the 0-th entry of raw measurements
+        Computes:
+        m = (2 m_shift - m_offset)/N_0
+        var = 4*Diag(m_shift + m_offset)/alpha**2
+        Warning: dark measurement is assumed to be the 0-th entry of raw measurements
 
-    Args:
-        - :math:`alpha`: noise level
-        - :math:`M`: number of measurements
-        - :math:`N`: number of image pixels
+        Args:
+            - :math:`alpha`: noise level
+            - :math:`M`: number of measurements
+            - :math:`N`: number of image pixels
 
-    Shape:
-        - Input1: scalar
-        - Input2: scalar
-        - Input3: scalar
+        Shape:
+            - Input1: scalar
+            - Input2: scalar
+            - Input3: scalar
 
-    Example:
-        >>> PSP = Preprocess_shift_poisson(9, 400, 32*32)
+        Example:
+            >>> PSP = Preprocess_shift_poisson(9, 400, 32*32)
     """
     def __init__(self, alpha, M, N):
         super().__init__()
@@ -250,24 +250,24 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
     def forward(self, x: torch.tensor, FO: Forward_operator) -> torch.tensor:
         r"""  
         
-        Warning:
-            - The offset measurement is the 0-th entry of the raw measurements.
+            Warning:
+                - The offset measurement is the 0-th entry of the raw measurements.
 
-        Args:
-            - :math:`x`: Batch of images in Hadamard domain shifted by 1
-            - :math:`FO`: Forward_operator
-            
-        Shape:
-            - Input: :math:`(b*c, M+1)`
-            - Output: :math:`(b*c, M)`
-            
-        Example:
-            >>> Hsub = np.array(np.random.random([400,32*32]))
-            >>> FO = Forward_operator(Hsub)
-            >>> x = torch.tensor(np.random.random([10, 400+1]), dtype=torch.float)
-            >>> y_PSP = PSP(x, FO)
-            >>> print(y_PSP.shape)
-            torch.Size([10, 400])
+            Args:
+                - :math:`x`: Batch of images in Hadamard domain shifted by 1
+                - :math:`FO`: Forward_operator
+
+            Shape:
+                - Input: :math:`(b*c, M+1)`
+                - Output: :math:`(b*c, M)`
+
+            Example:
+                >>> Hsub = np.array(np.random.random([400,32*32]))
+                >>> FO = Forward_operator(Hsub)
+                >>> x = torch.tensor(np.random.random([10, 400+1]), dtype=torch.float)
+                >>> y_PSP = PSP(x, FO)
+                >>> print(y_PSP.shape)
+                torch.Size([10, 400])
                          
         """
         y = self.offset(x)
@@ -278,17 +278,17 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
     
     def sigma(self, x):
         r"""
-        Args:
-            - :math:`x`: Batch of images in Hadamard domain shifted by 1
-            
-        Shape:
-            - Input: :math:`(b*c, M+1)`
-            
-        Example:
-            >>> x = torch.tensor(np.random.random([10, 400+1]), dtype=torch.float)
-            >>> sigma_PSP = PSP.sigma(x)
-            >>> print(sigma_PSP.shape)
-            torch.Size([10, 400])
+            Args:
+                - :math:`x`: Batch of images in Hadamard domain shifted by 1
+
+            Shape:
+                - Input: :math:`(b*c, M+1)`
+
+            Example:
+                >>> x = torch.tensor(np.random.random([10, 400+1]), dtype=torch.float)
+                >>> sigma_PSP = PSP.sigma(x)
+                >>> print(sigma_PSP.shape)
+                torch.Size([10, 400])
         """ 
         # input x is a set of measurement vectors with shape (b*c, M+1)
         # output is a set of measurement vectors with shape (b*c,M)
@@ -313,18 +313,18 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
     def offset(self, x):
         r""" Get offset component from bach of shifted images.
         
-        Args:
-            - :math:`x`: Batch of shifted images
-        
-        Shape:
-            - Input: :math:`(bc, M+1)`
-            - Output: :math:`(bc, 1)`
-            
-        Example:
-            >>> x = torch.tensor(np.random.random([10, 400+1]), dtype=torch.float)
-            >>> y = PSP.offset(x)
-            >>> print(y.shape)
-            torch.Size([10, 1])
+            Args:
+                - :math:`x`: Batch of shifted images
+
+            Shape:
+                - Input: :math:`(bc, M+1)`
+                - Output: :math:`(bc, 1)`
+
+            Example:
+                >>> x = torch.tensor(np.random.random([10, 400+1]), dtype=torch.float)
+                >>> y = PSP.offset(x)
+                >>> print(y.shape)
+                torch.Size([10, 1])
         
         """
         y = x[:,0,None]
@@ -345,22 +345,22 @@ class Preprocess_pos_poisson(nn.Module):  # header needs to be updated!
  
     The output size of the layer is :math:`(B*C, M)`, which is the imput size 
 
-        
-    Warning:
-        dark measurement is assumed to be the 0-th entry of raw measurements
-        
-    Args:
-        - :math:`alpha`: noise level
-        - :math:`M`: number of measurements
-        - :math:`N`: number of image pixels
 
-    Shape:
-        - Input1: scalar
-        - Input2: scalar
-        - Input3: scalar
-        
-    Example:
-        >>> PPP = Preprocess_pos_poisson(9, 400, 32*32)
+        Warning:
+            dark measurement is assumed to be the 0-th entry of raw measurements
+
+        Args:
+            - :math:`alpha`: noise level
+            - :math:`M`: number of measurements
+            - :math:`N`: number of image pixels
+
+        Shape:
+            - Input1: scalar
+            - Input2: scalar
+            - Input3: scalar
+
+        Example:
+            >>> PPP = Preprocess_pos_poisson(9, 400, 32*32)
                
     """
     def __init__(self, alpha, M, N):
