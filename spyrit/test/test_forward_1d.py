@@ -1,4 +1,4 @@
-from spyrit.core.Forward_Operator import Forward_operator_1d_split
+from spyrit.core.Forward_Operator import LinearRowSplit
 from spyrit.misc.walsh_hadamard import walsh_matrix
 from spyrit.misc.statistics import data_loaders_stl10
 from spyrit.misc.disp import imagesc
@@ -15,7 +15,7 @@ H = H[:24]
 H_pos = np.where(H>0, H, 0)
 H_neg = np.where(H<0,-H, 0)
 
-A = Forward_operator_1d_split(H_pos,H_neg)
+A = LinearRowSplit(H_pos,H_neg)
 y = A(x)
 
 # plot
