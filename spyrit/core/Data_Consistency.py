@@ -12,11 +12,11 @@ class Pinv_orthogonal(nn.Module): # For A.T @ A  = n*Id (ex : Hadamard, Fourier.
 # ==================================================================================
     r""" Orthogonal Inverse.
     
-    Args:
-        - None
-        
-    Example:
-        >>> Pinv_ortho = Pinv_orthogonal()
+        Args:
+            - None
+
+        Example:
+            >>> Pinv_ortho = Pinv_orthogonal()
     """
     def __init__(self):
         super().__init__()
@@ -26,23 +26,23 @@ class Pinv_orthogonal(nn.Module): # For A.T @ A  = n*Id (ex : Hadamard, Fourier.
     def forward(self, x: torch.tensor, FO: Forward_operator) -> torch.tensor:
         r""" Orthogonal Inverse.
         
-        Args:
-            - :math:`x`: Batch of measurements
-            - :math:`FO`: Forward_operator
-        
-        Shape:
-            - Input1: :math:`(b*c, M)`
-            - Input2: Non-applicable
-            - Output: :math:`(b*c, N)`
-        
-        Example:
-            >>> from spyrit.core.Forward_Operator import Forward_operator
-            >>> Hsub = np.array(np.random.random([400,32*32]))
-            >>> FO = Forward_operator(Hsub)
-            >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float)
-            >>> y = Pinv_ortho(x, FO)
-            >>> print(y.shape)
-            torch.Size([10, 1024])
+            Args:
+                - :math:`x`: Batch of measurements
+                - :math:`FO`: Forward_operator
+
+            Shape:
+                - Input1: :math:`(b*c, M)`
+                - Input2: Non-applicable
+                - Output: :math:`(b*c, N)`
+
+            Example:
+                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> Hsub = np.array(np.random.random([400,32*32]))
+                >>> FO = Forward_operator(Hsub)
+                >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float)
+                >>> y = Pinv_ortho(x, FO)
+                >>> print(y.shape)
+                torch.Size([10, 1024])
      
         """
         # input (b*c, M)
@@ -55,16 +55,16 @@ class learned_measurement_to_image(nn.Module):
 # ==================================================================================
     r""" Measurement to image.
     
-    Args:
-        - :math:`N`: number of pixels
-        - :math:`M`: number of measurements
-    
-    Shape:
-        - Input1: scalar
-        - Input2: scalar
-    
-    Example:
-        >>> Meas_to_Img = learned_measurement_to_image(32*32, 400)
+        Args:
+            - :math:`N`: number of pixels
+            - :math:`M`: number of measurements
+
+        Shape:
+            - Input1: scalar
+            - Input2: scalar
+
+        Example:
+            >>> Meas_to_Img = learned_measurement_to_image(32*32, 400)
 
     """
     def __init__(self, N, M):
@@ -76,23 +76,23 @@ class learned_measurement_to_image(nn.Module):
         
         r""" Measurement to image.
 
-        Args:
-            - :math:`x`: Batch of measurements
-            - :math:`FO`: Forward_operator
+            Args:
+                - :math:`x`: Batch of measurements
+                - :math:`FO`: Forward_operator
 
-        Shape:
-            - Input1: :math:`(b*c, M)`
-            - Input2: non-applicable
-            - Output: :math:`(b*c, N)`
+            Shape:
+                - Input1: :math:`(b*c, M)`
+                - Input2: non-applicable
+                - Output: :math:`(b*c, N)`
 
-        Example:
-            >>> from spyrit.core.Forward_Operator import Forward_operator
-            >>> Hsub = np.array(np.random.random([400,32*32]))
-            >>> FO = Forward_operator(Hsub)
-            >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float)
-            >>> y = Meas_to_Img(x, FO)
-            >>> print(y.shape)
-            torch.Size([10, 1024])
+            Example:
+                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> Hsub = np.array(np.random.random([400,32*32]))
+                >>> FO = Forward_operator(Hsub)
+                >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float)
+                >>> y = Meas_to_Img(x, FO)
+                >>> print(y.shape)
+                torch.Size([10, 1024])
 
         """
         # input (b*c, M)
@@ -105,14 +105,14 @@ class gradient_step(nn.Module):
 # ==================================================================================
     r""" Gradient step
     
-    Args:
-        - :math:`mu`: Mean ?
-    
-    Shape:
-        - Input: scalar
-    
-    Example:
-        >>> GS = gradient_step()
+        Args:
+            - :math:`mu`: Mean ?
+
+        Shape:
+            - Input: scalar
+
+        Example:
+            >>> GS = gradient_step()
         
     """
     def __init__(self, mu = 0.1):
@@ -125,25 +125,25 @@ class gradient_step(nn.Module):
     def forward(self, x: torch.tensor, x_0: torch.tensor, FO: Forward_operator) -> torch.tensor:
         r""" Gradient step
 
-        Args:
-            - :math:`x`: measurement vector
-            - :math:`x_{0}`: previous estimate
-            - :math:`FO`: Forward_operator
+            Args:
+                - :math:`x`: measurement vector
+                - :math:`x_{0}`: previous estimate
+                - :math:`FO`: Forward_operator
 
-        Shape:
-            - Input1: :math:`(b*c, M)`
-            - Input2: :math:`(b*c, N)`
-            - Output: :math:`(b*c, N)`
+            Shape:
+                - Input1: :math:`(b*c, M)`
+                - Input2: :math:`(b*c, N)`
+                - Output: :math:`(b*c, N)`
 
-        Example:
-            >>> from spyrit.core.Forward_Operator import Forward_operator
-            >>> Hsub = np.array(np.random.random([400,32*32]))
-            >>> FO = Forward_operator(Hsub)
-            >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
-            >>> x_0 = torch.tensor(np.random.random([10,32*32]), dtype=torch.float) 
-            >>> y = GS(x, x_0, FO)
-            >>> print(y.shape)
-            torch.Size([10, 1024])
+            Example:
+                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> Hsub = np.array(np.random.random([400,32*32]))
+                >>> FO = Forward_operator(Hsub)
+                >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
+                >>> x_0 = torch.tensor(np.random.random([10,32*32]), dtype=torch.float) 
+                >>> y = GS(x, x_0, FO)
+                >>> print(y.shape)
+                torch.Size([10, 1024])
 
         """
         # x - input (b*c, M) - measurement vector
@@ -157,6 +157,14 @@ class gradient_step(nn.Module):
 # ==================================================================================
 class Tikhonov_cg(nn.Module):
 # ==================================================================================
+    r"""
+        Args:
+            - None
+        
+        Example:
+            >>> TIK = Tikhonov_cg()
+            
+    """
     def __init__(self, n_iter = 5, mu = 0.1, eps = 1e-6):
         super().__init__()
         # FO = Forward Operator - Works for ANY forward operator
@@ -166,10 +174,51 @@ class Tikhonov_cg(nn.Module):
         self.eps = eps;
         # self.FO = FO
 
-    def A(self,x, FO):
+    def A(self,x: torch.tensor, FO: Forward_operator) -> torch.tensor:
+        r"""
+            Args:
+                - :math:`x`: Batch of measurements
+                - :math:`FO`: Forward_Operator
+            
+            Shape:
+                - Input1: :math:`(b*c, M)`
+                - Output: :math:`(b*c, M)`
+            
+            Example:
+                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> Hsub = np.array(np.random.random([400,32*32]))
+                >>> FO = Forward_operator(Hsub)
+                >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
+                >>> y = TIK.A(x)
+                >>> print(y.shape)
+                torch.Size([10, 400])
+
+        """
         return FO.Forward_op(FO.adjoint(x)) + self.mu*x
 
-    def CG(self, y, FO, shape, device):
+    def CG(self, y: torch.tensor, FO: Forward_operator, shape: tuple, device: torch.device) -> torch.tensor:
+        r"""
+            Args:
+                - :math:`y`: Batch of measurements
+                - :math:`FO`: Forward_Operator
+                - :math:`shape`: tensor shape
+                - device: torch device (cpu or gpu)
+            
+            Shape:
+                - Input1: :math:`(b*c, M)`
+                - Output: :math:`(b*c, M)`
+            
+            Example:
+                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> Hsub = np.array(np.random.random([400,32*32]))
+                >>> FO = Forward_operator(Hsub)
+                >>> y = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
+                >>> device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+                >>> x = TIK.CG(y, FO, y.shape, device)
+                >>> print(x.shape)
+                torch.Size([10, 400])
+
+        """
         x = torch.zeros(shape).to(device); 
         r = y - self.A(x, FO);
         c = r.clone()
