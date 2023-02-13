@@ -13,21 +13,27 @@ from typing import Union
 # Forward operators
 # ==================================================================================
 # ==================================================================================
-class Forward_operator(nn.Module):
+class Linear(nn.Module):
 # ==================================================================================
-    r""" Computes Linear transform of image batch x such that :math:`y = H_{sub}x` where :math:`Hsub` (standing for "sub-sampled Hadamard") is a an :math:`M` by  :math:`N` matrix. :math:`N` is the number of pixels per image, and :math:`M` is the number of measurements.
-            
+    r""" 
+        Computes linear measurements from incoming images: :math:`y = Hx`, 
+        where :math:`H`is a linear operator (matrix) and :math:`x` is a 
+        vectorized image.
+        
+        The class is constructed from a :math:`M` by :math:`N` matrix :math:`H`, 
+        where :math:`N` represents the number of pixels in the image and 
+        :math:`M` the number of measurements.
+        
+        
         Args:
-            - :math:`H_{sub}`: subsampled Hadamard matrix
-            
-        Shape:
-            - Input: :math:`(M, N)`
-            
+            - :math:`H` (np.ndarray): measurement matrix (linear operator) with 
+            shape :math:`(M, N)`.
+        
         Example:
-            >>> Hsub = np.array(np.random.random([400,32*32]))
-            >>> Forward_OP = Forward_operator(Hsub)             
+            >>> H = np.array(np.random.random([400,32*32]))
+            >>> linop = Linear(H)
     """
-# Faire le produit H*f sans bruit, linear (pytorch) 
+
     def __init__(self, Hsub: np.ndarray):  
         super().__init__()
         # instancier nn.linear        
@@ -47,48 +53,42 @@ class Forward_operator(nn.Module):
         self.Hsub_adjoint.weight.requires_grad = False
                
     def forward(self, x: torch.tensor) -> torch.tensor: 
-        r""" Applies Linear transform such that :math:`y = H_{sub}x`
+        r""" Applies linear transform to incoming images: :math:`y = Hx`.
 
         Args:
-            :math:`x` : Batch of images of size :math:`N` where :math:`N=img_x*img_y`
+            :math:`x`: Batch of vectorized (flatten) images.
             
         Shape:
-            - Input: :math:`(*, N)` where * denotes the batch size and `N` the image size
-            - Output: :math:`(*, M)` where * denotes the batch size and `M` the number of simulated measurements
+            - :math:`x`: :math:`(*, N)` where * denotes the batch size and `N` 
+            the total number of pixels in the image.
+            - Output: :math:`(*, M)` where * denotes the batch size and `M` 
+            the number of measurements.
             
         Example:        
             >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
-            >>> y = Forward_OP(x)
-            >>> print('output shape:', y.shape)
+            >>> y = linop(x)
+            >>> print('Output shape of forward:', y.shape)
             output shape: torch.Size([10, 400])
             
         """
         # x.shape[b*c,N]
         x = self.Hsub(x)    
         return x
-
-    def Forward_op(self,x: torch.tensor) -> torch.tensor:     # todo: Rename to "direct"
-        r""" same as forward.
-        
-        """
-        # x.shape[b*c,N]
-        x = self.Hsub(x)    
-        return x
     
     def adjoint(self, x: torch.tensor) -> torch.tensor:
-        r""" Applies Linear transform such that :math:`y = H_{sub}^{T}x`
+        r""" Applies adjoint transform to incoming measurements: :math:`y = H^{T}x`
 
         Args:
-            :math:`x`:  batch of sub-sampled and convolved images.
+            :math:`x`:  batch of measurements vector.
             
         Shape:
-            - Input: :math:`(*, M)`
+            - :math:`x`: :math:`(*, M)`
             - Output: :math:`(*, N)`
             
         Example:
             >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float)        
-            >>> x_back = Forward_OP.adjoint(x)
-            >>> print('adjoint output shape:', x_back.shape)
+            >>> y = linop.adjoint(x)
+            >>> print('Output shape of adjoint:', y.shape)
             adjoint output shape: torch.Size([10, 1024])
             
         """
@@ -97,18 +97,25 @@ class Forward_operator(nn.Module):
         x = self.Hsub_adjoint(x)        
         return x
 
-    def Mat(self) -> torch.tensor:          # todo: Remove capital letter
-        r""" Provides :math:`H_{sub}` matrix weigths.
+    def get_mat(self) -> torch.tensor:          
+        r""" Returns the measurement matrix :math:`H`.
+        
+        Shape:
+            - Output: :math:`(M, N)`
+        
+        Example:     
+            >>> H = linop.get_mat()
+            >>> print('Shape of the measurement matrix:', H.shape)     
         """
         return self.Hsub.weight.data;
 
 
-## Merge Forward_operator_Split and Forward_operator_Split_ft_had -> Forward_operator_shift_had
+## Merge Linear_Split and Linear_Split_ft_had -> Linear_shift_had
 
 # ==================================================================================
-class Forward_operator_Split(Forward_operator):
+class Linear_Split(Linear):
 # ==================================================================================
-    r""" Forward_operator with a :math:`H_{pos_neg}` matrix of size :math:`(2*M,N).
+    r""" Linear with a :math:`H_{pos_neg}` matrix of size :math:`(2*M,N).
             
         Args:
             - :math:`H_{sub}`: subsampled Hadamard matrix
@@ -118,7 +125,7 @@ class Forward_operator_Split(Forward_operator):
             
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
-            >>> Forward_Op_Split =  Forward_operator_Split(Hsub)
+            >>> Forward_Op_Split =  Linear_Split(Hsub)
      """
 
     def __init__(self, Hsub: np.ndarray): 
@@ -169,8 +176,8 @@ class Forward_operator_Split(Forward_operator):
         return x
 
 # ==================================================================================
-class Forward_operator_Split_ft_had(Forward_operator_Split): 
-    r""" Forward_operator_Split with implemented inverse transform and a permutation matrix: :math:`Perm` of size :math:`(N,N)`.
+class Linear_Split_ft_had(Linear_Split): 
+    r""" Linear_Split with implemented inverse transform and a permutation matrix: :math:`Perm` of size :math:`(N,N)`.
 
         Args:
             - :math:`H_{sub}`: subsampled Hadamard matrix
@@ -188,7 +195,7 @@ class Forward_operator_Split_ft_had(Forward_operator_Split):
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
             >>> Perm = np.array(np.random.random([32*32,32*32]))
-            >>> FO_Had = Forward_operator_Split_ft_had(Hsub, Perm, 32, 32)
+            >>> FO_Had = Linear_Split_ft_had(Hsub, Perm, 32, 32)
     """
 # ==================================================================================
 # Forward operator with implemented inverse transform and a permutation matrix
@@ -240,7 +247,7 @@ class Forward_operator_Split_ft_had(Forward_operator_Split):
         return x
     
     def pinv(self, x: torch.tensor) -> torch.tensor:
-        r""" Inverse transform of x using Forward_Operator adjoint method.
+        r""" Inverse transform of x using Linear adjoint method.
         
             Args:
                 :math:`x` :  batch of images
@@ -259,9 +266,9 @@ class Forward_operator_Split_ft_had(Forward_operator_Split):
         return x
 
 # ==================================================================================
-class Forward_operator_shift(Forward_operator):
+class Linear_shift(Linear):
 # ==================================================================================
-    r""" Forward_operator with shifted pattern matrix of size :math:`(M+1,N)` and :math:`Perm` matrix of size :math:`(N,N)`.
+    r""" Linear with shifted pattern matrix of size :math:`(M+1,N)` and :math:`Perm` matrix of size :math:`(N,N)`.
     
         Args:
             - Hsub: subsampled Hadamard matrix
@@ -274,7 +281,7 @@ class Forward_operator_shift(Forward_operator):
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
             >>> Perm = np.array(np.random.random([32*32,32*32]))
-            >>> FO_Shift = Forward_operator_shift(Hsub, Perm)
+            >>> FO_Shift = Linear_shift(Hsub, Perm)
     
     """
     def __init__(self, Hsub, Perm):           
@@ -318,9 +325,9 @@ class Forward_operator_shift(Forward_operator):
         #x_shift = super().forward(x) - x_dark.expand(x.shape[0],self.M) # (H-1/2)x
         
 # ==================================================================================
-class Forward_operator_pos(Forward_operator):
+class Linear_pos(Linear):
 # ==================================================================================
-    r""" Forward_operator with Permutation Matrix :math:`Perm` of size :math:`(N,N)`.
+    r""" Linear with Permutation Matrix :math:`Perm` of size :math:`(N,N)`.
     
         Args:
             - Hsub: subsampled Hadamard matrix
@@ -333,7 +340,7 @@ class Forward_operator_pos(Forward_operator):
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
             >>> Perm = np.array(np.random.random([32*32,32*32]))
-            >>> Forward_OP_pos = Forward_operator_pos(Hsub, Perm)
+            >>> Forward_OP_pos = Linear_pos(Hsub, Perm)
     """
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub)
@@ -370,9 +377,9 @@ class Forward_operator_pos(Forward_operator):
         return x
     
 # ==================================================================================
-class Forward_operator_shift_had(Forward_operator_shift):
+class Linear_shift_had(Linear_shift):
 # ==================================================================================
-    r""" Forward_operator_shift operator with inverse method.
+    r""" Linear_shift operator with inverse method.
     
         Args:
             - Hsub: subsampled Hadamard matrix
@@ -385,7 +392,7 @@ class Forward_operator_shift_had(Forward_operator_shift):
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
             >>> Perm = np.array(np.random.random([32*32,32*32]))
-            >>> FO_Shift_Had = Forward_operator_shift_had(Hsub, Perm)
+            >>> FO_Shift_Had = Linear_shift_had(Hsub, Perm)
     """
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub, Perm)
@@ -427,28 +434,35 @@ class Forward_operator_shift_had(Forward_operator_shift):
         x = x.view(bc, N)
         return x
 
-## 1D compresssion ############################################################
 # ==================================================================================
-class Forward_operator_1d_split(nn.Module):
+class LinearRowSplit(nn.Module):
 # ================================================================================== 
-    r""" Compute linear transforms of the rows of an image according to :
-    
-        :math:`y =H*x` where :math:`H = \begin{bmatrix}{H_{pos}}
-        \\{H_{neg}}\end{bmatrix}` are positive patterns and :math:`x` is a batch of
-        images. The transform applies to each row of the image :math:`x`.
+    r""" Compute linear measurement of incoming images :math:`y = Hx`, where 
+        :math:`H` is a linear operator and :math:`x` is an image. Note that
+        the same transform applies to each of the rows of the image :math:`x`.
 
+        The class is constructed from the positive and negative components of 
+        the measurement patterns :math:`H_{raw} = \begin{bmatrix}{H_{pos}}\\{H_{neg}}\end{bmatrix}`
+        
         Args:
-            :math:`H_{pos}`: Positive component of the acquisition patterns.
-            :math:`H_{negative}`: Negative component of the acquisition patterns.
+            - :math:`H_{pos}` (np.ndarray): Positive component of the measurement patterns
+            - :math:`H_{neg}`(np.ndarray): Negative component of the measurement patterns
         
         Shape:
-            - Inputs: :math:`(M, N)` with :math:`M` the number of patterns
-            and :math:`N` is the length patterns for both inputs.
+            - :math:`H_{pos}`: :math:`(M, N)`, 
+            - :math:`H_{neg}`: :math:`(M, N)`,
+            where :math:`M` is the number of patterns and :math:`N` is the 
+            length of the patterns.
+            
+        .. note::
+            The class assumes the existence of the measurement operator 
+            `H = H_{pos}-H_{neg}` that contains negative values that cannot be
+            implemented in practice (harware constraints).
         
         Example:
             >>> H_pos = np.random.rand(64,128)
             >>> H_neg = np.random.rand(64,128)
-            >>> Forward_1d =  Forward_operator_1d_split(H_pos,H_neg)
+            >>> linear_row = LinearRowSplit(H_pos,H_neg)
         
         """    
     def __init__(self, H_pos: np.ndarray, H_neg: np.ndarray):
@@ -483,27 +497,29 @@ class Forward_operator_1d_split(nn.Module):
         # self.Hsub_adjoint.weight.requires_grad = False
               
     def forward(self, x: torch.tensor) -> torch.tensor:
-        r"""
+        r""" Applies linear transform to incoming images: :math:`y = Hx`
+        
         Args:
-            :math:`x`: batch of images
+            - :math:`x`: a batch of images
         
         Shape:
-            - Input: :math:`(b*c, h, w)` with :math:`b` the batch size,
-            :math:`c` the number of channels, :math:`h` is the image height, and 
-            :math:`w` is the image width.
+            - Input: :math:`(b*c, h, w)` with :math:`b` the batch size, :math:`c` the 
+            number of channels, :math:`h` is the image height, and :math:`w` is the image 
+            width.
+
             - Output: :math:`(b*c, 2M, w)` with :math:`b` the batch size,
             :math:`c` the number of channels, :math:`2M` is twice the number of
             patterns (as it includes both positive and negative components), and 
             :math:`w` is the image width.
             
             .. warning::
-                The image height :math:`h`: should match the length of the patterns 
-                :math:`N`:
+                The image height :math:`h` should match the length of the patterns 
+                :math:`N`
 
         Example:
             >>> H_pos = np.random.rand(24,64)
             >>> H_neg = np.random.rand(24,64)
-            >>> A = Forward_operator_1d_split(H_pos,H_neg)
+            >>> A = LinearRowSplit(H_pos,H_neg)
             >>> x = np.random.rand(10,64,92)
             >>> y = A(x)
             >>> print(y.shape)
