@@ -374,11 +374,18 @@ class Forward_operator_shift_had(Forward_operator_shift):
 # ==================================================================================
     r""" Forward_operator_shift operator with inverse method.
     
+        Args:
+            - Hsub: subsampled Hadamard matrix
+            - Perm: Permuation matrix
+
+        Shape:
+            - Input1: :math:`(M, N)`
+            - Input2: :math:`(N, N)`.   
     
-    Example:
-        >>> Hsub = np.array(np.random.random([400,32*32]))
-        >>> Perm = np.array(np.random.random([32*32,32*32]))
-        >>> FO_Shift_Had = Forward_operator_shift_had(Hsub, Perm)
+        Example:
+            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> Perm = np.array(np.random.random([32*32,32*32]))
+            >>> FO_Shift_Had = Forward_operator_shift_had(Hsub, Perm)
     """
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub, Perm)
@@ -424,9 +431,9 @@ class Forward_operator_shift_had(Forward_operator_shift):
 # ==================================================================================
 class Forward_operator_1d_split(nn.Module):
 # ================================================================================== 
-    r""" Compute linear transforms of the rows of an image 
+    r""" Compute linear transforms of the rows of an image according to :
     
-        Computes :math:`y =H*x` where :math:`H = \begin{bmatrix}{H_{pos}}
+        :math:`y =H*x` where :math:`H = \begin{bmatrix}{H_{pos}}
         \\{H_{neg}}\end{bmatrix}` are positive patterns and :math:`x` is a batch of
         images. The transform applies to each row of the image :math:`x`.
 
