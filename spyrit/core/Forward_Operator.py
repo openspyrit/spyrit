@@ -18,9 +18,11 @@ class Forward_operator(nn.Module):
     r""" Computes Linear transform of image batch x such that :math:`y = H_{sub}x` where :math:`Hsub` (standing for "sub-sampled Hadamard") is a an :math:`M` by  :math:`N` matrix. :math:`N` is the number of pixels per image, and :math:`M` is the number of measurements.
             
         Args:
-            -
+            - :math:`H_{sub}`: subsampled Hadamard matrix
+            
         Shape:
-            -
+            - Input: :math:`(M, N)`
+            
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
             >>> Forward_OP = Forward_operator(Hsub)             
@@ -109,10 +111,10 @@ class Forward_operator_Split(Forward_operator):
     r""" Forward_operator with a :math:`H_{pos_neg}` matrix of size :math:`(2*M,N).
             
         Args:
-            -
+            - :math:`H_{sub}`: subsampled Hadamard matrix
             
         Shape:
-            -
+            - Input: :math:`(M, N)`
             
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
@@ -171,10 +173,17 @@ class Forward_operator_Split_ft_had(Forward_operator_Split):
     r""" Forward_operator_Split with implemented inverse transform and a permutation matrix: :math:`Perm` of size :math:`(N,N)`.
 
         Args:
-            -
+            - :math:`H_{sub}`: subsampled Hadamard matrix
+            - :math:`Perm`: Permutation Matrix
+            - :math:`h`: Image height
+            - :math:`w`: Image width
             
         Shape:
-            -
+            - Input1: :math:`(M, N)`
+            - Input2: :math:`(N, N)`
+            - Input3: scalar
+            - Input4: scalar
+            
             
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
@@ -253,7 +262,15 @@ class Forward_operator_Split_ft_had(Forward_operator_Split):
 class Forward_operator_shift(Forward_operator):
 # ==================================================================================
     r""" Forward_operator with shifted pattern matrix of size :math:`(M+1,N)` and :math:`Perm` matrix of size :math:`(N,N)`.
-        
+    
+        Args:
+            - Hsub: subsampled Hadamard matrix
+            - Perm: Permuation matrix
+            
+        Shape:
+            - Input1: :math:`(M, N)`
+            - Input2: :math:`(N, N)`
+            
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
             >>> Perm = np.array(np.random.random([32*32,32*32]))
@@ -305,10 +322,18 @@ class Forward_operator_pos(Forward_operator):
 # ==================================================================================
     r""" Forward_operator with Permutation Matrix :math:`Perm` of size :math:`(N,N)`.
     
-    Example:
-        >>> Hsub = np.array(np.random.random([400,32*32]))
-        >>> Perm = np.array(np.random.random([32*32,32*32]))
-        >>> Forward_OP_pos = Forward_operator_pos(Hsub, Perm)
+        Args:
+            - Hsub: subsampled Hadamard matrix
+            - Perm: Permuation matrix
+
+        Shape:
+            - Input1: :math:`(M, N)`
+            - Input2: :math:`(N, N)`
+
+        Example:
+            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> Perm = np.array(np.random.random([32*32,32*32]))
+            >>> Forward_OP_pos = Forward_operator_pos(Hsub, Perm)
     """
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub)
@@ -349,10 +374,18 @@ class Forward_operator_shift_had(Forward_operator_shift):
 # ==================================================================================
     r""" Forward_operator_shift operator with inverse method.
     
-    Example:
-        >>> Hsub = np.array(np.random.random([400,32*32]))
-        >>> Perm = np.array(np.random.random([32*32,32*32]))
-        >>> FO_Shift_Had = Forward_operator_shift_had(Hsub, Perm)
+        Args:
+            - Hsub: subsampled Hadamard matrix
+            - Perm: Permuation matrix
+
+        Shape:
+            - Input1: :math:`(M, N)`
+            - Input2: :math:`(N, N)`.   
+    
+        Example:
+            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> Perm = np.array(np.random.random([32*32,32*32]))
+            >>> FO_Shift_Had = Forward_operator_shift_had(Hsub, Perm)
     """
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub, Perm)
@@ -398,16 +431,12 @@ class Forward_operator_shift_had(Forward_operator_shift):
 # ==================================================================================
 class Forward_operator_1d_split(nn.Module):
 # ================================================================================== 
-    r""" Compute linear transforms of the rows of an image 
+    r""" Compute linear transforms of the rows of an image according to :
     
-    Computes :math:`y =H*x` where :math:`H = \begin{bmatrix}{H_{pos}}
-    \\{H_{neg}}\end{bmatrix}` are positive patterns and :math:`x` is a batch of
-    images. The transform applies to each row of the image :math:`x`.
-        
-    """
+        :math:`y =H*x` where :math:`H = \begin{bmatrix}{H_{pos}}
+        \\{H_{neg}}\end{bmatrix}` are positive patterns and :math:`x` is a batch of
+        images. The transform applies to each row of the image :math:`x`.
 
-    def __init__(self, H_pos: np.ndarray, H_neg: np.ndarray):
-        r"""
         Args:
             :math:`H_{pos}`: Positive component of the acquisition patterns.
             :math:`H_{negative}`: Negative component of the acquisition patterns.
@@ -421,7 +450,9 @@ class Forward_operator_1d_split(nn.Module):
             >>> H_neg = np.random.rand(64,128)
             >>> Forward_1d =  Forward_operator_1d_split(H_pos,H_neg)
         
-        """            
+        """    
+    def __init__(self, H_pos: np.ndarray, H_neg: np.ndarray):
+        
         
         super().__init__()
            
