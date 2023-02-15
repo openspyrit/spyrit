@@ -5,27 +5,24 @@ import numpy as np
 import math
 from spyrit.core.Forward_Operator import Forward_operator, Forward_operator_Split_ft_had, Forward_operator_Split
 import pdb
-# ==================================================================================
-# Preprocessing
-# ==================================================================================  
-class Preprocess_Split_diag_poisson(nn.Module):  # Why diag ?
-# ==================================================================================
+
+
+class SplitPoisson(nn.Module):  
     r"""
-        Computes :math:`m = \frac{(m_{+}-m_{-})}{N_0}`
-        and also allows to compute :math:`var = \frac{2*Diag(m_{+} + m_{-})}{\alpha^{2}}`
+        Preprocess raw data acquired with a split measurement operator
+        
+        It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha}` and the variance
+        :math:`var = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where 
+        `y_{+} = H_{+}x` and `y_{-} = H_{-}x` are obtained using a split
+        measurement operator (see :mod:`spyrit.core.LinearSplit`) 
             
         Args:
-            - :math:`\alpha`: noise level
-            - :math:`M`: number of measurements
-            - :math:`N`: number of image pixels
-            
-        Shape:
-            - Input1: scalar
-            - Input2: scalar
-            - Input3: scalar
+            - :math:`\alpha` (float): maximun image intensity (in counts)
+            - :math:`M` (int): number of measurements
+            - :math:`N` (int): number of pixels in the image
             
         Example:
-            >>> SPP = Preprocess_Split_diag_poisson(10, 400, 32*32)
+            >>> split_op = SplitPoisson(10, 400, 32*32)
 
     """
     def __init__(self, alpha: float, M: int, N: int):
