@@ -10,17 +10,39 @@ Created on Mon Feb 13 18:04:11 2023
 
 import torch
 import numpy as np
-from spyrit.misc.walsh_hadamard import walsh_matrix
-from spyrit.core.Forward_Operator import *
+#from spyrit.misc.walsh_hadamard import walsh_matrix
+
 
 
 
 
 #%% Test Linear
+from spyrit.core.Forward_Operator import Linear
 
 # constructor
 H = np.array(np.random.random([400,32*32]))
 linop = Linear(H)
+
+# forward
+x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
+y = linop(x)
+print('Output shape of forward:', y.shape)
+
+# adjoint
+x = torch.tensor(np.random.random([10,400]), dtype=torch.float)
+y = linop.adjoint(x)
+print('Output shape of adjoint:', y.shape)
+
+# get_mat
+H = linop.get_mat()
+print('Shape of the measurement matrix:', H.shape)
+
+#%% Test LinearSplit
+from spyrit.core.Forward_Operator import LinearSplit
+
+# constructor
+H = np.array(np.random.random([400,32*32]))
+linop = LinearSplit(H)
 
 # forward
 x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)

@@ -31,7 +31,7 @@ class Linear(nn.Module):
         
         Example:
             >>> H = np.array(np.random.random([400,32*32]))
-            >>> linop = Linear(H)
+            >>> forward_op = Linear(H)
     """
 
     def __init__(self, Hsub: np.ndarray):  
@@ -66,7 +66,7 @@ class Linear(nn.Module):
             
         Example:        
             >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
-            >>> y = linop(x)
+            >>> y = forward_op(x)
             >>> print('Output shape of forward:', y.shape)
             output shape: torch.Size([10, 400])
             
@@ -87,7 +87,7 @@ class Linear(nn.Module):
             
         Example:
             >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float)        
-            >>> y = linop.adjoint(x)
+            >>> y = forward_op.adjoint(x)
             >>> print('Output shape of adjoint:', y.shape)
             adjoint output shape: torch.Size([10, 1024])
             
@@ -104,7 +104,7 @@ class Linear(nn.Module):
             - Output: :math:`(M, N)`
         
         Example:     
-            >>> H = linop.get_mat()
+            >>> H = forward_op.get_mat()
             >>> print('Shape of the measurement matrix:', H.shape)     
         """
         return self.Hsub.weight.data;
@@ -113,70 +113,102 @@ class Linear(nn.Module):
 ## Merge Linear_Split and Linear_Split_ft_had -> Linear_shift_had
 
 # ==================================================================================
-class Linear_Split(Linear):
+class LinearSplit(Linear):
 # ==================================================================================
-    r""" Linear with a :math:`H_{pos_neg}` matrix of size :math:`(2*M,N).
-            
-        Args:
-            - :math:`H_{sub}`: subsampled Hadamard matrix
-            
-        Shape:
-            - Input: :math:`(M, N)`
-            
-        Example:
-            >>> Hsub = np.array(np.random.random([400,32*32]))
-            >>> Forward_Op_Split =  Linear_Split(Hsub)
-     """
+    r""" 
+    Computes linear measurements from incoming images: :math:`y = Px`, 
+    where :math:`P` is a linear operator (matrix) and :math:`x` is a 
+    vectorized image.
+    
+    The matrix :math:`P` contains only positive values and is obtained by 
+    splitting a measurement matrix :math:`H` such that 
+    :math:`P = \begin{bmatrix}{H_{pos}}\\{H_{neg}}\end{bmatrix}`, where 
+    :math:`H_{pos} = \max(0,H)` and :math:`H_{neg} = \max(0,-H)`.
+         
+    The class is constructed from the :math:`M` by :math:`N` matrix :math:`H`, 
+    where :math:`N` represents the number of pixels in the image and 
+    :math:`M` the number of measurements.
+    
+    Args:
+        - :math:`H` (np.ndarray): measurement matrix (linear operator) with 
+        shape :math:`(M, N)`.
+        
+    Example:
+        >>> H = np.array(np.random.random([400,32*32]))
+        >>> forward_op =  LinearSplit(H)
+    """
 
-    def __init__(self, Hsub: np.ndarray): 
-        super().__init__(Hsub)
+    def __init__(self, H: np.ndarray): 
+        super().__init__(H)
         
         # [H^+, H^-]
                 
         even_index = range(0,2*self.M,2);
         odd_index = range(1,2*self.M,2);
 
-        H_pos = np.zeros(Hsub.shape);
-        H_neg = np.zeros(Hsub.shape);
-        H_pos[Hsub>0] = Hsub[Hsub>0];
-        H_neg[Hsub<0] = -Hsub[Hsub<0];
+        H_pos = np.zeros(H.shape);
+        H_neg = np.zeros(H.shape);
+        H_pos[H>0] = H[H>0];
+        H_neg[H<0] = -H[H<0];
         
         # pourquoi 2 *M ?
-        Hposneg = np.zeros((2*self.M,self.N));
-        Hposneg[even_index,:] = H_pos;
-        Hposneg[odd_index,:] = H_neg;
+        P = np.zeros((2*self.M,self.N));
+        P[even_index,:] = H_pos;
+        P[odd_index,:] = H_neg;
         
-        self.Hpos_neg = nn.Linear(self.N, 2*self.M, False) 
-        self.Hpos_neg.weight.data=torch.from_numpy(Hposneg)
-        self.Hpos_neg.weight.data=self.Hpos_neg.weight.data.float()
-        self.Hpos_neg.weight.requires_grad=False
+        self.P = nn.Linear(self.N, 2*self.M, False) 
+        self.P.weight.data=torch.from_numpy(P)
+        self.P.weight.data=self.P.weight.data.float()
+        self.P.weight.requires_grad=False
               
-    def forward(self, x: torch.tensor) -> torch.tensor: # --> simule la mesure sous-chantillonnée
-        r""" Linear transform of batch of images :math:`x` such that 
-        :math:`y =H_{posneg}*x` where :math:`H_{posneg} = \begin{bmatrix}{H_{pos}}
-        \\{H_{neg}}\end{bmatrix}`.
-        
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r""" Applies linear transform to incoming images: :math:`y = Px`.
+    
         Args:
-            :math:`x`: Batch of images.
+            :math:`x`: Batch of vectorized (flatten) images.
             
         Shape:
-            - Input: :math:`(*,N)`
-            - Output: :math:`(*, 2M)`
-        
-        Example:
+            - :math:`x`: :math:`(*, N)` where * denotes the batch size and `N` 
+            the total number of pixels in the image.
+            - Output: :math:`(*, 2M)` where * denotes the batch size and `M` 
+            the number of measurements.
+            
+        Example:        
             >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
-            >>> x_output = Forward_Op_Split(x)
-            >>> print(x_output.shape)
-            torch.Size([10, 800])
-                    
+            >>> y = forward_op(x)
+            >>> print('Output shape of forward:', y.shape)
+            output shape: torch.Size([10, 800])
+            
         """
         # x.shape[b*c,N]
         # output shape : [b*c, 2*M]
-        x = self.Hpos_neg(x)    
+        x = self.P(x)    
         return x
 
 # ==================================================================================
-class Linear_Split_ft_had(Linear_Split): 
+class HadamSplit(LinearSplit):
+    r""" 
+    Computes linear measurements from incoming images: :math:`y = Px`, 
+    where :math:`P` is a linear operator (matrix) and :math:`x` is a 
+    vectorized image.
+    
+    The matrix :math:`P` contains only positive values and is obtained by 
+    splitting a subsampled Hadamard matrix :math:`H` such that 
+    :math:`P = \begin{bmatrix}{H_{pos}}\\{H_{neg}}\end{bmatrix}`, where 
+    :math:`H_{pos} = \max(0,H)` and :math:`H_{neg} = \max(0,-H)`.
+         
+    The class is constructed from the :math:`M` by :math:`N` matrix :math:`H`, 
+    where :math:`N` represents the number of pixels in the image and 
+    :math:`M \le N` the number of measurements.
+    
+    Args:
+        - :math:`H` (np.ndarray): Hadamard matrix with shape :math:`(M, N)`.
+        
+    Example:
+        >>> H = np.array(np.random.random([400,32*32]))
+        >>> forward_op =  LinearSplit(H)
+    """
+    
     r""" Linear_Split with implemented inverse transform and a permutation matrix: :math:`Perm` of size :math:`(N,N)`.
 
         Args:
@@ -197,31 +229,31 @@ class Linear_Split_ft_had(Linear_Split):
             >>> Perm = np.array(np.random.random([32*32,32*32]))
             >>> FO_Had = Linear_Split_ft_had(Hsub, Perm, 32, 32)
     """
-# ==================================================================================
-# Forward operator with implemented inverse transform and a permutation matrix
-    def __init__(self, Hsub: np.ndarray, Perm: np.ndarray, h: int, w: int) -> torch.tensor:
+    def __init__(self, 
+                 H: np.ndarray, 
+                 Perm: np.ndarray, 
+                 h: int, w: int) -> torch.tensor:
         
-        super().__init__(Hsub);
+        super().__init__(H);
         self.Perm = nn.Linear(self.N, self.N, False)
         self.Perm.weight.data=torch.from_numpy(Perm.T)
         self.Perm.weight.data=self.Perm.weight.data.float()
         self.Perm.weight.requires_grad=False
-        
         self.h = h
         self.w = w
-        
-        # Build H - 1D, store and give it as argument
-        #self.H_1_D = ; 
     
     def inverse(self, x: torch.tensor) -> torch.tensor:
-        r""" Inverse transform of x with permutation matrix.
+        r""" Inverse transform of Hadamard-domain images
         
             Args:
-                :math:`x` :  batch of images
+                :math:`x`:  batch of images in the Hadamard domain
                 
             Shape:
-                - Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
-                - Output: math:`(b*c, N)`      
+                - :math:`x`: :math:`(b*c, N)` with :math:`b` the batch size, 
+                :math:`c` the number of channels, and :math:`N` the number of
+                pixels in the image.
+                
+                - Output: math:`(b*c, N)`
                 
             Example:
 
@@ -230,19 +262,16 @@ class Linear_Split_ft_had(Linear_Split):
                 >>> print(x_inverse.shape)
                 torch.Size([10, 1024])
         """
-        # rearrange the terms + inverse transform
-        # maybe needs to be initialized with a permutation matrix as well!
-        # Permutation matrix may be sparsified when sparse tensors are no longer in
-        # beta (as of pytorch 1.11, it is still in beta).
+        # Todo: to speed up, check walsh2_S_fold_torch to see how to remove 
+        # permutations
         
         # input - x - shape [b*c, N]
         # output - x - shape [b*c, N]
         b, N = x.shape
         x = self.Perm(x)
         x = x.view(b, 1, self.h, self.w)
-        x = 1/self.N*walsh2_torch(x)    #to apply the inverse transform
+        x = 1/self.N*walsh2_torch(x)    # inverse of full transform    
                                         # todo: initialize with 1D transform to speed up
-        # Build H - 1D, store and give it as argument
         x = x.view(b, N);
         return x
     
@@ -437,12 +466,12 @@ class Linear_shift_had(Linear_shift):
 # ==================================================================================
 class LinearRowSplit(nn.Module):
 # ================================================================================== 
-    r""" Compute linear measurement of incoming images :math:`y = Hx`, where 
-        :math:`H` is a linear operator and :math:`x` is an image. Note that
+    r""" Compute linear measurement of incoming images :math:`y = Px`, where 
+        :math:`P` is a linear operator and :math:`x` is an image. Note that
         the same transform applies to each of the rows of the image :math:`x`.
 
         The class is constructed from the positive and negative components of 
-        the measurement patterns :math:`H_{raw} = \begin{bmatrix}{H_{pos}}\\{H_{neg}}\end{bmatrix}`
+        the measurement operator :math:`P = \begin{bmatrix}{H_{pos}}\\{H_{neg}}\end{bmatrix}`
         
         Args:
             - :math:`H_{pos}` (np.ndarray): Positive component of the measurement patterns
@@ -456,7 +485,7 @@ class LinearRowSplit(nn.Module):
             
         .. note::
             The class assumes the existence of the measurement operator 
-            `H = H_{pos}-H_{neg}` that contains negative values that cannot be
+            :math:`H = H_{pos}-H_{neg}` that contains negative values that cannot be
             implemented in practice (harware constraints).
         
         Example:
@@ -478,12 +507,12 @@ class LinearRowSplit(nn.Module):
         # float64 when creating torch tensor
         even_index = range(0,2*self.M,2)
         odd_index = range(1,2*self.M,2)
-        Hposneg = np.zeros((2*self.M,self.N))
-        Hposneg[even_index,:] = H_pos
-        Hposneg[odd_index,:] = H_neg
+        P = np.zeros((2*self.M,self.N))
+        P[even_index,:] = H_pos
+        P[odd_index,:] = H_neg
         
-        self.Hpos_neg = torch.from_numpy(Hposneg).float()
-        self.Hpos_neg.requires_grad = False
+        self.P = torch.from_numpy(P).float()
+        self.P.requires_grad = False
         
         # "Unsplit" patterns
         H = H_pos - H_neg
@@ -526,5 +555,5 @@ class LinearRowSplit(nn.Module):
             torch.Size([10,48,92])
          
         """
-        x = self.Hpos_neg @ x  
+        x = self.P @ x  
         return x
