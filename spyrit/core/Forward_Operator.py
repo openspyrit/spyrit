@@ -122,8 +122,8 @@ class LinearSplit(Linear):
     
     The matrix :math:`P` contains only positive values and is obtained by 
     splitting a measurement matrix :math:`H` such that 
-    :math:`P = \begin{bmatrix}{H_{pos}}\\{H_{neg}}\end{bmatrix}`, where 
-    :math:`H_{pos} = \max(0,H)` and :math:`H_{neg} = \max(0,-H)`.
+    :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`, where 
+    :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.
          
     The class is constructed from the :math:`M` by :math:`N` matrix :math:`H`, 
     where :math:`N` represents the number of pixels in the image and 
@@ -194,8 +194,8 @@ class HadamSplit(LinearSplit):
     
     The matrix :math:`P` contains only positive values and is obtained by 
     splitting a subsampled Hadamard matrix :math:`H` such that 
-    :math:`P = \begin{bmatrix}{H_{pos}}\\{H_{neg}}\end{bmatrix}`, where 
-    :math:`H_{pos} = \max(0,H)` and :math:`H_{neg} = \max(0,-H)`.
+    :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`, where 
+    :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.
          
     The class is constructed from the :math:`M` by :math:`N` matrix :math:`H`, 
     where :math:`N` represents the number of pixels in the image and 
@@ -471,21 +471,21 @@ class LinearRowSplit(nn.Module):
         the same transform applies to each of the rows of the image :math:`x`.
 
         The class is constructed from the positive and negative components of 
-        the measurement operator :math:`P = \begin{bmatrix}{H_{pos}}\\{H_{neg}}\end{bmatrix}`
+        the measurement operator :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`
         
         Args:
-            - :math:`H_{pos}` (np.ndarray): Positive component of the measurement patterns
-            - :math:`H_{neg}`(np.ndarray): Negative component of the measurement patterns
+            - :math:`H_{+}` (np.ndarray): Positive component of the measurement matrix
+            - :math:`H_{-}`(np.ndarray): Negative component of the measurement matrix
         
         Shape:
-            - :math:`H_{pos}`: :math:`(M, N)`, 
-            - :math:`H_{neg}`: :math:`(M, N)`,
+            - :math:`H_{+}`: :math:`(M, N)`, 
+            - :math:`H_{-}`: :math:`(M, N)`,
             where :math:`M` is the number of patterns and :math:`N` is the 
             length of the patterns.
             
         .. note::
             The class assumes the existence of the measurement operator 
-            :math:`H = H_{pos}-H_{neg}` that contains negative values that cannot be
+            :math:`H = H_{+}-H_{-}` that contains negative values that cannot be
             implemented in practice (harware constraints).
         
         Example:
