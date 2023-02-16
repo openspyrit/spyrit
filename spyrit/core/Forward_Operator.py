@@ -1,4 +1,3 @@
-# ==================================================================================
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,47 +9,42 @@ from spyrit.misc.walsh_hadamard import walsh2_torch, walsh_matrix
 from typing import Union
 
 # ==================================================================================
-# Forward operators
-# ==================================================================================
-# ==================================================================================
 class Linear(nn.Module):
 # ==================================================================================
     r""" 
         Computes linear measurements from incoming images: :math:`y = Hx`, 
-        where :math:`H`is a linear operator (matrix) and :math:`x` is a 
+        where :math:`H` is a linear operator (matrix) and :math:`x` is a 
         vectorized image.
         
         The class is constructed from a :math:`M` by :math:`N` matrix :math:`H`, 
         where :math:`N` represents the number of pixels in the image and 
         :math:`M` the number of measurements.
         
-        
         Args:
-            - :math:`H` (np.ndarray): measurement matrix (linear operator) with 
+            :math:`H` (np.ndarray): measurement matrix (linear operator) with 
             shape :math:`(M, N)`.
         
         Example:
-            >>> H = np.array(np.random.random([400,32*32]))
+            >>> H = np.array(np.random.random([400, 1000]))
             >>> forward_op = Linear(H)
     """
 
-    def __init__(self, Hsub: np.ndarray):  
+    def __init__(self, H: np.ndarray):  
         super().__init__()
-        # instancier nn.linear        
-        # Pmat --> (torch) --> Poids ()
-        self.M = Hsub.shape[0];
-        self.N = Hsub.shape[1];
-        self.Hsub = nn.Linear(self.N, self.M, False); 
-        self.Hsub.weight.data=torch.from_numpy(Hsub)
+        # instancier nn.linear
+        self.M = H.shape[0]
+        self.N = H.shape[1]
+        self.H = nn.Linear(self.N, self.M, False) 
+        self.H.weight.data = torch.from_numpy(H)
         # Data must be of type float (or double) rather than the default float64 when creating torch tensor
-        self.Hsub.weight.data=self.Hsub.weight.data.float()
-        self.Hsub.weight.requires_grad=False
+        self.H.weight.data=self.H.weight.data.float()
+        self.H.weight.requires_grad = False
 
-        # adjoint (Not useful here ??)
-        self.Hsub_adjoint = nn.Linear(self.M, self.N, False)
-        self.Hsub_adjoint.weight.data=torch.from_numpy(Hsub.transpose())
-        self.Hsub_adjoint.weight.data = self.Hsub_adjoint.weight.data.float()
-        self.Hsub_adjoint.weight.requires_grad = False
+        # adjoint (Replace by backward()?)
+        self.H_adjoint = nn.Linear(self.M, self.N, False)
+        self.H_adjoint.weight.data = torch.from_numpy(H.transpose())
+        self.H_adjoint.weight.data = self.H_adjoint.weight.data.float()
+        self.H_adjoint.weight.requires_grad = False
                
     def forward(self, x: torch.tensor) -> torch.tensor: 
         r""" Applies linear transform to incoming images: :math:`y = Hx`.
@@ -59,9 +53,10 @@ class Linear(nn.Module):
             :math:`x`: Batch of vectorized (flatten) images.
             
         Shape:
-            - :math:`x`: :math:`(*, N)` where * denotes the batch size and `N` 
+            :math:`x`: :math:`(*, N)` where * denotes the batch size and `N` 
             the total number of pixels in the image.
-            - Output: :math:`(*, M)` where * denotes the batch size and `M` 
+            
+            Output: :math:`(*, M)` where * denotes the batch size and `M` 
             the number of measurements.
             
         Example:        
@@ -72,45 +67,60 @@ class Linear(nn.Module):
             
         """
         # x.shape[b*c,N]
-        x = self.Hsub(x)    
+        x = self.H(x)    
         return x
     
     def adjoint(self, x: torch.tensor) -> torch.tensor:
-        r""" Applies adjoint transform to incoming measurements: :math:`y = H^{T}x`
+        r""" Applies adjoint transform to incoming measurements :math:`y = H^{T}x`
 
         Args:
-            :math:`x`:  batch of measurements vector.
+            :math:`x`:  batch of measurement vectors.
             
         Shape:
-            - :math:`x`: :math:`(*, M)`
-            - Output: :math:`(*, N)`
+            :math:`x`: :math:`(*, M)`
+            
+            Output: :math:`(*, N)`
             
         Example:
-            >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float)        
+            >>> x = torch.rand([10,400], dtype=torch.float)        
             >>> y = forward_op.adjoint(x)
             >>> print('Output shape of adjoint:', y.shape)
             adjoint output shape: torch.Size([10, 1024])
-            
         """
-        # x.shape[b*c,M]
         #Pmat.transpose()*f
-        x = self.Hsub_adjoint(x)        
+        x = self.H_adjoint(x)        
         return x
 
     def get_mat(self) -> torch.tensor:          
         r""" Returns the measurement matrix :math:`H`.
         
         Shape:
-            - Output: :math:`(M, N)`
+            Output: :math:`(M, N)`
         
         Example:     
             >>> H = forward_op.get_mat()
             >>> print('Shape of the measurement matrix:', H.shape)     
         """
-        return self.Hsub.weight.data;
-
-
-## Merge Linear_Split and Linear_Split_ft_had -> Linear_shift_had
+        return self.H.weight.data;
+    
+    def pinv(self, x: torch.tensor) -> torch.tensor:
+        r""" Inverse transform of x using Linear adjoint method.
+        
+        Args:
+            :math:`x` :  batch of images
+            
+        Shape:
+            - Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
+            - Output: same as input.      
+            
+        Example:
+            >>> x = torch.Tensor(np.random.random([10,400]))  
+            >>> x_pinv = FO_Had.pinv(x)
+            >>> print(x_pinv.shape)
+            torch.Size([10, 1024])
+        """
+        x = self.adjoint(x)/self.N
+        return x
 
 # ==================================================================================
 class LinearSplit(Linear):
@@ -130,7 +140,7 @@ class LinearSplit(Linear):
     :math:`M` the number of measurements.
     
     Args:
-        - :math:`H` (np.ndarray): measurement matrix (linear operator) with 
+        :math:`H` (np.ndarray): measurement matrix (linear operator) with 
         shape :math:`(M, N)`.
         
     Example:
@@ -168,9 +178,10 @@ class LinearSplit(Linear):
             :math:`x`: Batch of vectorized (flatten) images.
             
         Shape:
-            - :math:`x`: :math:`(*, N)` where * denotes the batch size and `N` 
+            :math:`x`: :math:`(*, N)` where * denotes the batch size and `N` 
             the total number of pixels in the image.
-            - Output: :math:`(*, 2M)` where * denotes the batch size and `M` 
+            
+            Output: :math:`(*, 2M)` where * denotes the batch size and `M` 
             the number of measurements.
             
         Example:        
@@ -184,50 +195,63 @@ class LinearSplit(Linear):
         # output shape : [b*c, 2*M]
         x = self.P(x)    
         return x
+    
+    def forward_H(self, x: torch.tensor) -> torch.tensor:
+        r""" Applies linear transform to incoming images: :math:`m = Hx`.
+    
+        Args:
+            :math:`x`: Batch of vectorized (flatten) images.
+            
+        Shape:
+            :math:`x`: :math:`(*, N)` where * denotes the batch size and `N` 
+            the total number of pixels in the image.
+            
+            Output: :math:`(*, M)` where * denotes the batch size and `M` 
+            the number of measurements.
+            
+        Example:        
+            >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
+            >>> y = forward_op(x)
+            >>> print('Output shape of forward:', y.shape)
+            output shape: torch.Size([10, 800])
+            
+        """
+        x = self.H(x)    
+        return x
 
 # ==================================================================================
 class HadamSplit(LinearSplit):
     r""" 
     Computes linear measurements from incoming images: :math:`y = Px`, 
-    where :math:`P` is a linear operator (matrix) and :math:`x` is a 
-    vectorized image.
+    where :math:`P` is a linear operator (matrix) with positive entries and 
+    :math:`x` is a vectorized image.
     
-    The matrix :math:`P` contains only positive values and is obtained by 
-    splitting a subsampled Hadamard matrix :math:`H` such that 
+    The class is constructed from a matrix :math:`H` with 
+    shape :math:`(M,N)` where :math:`N` represents the number of pixels in the 
+    image and :math:`M \le N` the number of measurements. The matrix :math:`P` 
+    is obtained by splitting the matrix :math:`H` such that 
     :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`, where 
-    :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.
-         
-    The class is constructed from the :math:`M` by :math:`N` matrix :math:`H`, 
-    where :math:`N` represents the number of pixels in the image and 
-    :math:`M \le N` the number of measurements.
+    :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`. 
+    
+    .. note::
+        :math:`H = H_{+} - H_{-}`
+    
+    The matrix :math:`H` is obtained by retaining the first :math:`M` rows of 
+    a permuted Hadamard matrix :math:`G H_{had}`, where :math:`G` is a 
+    permutation matrix and :math:`H_{had}` is a Hadamard matrix.
     
     Args:
-        - :math:`H` (np.ndarray): Hadamard matrix with shape :math:`(M, N)`.
+        - H (np.ndarray): Matrix :math:`H` with shape :math:`(M, N)`
+        - Perm (np.ndarray): Permutation matrix :math:`G` with shape :math:`(N, N)`
+        - h (int): Image height :math:`h`
+        - w (int): Image width :math:`w`
+        
+        The image dimensions are such that :math:`h * w = N`.
         
     Example:
         >>> H = np.array(np.random.random([400,32*32]))
-        >>> forward_op =  LinearSplit(H)
-    """
-    
-    r""" Linear_Split with implemented inverse transform and a permutation matrix: :math:`Perm` of size :math:`(N,N)`.
-
-        Args:
-            - :math:`H_{sub}`: subsampled Hadamard matrix
-            - :math:`Perm`: Permutation Matrix
-            - :math:`h`: Image height
-            - :math:`w`: Image width
-            
-        Shape:
-            - Input1: :math:`(M, N)`
-            - Input2: :math:`(N, N)`
-            - Input3: scalar
-            - Input4: scalar
-            
-            
-        Example:
-            >>> Hsub = np.array(np.random.random([400,32*32]))
-            >>> Perm = np.array(np.random.random([32*32,32*32]))
-            >>> FO_Had = Linear_Split_ft_had(Hsub, Perm, 32, 32)
+        >>> Perm = np.random.random([32*32,32*32])
+        >>> forward_op =  HadamSplit(H, Perm, 32, 32)
     """
     def __init__(self, 
                  H: np.ndarray, 
@@ -241,6 +265,30 @@ class HadamSplit(LinearSplit):
         self.Perm.weight.requires_grad=False
         self.h = h
         self.w = w
+        
+    def forward_H(self, x: torch.tensor) -> torch.tensor:
+        r""" Applies linear transform to incoming images: :math:`m = Hx`.
+    
+        Args:
+            :math:`x`: Batch of vectorized (flatten) images.
+            
+        Shape:
+            :math:`x`: :math:`(*, N)` where * denotes the batch size and `N` 
+            the total number of pixels in the image.
+            
+            Output: :math:`(*, M)` where * denotes the batch size and `M` 
+            the number of measurements.
+            
+        Example:        
+            >>> x = torch.rand([10,32*32], dtype=torch.float)
+            >>> y = forward_op(x)
+            >>> print('Output shape of forward:', y.shape)
+            output shape: torch.Size([10, 800])
+            
+        """
+        # Fast transform could be used here
+        x = self.H(x)    
+        return x
     
     def inverse(self, x: torch.tensor) -> torch.tensor:
         r""" Inverse transform of Hadamard-domain images
@@ -249,11 +297,11 @@ class HadamSplit(LinearSplit):
                 :math:`x`:  batch of images in the Hadamard domain
                 
             Shape:
-                - :math:`x`: :math:`(b*c, N)` with :math:`b` the batch size, 
+                :math:`x`: :math:`(b*c, N)` with :math:`b` the batch size, 
                 :math:`c` the number of channels, and :math:`N` the number of
                 pixels in the image.
                 
-                - Output: math:`(b*c, N)`
+                Output: math:`(b*c, N)`
                 
             Example:
 
@@ -262,36 +310,15 @@ class HadamSplit(LinearSplit):
                 >>> print(x_inverse.shape)
                 torch.Size([10, 1024])
         """
-        # Todo: to speed up, check walsh2_S_fold_torch to see how to remove 
         # permutations
-        
-        # input - x - shape [b*c, N]
-        # output - x - shape [b*c, N]
+        # todo: check walsh2_S_fold_torch to speed up
         b, N = x.shape
         x = self.Perm(x)
         x = x.view(b, 1, self.h, self.w)
-        x = 1/self.N*walsh2_torch(x)    # inverse of full transform    
-                                        # todo: initialize with 1D transform to speed up
+        # inverse of full transform
+        # todo: initialize with 1D transform to speed up
+        x = 1/self.N*walsh2_torch(x)       
         x = x.view(b, N);
-        return x
-    
-    def pinv(self, x: torch.tensor) -> torch.tensor:
-        r""" Inverse transform of x using Linear adjoint method.
-        
-            Args:
-                :math:`x` :  batch of images
-                
-            Shape:
-                - Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
-                - Output: same as input.      
-                
-            Example:
-                >>> x = torch.Tensor(np.random.random([10,400]))  
-                >>> x_pinv = FO_Had.pinv(x)
-                >>> print(x_pinv.shape)
-                torch.Size([10, 1024])
-        """
-        x = self.adjoint(x)/self.N
         return x
 
 # ==================================================================================
@@ -489,9 +516,9 @@ class LinearRowSplit(nn.Module):
             implemented in practice (harware constraints).
         
         Example:
-            >>> H_pos = np.random.rand(64,128)
-            >>> H_neg = np.random.rand(64,128)
-            >>> linear_row = LinearRowSplit(H_pos,H_neg)
+            >>> H_pos = np.random.rand(24,64)
+            >>> H_neg = np.random.rand(24,64)
+            >>> linop = LinearRowSplit(H_pos,H_neg)
         
         """    
     def __init__(self, H_pos: np.ndarray, H_neg: np.ndarray):
@@ -510,33 +537,34 @@ class LinearRowSplit(nn.Module):
         P = np.zeros((2*self.M,self.N))
         P[even_index,:] = H_pos
         P[odd_index,:] = H_neg
-        
-        self.P = torch.from_numpy(P).float()
-        self.P.requires_grad = False
+        self.P = nn.Linear(self.N, 2*self.M, False);
+        self.P.weight.data = torch.from_numpy(P).float()
+        self.P.weight.requires_grad = False
         
         # "Unsplit" patterns
         H = H_pos - H_neg
-        self.H = torch.from_numpy(H).float() 
-        self.H.requires_grad = False
+        self.H = nn.Linear(self.N, self.M, False);
+        self.H.weight.data = torch.from_numpy(H).float() 
+        self.H.weight.requires_grad = False
        
-        # adjoint (Not useful here ??)
-        # self.Hsub_adjoint = nn.Linear(self.M, self.N, False)
-        # self.Hsub_adjoint.weight.data=torch.from_numpy(Hsub.transpose())
-        # self.Hsub_adjoint.weight.data = self.Hsub_adjoint.weight.data.float()
-        # self.Hsub_adjoint.weight.requires_grad = False
+        # adjoint (Replace by backward()?)
+        # self.H_adjoint = nn.Linear(self.M, self.N, False)
+        # self.H_adjoint.weight.data = torch.from_numpy(H.transpose())
+        # self.H_adjoint.weight.data = self.H_adjoint.weight.data.float()
+        # self.H_adjoint.weight.requires_grad = False
               
     def forward(self, x: torch.tensor) -> torch.tensor:
-        r""" Applies linear transform to incoming images: :math:`y = Hx`
+        r""" Applies linear transform to incoming images: :math:`y = Px`
         
         Args:
-            - :math:`x`: a batch of images
+            x: a batch of images
         
         Shape:
-            - Input: :math:`(b*c, h, w)` with :math:`b` the batch size, :math:`c` the 
+            x: :math:`(b*c, h, w)` with :math:`b` the batch size, :math:`c` the 
             number of channels, :math:`h` is the image height, and :math:`w` is the image 
             width.
 
-            - Output: :math:`(b*c, 2M, w)` with :math:`b` the batch size,
+            Output: :math:`(b*c, 2M, w)` with :math:`b` the batch size,
             :math:`c` the number of channels, :math:`2M` is twice the number of
             patterns (as it includes both positive and negative components), and 
             :math:`w` is the image width.
@@ -548,12 +576,48 @@ class LinearRowSplit(nn.Module):
         Example:
             >>> H_pos = np.random.rand(24,64)
             >>> H_neg = np.random.rand(24,64)
-            >>> A = LinearRowSplit(H_pos,H_neg)
-            >>> x = np.random.rand(10,64,92)
-            >>> y = A(x)
+            >>> linop = LinearRowSplit(H_pos,H_neg)
+            >>> x = torch.rand(10,64,92)
+            >>> y = linop(x)
             >>> print(y.shape)
             torch.Size([10,48,92])
          
         """
-        x = self.P @ x  
+        x = torch.transpose(x,1,2) #swap last two dimensions
+        x = self.P(x)
+        x = torch.transpose(x,1,2) #swap last two dimensions
+        return x
+    
+    def forward_H(self, x: torch.tensor) -> torch.tensor:
+        r""" Applies linear transform to incoming images: :math:`m = Hx`
+        
+        Args:
+            x: a batch of images
+        
+        Shape:
+            x: :math:`(b*c, h, w)` with :math:`b` the batch size, :math:`c` the 
+            number of channels, :math:`h` is the image height, and :math:`w` is the image 
+            width.
+
+            Output: :math:`(b*c, M, w)` with :math:`b` the batch size,
+            :math:`c` the number of channels, :math:`M` is the number of
+            patterns, and :math:`w` is the image width.
+            
+            .. warning::
+                The image height :math:`h` should match the length of the patterns 
+                :math:`N`
+
+        Example:
+            >>> H_pos = np.random.rand(24,64)
+            >>> H_neg = np.random.rand(24,64)
+            >>> linop = LinearRowSplit(H_pos,H_neg)
+            >>> x = torch.rand(10,64,92)
+            >>> y = linop.forward_H(x)
+            >>> print(y.shape)
+            torch.Size([10,24,92])
+         
+        """
+        x = torch.transpose(x,1,2) #swap last two dimensions
+        x = self.H(x)
+        x = torch.transpose(x,1,2) #swap last two dimensions
         return x

@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import math
-from spyrit.core.Forward_Operator import Forward_operator, Forward_operator_Split_ft_had, Forward_operator_Split
+from spyrit.core.Forward_Operator import Linear, LinearSplit, LinearRowSplit, HadamSplit
 import pdb
-
+from typing import Union
 
 class SplitPoisson(nn.Module):  
     r"""
@@ -13,16 +13,19 @@ class SplitPoisson(nn.Module):
         
         It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha}` and the variance
         :math:`var = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where 
-        `y_{+} = H_{+}x` and `y_{-} = H_{-}x` are obtained using a split
-        measurement operator (see :mod:`spyrit.core.LinearSplit`) 
+        :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using a 
+        split measurement operator (see :mod:`spyrit.core.LinearSplit`) and 
+        :math:`\alpha` is the image intensity.
             
         Args:
-            - :math:`\alpha` (float): maximun image intensity (in counts)
-            - :math:`M` (int): number of measurements
-            - :math:`N` (int): number of pixels in the image
+            alpha (float): maximun image intensity :math:`\alpha` (in counts)
+            
+            M (int): number of measurements :math:`M`
+            
+            N (int): number of pixels in the image :math:`N`
             
         Example:
-            >>> split_op = SplitPoisson(10, 400, 32*32)
+            >>> split_op = SplitPoisson(1.0, 400, 32*32)
 
     """
     def __init__(self, alpha: float, M: int, N: int):
@@ -34,32 +37,39 @@ class SplitPoisson(nn.Module):
         
         self.even_index = range(0,2*M,2)
         self.odd_index  = range(1,2*M,2)
-        
         self.max = nn.MaxPool1d(N)
 
-    def forward(self, x: torch.tensor , FO: Forward_operator_Split) -> torch.tensor:
+    def forward(self, 
+                x: torch.tensor, 
+                meas_op: Union[LinearSplit, HadamSplit],
+                ) -> torch.tensor:
         """ 
         Args:
-            - :math:`x`: Batch of images in Hadamard Domain
-            - :math:`FO`: Forward Operator
+            x: batch of images in the Hadamard domain 
+            meas_op: measurement operator
             
         Shape:
-            - Input: :math:`(b*c,2*M)`
-            - Output: :math:`(b*c,M)`
+            x: :math:`(b*c, 2M, N)` with :math:`b` the batch size, :math:`c` the 
+            number of channels, :math:`2M` is twice the number of patterns (as 
+            it includes both positive and negative components), and :math:`N` 
+            is the number of pixels in the image.
+            
+            meas_op: :math:`meas_op.M` should match :math:`self.M`
+            
+            Output: :math:`(b*c, M, N)`
             
         Example:
-            >>> x = torch.tensor(np.random.random([10,2*32*32]), dtype=torch.float)
-            >>> Hsub = np.array(np.random.random([400,32*32]))
-            >>> FO_Split = Forward_operator_Split(Hsub)
-            >>> y = SPP(x, FO_Split)
-            >>> print(y.shape)
+            >>> x = torch.tensor(np.random.random([10,2*400]), dtype=torch.float)
+            >>> H = np.random.random([400,32*32])
+            >>> forward_op =  LinearSplit(H)
+            >>> m = split_op(x, forward_op)
             torch.Size([10, 400])
 
         """
         # unsplit
         x = x[:,self.even_index] - x[:,self.odd_index]
         # normalize
-        x = 2*x/self.alpha - FO.Forward_op(torch.ones(x.shape[0], self.N).to(x.device))
+        x = 2*x/self.alpha - meas_op.H(torch.ones(x.shape[0], self.N).to(x.device))
         return x
     
     def sigma(self, x: torch.tensor) -> torch.tensor:
@@ -128,23 +138,23 @@ class SplitPoisson(nn.Module):
 
         return x
 
-    def sigma_from_image(self, x, FO):
+    def sigma_from_image(self, x, meas_op):
         r"""
         
         """
         # x - image. Input shape (b*c, N)
-        # FO - Forward operator.
+        # meas_op - meas_oprward operator.
         
-        x = FO.Forward_op(x);
+        x = meas_op.H(x);
         x = x[:,self.even_index] + x[:,self.odd_index]
         x = 4*x/(self.alpha) # here the alpha Contribution is not squared.
         return x
     
-    def forward_expe(self, x: torch.tensor, FO: Forward_operator_Split_ft_had) -> torch.tensor:
+    def forward_expe(self, x: torch.tensor, meas_op: LinearSplit) -> torch.tensor:
         r""" 
         Args:
             - :math:`x`: Batch of images
-            - :math:`FO`: Object of the class Forward_operator_Split_ft_had
+            - :math:`meas_op`: Object of the class Forward_operator_Split_ft_had
         
         Shape:
             - Input: :math:`(bc, 2M)`
@@ -169,13 +179,13 @@ class SplitPoisson(nn.Module):
         x = x[:,self.even_index] - x[:,self.odd_index]
         
         # estimate alpha #x_pinv = FO.adjoint(x)
-        x_pinv = FO.pinv(x)
+        x_pinv = meas_op.pinv(x)
         alpha_est = self.max(x_pinv)
         alpha_est = alpha_est.expand(bc,self.M) # shape is (b*c, M)
         
         # normalize
         x = torch.div(x, alpha_est)
-        x = 2*x - FO.Forward_op(torch.ones(bc, self.N).to(x.device))
+        x = 2*x - meas_op.H(torch.ones(bc, self.N).to(x.device))
         
         alpha_est = alpha_est[:,0]    # shape is (b*c,)
 
@@ -213,6 +223,73 @@ class SplitPoisson(nn.Module):
         x = (x+1)/2*norm
         
         return x
+    
+class SplitRowPoisson(nn.Module):  
+    r"""
+        Preprocess raw data acquired with a split measurement operator
+        
+        It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha}` and the variance
+        :math:`var = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where 
+        `y_{+} = H_{+}x` and `y_{-} = H_{-}x` are obtained using a split
+        measurement operator (see :mod:`spyrit.core.LinearRowSplit`) 
+            
+        Args:
+            :math:`\alpha` (float): maximun image intensity (in counts)
+            :math:`M` (int): number of measurements
+            :math:`h` (int): number of rows in the image, i.e., image height
+            
+        Example:
+            >>> split_op = SplitRawPoisson(2.0, 24, 64)
+
+    """
+    def __init__(self, alpha: float, M: int, h: int):
+        super().__init__()
+        self.alpha = alpha
+        self.M = M        
+        self.h = h
+        
+        self.even_index = range(0,2*M,2)
+        self.odd_index  = range(1,2*M,2)
+        #self.max = nn.MaxPool1d(h)
+
+    def forward(self, 
+                x: torch.tensor, 
+                meas_op: LinearRowSplit,
+                ) -> torch.tensor:
+        """ 
+        Args:
+            x: batch of images that are Hadamard transformed across rows 
+            meas_op: measurement operator
+            
+        Shape:
+            x: :math:`(b*c, 2M, w)` with :math:`b` the batch size, :math:`c` the 
+            number of channels, :math:`2M` is twice the number of patterns (as 
+            it includes both positive and negative components), and :math:`w` 
+            is the image width.
+            
+            meas_op: The number of measurement `meas_op.M` should match `M`,
+            while the length of the measurements :math:`meas_op.N` should match
+            image height :math:`h`.  
+            
+            Output: :math:`(b*c,M)`
+            
+        Example:
+            >>> x = torch.rand([10,48,64], dtype=torch.float)
+            >>> H_pos = np.random.random([24,64])
+            >>> H_neg = np.random.random([24,64])
+            >>> forward_op = LinearRowSplit(H_pos, H_neg)
+            >>> m = split_op(x, forward_op)
+            >>> print(m.shape)
+            torch.Size([10, 24, 64])
+
+        """
+        # unsplit
+        x = x[:,self.even_index] - x[:,self.odd_index]
+        # normalize
+        e = torch.ones([x.shape[0], meas_op.N, self.h], device=x.device)
+        x = 2*x/self.alpha - meas_op.forward_H(e)
+        return x
+    
 
 # ==================================================================================
 class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
@@ -244,7 +321,7 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
         self.N = N
         self.M = M
 
-    def forward(self, x: torch.tensor, FO: Forward_operator) -> torch.tensor:
+    def forward(self, x: torch.tensor, meas_op: Linear) -> torch.tensor:
         r"""  
         
             Warning:
@@ -252,7 +329,7 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
 
             Args:
                 - :math:`x`: Batch of images in Hadamard domain shifted by 1
-                - :math:`FO`: Forward_operator
+                - :math:`meas_op`: Forward_operator
 
             Shape:
                 - Input: :math:`(b*c, M+1)`
@@ -270,7 +347,7 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
         y = self.offset(x)
         x = 2*x[:,1:] - y.expand(x.shape[0],self.M) # Warning: dark measurement is the 0-th entry
         x = x/self.alpha
-        x = 2*x - FO.Forward_op(torch.ones(x.shape[0], self.N).to(x.device)) # to shift images in [-1,1]^N
+        x = 2*x - meas_op.H(torch.ones(x.shape[0], self.N).to(x.device)) # to shift images in [-1,1]^N
         return x
     
     def sigma(self, x):
@@ -298,10 +375,10 @@ class Preprocess_shift_poisson(nn.Module):      # header needs to be updated!
     def cov(self, x): #return a full matrix ? It is such that Diag(a) + b
         return x
 
-    def sigma_from_image(self, x, FO): # should check this!
+    def sigma_from_image(self, x, meas_op): # should check this!
         # input x is a set of images with shape (b*c, N)
-        # input FO is a Forward_operator
-        x = FO.Forward_op(x)
+        # input meas_op is a Forward_operator
+        x = meas_op.H(x)
         y = self.offset(x)
         x = x[:,1:] + y.expand(x.shape[0],self.M)
         x = x/(self.alpha)     # here the alpha contribution is not squared.
@@ -366,11 +443,11 @@ class Preprocess_pos_poisson(nn.Module):  # header needs to be updated!
         self.N = N
         self.M = M
 
-    def forward(self, x: torch.tensor, FO: Forward_operator) -> torch.tensor:
+    def forward(self, x: torch.tensor, meas_op: Linear) -> torch.tensor:
         r"""
         Args:
             - :math:`x`: noise level
-            - :math:`FO`: Forward_operator
+            - :math:`meas_op`: Forward_operator
 
         Shape:
             - Input1: :math:`(bc, M)`
@@ -379,16 +456,16 @@ class Preprocess_pos_poisson(nn.Module):  # header needs to be updated!
 
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
-            >>> FO = Forward_operator(Hsub)
+            >>> meas_op = Forward_operator(Hsub)
             >>> x = torch.tensor(np.random.random([10, 400]), dtype=torch.float)
-            >>> y = PPP(x, FO)
+            >>> y = PPP(x, meas_op)
             torch.Size([10, 400])
             
         """
         y = self.offset(x)
         x = 2*x - y.expand(-1,self.M)
         x = x/self.alpha
-        x = 2*x - FO.Forward_op(torch.ones(x.shape[0], self.N).to(x.device)) # to shift images in [-1,1]^N
+        x = 2*x - FO.H(torch.ones(x.shape[0], self.N).to(x.device)) # to shift images in [-1,1]^N
         return x
     
     def offset(self, x):
