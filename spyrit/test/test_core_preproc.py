@@ -7,7 +7,7 @@ Created on Wed Feb 15 15:19:24 2023
 #%% Test SplitPoisson
 import torch
 import numpy as np
-from spyrit.core.Forward_Operator import LinearSplit
+from spyrit.core.Forward_Operator import LinearSplit, HadamSplit
 from spyrit.core.Preprocess import SplitPoisson
 
 # constructor
@@ -16,11 +16,40 @@ split_op = SplitPoisson(10, 400, 32*32)
 # forward with LinearSplit
 x = torch.rand([10,2*400], dtype=torch.float)
 H = np.random.random([400,32*32])
-forward_op =  LinearSplit(H)
 
 # forward
+forward_op =  LinearSplit(H)
 m = split_op(x, forward_op)
 print(m.shape)
+
+# forward with HadamSplit
+Perm = np.random.random([32*32,32*32])
+forward_op = HadamSplit(H, Perm, 32, 32)
+m = split_op(x, forward_op)
+print(m.shape)
+
+# forward_expe
+m, alpha = split_op.forward_expe(x, forward_op)
+print(m.shape)
+print(alpha.shape)
+
+# sigma
+x = torch.rand([10,2*400], dtype=torch.float)
+v = split_op.sigma(x)
+print(v.shape)
+
+# set_expe
+split_op.set_expe(gain=1.6)
+print(split_op.gain)
+
+# sigma_expe
+v = split_op.sigma_expe(x)
+print(v.shape)
+
+# sigma_from_image
+x = torch.rand([10,32*32], dtype=torch.float)
+v = split_op.sigma_from_image(x, forward_op)
+print(v.shape)
 
 #%% Test SplitRowPoisson
 from spyrit.core.Forward_Operator import LinearRowSplit
