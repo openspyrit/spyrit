@@ -1,11 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
-import math
-from torch import poisson
-from collections import OrderedDict
-from spyrit.misc.walsh_hadamard import walsh2_torch, walsh_matrix
 from typing import Union
 
 # ==================================================================================
@@ -60,10 +55,10 @@ class Linear(nn.Module):
             the number of measurements.
             
         Example:        
-            >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
+            >>> x = torch.rand([10,1000], dtype=torch.float)
             >>> y = forward_op(x)
-            >>> print('Output shape of forward:', y.shape)
-            output shape: torch.Size([10, 400])
+            >>> print('forward:', y.shape)
+            forward: torch.Size([10, 400])
             
         """
         # x.shape[b*c,N]
@@ -84,8 +79,8 @@ class Linear(nn.Module):
         Example:
             >>> x = torch.rand([10,400], dtype=torch.float)        
             >>> y = forward_op.adjoint(x)
-            >>> print('Output shape of adjoint:', y.shape)
-            adjoint output shape: torch.Size([10, 1024])
+            >>> print('adjoint:', y.shape)
+            adjoint: torch.Size([10, 1000])
         """
         #Pmat.transpose()*f
         x = self.H_adjoint(x)        
@@ -99,25 +94,28 @@ class Linear(nn.Module):
         
         Example:     
             >>> H = forward_op.get_mat()
-            >>> print('Shape of the measurement matrix:', H.shape)     
+            >>> print('get_mat:', H.shape)
+            get_mat: torch.Size([400, 1000])
+            
         """
         return self.H.weight.data;
     
     def pinv(self, x: torch.tensor) -> torch.tensor:
-        r""" Inverse transform of x using Linear adjoint method.
+        r""" Pseudo inverse transform of incoming mesurement vectors :math:`x`
         
         Args:
-            :math:`x` :  batch of images
+            x:  batch of measurement vectors.
             
         Shape:
-            - Input: :math:`(b*c, N)` with :math:`b` the batch size, :math:`c` the number of channels, and :math:`N` the number of pixels in the image.
-            - Output: same as input.      
+            x: :math:`(*, M)`
+            
+            Output: :math:`(*, N)`
             
         Example:
-            >>> x = torch.Tensor(np.random.random([10,400]))  
-            >>> x_pinv = FO_Had.pinv(x)
-            >>> print(x_pinv.shape)
-            torch.Size([10, 1024])
+            >>> y = torch.rand([85,400], dtype=torch.float)  
+            >>> x = forward_op.pinv(y)
+            >>> print(x.shape)
+            torch.Size([85, 1024])
         """
         x = self.adjoint(x)/self.N
         return x
@@ -144,7 +142,7 @@ class LinearSplit(Linear):
         shape :math:`(M, N)`.
         
     Example:
-        >>> H = np.array(np.random.random([400,32*32]))
+        >>> H = np.array(np.random.random([400,1000]))
         >>> forward_op =  LinearSplit(H)
     """
 
@@ -184,12 +182,11 @@ class LinearSplit(Linear):
             Output: :math:`(*, 2M)` where * denotes the batch size and `M` 
             the number of measurements.
             
-        Example:        
-            >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
+        Example:
+            >>> x = torch.rand([10,1000], dtype=torch.float)
             >>> y = forward_op(x)
-            >>> print('Output shape of forward:', y.shape)
-            output shape: torch.Size([10, 800])
-            
+            >>> print('Output:', y.shape)
+            Output: torch.Size([10, 800])            
         """
         # x.shape[b*c,N]
         # output shape : [b*c, 2*M]
@@ -210,10 +207,10 @@ class LinearSplit(Linear):
             the number of measurements.
             
         Example:        
-            >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
+            >>> x = torch.rand([10,1000], dtype=torch.float)
             >>> y = forward_op(x)
-            >>> print('Output shape of forward:', y.shape)
-            output shape: torch.Size([10, 800])
+            >>> print('Output:', y.shape)
+            output shape: torch.Size([10, 400])
             
         """
         x = self.H(x)    
@@ -242,7 +239,7 @@ class HadamSplit(LinearSplit):
     
     Args:
         - H (np.ndarray): Matrix :math:`H` with shape :math:`(M, N)`
-        - Perm (np.ndarray): Permutation matrix :math:`G` with shape :math:`(N, N)`
+        - Perm (np.ndarray): Inverse permutation matrix :math:`G^{T}` with shape :math:`(N, N)`
         - h (int): Image height :math:`h`
         - w (int): Image width :math:`w`
         
@@ -258,57 +255,35 @@ class HadamSplit(LinearSplit):
                  Perm: np.ndarray, 
                  h: int, w: int) -> torch.tensor:
         
-        super().__init__(H);
+        super().__init__(H)
+        
         self.Perm = nn.Linear(self.N, self.N, False)
         self.Perm.weight.data=torch.from_numpy(Perm.T)
         self.Perm.weight.data=self.Perm.weight.data.float()
         self.Perm.weight.requires_grad=False
         self.h = h
         self.w = w
-        
-    def forward_H(self, x: torch.tensor) -> torch.tensor:
-        r""" Applies linear transform to incoming images: :math:`m = Hx`.
-    
-        Args:
-            :math:`x`: Batch of vectorized (flatten) images.
-            
-        Shape:
-            :math:`x`: :math:`(*, N)` where * denotes the batch size and `N` 
-            the total number of pixels in the image.
-            
-            Output: :math:`(*, M)` where * denotes the batch size and `M` 
-            the number of measurements.
-            
-        Example:        
-            >>> x = torch.rand([10,32*32], dtype=torch.float)
-            >>> y = forward_op(x)
-            >>> print('Output shape of forward:', y.shape)
-            output shape: torch.Size([10, 800])
-            
-        """
-        # Fast transform could be used here
-        x = self.H(x)    
-        return x
     
     def inverse(self, x: torch.tensor) -> torch.tensor:
-        r""" Inverse transform of Hadamard-domain images
+        r""" Inverse transform of Hadamard-domain images 
+        :math:`x = H_{had}^{-1}G y` is a Hadamard matrix.
         
-            Args:
-                :math:`x`:  batch of images in the Hadamard domain
-                
-            Shape:
-                :math:`x`: :math:`(b*c, N)` with :math:`b` the batch size, 
-                :math:`c` the number of channels, and :math:`N` the number of
-                pixels in the image.
-                
-                Output: math:`(b*c, N)`
-                
-            Example:
+        Args:
+            :math:`x`:  batch of images in the Hadamard domain
+            
+        Shape:
+            :math:`x`: :math:`(b*c, N)` with :math:`b` the batch size, 
+            :math:`c` the number of channels, and :math:`N` the number of
+            pixels in the image.
+            
+            Output: math:`(b*c, N)`
+            
+        Example:
 
-                >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)  
-                >>> x_inverse = FO_Had.inverse(x)
-                >>> print(x_inverse.shape)
-                torch.Size([10, 1024])
+            >>> y = torch.rand([85,32*32], dtype=torch.float)  
+            >>> x = forward_op.inverse(y)
+            >>> print('Inverse:', x.shape)
+            Inverse: torch.Size([85, 1024])
         """
         # permutations
         # todo: check walsh2_S_fold_torch to speed up

@@ -1,37 +1,38 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import numpy as np
-import math
 from spyrit.core.Forward_Operator import Linear, LinearSplit, LinearRowSplit, HadamSplit
-import pdb
 from typing import Union
 
-class SplitPoisson(nn.Module):  
+#==============================================================================
+class SplitPoisson(nn.Module):
+#==============================================================================
     r"""
-        Preprocess raw data acquired with a split measurement operator
+    Preprocess raw data acquired with a split measurement operator
+    
+    It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha}` and the variance
+    :math:`var = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where 
+    :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using a 
+    split measurement operator (see :mod:`spyrit.core.LinearSplit`) and 
+    :math:`\alpha` is the image intensity.
+    
+    It also compensates for the affine transformation applied to x to get 
+    positive intensities.
+
+    
+    Args:
+        alpha (float): maximun image intensity :math:`\alpha` (in counts)
         
-        It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha}` and the variance
-        :math:`var = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where 
-        :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using a 
-        split measurement operator (see :mod:`spyrit.core.LinearSplit`) and 
-        :math:`\alpha` is the image intensity.
-            
-        Args:
-            alpha (float): maximun image intensity :math:`\alpha` (in counts)
-            
-            M (int): number of measurements :math:`M`
-            
-            N (int): number of pixels in the image :math:`N`
-            
-        Example:
-            >>> split_op = SplitPoisson(1.0, 400, 32*32)
+        M (int): number of measurements :math:`M`
+        
+        N (int): number of pixels in the image :math:`N`
+        
+    Example:
+        >>> split_op = SplitPoisson(1.0, 400, 32*32)
 
     """
     def __init__(self, alpha: float, M: int, N: int):
         super().__init__()
         self.alpha = alpha
-                
         self.N = N
         self.M = M
         
@@ -43,28 +44,38 @@ class SplitPoisson(nn.Module):
                 x: torch.tensor, 
                 meas_op: Union[LinearSplit, HadamSplit],
                 ) -> torch.tensor:
-        """ 
+        r""" 
+        Preprocess to compensates for image normalization and splitting of the 
+        measurement operator.
+        
+        It computes :math:`\frac{x[0::2]-x[1::2]}{\alpha}`
+        
         Args:
-            x: batch of images in the Hadamard domain 
-            meas_op: measurement operator
+            :attr:`x`: batch of images in the Hadamard domain 
+            
+            :attr:`meas_op`: measurement operator
             
         Shape:
-            x: :math:`(b*c, 2M, N)` with :math:`b` the batch size, :math:`c` the 
-            number of channels, :math:`2M` is twice the number of patterns (as 
-            it includes both positive and negative components), and :math:`N` 
-            is the number of pixels in the image.
+            x: :math:`(*, 2M)`
             
-            meas_op: :math:`meas_op.M` should match :math:`self.M`
+            meas_op: the number of measurements :attr:`meas_op.M` should match
+            :math:`M`.
             
-            Output: :math:`(b*c, M, N)`
+            Output: :math:`(*, M)`
             
         Example:
-            >>> x = torch.tensor(np.random.random([10,2*400]), dtype=torch.float)
+            >>> x = torch.rand([10,2*400], dtype=torch.float)
             >>> H = np.random.random([400,32*32])
             >>> forward_op =  LinearSplit(H)
             >>> m = split_op(x, forward_op)
             torch.Size([10, 400])
-
+            
+        Example 2:
+            >>> Perm = np.random.random([32*32,32*32])
+            >>> forward_op = HadamSplit(H, Perm, 32, 32)
+            >>> m = split_op(x, forward_op)
+            >>> print(m.shape)
+            torch.Size([10, 400])
         """
         # unsplit
         x = x[:,self.even_index] - x[:,self.odd_index]
@@ -72,40 +83,107 @@ class SplitPoisson(nn.Module):
         x = 2*x/self.alpha - meas_op.H(torch.ones(x.shape[0], self.N).to(x.device))
         return x
     
-    def sigma(self, x: torch.tensor) -> torch.tensor:
-        r"""
-        returns variance.
+    def forward_expe(self, 
+                     x: torch.tensor, 
+                     meas_op: Union[LinearSplit, HadamSplit]
+                     ) -> tuple[torch.tensor, torch.tensor]:
+        r""" 
+        Preprocess to compensate for image normalization and splitting of the 
+        measurement operator.
+        
+        It computes :math:`m = \frac{x[0::2]-x[1::2]}{\alpha}`, where 
+        :math:`\alpha = \max H^\dagger (x[0::2]-x[1::2])`. 
+        
+        Contrary to :meth:`~forward`, the image intensity :math:`\alpha` 
+        is estimated from the pseudoinverse of the unsplit measurements. This 
+        method is typically called for the reconstruction of experimental 
+        measurements, while :meth:`~forward` is called in simulations. 
+        
+        The method returns a tuple containing both :math:`m` and :math:`\alpha`
         
         Args:
-            - :math:`x`: Batch of images in Hadamard Domain
+            :attr:`x`: batch of measurement vectors
+            
+            :attr:`meas_op`: measurement operator (required to estimate 
+            :math:`\alpha`)
+                
+            Output (:math:`m`, :math:`\alpha`): preprocess measurement and estimated 
+            intensities.
+        
+        Shape:
+            x: :math:`(*, 2M)`
+            
+            meas_op: the number of measurements :attr:`meas_op.M` should match
+            :math:`M`.
+            
+            :math:`m`: :math:`(*, M)`
+            
+            :math:`\alpha`: :math:`(*)` 
+        
+        Example:
+            >>> Perm = np.random.random([32*32,32*32])
+            >>> forward_op = HadamSplit(H, Perm, 32, 32)
+            >>> m, alpha = split_op.forward_expe(x, forward_op)
+            >>> print(m.shape)
+            >>> print(alpha.shape)
+            torch.Size([10, 400])
+            torch.Size([10])
+        """
+        bc = x.shape[0]
+        
+        # unsplit
+        x = x[:,self.even_index] - x[:,self.odd_index]
+        
+        # estimate alpha
+        x_pinv = meas_op.pinv(x)
+        alpha = self.max(x_pinv)
+        alpha = alpha.expand(bc,self.M) # shape is (b*c, M)
+        
+        # normalize
+        x = torch.div(x, alpha)
+        x = 2*x - meas_op.H(torch.ones(bc, self.N).to(x.device))
+        
+        alpha = alpha[:,0]    # shape is (b*c,)
+
+        return x, alpha
+    
+    def sigma(self, x: torch.tensor) -> torch.tensor:
+        r""" Estimates the variance of the preprocessed measurements 
+        
+        The variance is estimated as :math:`\frac{4}{\alpha^2} H(x[0::2]+x[1::2])`
+        
+        Args:
+            :attr:`x`: batch of images in the Hadamard domain
             
         Shape:
-            - Input: :math:`(b*c,2*M)`
-            - Output: :math:`(b*c, M)`
+            - Input: :math:`(*,2*M)`
+            - Output: :math:`(*, M)`
             
         Example:
-            >>> x = torch.tensor(np.random.random([10,2*32*32]), dtype=torch.float)
-            >>> Sig_x = SPP.sigma(x)
-            >>> print(Sig_x.shape)
+            >>> x = torch.rand([10,2*400], dtype=torch.float)
+            >>> v = split_op.sigma(x)
+            >>> print(v.shape)
             torch.Size([10, 400])
             
         """
-        # Input shape (b*c, 2*M)
-        # output shape (b*c, M)
-        x = x[:,self.even_index] + x[:,self.odd_index];
-        x = 4*x/(self.alpha**2); # Cov is in [-1,1] so *4
+        x = x[:,self.even_index] + x[:,self.odd_index]
+        x = 4*x/(self.alpha**2) # Cov is in [-1,1] so *4
         return x
     
-    def set_expe(self, gain=1, mudark=0, sigdark=0, nbin=1):
+    def set_expe(self, gain=1.0, mudark=0.0, sigdark=0.0, nbin=1.0):
         r"""
-        set experimental noise parameters
+        Sets experimental parameters of the sensor
         
         Args:        
-            - gain in count/electron
-            - mudark: average dark current in counts
-            - sigdark: standard deviation or dark current in counts
-            - nbin: number of raw bin in each spectral channel (if input x results from the sommation/binning of the raw data)
-                  
+            - :attr:`gain` (float): gain (in count/electron)
+            - :attr:`mudark` (float): average dark current (in counts)
+            - :attr:`sigdark` (float): standard deviation or dark current (in counts)
+            - :attr:`nbin` (float): number of raw bin in each spectral channel (if input x results from the sommation/binning of the raw data)
+        
+        Example:
+            >>> split_op.set_expe(gain=1.6)
+            >>> print(split_op.gain)
+            1.6
         """
         self.gain = gain
         self.mudark = mudark
@@ -115,19 +193,23 @@ class SplitPoisson(nn.Module):
         
     def sigma_expe(self, x: torch.tensor) -> torch.tensor:
         r"""
-        returns estimated variance of **NOT** normalized measurements
+        Estimates the variance of the measurements that are compensated for 
+        splitting but **NOT** for image normalization
+        
         
         Args:
-            - :math:`x`: Batch of images in Hadamard Domain.
+            :attr:`x`: Batch of images in the Hadamard domain.
             
         Shape:
-            - Input: :math:`(b*c,2*M)`
-            - Output: :math:`(b*c, M)`
+            Input: :math:`(*,2*M)`
+            
+            Output: :math:`(*, M)`
             
         Example:
-            >>> x = torch.tensor(np.random.random([10,2*32*32]), dtype=torch.float)
-            >>> Sig_exp_x = SPP.sigma_expe(x)
-            >>> print(Sig_exp_x.shape)
+            >>> x = torch.rand([10,2*32*32], dtype=torch.float)
+            >>> split_op.set_expe(gain=1.6)
+            >>> v = split_op.sigma_expe(x)
+            >>> print(v.shape)
             torch.Size([10, 400])
         """
         # Input shape (b*c, 2*M)
@@ -138,62 +220,50 @@ class SplitPoisson(nn.Module):
 
         return x
 
-    def sigma_from_image(self, x, meas_op):
+    def sigma_from_image(self, 
+                         x: torch.tensor, 
+                         meas_op: Union[LinearSplit, HadamSplit]
+                         )-> torch.tensor:
         r"""
+        Estimates the variance of the preprocessed measurements corresponding
+        to images through a measurement operator
         
-        """
-        # x - image. Input shape (b*c, N)
-        # meas_op - meas_oprward operator.
+        The variance is estimated as 
+        :math:`\frac{4}{\alpha} \{(Px)[0::2] + (Px)[1::2]\}`
         
-        x = meas_op.H(x);
-        x = x[:,self.even_index] + x[:,self.odd_index]
-        x = 4*x/(self.alpha) # here the alpha Contribution is not squared.
-        return x
-    
-    def forward_expe(self, x: torch.tensor, meas_op: LinearSplit) -> torch.tensor:
-        r""" 
         Args:
-            - :math:`x`: Batch of images
-            - :math:`meas_op`: Object of the class Forward_operator_Split_ft_had
-        
+            :attr:`x`: Batch of images
+            
+            :attr:`meas_op`: Measurement operator 
+            
         Shape:
-            - Input: :math:`(bc, 2M)`
-            - Output: :math:`(bc, M)`
-        
+            :attr:`x`: :math:`(*,N)`
+            
+            :attr:`meas_op`: An operator such that :attr:`meas_op.N` :math:`=N` 
+            and :attr:`meas_op.M` :math:`=M`
+            
+            Output: :math:`(*, M)`
+            
         Example:
-            >>> Hsub = np.array(np.random.random([400,32*32]))
+            >>> x = torch.rand([10,32*32], dtype=torch.float)
             >>> Perm = np.random.random([32*32,32*32])
-            >>> FO_Split_ft_had = Forward_operator_Split_ft_had(Hsub, Perm, 32, 32)
-            >>> xsub = torch.tensor(np.random.random([10, 2*400]), dtype=torch.float)
-            >>> y_FE, alpha_est = SPP.forward_expe(xsub, FO_Split_ft_had)
-            >>> print(y_FE.shape)
-            >>> print(alpha_est)
+            >>> forward_op = HadamSplit(H, Perm, 32, 32)
+            >>> v = split_op.sigma_from_image(x, forward_op)
+            >>> print(v.shape)
             torch.Size([10, 400])
-            tensor([0.0251, 0.0228, 0.0232, 0.0294, 0.0248, 0.0245, 0.0184, 0.0253, 0.0267,
-                    0.0282])
-
-        """
-        bc = x.shape[0]
         
-        # unsplit
-        x = x[:,self.even_index] - x[:,self.odd_index]
-        
-        # estimate alpha #x_pinv = FO.adjoint(x)
-        x_pinv = meas_op.pinv(x)
-        alpha_est = self.max(x_pinv)
-        alpha_est = alpha_est.expand(bc,self.M) # shape is (b*c, M)
-        
-        # normalize
-        x = torch.div(x, alpha_est)
-        x = 2*x - meas_op.H(torch.ones(bc, self.N).to(x.device))
-        
-        alpha_est = alpha_est[:,0]    # shape is (b*c,)
-
-        return x, alpha_est
+        """        
+        x = meas_op(x);
+        x = x[:,self.even_index] + x[:,self.odd_index]
+        x = 4*x/self.alpha  # here alpha should not be squared
+        return x
    
     
     def denormalize_expe(self, x, norm, h, w):
         r""" 
+        
+        [todo]
+        
         Args:
             - :math:`x`: Batch of expanded images.
             - :math:`norm`: normalizarion values.
@@ -223,8 +293,9 @@ class SplitPoisson(nn.Module):
         x = (x+1)/2*norm
         
         return x
-    
-class SplitRowPoisson(nn.Module):  
+#==============================================================================    
+class SplitRowPoisson(nn.Module):
+#==============================================================================
     r"""
         Preprocess raw data acquired with a split measurement operator
         
@@ -465,7 +536,7 @@ class Preprocess_pos_poisson(nn.Module):  # header needs to be updated!
         y = self.offset(x)
         x = 2*x - y.expand(-1,self.M)
         x = x/self.alpha
-        x = 2*x - FO.H(torch.ones(x.shape[0], self.N).to(x.device)) # to shift images in [-1,1]^N
+        x = 2*x - meas_op.H(torch.ones(x.shape[0], self.N).to(x.device)) # to shift images in [-1,1]^N
         return x
     
     def offset(self, x):
