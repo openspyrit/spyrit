@@ -259,38 +259,40 @@ class SplitPoisson(nn.Module):
         return x
    
     
-    def denormalize_expe(self, x, norm, h, w):
+    def denormalize_expe(self, x, beta, h, w):
         r""" 
+        Denormalize images from the range [-1;1] to the range [0; :math:`\beta`]
         
-        [todo]
+        It computes :math:`m = \frac{\beta}{2}(x+1)`, where 
+        :math:`\beta` is the normalization factor. 
         
         Args:
-            - :math:`x`: Batch of expanded images.
-            - :math:`norm`: normalizarion values.
-            - :math:`h, w`: image height and width.
+            - :attr:`x`: Batch of images
+            - :attr:`beta`: Normalizarion factor
+            - :attr:`h`: Image height
+            - :attr:`w`: Image width
         
         Shape:
-            - Input1: :math:`(bc, 1, h, w)`
-            - Input2: :math:`(1, bc)`
-            - Input3: int
-            - Input4: int
-            - Output: :math:`(bc, 1, h, w)`
+            - :attr:`x`: :math:`(*, 1, h, w)`
+            - :attr:`beta`: :math:`(*)` or :math:`(*, 1)` 
+            - :attr:`h`: int
+            - :attr:`w`: int
+            - Output: :math:`(*, 1, h, w)`
         
         Example:
-            >>> x = torch.tensor(np.random.random([10, 32*32]), dtype=torch.float)
-            >>> x1 = x.view(10,1,h,w)
-            >>> norm = 9*torch.tensor(np.random.random([1,10]))
-            >>> y_DE = SPP.denormalize_expe(x1, norm, 32, 32)
-            print(y_DE.shape)
+            >>> x = torch.rand([10, 1, 32,32], dtype=torch.float)
+            >>> beta = 9*torch.rand([10])
+            >>> y = split_op.denormalize_expe(x, beta, 32, 32)
+            >>> print(y.shape)
             torch.Size([10, 1, 32, 32])
                         
         """
         bc = x.shape[0]
         
         # Denormalization
-        norm = norm.view(bc,1,1,1)
-        norm = norm.expand(bc,1,h,w)
-        x = (x+1)/2*norm
+        beta = beta.view(bc,1,1,1)
+        beta = beta.expand(bc,1,h,w)
+        x = (x+1)/2*beta
         
         return x
 #==============================================================================    
