@@ -9,10 +9,9 @@ Created on Mon Feb 13 18:04:11 2023
 #%% 
 import torch
 import numpy as np
-#from spyrit.misc.walsh_hadamard import walsh_matrix
 
 #%% Test Linear
-from spyrit.core.Forward_Operator import Linear
+from spyrit.core.forwop import Linear
 
 # constructor
 H = np.array(np.random.random([400,1000]))
@@ -38,7 +37,7 @@ x = forward_op.pinv(y)
 print('pinv:', x.shape)
 
 #%% Test LinearSplit
-from spyrit.core.Forward_Operator import LinearSplit
+from spyrit.core.forwop import LinearSplit
 
 # constructor
 H = np.array(np.random.random([400,1000]))
@@ -69,7 +68,7 @@ x = forward_op.pinv(y)
 print('Pinv:', x.shape)
 
 #%% Test HadamSplit
-from spyrit.core.Forward_Operator import HadamSplit
+from spyrit.core.forwop import HadamSplit
 
 # constructor
 H = np.array(np.random.random([400,32*32]))
@@ -106,7 +105,7 @@ x = forward_op.inverse(y)
 print('Inverse:', x.shape)
 
 #%% Test LinearRowSplit
-from spyrit.core.Forward_Operator import LinearRowSplit
+from spyrit.core.forwop import LinearRowSplit
 
 # constructor
 H_pos = np.random.rand(24,64)

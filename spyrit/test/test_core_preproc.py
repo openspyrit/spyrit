@@ -7,8 +7,8 @@ Created on Wed Feb 15 15:19:24 2023
 #%% Test SplitPoisson
 import torch
 import numpy as np
-from spyrit.core.Forward_Operator import LinearSplit, HadamSplit
-from spyrit.core.Preprocess import SplitPoisson
+from spyrit.core.forwop import LinearSplit, HadamSplit
+from spyrit.core.preproc import SplitPoisson
 
 # constructor
 split_op = SplitPoisson(10, 400, 32*32)
@@ -58,8 +58,8 @@ y = split_op.denormalize_expe(x, beta, 32, 32)
 print(y.shape)
 
 #%% Test SplitRowPoisson
-from spyrit.core.Forward_Operator import LinearRowSplit
-from spyrit.core.Preprocess import SplitRowPoisson
+from spyrit.core.forwop import LinearRowSplit
+from spyrit.core.preproc import SplitRowPoisson
 
 # constructor
 split_op = SplitRowPoisson(2.0, 24, 64)

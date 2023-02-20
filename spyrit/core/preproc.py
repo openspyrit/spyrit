@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from spyrit.core.Forward_Operator import Linear, LinearSplit, LinearRowSplit, HadamSplit
+from spyrit.core.forwop import Linear, LinearSplit, LinearRowSplit, HadamSplit
 from typing import Union
 
 #==============================================================================
