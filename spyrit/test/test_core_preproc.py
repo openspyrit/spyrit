@@ -51,6 +51,12 @@ x = torch.rand([10,32*32], dtype=torch.float)
 v = split_op.sigma_from_image(x, forward_op)
 print(v.shape)
 
+# denormalize_expe
+x = torch.rand([10, 1, 32,32], dtype=torch.float)
+beta = 9*torch.rand([10,1])
+y = split_op.denormalize_expe(x, beta, 32, 32)
+print(y.shape)
+
 #%% Test SplitRowPoisson
 from spyrit.core.Forward_Operator import LinearRowSplit
 from spyrit.core.Preprocess import SplitRowPoisson
