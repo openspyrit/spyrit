@@ -6,54 +6,73 @@ import math
 from torch import poisson
 from collections import OrderedDict
 from spyrit.misc.walsh_hadamard import walsh2_torch, walsh_matrix
-from spyrit.core.Forward_Operator import *
-import pdb
+from spyrit.core.forwop import Linear, LinearSplit, LinearRowSplit, HadamSplit
+from typing import Union
 
 # =====================================================================================================================
 # Acquisition
 # =====================================================================================================================       
 class Acquisition(nn.Module):
     r"""
-        Simulates acquisition by applying Forward_operator to a scaled image such that :math:`y = H_{sub}\frac{1+x}{2}`.
+        Simulates measurements from images in the range [0;1] by computing  
+        :math:`y = \frac{1}{2} H(1+x)`.
+        
+        .. note::
+            Assumes that incoming images :math:`x` are in the range [-1;1]
+            
+        The class is constructed from a forward operator (see 
+        :mod:`spyrit.core.forwop`)
         
         Args:
-            - :math:`FO` : Forward_operator
-            
-        Shape:
-            - Input: Non-applicable.
+            - :attr:`forward_op` : Forward operator 
                 
         Example:
-            >>> Hsub = np.array(np.random.random([400,32*32]))
-            >>> Forward_OP = Forward_operator(Hsub)
-            >>> Acq = Acquisition(FO)
+            >>> H =np.random.random([400,32*32])
+            >>> linear_op = Linear(H)
+            >>> linear_acq = Acquisition(linear_op)
+            
+        Example:
+            >>> H = np.random.random([400,32*32])
+            >>> Perm = np.random.random([32*32,32*32])
+            >>> split_op = HadamSplit(H, Perm, 32, 32)
+            >>> split_acq = Acquisition(split_op)
+            
+            
     """
-    def __init__(self, FO: Forward_operator):
+    def __init__(self, forward_op: Union[Linear, 
+                                         LinearSplit, 
+                                         HadamSplit, 
+                                         LinearRowSplit]):
         super().__init__()
-        # FO = forward operator
-        self.FO = FO
+        self.forward_op = forward_op
     
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
+        Simulates measurements
+        
+        
         Args:
-            :math:`x`: Batch of images.
+            :attr:`x`: Batch of images
             
         Shape:
-            - Input: :math:`(b*c, N)` 
-            - Output: :math:`(b*c, M)`
+            - :attr:`x`: :math:`(*, N)` 
+            - :attr:`Output`: :math:`(*, M)`
             
         Example:
-            >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
-            >>> y = Acq(x)
+            >>> x = torch.rand([10,32*32], dtype=torch.float)
+            >>> y = linear_acq(x)
             >>> print(y.shape)
             torch.Size([10, 400])
             
+        Example:
+            >>> x = torch.rand([10,32*32], dtype=torch.float)
+            >>> y = split_acq(x)
+            >>> print(y.shape)
+            torch.Size([10, _00])
+            
         """
-        # input x.shape - [b*c,h*w] - [b*c,N] 
-        # output x.shape - [b*c,M] 
-        #--Scale input image
         x = (x+1)/2; 
-        x = self.FO.forward(x); 
-        # x is the product of Hsub-sampled*f ?
+        x = self.forward_op(x)
         return x
 
 # ==================================================================================
@@ -76,7 +95,7 @@ class Acquisition_Poisson_approx_Gauss(Acquisition):
 
     """
 # ==================================================================================    
-    def __init__(self, alpha: float, FO: Forward_operator):
+    def __init__(self, alpha: float, FO):
         super().__init__(FO)
         self.alpha = alpha
         
