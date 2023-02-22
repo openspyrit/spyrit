@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from spyrit.core.Forward_Operator import Linear, LinearSplit, LinearRowSplit, HadamSplit
-from typing import Union
+from spyrit.core.forwop import Linear, LinearSplit, LinearRowSplit, HadamSplit
+from typing import Union, Tuple
 
 #==============================================================================
 class SplitPoisson(nn.Module):
@@ -86,7 +86,7 @@ class SplitPoisson(nn.Module):
     def forward_expe(self, 
                      x: torch.tensor, 
                      meas_op: Union[LinearSplit, HadamSplit]
-                     ) -> tuple[torch.tensor, torch.tensor]:
+                     ) -> Tuple[torch.tensor, torch.tensor]:
         r""" 
         Preprocess to compensate for image normalization and splitting of the 
         measurement operator.

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from typing import Union
+from spyrit.misc.walsh_hadamard import walsh2_torch
 
 # ==================================================================================
 class Linear(nn.Module):
