@@ -23,12 +23,12 @@ class Pinv_orthogonal(nn.Module): # For A.T @ A  = n*Id (ex : Hadamard, Fourier.
         # FO = Forward Operator
         #-- Pseudo-inverse to determine levels of noise.
         
-    def forward(self, x: torch.tensor, FO: Forward_operator) -> torch.tensor:
+    def forward(self, x: torch.tensor, FO: Linear) -> torch.tensor:
         r""" Orthogonal Inverse.
         
             Args:
                 - :math:`x`: Batch of measurements
-                - :math:`FO`: Forward_operator
+                - :math:`FO`: Forward_Operator
 
             Shape:
                 - Input1: :math:`(b*c, M)`
@@ -36,9 +36,9 @@ class Pinv_orthogonal(nn.Module): # For A.T @ A  = n*Id (ex : Hadamard, Fourier.
                 - Output: :math:`(b*c, N)`
 
             Example:
-                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> from spyrit.core.Forward_Operator import Linear
                 >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> FO = Forward_operator(Hsub)
+                >>> FO = Linear(Hsub)
                 >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float)
                 >>> y = Pinv_ortho(x, FO)
                 >>> print(y.shape)
@@ -72,13 +72,13 @@ class learned_measurement_to_image(nn.Module):
         # FO = Forward Operator
         self.FC = nn.Linear(M, N, True) # FC - fully connected
         
-    def forward(self, x: torch.tensor, FO : Forward_operator= None ) -> torch.tensor:
+    def forward(self, x: torch.tensor, FO : Linear= None ) -> torch.tensor:
         
         r""" Measurement to image.
 
             Args:
                 - :math:`x`: Batch of measurements
-                - :math:`FO`: Forward_operator
+                - :math:`FO`: Forward_Operator
 
             Shape:
                 - Input1: :math:`(b*c, M)`
@@ -86,9 +86,9 @@ class learned_measurement_to_image(nn.Module):
                 - Output: :math:`(b*c, N)`
 
             Example:
-                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> from spyrit.core.Forward_Operator import Linear
                 >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> FO = Forward_operator(Hsub)
+                >>> FO = Linear(Hsub)
                 >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float)
                 >>> y = Meas_to_Img(x, FO)
                 >>> print(y.shape)
@@ -122,13 +122,13 @@ class gradient_step(nn.Module):
         self.mu = nn.Parameter(torch.tensor([mu], requires_grad=True)) #need device maybe?
         # if user wishes to keep mu constant, then he can change requires gard to false 
         
-    def forward(self, x: torch.tensor, x_0: torch.tensor, FO: Forward_operator) -> torch.tensor:
+    def forward(self, x: torch.tensor, x_0: torch.tensor, FO: Linear) -> torch.tensor:
         r""" Gradient step
 
             Args:
                 - :math:`x`: measurement vector
                 - :math:`x_{0}`: previous estimate
-                - :math:`FO`: Forward_operator
+                - :math:`FO`: Forward_Operator
 
             Shape:
                 - Input1: :math:`(b*c, M)`
@@ -136,9 +136,9 @@ class gradient_step(nn.Module):
                 - Output: :math:`(b*c, N)`
 
             Example:
-                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> from spyrit.core.Forward_Operator import Linear
                 >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> FO = Forward_operator(Hsub)
+                >>> FO = Linear(Hsub)
                 >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> x_0 = torch.tensor(np.random.random([10,32*32]), dtype=torch.float) 
                 >>> y = GS(x, x_0, FO)
@@ -174,7 +174,7 @@ class Tikhonov_cg(nn.Module):
         self.eps = eps;
         # self.FO = FO
 
-    def A(self,x: torch.tensor, FO: Forward_operator) -> torch.tensor:
+    def A(self,x: torch.tensor, FO: Linear) -> torch.tensor:
         r"""
             Args:
                 - :math:`x`: Batch of measurements
@@ -185,9 +185,9 @@ class Tikhonov_cg(nn.Module):
                 - Output: :math:`(b*c, M)`
             
             Example:
-                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> from spyrit.core.Forward_Operator import Linear
                 >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> FO = Forward_operator(Hsub)
+                >>> FO = Linear(Hsub)
                 >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> y = TIK.A(x)
                 >>> print(y.shape)
@@ -196,7 +196,7 @@ class Tikhonov_cg(nn.Module):
         """
         return FO.Forward_op(FO.adjoint(x)) + self.mu*x
 
-    def CG(self, y: torch.tensor, FO: Forward_operator, shape: tuple, device: torch.device) -> torch.tensor:
+    def CG(self, y: torch.tensor, FO: Linear, shape: tuple, device: torch.device) -> torch.tensor:
         r"""
             Args:
                 - :math:`y`: Batch of measurements
@@ -209,9 +209,9 @@ class Tikhonov_cg(nn.Module):
                 - Output: :math:`(b*c, M)`
             
             Example:
-                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> from spyrit.core.Forward_Operator import Linear
                 >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> FO = Forward_operator(Hsub)
+                >>> FO = Linear(Hsub)
                 >>> y = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
                 >>> x = TIK.CG(y, FO, y.shape, device)
@@ -237,13 +237,13 @@ class Tikhonov_cg(nn.Module):
                 kold = k
         return x
         
-    def forward(self, x: torch.tensor, x_0: torch.tensor, FO: Forward_operator) -> torch.tensor:
+    def forward(self, x: torch.tensor, x_0: torch.tensor, FO: Linear) -> torch.tensor:
         r"""
         
             Args:
                 - :math:`x`: measurement vector
                 - :math:` x_{0}`: previous estimate
-                - :math:`FO`: Forward_operator
+                - :math:`FO`: Forward_Operator
                 
             Shape:
                 - Input1: :math:`(bc, M)`
@@ -251,9 +251,9 @@ class Tikhonov_cg(nn.Module):
                 - Output: :math:`(bc, N)`
                 
             Example:
-                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> from spyrit.core.Forward_Operator import Linear
                 >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> FO = Forward_operator(Hsub)            
+                >>> FO = Linear(Hsub)
                 >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> x_0 = torch.tensor(np.random.random([10,32*32]), dtype=torch.float) 
                 >>> y = TIK(x, x_0, FO)
@@ -303,20 +303,20 @@ class Tikhonov_solve(nn.Module):
         #-- Pseudo-inverse to determine levels of noise.
         self.mu = nn.Parameter(torch.tensor([float(mu)], requires_grad=True)) #need device maybe?
     
-    def solve(self, x: torch.tensor, FO: Forward_operator) -> torch.tensor:
+    def solve(self, x: torch.tensor, FO: Linear) -> torch.tensor:
         r"""
             Agrs:
                 - :math:`x`: measurement vector
-                - :math:`FO`: Forward_operator
+                - :math:`FO`: Forward_Operator
                 
             Shape:
                 - Input1: :math:`(bc, M)`
                 - Ouput: :math:`(bc, M)`
                 
             Example:
-                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> from spyrit.core.Forward_Operator import Linear
                 >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> FO = Forward_operator(Hsub)
+                >>> FO = Linear(Hsub)
                 >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> y = TIK_solve.solve(x, FO)
                 >>> print(y.shape)
@@ -329,12 +329,12 @@ class Tikhonov_solve(nn.Module):
         x = torch.linalg.solve(A, x);
         return x;
 
-    def forward(self, x: torch.tensor, x_0: torch.tensor, FO: Forward_operator) -> torch.tensor:
+    def forward(self, x: torch.tensor, x_0: torch.tensor, FO: Linear) -> torch.tensor:
         r"""
             Args:
                 - :math:`x`: measurement vector
                 - :math:`x_{0}`: previous estimate
-                - :math:`FO`: Forward_operator
+                - :math:`FO`: Forward_Operator
                 
             Shape:
                 - Input1: :math:`(bc, M)`
@@ -342,9 +342,9 @@ class Tikhonov_solve(nn.Module):
                 - Output: :math:`(bc, N)`
                 
             Example:
-                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> from spyrit.core.Forward_Operator import Linear
                 >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> FO = Forward_operator(Hsub)            
+                >>> FO = Linear(Hsub)
                 >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> x_0 = torch.tensor(np.random.random([10,32*32]), dtype=torch.float) 
                 >>> y = TIK_solve(x, x_0, FO)
@@ -394,9 +394,9 @@ class Orthogonal_Tikhonov(nn.Module):
                 - Output: :math:`(bc, N)`
                 
             Example:
-                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> from spyrit.core.Forward_Operator import Linear
                 >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> FO = Forward_operator(Hsub)            
+                >>> FO = Linear(Hsub)
                 >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> x_0 = torch.tensor(np.random.random([10,32*32]), dtype=torch.float) 
                 >>> y = Orth_TIK(x, x_0, FO)
@@ -448,12 +448,12 @@ class Generalised_Tikhonov_cg(nn.Module):# not inheriting from Tikhonov_cg becau
         self.eps = eps;
 
 
-    def A(self,x: torch.tensor, var: torch.tensor, FO: Forward_operator) -> torch.tensor:
+    def A(self,x: torch.tensor, var: torch.tensor, FO: Linear) -> torch.tensor:
         r"""
             Args:
                 - :math:`x`: measurement vector
                 - :math:`var`: noise variance
-                - :math:`FO`: Forward_operator
+                - :math:`FO`: Forward_Operator
             
             Shape:
                 - Input1: :math:`(bc, M)`
@@ -461,9 +461,9 @@ class Generalised_Tikhonov_cg(nn.Module):# not inheriting from Tikhonov_cg becau
                 - Output: :math:`(bc, M)`
             
             Example:
-                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> from spyrit.core.Forward_Operator import Linear
                 >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> FO = Forward_operator(Hsub)            
+                >>> FO = Linear(Hsub)
                 >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> var = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> y = General_TIK.A(x, var, FO)
@@ -472,12 +472,12 @@ class Generalised_Tikhonov_cg(nn.Module):# not inheriting from Tikhonov_cg becau
         """
         return FO.Forward_op(self.Sigma_prior(FO.adjoint(x))) + torch.mul(x,var); # the first part can be precomputed for optimisation
 
-    def CG(self, y: torch.tensor, var: torch.tensor, FO: Forward_operator, shape: tuple, device: torch.device) -> torch.tensor:
+    def CG(self, y: torch.tensor, var: torch.tensor, FO: Linear, shape: tuple, device: torch.device) -> torch.tensor:
         r"""
             Args:
                 - :math:`y`: measurement vector
                 - :math:`var`: measurement variance
-                - :math:`FO`: Forward_operator
+                - :math:`FO`: Forward_Operator
                 - shape: measurement vector shape
                 - device: cpu or gpu
                 
@@ -487,9 +487,9 @@ class Generalised_Tikhonov_cg(nn.Module):# not inheriting from Tikhonov_cg becau
                 - Output: :math:`(bc, M)`
                 
             Example:
-                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> from spyrit.core.Forward_Operator import Linear
                 >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> FO = Forward_operator(Hsub)            
+                >>> FO = Linear(Hsub)
                 >>> y = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> var = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -516,13 +516,13 @@ class Generalised_Tikhonov_cg(nn.Module):# not inheriting from Tikhonov_cg becau
                 kold = k
         return x
         
-    def forward(self, x: torch.tensor, x_0: torch.tensor, var_noise: torch.tensor, FO: Forward_operator) -> torch.tensor:
+    def forward(self, x: torch.tensor, x_0: torch.tensor, var_noise: torch.tensor, FO: Linear) -> torch.tensor:
         r"""
             Args:
                 - :math:`x`: measurement vector
                 - :math:`x_{0}`: previous estimate
                 - :math:`var_noise`: estimated variance of noise
-                - :math:`FO`: Forward_operator
+                - :math:`FO`: Forward_Operator
                 
             Shape:
                 - Input1: :math:`(bc, M)`
@@ -531,9 +531,9 @@ class Generalised_Tikhonov_cg(nn.Module):# not inheriting from Tikhonov_cg becau
                 - Output: :math:`(bc, N)`
                 
             Example:
-                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> from spyrit.core.Forward_Operator import Linear
                 >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> FO = Forward_operator(Hsub)            
+                >>> FO = Linear(Hsub)
                 >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> x_0 = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
                 >>> var_noise = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
@@ -574,12 +574,12 @@ class Generalised_Tikhonov_solve(nn.Module):
         self.Sigma_prior = nn.Parameter(\
                 torch.from_numpy(Sigma_prior.astype("float32")), requires_grad=True)
 
-    def solve(self, x: torch.tensor, var: torch.tensor, FO: Forward_operator) -> torch.tensor:
+    def solve(self, x: torch.tensor, var: torch.tensor, FO: Linear) -> torch.tensor:
         r"""
             Args:
                 - :math:`x`: measurement vector
                 - :math:`var`: measurement variance
-                - :math:`FO`: Forwrad_operator
+                - :math:`FO`: Forward_Operator
                 
             Shape:
                 - Input1: :math:`(bc, M)`
@@ -587,9 +587,9 @@ class Generalised_Tikhonov_solve(nn.Module):
                 - Output: :math:`(bc, M)`
                 
             Example:
-                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> from spyrit.core.Forward_Operator import Linear
                 >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> FO = Forward_operator(Hsub)            
+                >>> FO = Linear(Hsub)
                 >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> var = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> y = General_TIK_solve.solve(x, var, FO)
@@ -604,13 +604,13 @@ class Generalised_Tikhonov_solve(nn.Module):
         x = torch.linalg.solve(A, x);
         return x;
 
-    def forward(self, x: torch.tensor, x_0: torch.tensor, var_noise: torch.tensor, FO: Forward_operator) -> torch.tensor:
+    def forward(self, x: torch.tensor, x_0: torch.tensor, var_noise: torch.tensor, FO: Linear) -> torch.tensor:
         r"""
             Args:
                 - :math:`x`: measurement vector
                 - :math:`x_{0}`: previous estimate
                 - :math:`var_noise`: estimated variance of noise
-                - :math:`FO`: Forward_oprator
+                - :math:`FO`: Forward_Oprator
                 
             Shape:
                 - Input1: :math:`(bc, M)`
@@ -619,9 +619,9 @@ class Generalised_Tikhonov_solve(nn.Module):
                 - Output: :math:`(bc, N)`
                 
             Example:                
-                >>> from spyrit.core.Forward_Operator import Forward_operator
+                >>> from spyrit.core.Forward_Operator import Linear
                 >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> FO = Forward_operator(Hsub)            
+                >>> FO = Linear(Hsub)
                 >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> x_0 = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
                 >>> var_noise = torch.tensor(np.random.random([10,400]), dtype=torch.float)    
@@ -689,13 +689,13 @@ class Generalized_Orthogonal_Tikhonov(nn.Module): # todo: rename with _diag
         self.comp.weight.data=self.comp.weight.data.float()
         self.comp.weight.requires_grad=False
         
-    def forward(self, x: torch.tensor, x_0: torch.tensor, var: torch.tensor, FO: Forward_operator_Split_ft_had) -> torch.tensor:
+    def forward(self, x: torch.tensor, x_0: torch.tensor, var: torch.tensor, FO: HadamSplit) -> torch.tensor:
         r"""
             Args:
                 - :math:`x`: measurement vector
                 - :math:`x_{0}`: previous estimate
                 - :math:`var`: measurement variance
-                - :math:`FO`: Forward_operator
+                - :math:`FO`: Forward_Operator
                 
             Shape:
                 - Input1: :math:`(bc, M)`
@@ -704,10 +704,10 @@ class Generalized_Orthogonal_Tikhonov(nn.Module): # todo: rename with _diag
                 - Output: :math:`(bc, N)`
                 
             Example:
-                >>> from spyrit.core.Forward_Operator import Forward_operator_Split_ft_had
+                >>> from spyrit.core.Forward_Operator import HadamSplit
                 >>> Hsub = np.array(np.random.random([400,32*32]))
                 >>> Perm = np.array(np.random.random([32*32,32*32]))
-                >>> FO_Split_ft_had = Forward_operator_Split_ft_had(Hsub, Perm, 32, 32)            
+                >>> FO_Split_ft_had = HadamSplit(Hsub, Perm, 32, 32)
                 >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
                 >>> x_0 = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
                 >>> var = torch.tensor(np.random.random([10,400]), dtype=torch.float) 

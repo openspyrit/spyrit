@@ -14,20 +14,20 @@ import pdb
 # =====================================================================================================================       
 class Acquisition(nn.Module):
     r"""
-        Simulates acquisition by applying Forward_operator to a scaled image such that :math:`y = H_{sub}\frac{1+x}{2}`.
+        Simulates acquisition by applying Linear from Forward_Operator to a scaled image such that :math:`y = H_{sub}\frac{1+x}{2}`.
         
         Args:
-            - :math:`FO` : Forward_operator
+            - :math:`FO` : Forward_Operator
             
         Shape:
             - Input: Non-applicable.
                 
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
-            >>> Forward_OP = Forward_operator(Hsub)
+            >>> Forward_OP = Linear(Hsub)
             >>> Acq = Acquisition(FO)
     """
-    def __init__(self, FO: Forward_operator):
+    def __init__(self, FO: Linear):
         super().__init__()
         # FO = forward operator
         self.FO = FO
@@ -71,12 +71,12 @@ class Acquisition_Poisson_approx_Gauss(Acquisition):
         
     Example:
         >>> Hsub = np.array(np.random.random([400,32*32]))
-        >>> Forward_OP = Forward_operator(Hsub)
+        >>> Forward_OP = Linear(Hsub)
         >>> Acq_Poisson_approx_Gauss = Acquisition_Poisson_approx_Gauss(9, Forward_OP)
 
     """
 # ==================================================================================    
-    def __init__(self, alpha: float, FO: Forward_operator):
+    def __init__(self, alpha: float, FO: Linear):
         super().__init__(FO)
         self.alpha = alpha
         
@@ -128,7 +128,7 @@ class Acquisition_Poisson_GaussApprox_sameNoise(Acquisition):
         
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
-            >>> Forward_OP = Forward_operator(Hsub)
+            >>> Forward_OP = Linear(Hsub)
             >>> APGA_SN = Acquisition_Poisson_GaussApprox_sameNoise(9, FO)
     """
     def __init__(self, alpha, FO):
@@ -173,7 +173,7 @@ class Acquisition_Poisson(Acquisition):
     
     Example:
         >>> Hsub = np.array(np.random.random([400,32*32]))
-        >>> FO = Forward_operator(Hsub)
+        >>> FO = Linear(Hsub)
         >>> Acq_Poisson = Acquisition_Poisson(9, FO)
     
     """
@@ -183,9 +183,10 @@ class Acquisition_Poisson(Acquisition):
 
     def forward(self, x):
         r""" Simulates acquisition of images with scaling and Poisson noise simulation.
+        
         Args:
             - :math:`x`: Batch of images
-        
+            
         Shape:
             - Input: :math:`(b*c, N)`
             - Output: :math:`(b*c, M)`
@@ -206,5 +207,4 @@ class Acquisition_Poisson(Acquisition):
         
         #--Measurement noise imported from Pytorch
         x = poisson(x) 
-        return x           
-    
+        return x
