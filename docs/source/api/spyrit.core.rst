@@ -12,14 +12,6 @@ spyrit.core.noise module
    :undoc-members:
    :show-inheritance:
 
-spyrit.core.Data\_Consistency module
------------------------------------------------------------------------------
-
-.. automodule:: spyrit.core.Data_Consistency
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 spyrit.core.forwop module
 -------------------------------------------
 
