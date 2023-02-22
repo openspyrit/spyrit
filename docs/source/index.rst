@@ -6,9 +6,11 @@
 SPyRiT's documentation
 ==================================
 
-SPYRIT is a [PyTorch](https://pytorch.org/)-based toolbox for deep image reconstruction. While SPYRIT was originally designed for single-pixel image reconstruction, it can solve any linear reconstruction problem.
+SPYRIT is a `PyTorch <https://pytorch.org/>`-based package for deep image 
+reconstruction. While it was primarily designed for single-pixel image 
+reconstruction, it can solve other linear reconstruction problems.
 
-
+Link text <https://domain.invalid/>
 
 .. toctree::
    :maxdepth: 2

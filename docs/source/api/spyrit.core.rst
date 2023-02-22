@@ -4,34 +4,26 @@ spyrit.core package
 Submodules
 ----------
 
-spyrit.core.Acquisition module
+spyrit.core.noise module
 -----------------------------------------------------------------------------
 
-.. automodule:: spyrit.core.Acquisition
+.. automodule:: spyrit.core.noise
    :members:
    :undoc-members:
    :show-inheritance:
 
-spyrit.core.Data\_Consistency module
------------------------------------------------------------------------------
-
-.. automodule:: spyrit.core.Data_Consistency
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-spyrit.core.Forward\_Operator module
+spyrit.core.forwop module
 -------------------------------------------
 
-.. automodule:: spyrit.core.Forward_Operator
+.. automodule:: spyrit.core.forwop
    :members:
    :undoc-members:
    :show-inheritance:
 
-spyrit.core.Preprocess module
+spyrit.core.preproc module
 -------------------------------------------
 
-.. automodule:: spyrit.core.Preprocess
+.. automodule:: spyrit.core.preproc
    :members:
    :undoc-members:
    :show-inheritance:
