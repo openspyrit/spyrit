@@ -86,7 +86,7 @@ class SplitPoisson(nn.Module):
     def forward_expe(self, 
                      x: torch.tensor, 
                      meas_op: Union[LinearSplit, HadamSplit]
-                     ) -> tuple[torch.tensor, torch.tensor]:
+                     ) -> Tuple[torch.tensor, torch.tensor]:
         r""" 
         Preprocess to compensate for image normalization and splitting of the 
         measurement operator.
