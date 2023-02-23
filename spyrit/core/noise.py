@@ -20,15 +20,15 @@ class NoNoise(nn.Module):
     :mod:`~spyrit.core.forwop` submodule)
     
     Args:
-        - :attr:`meas_op` : Measurement operator (see the
+        :attr:`meas_op` : Measurement operator (see the
         :mod:`~spyrit.core.forwop` submodule)
             
-    Example 1: Using a :meth:`~spyrit.core.forwop.Linear` measurement operator
+    Example 1: Using a :class:`~spyrit.core.forwop.Linear` measurement operator
         >>> H =np.random.random([400,32*32])
         >>> linear_op = Linear(H)
         >>> linear_acq = NoNoise(linear_op)
         
-    Example 2: Using a :meth:`~spyrit.core.forwop.HadamSplit` measurement operator
+    Example 2: Using a :class:`~spyrit.core.forwop.HadamSplit` measurement operator
         >>> H = np.random.random([400,32*32])
         >>> Perm = np.random.random([32*32,32*32])
         >>> split_op = HadamSplit(H, Perm, 32, 32)
@@ -53,13 +53,13 @@ class NoNoise(nn.Module):
             - :attr:`x`: :math:`(*, N)` 
             - :attr:`Output`: :math:`(*, M)`
             
-        Example 1: Using a :meth:`~spyrit.core.forwop.Linear` measurement operator
+        Example 1: Using a :class:`~spyrit.core.forwop.Linear` measurement operator
             >>> x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
             >>> y = linear_acq(x)
             >>> print(y.shape)
             torch.Size([10, 400])
             
-        Example 2: Using a :meth:`~spyrit.core.forwop.HadamSplit` measurement operator
+        Example 2: Using a :class:`~spyrit.core.forwop.HadamSplit` measurement operator
             >>> x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
             >>> y = split_acq(x)
             >>> print(y.shape)
@@ -90,18 +90,18 @@ class Poisson(NoNoise):
         
         :attr:`alpha` (float): Image intensity (in photoelectrons) 
             
-    Example 1: Using a :meth:`~spyrit.core.forwop.Linear` measurement operator
+    Example 1: Using a :class:`~spyrit.core.forwop.Linear` measurement operator
         >>> H =np.random.random([400,32*32])
         >>> linear_op = Linear(H)
         >>> linear_acq = Poisson(linear_op, 10.0)
         
-    Example 2: Using a :meth:`~spyrit.core.forwop.HadamSplit` measurement operator
+    Example 2: Using a :class:`~spyrit.core.forwop.HadamSplit` measurement operator
         >>> H = np.random.random([400,32*32])
         >>> Perm = np.random.random([32*32,32*32])
         >>> split_op = HadamSplit(H, Perm, 32, 32)
         >>> split_acq = Poisson(split_op, 200.0)
         
-    Example 3: Using a :meth:`~spyrit.core.forwop.LinearRowSplit` measurement operator
+    Example 3: Using a :class:`~spyrit.core.forwop.LinearRowSplit` measurement operator
         >>> H_pos = np.random.rand(24,64)
         >>> H_neg = np.random.rand(24,64)
         >>> split_row_op = LinearRowSplit(H_pos,H_neg)
@@ -125,7 +125,7 @@ class Poisson(NoNoise):
             - :attr:`x`: :math:`(*, N)` 
             - :attr:`Output`: :math:`(*, M)`
             
-        Example 1: Using a :meth:`~spyrit.core.forwop.Linear` measurement operator
+        Example 1: Two noisy measurement vectors from a :class:`~spyrit.core.forwop.Linear` measurement operator
             >>> H = np.random.random([400,32*32])
             >>> meas_op = Linear(H)
             >>> noise_op = Poisson(meas_op, 10.0)
@@ -139,7 +139,7 @@ class Poisson(NoNoise):
             Measurements in (2249.00 , 2896.00)
             Measurements in (2237.00 , 2880.00)
             
-        Example 2: Two noisy measurement vectors from a :meth:`~spyrit.core.forwop.HadamSplit` operator
+        Example 2: Two noisy measurement vectors from a :class:`~spyrit.core.forwop.HadamSplit` operator
             >>> Perm = np.random.random([32*32,32*32])
             >>> meas_op = HadamSplit(H, Perm, 32, 32)
             >>> noise_op = Poisson(meas_op, 200.0)
@@ -153,7 +153,7 @@ class Poisson(NoNoise):
             Measurements in (0.00 , 55338.00)
             Measurements in (0.00 , 55077.00)
             
-        Example 3: Two noisy measurement vectors from a :meth:`~spyrit.core.forwop.LinearRowSplit` operator
+        Example 3: Two noisy measurement vectors from a :class:`~spyrit.core.forwop.LinearRowSplit` operator
             >>> H_pos = np.random.rand(24,64)
             >>> H_neg = np.random.rand(24,64)
             >>> meas_op = LinearRowSplit(H_pos,H_neg)
@@ -200,17 +200,17 @@ class PoissonApproxGauss(NoNoise):
         
         :attr:`alpha` (float): Image intensity (in photoelectrons) 
     
-    Example 1: Using a :meth:`~spyrit.core.forwop.Linear` measurement operator
+    Example 1: Using a :class:`~spyrit.core.forwop.Linear` measurement operator
         >>> H = np.random.random([400,32*32])
         >>> meas_op = Linear(H)
         >>> noise_op = PoissonApproxGauss(meas_op, 10.0)
         
-    Example 2: Two noisy measurement vectors from a :meth:`~spyrit.core.forwop.HadamSplit` operator    
+    Example 2: Using a :class:`~spyrit.core.forwop.HadamSplit` operator    
         >>> Perm = np.random.random([32*32,32*32])
         >>> meas_op = HadamSplit(H, Perm, 32, 32)
         >>> noise_op = PoissonApproxGauss(meas_op, 200.0)
         
-    Example 3: Two noisy measurement vectors from a :meth:`~spyrit.core.forwop.LinearRowSplit` operator
+    Example 3: Using a :class:`~spyrit.core.forwop.LinearRowSplit` operator
         >>> H_pos = np.random.rand(24,64)
         >>> H_neg = np.random.rand(24,64)
         >>> meas_op = LinearRowSplit(H_pos,H_neg)
@@ -234,7 +234,7 @@ class PoissonApproxGauss(NoNoise):
             - :attr:`x`: :math:`(*, N)` 
             - :attr:`Output`: :math:`(*, M)`
             
-        Example 1: Using a :meth:`~spyrit.core.forwop.Linear` measurement operator
+        Example 1: Two noisy measurement vectors from a :class:`~spyrit.core.forwop.Linear` measurement operator
             >>> H = np.random.random([400,32*32])
             >>> meas_op = Linear(H)
             >>> noise_op = PoissonApproxGauss(meas_op, 10.0)
@@ -248,7 +248,7 @@ class PoissonApproxGauss(NoNoise):
             Measurements in (2255.57 , 2911.18)
             Measurements in (2226.49 , 2934.42)
             
-        Example 2: Two noisy measurement vectors from a :meth:`~spyrit.core.forwop.HadamSplit` operator    
+        Example 2: Two noisy measurement vectors from a :class:`~spyrit.core.forwop.HadamSplit` operator    
             >>> Perm = np.random.random([32*32,32*32])
             >>> meas_op = HadamSplit(H, Perm, 32, 32)
             >>> noise_op = PoissonApproxGauss(meas_op, 200.0)
@@ -262,7 +262,7 @@ class PoissonApproxGauss(NoNoise):
             Measurements in (0.00 , 55951.41)
             Measurements in (0.00 , 56216.86)
             
-        Example 3: Two noisy measurement vectors from a :meth:`~spyrit.core.forwop.LinearRowSplit` operator
+        Example 3: Two noisy measurement vectors from a :class:`~spyrit.core.forwop.LinearRowSplit` operator
             >>> H_pos = np.random.rand(24,64)
             >>> H_neg = np.random.rand(24,64)
             >>> meas_op = LinearRowSplit(H_pos,H_neg)
@@ -307,12 +307,12 @@ class PoissonApproxGaussSameNoise(NoNoise):
         
         :attr:`alpha` (float): Image intensity (in photoelectrons) 
     
-    Example 1: Using a :meth:`~spyrit.core.forwop.Linear` measurement operator
+    Example 1: Using a :class:`~spyrit.core.forwop.Linear` measurement operator
         >>> H = np.random.random([400,32*32])
         >>> meas_op = Linear(H)
         >>> noise_op = PoissonApproxGaussSameNoise(meas_op, 10.0)
         
-    Example 2: Two noisy measurement vectors from a :meth:`~spyrit.core.forwop.HadamSplit` operator    
+    Example 2: Using a :class:`~spyrit.core.forwop.HadamSplit` operator    
         >>> Perm = np.random.random([32*32,32*32])
         >>> meas_op = HadamSplit(H, Perm, 32, 32)
         >>> noise_op = PoissonApproxGaussSameNoise(meas_op, 200.0)
@@ -334,7 +334,7 @@ class PoissonApproxGaussSameNoise(NoNoise):
             - :attr:`x`: :math:`(*, N)` 
             - :attr:`Output`: :math:`(*, M)`
             
-        Example 1: Using a :meth:`~spyrit.core.forwop.Linear` measurement operator
+        Example 1: Two noisy measurement vectors from a :class:`~spyrit.core.forwop.Linear` measurement operator
             >>> H = np.random.random([400,32*32])
             >>> meas_op = Linear(H)
             >>> noise_op = PoissonApproxGaussSameNoise(meas_op, 10.0)
@@ -348,7 +348,7 @@ class PoissonApproxGaussSameNoise(NoNoise):
             Measurements in (2255.57 , 2911.18)
             Measurements in (2226.49 , 2934.42)
             
-        Example 2: Two noisy measurement vectors from a :meth:`~spyrit.core.forwop.HadamSplit` operator    
+        Example 2: Two noisy measurement vectors from a :class:`~spyrit.core.forwop.HadamSplit` operator    
             >>> Perm = np.random.random([32*32,32*32])
             >>> meas_op = HadamSplit(H, Perm, 32, 32)
             >>> noise_op = PoissonApproxGaussSameNoise(meas_op, 200.0)
