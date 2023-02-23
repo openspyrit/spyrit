@@ -302,14 +302,14 @@ class SplitRowPoisson(nn.Module):
         Preprocess raw data acquired with a split measurement operator
         
         It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha}` and the variance
-        :math:`var = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where 
-        `y_{+} = H_{+}x` and `y_{-} = H_{-}x` are obtained using a split
-        measurement operator (see :mod:`spyrit.core.LinearRowSplit`) 
+        :math:`\sigma^2 = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where 
+        :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using 
+        a split measurement operator such as :class:`spyrit.core.LinearRowSplit`.
             
         Args:
-            :math:`\alpha` (float): maximun image intensity (in counts)
-            :math:`M` (int): number of measurements
-            :math:`h` (int): number of rows in the image, i.e., image height
+            - :math:`\alpha` (float): maximun image intensity (in counts)
+            - :math:`M` (int): number of measurements
+            - :math:`h` (int): number of rows in the image, i.e., image height
             
         Example:
             >>> split_op = SplitRawPoisson(2.0, 24, 64)
