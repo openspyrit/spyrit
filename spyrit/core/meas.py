@@ -22,7 +22,7 @@ class Linear(nn.Module):
         
         Example:
             >>> H = np.array(np.random.random([400, 1000]))
-            >>> forward_op = Linear(H)
+            >>> meas_op = Linear(H)
     """
 
     def __init__(self, H: np.ndarray):  
@@ -57,7 +57,7 @@ class Linear(nn.Module):
             
         Example:        
             >>> x = torch.rand([10,1000], dtype=torch.float)
-            >>> y = forward_op(x)
+            >>> y = meas_op(x)
             >>> print('forward:', y.shape)
             forward: torch.Size([10, 400])
             
@@ -79,7 +79,7 @@ class Linear(nn.Module):
             
         Example:
             >>> x = torch.rand([10,400], dtype=torch.float)        
-            >>> y = forward_op.adjoint(x)
+            >>> y = meas_op.adjoint(x)
             >>> print('adjoint:', y.shape)
             adjoint: torch.Size([10, 1000])
         """
@@ -94,33 +94,13 @@ class Linear(nn.Module):
             Output: :math:`(M, N)`
         
         Example:     
-            >>> H = forward_op.get_mat()
+            >>> H = meas_op.get_mat()
             >>> print('get_mat:', H.shape)
             get_mat: torch.Size([400, 1000])
             
         """
         return self.H.weight.data;
     
-    def pinv(self, x: torch.tensor) -> torch.tensor:
-        r""" Pseudo inverse transform of incoming mesurement vectors :math:`x`
-        
-        Args:
-            x:  batch of measurement vectors.
-            
-        Shape:
-            x: :math:`(*, M)`
-            
-            Output: :math:`(*, N)`
-            
-        Example:
-            >>> y = torch.rand([85,400], dtype=torch.float)  
-            >>> x = forward_op.pinv(y)
-            >>> print(x.shape)
-            torch.Size([85, 1024])
-        """
-        x = self.adjoint(x)/self.N
-        return x
-
 # ==================================================================================
 class LinearSplit(Linear):
 # ==================================================================================
@@ -144,7 +124,7 @@ class LinearSplit(Linear):
         
     Example:
         >>> H = np.array(np.random.random([400,1000]))
-        >>> forward_op =  LinearSplit(H)
+        >>> meas_op =  LinearSplit(H)
     """
 
     def __init__(self, H: np.ndarray): 
@@ -185,7 +165,7 @@ class LinearSplit(Linear):
             
         Example:
             >>> x = torch.rand([10,1000], dtype=torch.float)
-            >>> y = forward_op(x)
+            >>> y = meas_op(x)
             >>> print('Output:', y.shape)
             Output: torch.Size([10, 800])            
         """
@@ -209,7 +189,7 @@ class LinearSplit(Linear):
             
         Example:        
             >>> x = torch.rand([10,1000], dtype=torch.float)
-            >>> y = forward_op(x)
+            >>> y = meas_op.forward_H(x)
             >>> print('Output:', y.shape)
             output shape: torch.Size([10, 400])
             
@@ -249,7 +229,7 @@ class HadamSplit(LinearSplit):
     Example:
         >>> H = np.array(np.random.random([400,32*32]))
         >>> Perm = np.random.random([32*32,32*32])
-        >>> forward_op =  HadamSplit(H, Perm, 32, 32)
+        >>> meas_op =  HadamSplit(H, Perm, 32, 32)
     """
     def __init__(self, 
                  H: np.ndarray, 
@@ -282,7 +262,7 @@ class HadamSplit(LinearSplit):
         Example:
 
             >>> y = torch.rand([85,32*32], dtype=torch.float)  
-            >>> x = forward_op.inverse(y)
+            >>> x = meas_op.inverse(y)
             >>> print('Inverse:', x.shape)
             Inverse: torch.Size([85, 1024])
         """
@@ -296,6 +276,27 @@ class HadamSplit(LinearSplit):
         x = 1/self.N*walsh2_torch(x)       
         x = x.view(b, N);
         return x
+    
+    def pinv(self, x: torch.tensor) -> torch.tensor:
+        r""" Pseudo inverse transform of incoming mesurement vectors :math:`x`
+        
+        Args:
+            :attr:`x`:  batch of measurement vectors.
+            
+        Shape:
+            x: :math:`(*, M)`
+            
+            Output: :math:`(*, N)`
+            
+        Example:
+            >>> y = torch.rand([85,400], dtype=torch.float)  
+            >>> x = meas_op.pinv(y)
+            >>> print(x.shape)
+            torch.Size([85, 1024])
+        """
+        x = self.adjoint(x)/self.N
+        return x
+
 
 # ==================================================================================
 class Linear_shift(Linear):
@@ -372,7 +373,7 @@ class Linear_pos(Linear):
         Example:
             >>> Hsub = np.array(np.random.random([400,32*32]))
             >>> Perm = np.array(np.random.random([32*32,32*32]))
-            >>> Forward_OP_pos = Linear_pos(Hsub, Perm)
+            >>> meas_op_pos = Linear_pos(Hsub, Perm)
     """
     def __init__(self, Hsub, Perm):           
         super().__init__(Hsub)
@@ -395,7 +396,7 @@ class Linear_pos(Linear):
             
         Example:
             >>> x = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
-            >>> y = Forward_OP_pos(x)
+            >>> y = meas_op_pos(x)
             >>> print(y.shape)
             torch.Size([100, 400]) 
         """
