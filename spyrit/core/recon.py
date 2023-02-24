@@ -124,26 +124,28 @@ class TikhonovMeasurementPriorDiag(nn.Module):
                 var: torch.tensor, 
                 meas_op: HadamSplit) -> torch.tensor:
         r"""
-        The exact solution is given by
         
-        .. math::
-            \hat{x} &= x_0 + F^{-1}\begin{bmatrix}\Sigma_1 \\ \Sigma_{21} \end{bmatrix}
-                      [\Sigma_1 + \Sigma_\alpha]^{-1} (y - GF x_0)
-            
-        where the covariance prior is         
-        :math:`\Sigma = \begin{bmatrix} \Sigma_1 & \Sigma_{21}^\top \\ \Sigma_{21} & \Sigma_2\end{bmatrix}`
-        
-        To accelerate the computation of the exact solution, which is dominated
-        by a matrix inversion that cannot be precomputed when the measurement
-        noise covariance is not known in advance, we compute
+        We approximate the solution as
         
         .. math::
             \hat{x} = x_0 + F^{-1} \begin{bmatrix} y_1 \\ y_2\end{bmatrix}
         
         with :math:`y_1 = D_1(D_1 + \Sigma_\alpha)^{-1} (y - GF x_0)` and 
-        :math:`y_2 = \Sigma_1 \Sigma_{21}^{-1} y_1`, where we choose 
-        :math:`D_1 =\textrm{Diag}(\Sigma_1)`. Assuming :math:`\Sigma_\alpha`  
-        is diagonal, the inversion is straigtforward.
+        :math:`y_2 = \Sigma_1 \Sigma_{21}^{-1} y_1`, where 
+        :math:`\Sigma = \begin{bmatrix} \Sigma_1 & \Sigma_{21}^\top \\ \Sigma_{21} & \Sigma_2\end{bmatrix}`
+        and  :math:`D_1 =\textrm{Diag}(\Sigma_1)`. Assuming the noise 
+        covariance :math:`\Sigma_\alpha` is diagonal, the matrix inversion 
+        involded in the computation of :math:`y_1` is straigtforward.
+        
+        This is an approximation to the exact solution
+        
+        .. math::
+            \hat{x} &= x_0 + F^{-1}\begin{bmatrix}\Sigma_1 \\ \Sigma_{21} \end{bmatrix}
+                      [\Sigma_1 + \Sigma_\alpha]^{-1} (y - GF x_0)
+            
+        
+        See Lemma B.0.5 of the PhD dissertation of A. Lorente Mur (2021): 
+        https://theses.hal.science/tel-03670825v1/file/these.pdf
         
         Args:
             - :attr:`x`: A batch of measurement vectors :math:`y`
