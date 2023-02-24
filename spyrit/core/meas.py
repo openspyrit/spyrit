@@ -215,8 +215,11 @@ class HadamSplit(LinearSplit):
         :math:`H = H_{+} - H_{-}`
     
     The matrix :math:`H` is obtained by retaining the first :math:`M` rows of 
-    a permuted Hadamard matrix :math:`G H_{had}`, where :math:`G` is a 
-    permutation matrix and :math:`H_{had}` is a Hadamard matrix.
+    a permuted Hadamard matrix :math:`GF`, where :math:`G` is a 
+    permutation matrix with shape with shape :math:`(M,N)` and :math:`F` is a 
+    "full" Hadamard matrix with shape :math:`(N,N)`. The computation of a
+    Hadamard transform :math:`Fx` benefits a fast algorithm, as well as the
+    computation of inverse Hadamard transforms.
     
     Args:
         - H (np.ndarray): Matrix :math:`H` with shape :math:`(M, N)`
@@ -274,7 +277,7 @@ class HadamSplit(LinearSplit):
         # inverse of full transform
         # todo: initialize with 1D transform to speed up
         x = 1/self.N*walsh2_torch(x)       
-        x = x.view(b, N);
+        x = x.view(b, N)
         return x
     
     def pinv(self, x: torch.tensor) -> torch.tensor:

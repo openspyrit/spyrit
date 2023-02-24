@@ -15,13 +15,22 @@ import math
 # ==================================================================================
 class PseudoInverse(nn.Module):
 # ==================================================================================
-    r""" Pseudoinverse of orthogonal operators.
+    r""" Moore-Penrose Pseudoinverse
     
-        Args:
-            - None
+    Considering linear measurements :math:`y = Hx`, where :math:`H` is the
+    measurement matrix and :math:`x` is a vectorized image, it estimates 
+    :math:`x` from :math:`y` by computing :math:`\hat{x} = H^\dagger y`, where 
+    :math:`H` is the Moore-Penrose pseudo inverse of :math:`H`.
 
-        Example:
-            >>> pinv_op = PseudoInverse()
+    Example:
+        >>> H = np.random.random([400,32*32])
+        >>> Perm = np.random.random([32*32,32*32])
+        >>> meas_op =  HadamSplit(H, Perm, 32, 32)
+        >>> y = torch.rand([85,400], dtype=torch.float)  
+        >>> pinv_op = PseudoInverse()
+        >>> x = pinv_op(y, meas_op)
+        >>> print(x.shape)
+        torch.Size([85, 1024])
     """
     def __init__(self):
         super().__init__()
@@ -32,10 +41,11 @@ class PseudoInverse(nn.Module):
         Args:
             :attr:`x`: Batch of measurement vectors.
             
-            :attr:`meas_op`: Measurement operator. Only tested with
-            :class:`~spyrit.core.forwop.HadamSplit`, but any class that 
-            implements a :meth:`pinv` method can be used.
-
+            :attr:`meas_op`: Measurement operator. Any class that 
+            implements a :meth:`pinv` method can be used, e.g.,
+            :class:`~spyrit.core.forwop.HadamSplit`. 
+        Shape:
+            
             :attr:`x`: :math:`(*, M)`
             
             :attr:`meas_op`: not applicable
@@ -56,43 +66,52 @@ class PseudoInverse(nn.Module):
         return x
     
 # ===========================================================================================
-class TikhonovDiagonal(nn.Module): 
+class TikhonovMeasurementPriorDiag(nn.Module): 
 # ===========================================================================================   
     r"""
-        Args:
-            - :math:`\sigma_{prior}`:  covariance matrix
-            - :math:`M`: number of measurements
-            - :math:`N`: image pixels
-        
-        Shape:
-            - Input1: :math:`(N, N)`
-            - Input2: scalar
-            - Input3: scalar
-        
-        
-        Example:
-            >>> Sigma_prior = Sigma_prior = np.array(np.random.random([32*32, 32*32]))
-            >>> General_Orth_TIK = Generalized_Orthogonal_Tikhonov(Sigma_prior, 400, 32*32)
-            
+    Tikhonov regularization with prior in the measurement domain
+    
+    Considering linear measurements :math:`y = Hx`, where :math:`H = GF` is the
+    measurement matrix and :math:`x` is a vectorized image, it estimates 
+    :math:`x` from :math:`y` by approximately minimizing
+    
+    .. math::
+        \| y - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}
+    
+    where :math:`x_0` is a mean image prior, :math:`\Sigma` is a covariance 
+    prior, and :math:`\Sigma_\alpha` is the measurement noise covariance. 
+    
+    The class is constructed from :math:`\Sigma`.
+    
+    Args:
+        - :attr:`sigma`:  covariance prior
+        - :attr:`M`: number of measurements
+    
+    Shape:
+        - :attr:`sigma`: :math:`(N, N)`
+    
+    Example:
+        >>> sigma = np.random.random([32*32, 32*32])
+        >>> recon_op = TikhonovMeasurementPriorDiag(sigma, 400)            
     """
-    def __init__(self, sigma_prior: np.array, M: int, N: int):
+    def __init__(self, sigma: np.array, M: int):
         super().__init__()
-        # FO = Forward Operator - needs foward operator with full inverse transform
-        #-- Pseudo-inverse to determine levels of noise.
+        
+        N = sigma.shape[0] 
         
         self.comp = nn.Linear(M, N-M, False)
         self.denoise_layer = Denoise_layer(M);
         
         diag_index = np.diag_indices(N);
-        var_prior = sigma_prior[diag_index];
+        var_prior = sigma[diag_index];
         var_prior = var_prior[:M]
 
         self.denoise_layer.weight.data = torch.from_numpy(np.sqrt(var_prior));
         self.denoise_layer.weight.data = self.denoise_layer.weight.data.float();
         self.denoise_layer.weight.requires_grad = False
 
-        Sigma1 = sigma_prior[:M,:M];
-        Sigma21 = sigma_prior[M:,:M];
+        Sigma1 = sigma[:M,:M];
+        Sigma21 = sigma[M:,:M];
         W = Sigma21 @ np.linalg.inv(Sigma1);
         
         self.comp.weight.data=torch.from_numpy(W)
@@ -103,43 +122,60 @@ class TikhonovDiagonal(nn.Module):
                 x: torch.tensor, 
                 x_0: torch.tensor, 
                 var: torch.tensor, 
-                FO: HadamSplit) -> torch.tensor:
+                meas_op: HadamSplit) -> torch.tensor:
         r"""
-            Args:
-                - :math:`x`: measurement vector
-                - :math:`x_{0}`: previous estimate
-                - :math:`var`: measurement variance
-                - :math:`FO`: Linear
-                
-            Shape:
-                - Input1: :math:`(bc, M)`
-                - Input2: :math:`(bc, N)`
-                - Input3: :math:`(bc, M)`
-                - Output: :math:`(bc, N)`
-                
-            Example:
-                >>> from spyrit.core.forwop import HadamSplit
-                >>> Hsub = np.array(np.random.random([400,32*32]))
-                >>> Perm = np.array(np.random.random([32*32,32*32]))
-                >>> FO_Split_ft_had = HadamSplit(Hsub, Perm, 32, 32)            
-                >>> x = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
-                >>> x_0 = torch.tensor(np.random.random([10,32*32]), dtype=torch.float)
-                >>> var = torch.tensor(np.random.random([10,400]), dtype=torch.float) 
-                >>> y = General_Orth_TIK(x, x_0, var_noise, FO_Split_ft_had)
-                >>> print(y.shape)
-                torch.Size([10, 1024])        
-
+        The exact solution is given by
+        
+        .. math::
+            \hat{x} &= x_0 + F^{-1}\begin{bmatrix}\Sigma_1 \\ \Sigma_{21} \end{bmatrix}
+                      [\Sigma_1 + \Sigma_\alpha]^{-1} (y - GF x_0)
+            
+        where the covariance prior is         
+        :math:`\Sigma = \begin{bmatrix} \Sigma_1 & \Sigma_{21}^\top \\ \Sigma_{21} & \Sigma_2\end{bmatrix}`
+        
+        To accelerate the computation of the exact solution, which is dominated
+        by a matrix inversion that cannot be precomputed when the measurement
+        noise covariance is not known in advance, we compute
+        
+        .. math::
+            \hat{x} = x_0 + F^{-1} \begin{bmatrix} y_1 \\ y_2\end{bmatrix}
+        
+        with :math:`y_1 = D_1(D_1 + \Sigma_\alpha)^{-1} (y - GF x_0)` and 
+        :math:`y_2 = \Sigma_1 \Sigma_{21}^{-1} y_1`, where we choose 
+        :math:`D_1 =\textrm{Diag}(\Sigma_1)`. Assuming :math:`\Sigma_\alpha`  
+        is diagonal, the inversion is straigtforward.
+        
+        Args:
+            - :attr:`x`: A batch of measurement vectors :math:`y`
+            - :attr:`x_0`: A batch of prior images :math:`x_0`
+            - :attr:`var`: A batch of measurement noise variances :math:`\Sigma_\alpha`
+            - :attr:`meas_op`: A measurement operator that provides :math:`GF` and :math:`F^{-1}`
+            
+        Shape:
+            - :attr:`x`: :math:`(*, M)`
+            - :attr:`x_0`: :math:`(*, N)`
+            - :attr:`var` :math:`(*, M)`
+            - Output: :math:`(*, N)`
+            
+        Example:
+            >>> sigma = np.random.random([32*32, 32*32])
+            >>> recon_op = TikhonovMeasurementPriorDiag(sigma, 400)
+            >>> H = np.random.random([400,32*32])
+            >>> Perm = np.random.random([32*32,32*32])         
+            >>> meas_op =  HadamSplit(H, Perm, 32, 32)
+            >>> y = torch.rand([85,400], dtype=torch.float) 
+            >>> x_0 = torch.zeros((85, 32*32), dtype=torch.float)
+            >>> var = torch.zeros((85, 400), dtype=torch.float)
+            >>> x = recon_op(y, x_0, var, meas_op)
+            >>> print(x.shape)
+            torch.Size([85, 1024])       
         """
-        # x - input (b*c, M) - measurement vector
-        # var - input (b*c, M) - measurement variance
-        # x_0 - input (b*c, N) - previous estimate
-        # output has dimension (b*c, N)
-        x = x - FO.Forward_op(x_0)
-        y1 = torch.mul(self.denoise_layer(var),x) # Should be in denoising layer
+        x = x - meas_op.forward_H(x_0)
+        y1 = torch.mul(self.denoise_layer(var),x)
         y2 = self.comp(y1)
 
         y = torch.cat((y1,y2),-1)
-        x = x_0 + FO.inverse(y) 
+        x = x_0 + meas_op.inverse(y) 
         return x
 
 # ===========================================================================================
