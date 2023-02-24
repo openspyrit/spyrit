@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import torch
-from spyrit.core.forwop import Linear, LinearSplit, LinearRowSplit, HadamSplit
+from spyrit.core.meas import Linear, LinearSplit, LinearRowSplit, HadamSplit
 
 #%% NoNoise
 from spyrit.core.noise import NoNoise
@@ -146,20 +146,6 @@ noise_op = PoissonApproxGaussSameNoise(meas_op, 200.0)
 
 # forward with HadamSplit
 x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
-y = noise_op(x)
-print(y.shape)
-print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-
-y = noise_op(x)
-print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-
-# EXAMPLE 3
-H_pos = np.random.rand(24,64)
-H_neg = np.random.rand(24,64)
-meas_op = LinearRowSplit(H_pos,H_neg)
-noise_op = PoissonApproxGaussSameNoise(meas_op, 50.0)
-
-x = torch.FloatTensor(10, 64, 92).uniform_(-1, 1)
 y = noise_op(x)
 print(y.shape)
 print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")

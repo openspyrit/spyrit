@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from spyrit.core.forwop import Linear, LinearSplit, LinearRowSplit, HadamSplit
+from spyrit.core.meas import Linear, LinearSplit, LinearRowSplit, HadamSplit
 from typing import Union, Tuple
 
 #==============================================================================
@@ -66,14 +66,14 @@ class SplitPoisson(nn.Module):
         Example:
             >>> x = torch.rand([10,2*400], dtype=torch.float)
             >>> H = np.random.random([400,32*32])
-            >>> forward_op =  LinearSplit(H)
-            >>> m = split_op(x, forward_op)
+            >>> meas_op =  LinearSplit(H)
+            >>> m = split_op(x, meas_op)
             torch.Size([10, 400])
             
         Example 2:
             >>> Perm = np.random.random([32*32,32*32])
-            >>> forward_op = HadamSplit(H, Perm, 32, 32)
-            >>> m = split_op(x, forward_op)
+            >>> meas_op = HadamSplit(H, Perm, 32, 32)
+            >>> m = split_op(x, meas_op)
             >>> print(m.shape)
             torch.Size([10, 400])
         """
@@ -122,8 +122,8 @@ class SplitPoisson(nn.Module):
         
         Example:
             >>> Perm = np.random.random([32*32,32*32])
-            >>> forward_op = HadamSplit(H, Perm, 32, 32)
-            >>> m, alpha = split_op.forward_expe(x, forward_op)
+            >>> meas_op = HadamSplit(H, Perm, 32, 32)
+            >>> m, alpha = split_op.forward_expe(x, meas_op)
             >>> print(m.shape)
             >>> print(alpha.shape)
             torch.Size([10, 400])
@@ -247,8 +247,8 @@ class SplitPoisson(nn.Module):
         Example:
             >>> x = torch.rand([10,32*32], dtype=torch.float)
             >>> Perm = np.random.random([32*32,32*32])
-            >>> forward_op = HadamSplit(H, Perm, 32, 32)
-            >>> v = split_op.sigma_from_image(x, forward_op)
+            >>> meas_op = HadamSplit(H, Perm, 32, 32)
+            >>> v = split_op.sigma_from_image(x, meas_op)
             >>> print(v.shape)
             torch.Size([10, 400])
         
@@ -350,8 +350,8 @@ class SplitRowPoisson(nn.Module):
             >>> x = torch.rand([10,48,64], dtype=torch.float)
             >>> H_pos = np.random.random([24,64])
             >>> H_neg = np.random.random([24,64])
-            >>> forward_op = LinearRowSplit(H_pos, H_neg)
-            >>> m = split_op(x, forward_op)
+            >>> meas_op = LinearRowSplit(H_pos, H_neg)
+            >>> m = split_op(x, meas_op)
             >>> print(m.shape)
             torch.Size([10, 24, 64])
 
