@@ -12,42 +12,42 @@ spyrit.core.noise module
    :undoc-members:
    :show-inheritance:
 
-spyrit.core.forwop module
+spyrit.core.meas module
 -------------------------------------------
 
-.. automodule:: spyrit.core.forwop
+.. automodule:: spyrit.core.meas
    :members:
    :undoc-members:
    :show-inheritance:
 
-spyrit.core.preproc module
+spyrit.core.prep module
 -------------------------------------------
 
-.. automodule:: spyrit.core.preproc
+.. automodule:: spyrit.core.prep
    :members:
    :undoc-members:
    :show-inheritance:
 
-spyrit.core.neural\_network module
+spyrit.core.nnet module
 -------------------------------------------
 
-.. automodule:: spyrit.core.neural_network
+.. automodule:: spyrit.core.nnet
    :members:
    :undoc-members:
    :show-inheritance:
 
-spyrit.core.reconstruction module
+spyrit.core.recon module
 -------------------------------------------
 
-.. automodule:: spyrit.core.reconstruction
+.. automodule:: spyrit.core.recon
    :members:
    :undoc-members:
    :show-inheritance:
 
-spyrit.core.training module
+spyrit.core.train module
 -------------------------------------------
 
-.. automodule:: spyrit.core.training
+.. automodule:: spyrit.core.train
    :members:
    :undoc-members:
    :show-inheritance:
