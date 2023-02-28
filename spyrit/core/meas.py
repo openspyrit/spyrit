@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 from typing import Union
-from spyrit.misc.walsh_hadamard import walsh2_torch
-
+from spyrit.misc.walsh_hadamard import walsh2_torch, walsh2_matrix
+from spyrit.misc.sampling import Permutation_Matrix
 # ==================================================================================
 class Linear(nn.Module):
 # ==================================================================================
@@ -204,15 +204,12 @@ class HadamSplit(LinearSplit):
     where :math:`P` is a linear operator (matrix) with positive entries and 
     :math:`x` is a vectorized image.
     
-    The class is constructed from a matrix :math:`H` with 
+    The class is relies on a matrix :math:`H` with 
     shape :math:`(M,N)` where :math:`N` represents the number of pixels in the 
     image and :math:`M \le N` the number of measurements. The matrix :math:`P` 
     is obtained by splitting the matrix :math:`H` such that 
     :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`, where 
     :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`. 
-    
-    .. note::
-        :math:`H = H_{+} - H_{-}`
     
     The matrix :math:`H` is obtained by retaining the first :math:`M` rows of 
     a permuted Hadamard matrix :math:`GF`, where :math:`G` is a 
@@ -221,23 +218,29 @@ class HadamSplit(LinearSplit):
     Hadamard transform :math:`Fx` benefits a fast algorithm, as well as the
     computation of inverse Hadamard transforms.
     
+    .. note::
+        :math:`H = H_{+} - H_{-}`
+    
     Args:
-        - H (np.ndarray): Matrix :math:`H` with shape :math:`(M, N)`
-        - Perm (np.ndarray): Inverse permutation matrix :math:`G^{T}` with shape :math:`(N, N)`
-        - h (int): Image height :math:`h`
-        - w (int): Image width :math:`w`
-        
-        The image dimensions are such that :math:`h * w = N`.
+        - :attr:`M`: Number of measurements
+        - :attr:`h`: Image height :math:`h`. The image is assumed to be square.
+        - :attr:`Ord`: Order matrix with shape :math:`(h,h)` used to compute the permutation matrix :math:`G^{T}` with shape :math:`(N, N)` (see the :mod:`~spyrit.misc.sampling` submodule)
+    
+    .. note::
+        The matrix H has shape :math:`(M,N)` with :math:`N = h^2`.
         
     Example:
-        >>> H = np.array(np.random.random([400,32*32]))
-        >>> Perm = np.random.random([32*32,32*32])
-        >>> meas_op =  HadamSplit(H, Perm, 32, 32)
+        >>> Ord = np.random.random([32,32])
+        >>> meas_op = HadamSplit(400, 32, Ord)
     """
-    def __init__(self, 
-                 H: np.ndarray, 
-                 Perm: np.ndarray, 
-                 h: int, w: int) -> torch.tensor:
+
+    def __init__(self, M: int, h: int, Ord: np.ndarray):
+        
+        F =  walsh2_matrix(h) # full matrix
+        Perm = Permutation_Matrix(Ord)
+        F = Perm@F # If Perm is not learnt, could be computed mush faster
+        H = F[:M,:]
+        w = h   # we assume a square image
         
         super().__init__(H)
         
