@@ -110,3 +110,8 @@ print(y.shape)
 x = torch.rand([10,64,92], dtype=torch.float)
 y = meas_op(x)
 print(y.shape)
+
+# get_H
+H = meas_op.get_H()
+print(H.shape)
+
