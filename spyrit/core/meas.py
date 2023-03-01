@@ -484,14 +484,15 @@ class LinearRowSplit(nn.Module):
         the measurement operator :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`
         
         Args:
-            - :math:`H_{+}` (np.ndarray): Positive component of the measurement matrix
-            - :math:`H_{-}`(np.ndarray): Negative component of the measurement matrix
+            - :attr:`H_pos`: Positive component of the measurement matrix :math:`H_{+}`
+            - :attr:`H_neg`: Negative component of the measurement matrix :math:`H_{-}`
         
         Shape:
-            - :math:`H_{+}`: :math:`(M, N)`, 
-            - :math:`H_{-}`: :math:`(M, N)`,
-            where :math:`M` is the number of patterns and :math:`N` is the 
-            length of the patterns.
+            :math:`H_{+}`: :math:`(M, N)`, where :math:`M` is the number of 
+            patterns and :math:`N` is the length of the patterns. 
+            
+            :math:`H_{-}`: :math:`(M, N)`, where :math:`M` is the number of 
+            patterns and :math:`N` is the length of the patterns.
             
         .. note::
             The class assumes the existence of the measurement operator 
@@ -529,12 +530,6 @@ class LinearRowSplit(nn.Module):
         self.H = nn.Linear(self.N, self.M, False);
         self.H.weight.data = torch.from_numpy(H).float() 
         self.H.weight.requires_grad = False
-       
-        # adjoint (Replace by backward()?)
-        # self.H_adjoint = nn.Linear(self.M, self.N, False)
-        # self.H_adjoint.weight.data = torch.from_numpy(H.transpose())
-        # self.H_adjoint.weight.data = self.H_adjoint.weight.data.float()
-        # self.H_adjoint.weight.requires_grad = False
               
     def forward(self, x: torch.tensor) -> torch.tensor:
         r""" Applies linear transform to incoming images: :math:`y = Px`
@@ -593,9 +588,9 @@ class LinearRowSplit(nn.Module):
         Example:
             >>> H_pos = np.random.rand(24,64)
             >>> H_neg = np.random.rand(24,64)
-            >>> linop = LinearRowSplit(H_pos,H_neg)
+            >>> meas_op = LinearRowSplit(H_pos,H_neg)
             >>> x = torch.rand(10,64,92)
-            >>> y = linop.forward_H(x)
+            >>> y = meas_op.forward_H(x)
             >>> print(y.shape)
             torch.Size([10,24,92])
          
@@ -604,3 +599,16 @@ class LinearRowSplit(nn.Module):
         x = self.H(x)
         x = torch.transpose(x,1,2) #swap last two dimensions
         return x
+    
+    def get_H(self) -> torch.tensor:          
+        r""" Returns the measurement matrix :math:`H`.
+        
+        Shape:
+            Output: :math:`(M, N)`
+        
+        Example:     
+            >>> H = meas_op.get_H()
+            >>> print(H.shape)
+            torch.Size([24, 64])
+        """
+        return self.H.weight.data;

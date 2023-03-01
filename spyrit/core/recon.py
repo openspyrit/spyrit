@@ -9,7 +9,7 @@ Created on Fri Jan 20 11:03:12 2023
 import torch
 import torch.nn as nn 
 import numpy as np
-from spyrit.core.meas import HadamSplit, Linear
+from spyrit.core.meas import HadamSplit, Linear, LinearRowSplit
 import math
 
 # ==================================================================================
@@ -63,6 +63,99 @@ class PseudoInverse(nn.Module):
             torch.Size([85, 1024])
         """
         x = meas_op.pinv(x)
+        return x
+
+# ==================================================================================
+class PseudoInverseStore(nn.Module):
+# ==================================================================================
+    r""" Moore-Penrose Pseudoinverse
+    
+    Considering linear measurements :math:`y = Hx`, where :math:`H` is the
+    measurement matrix and :math:`x` is a vectorized image, it estimates 
+    :math:`x` from :math:`y` by computing :math:`\hat{x} = H^\dagger y`, where 
+    :math:`H` is the Moore-Penrose pseudo inverse of :math:`H`.
+
+    Args:           
+        :attr:`meas_op`: Measurement operator. Any class that 
+        implements a :meth:`get_H` method can be used, e.g.,
+        :class:`~spyrit.core.forwop.LinearRowSplit`. 
+        
+        :attr:`reg` (optional): Regularization parameter (cutoff for small 
+        singular values, see :mod:`numpy.linal.pinv`). 
+
+    Example 1:
+        >>> H_pos = np.random.rand(24,64)
+        >>> H_neg = np.random.rand(24,64)
+        >>> meas_op = LinearRowSplit(H_pos,H_neg)
+        >>> recon_op = PseudoInverseStore(meas_op)
+        
+    Example 2:
+        >>> M = 63
+        >>> N = 64
+        >>> B = 1
+        >>> H = walsh_matrix(N)
+        >>> H_pos = np.where(H>0,H,0)[:M,:]
+        >>> H_neg = np.where(H<0,-H,0)[:M,:]
+        >>> meas_op = LinearRowSplit(H_pos,H_neg)
+        >>> recon_op = PseudoInverseStore(meas_op)
+        
+    """
+    def __init__(self, meas_op: LinearRowSplit, reg: float = 1e-15):
+        
+        H = meas_op.get_H() 
+        M, N = H.shape
+        H_pinv = np.linalg.pinv(H, rcond = reg)
+        
+        super().__init__()
+        
+        self.H_pinv = nn.Linear(M, N, False)
+        self.H_pinv.weight.data = torch.from_numpy(H_pinv).float()
+        self.H_pinv.weight.requires_grad = False
+        
+        
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r""" Compute pseudo-inverse of measurements.
+        
+        Args:
+            - :attr:`x`: Batch of measurement vectors.
+            
+        Shape:
+            - :attr:`x`: :math:`(*, M)`
+            - :attr:`output`: :math:`(*, N)`
+
+        Example 1:
+            >>> H_pos = np.random.rand(24,64)
+            >>> H_neg = np.random.rand(24,64)
+            >>> meas_op = LinearRowSplit(H_pos,H_neg)
+            >>> recon_op = PseudoInverseStore(meas_op)
+            >>> x = torch.rand([10,24,92], dtype=torch.float)
+            >>> y = recon_op(x)
+            >>> print(y.shape)
+            torch.Size([10, 64, 92])
+            
+        Example 2:
+            >>> M = 63
+            >>> N = 64
+            >>> B = 1
+            >>> H = walsh_matrix(N)
+            >>> H_pos = np.where(H>0,H,0)[:M,:]
+            >>> H_neg = np.where(H<0,-H,0)[:M,:]
+            >>> meas_op = LinearRowSplit(H_pos,H_neg)
+            >>> noise_op = NoNoise(meas_op)
+            >>> split_op = SplitRowPoisson(1.0, M, 92)
+            >>> recon_op = PseudoInverseStore(meas_op)
+            >>> x = torch.FloatTensor(B,N,92).uniform_(-1, 1)
+            >>> y = noise_op(x)
+            >>> m = split_op(y, meas_op)
+            >>> z = recon_op(m)
+            >>> print(z.shape)
+            >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
+            torch.Size([1, 64, 92])
+            tensor(0.1338)
+        """
+        x = torch.transpose(x,1,2) #swap last two dimensions
+        x = self.H_pinv(x)
+        x = torch.transpose(x,1,2) #swap last two dimensions
         return x
     
 # ===========================================================================================
