@@ -28,17 +28,40 @@ def meas2img(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
     """Return measurement image from measurement vector
 
     Args:
-        meas (np.ndarray): 
-            Measurement vector of lenth M <= N**2.
-        Mat (np.ndarray): 
-            N-by-N sampling matrix, where high values indicate high significance.
+        meas : `np.ndarray` with shape :math:`(M,)` 
+            Set of :math:`B` measurement vectors of lenth :math:`M \le N^2`.
+        Mat : `np.ndarray` with shape :math:`(N,N)` 
+            Sampling matrix, where high values indicate high significance.
 
     Returns:
-        Img (np.ndarray): N-by-N measurement image
+        Img : `np.ndarray` with shape :math:`(N,N,)`
+            N-by-N measurement image
     """
     y = np.pad(meas, (0, Mat.size-len(meas)))
     Perm = Permutation_Matrix(Mat)
     Img = np.dot(np.transpose(Perm),y).reshape(Mat.shape)
+    return Img
+
+def meas2img2(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
+    """Return measurement image from measurement vector
+
+    Args:
+        meas : `np.ndarray` with shape :math:`(M,B)` 
+            Set of :math:`B` measurement vectors of lenth :math:`M \le N^2`.
+        Mat : `np.ndarray` with shape :math:`(N,N)` 
+            Sampling matrix, where high values indicate high significance.
+
+    Returns:
+        Img : `np.ndarray` with shape :math:`(N,N,B)`
+            Set of :math:`B` images of shape :math:`(N,N)` 
+    """
+    M, B = meas.shape
+    Nx, Ny = Mat.shape
+    
+    y = np.pad(meas, ((0,Mat.size-len(meas)),(0,0)))
+    Perm = Permutation_Matrix(Mat)
+    Img = Perm.T @ y
+    Img = Img.reshape((Nx,Ny,B))
     return Img
 
 def img2meas(Img: np.ndarray, Mat: np.ndarray) -> np.ndarray:

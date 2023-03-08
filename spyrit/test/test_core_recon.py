@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 
 
-#%%
+#%% PseudoInverse
 import numpy as np
 import torch
 from spyrit.core.meas import HadamSplit
+from spyrit.core.noise import NoNoise
+from spyrit.core.prep import SplitPoisson 
 from spyrit.core.recon import PseudoInverse
 
+# EXAMPLE 1
 # constructor
 recon_op = PseudoInverse()
 
@@ -18,7 +21,26 @@ y = torch.rand([85,400], dtype=torch.float)
 x = recon_op(y, meas_op)
 print(x.shape)
 
-#%%
+# EXAMPLE 2
+# constructor
+M = 64
+H = 64
+B = 1
+
+Ord = np.random.random([H,H])
+meas_op = HadamSplit(M, H, Ord)
+noise_op = NoNoise(meas_op)
+split_op = SplitPoisson(1.0, M, H**2)
+recon_op = PseudoInverse()
+
+x = torch.FloatTensor(B,H**2).uniform_(-1, 1)
+y = noise_op(x)
+m = split_op(y, meas_op)
+z = recon_op(m, meas_op)
+print(z.shape)
+print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
+
+#%% PseudoInverseStore
 import numpy as np
 import torch
 from spyrit.core.meas import LinearRowSplit
@@ -62,21 +84,82 @@ z = recon_op(m)
 print(z.shape)
 print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
 
-#%%
-from spyrit.core.recon import TikhonovMeasurementPriorDiag
+#%% PinvNet
+import numpy as np
+import torch
+from spyrit.core.meas import HadamSplit
+from spyrit.core.noise import NoNoise
+from spyrit.core.prep import SplitPoisson 
+from spyrit.core.recon import PseudoInverse, PinvNet
 
+# EXAMPLE
 # constructor
-sigma = np.random.random([32*32, 32*32])
-recon_op = TikhonovMeasurementPriorDiag(sigma, 400)
+B, C, H, M = 10, 1, 64, 64**2
+Ord = np.ones((H,H))
+meas = HadamSplit(M, H, Ord)
+noise = NoNoise(meas)
+prep = SplitPoisson(1.0, M, H**2)
+recnet = PinvNet(noise, prep) 
 
 # forward
-H = np.random.random([400,32*32])
-Perm = np.random.random([32*32,32*32])
-meas_op =  HadamSplit(H, Perm, 32, 32)
-y = torch.rand([85,400], dtype=torch.float)  
+x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+z = recnet(x)
+print(z.shape)
+print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
 
-x_0 = torch.zeros((85, 32*32), dtype=torch.float)
-var = torch.zeros((85, 400), dtype=torch.float)
+# reconstruct
+x = torch.rand((B*C,2*M), dtype=torch.float)
+z = recnet.reconstruct(x)
+print(z.shape)
 
-x = recon_op(y, x_0, var, meas_op)
+#%% TikhonovMeasurementPriorDiag
+import numpy as np
+import torch
+from spyrit.core.recon import TikhonovMeasurementPriorDiag
+from spyrit.core.meas import HadamSplit
+
+B, H, M = 85, 32, 512
+
+# constructor
+sigma = np.random.random([H**2, H**2])
+recon = TikhonovMeasurementPriorDiag(sigma, M)
+
+# forward
+Ord = np.ones((H,H))
+meas = HadamSplit(M, H, Ord)
+y = torch.rand([B,M], dtype=torch.float)  
+x_0 = torch.zeros((B, H**2), dtype=torch.float)
+var = torch.zeros((B, M), dtype=torch.float)
+
+x = recon(y, x_0, var, meas)
 print(x.shape)
+
+#%% DCNet
+import numpy as np
+import torch
+from spyrit.core.recon import TikhonovMeasurementPriorDiag, DCNet
+from spyrit.core.meas import HadamSplit
+from spyrit.core.noise import NoNoise
+from spyrit.core.prep import SplitPoisson 
+from spyrit.core.meas import HadamSplit
+
+B, C, H, M = 10, 1, 64, 64**2
+
+# constructor
+Ord = np.ones((H,H))
+meas = HadamSplit(M, H, Ord)
+noise = NoNoise(meas)
+prep = SplitPoisson(1.0, M, H**2)
+sigma = np.random.random([H**2, H**2])
+tikho = TikhonovMeasurementPriorDiag(sigma, M)
+recnet = DCNet(noise,prep,tikho)
+
+# forward
+x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+z = recnet(x)
+print(z.shape)
+
+# reconstruct
+x = torch.rand((B*C,2*M), dtype=torch.float)
+z = recnet.reconstruct(x)
+print(z.shape)
