@@ -10,8 +10,6 @@ import torch
 import torch.nn as nn 
 import numpy as np
 from spyrit.core.meas import HadamSplit, LinearRowSplit
-#from spyrit.core.prep import PoissonSplit
-from spyrit.core.nnet import Identity
 import math
 
 # ==================================================================================
@@ -412,7 +410,7 @@ class PinvNet(nn.Module):
         torch.Size([10, 1, 64, 64])
         tensor(5.8912e-06)
     """
-    def __init__(self, noise, prep, denoi=Identity()):
+    def __init__(self, noise, prep, denoi=nn.Identity()):
         super().__init__()
         self.acqu = noise 
         self.prep = prep
@@ -426,9 +424,9 @@ class PinvNet(nn.Module):
             :attr:`x`: ground-truth images
         
         Shape:
-            :attr:`x`: :math:`(B,C,H,W)`
+            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
             
-            :attr:`output`: :math:`(B,C,H,W)`
+            :attr:`output`: reconstructed images with shape :math:`(B,C,H,W)`
         
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
@@ -456,6 +454,68 @@ class PinvNet(nn.Module):
         x = x.view(b,c,self.acqu.meas_op.h, self.acqu.meas_op.w)
         
         return x
+    
+    def acquire(self, x):
+        r""" Simulate data acquisition
+            
+        Args:
+            :attr:`x`: ground-truth images
+        
+        Shape:
+            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
+            
+            :attr:`output`: measurement vectors with shape :math:`(BC,2M)`
+        
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H*H)
+            >>> recnet = PinvNet(noise, prep)
+            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+            >>> z = recnet.acquire(x)
+            >>> print(z.shape)
+            torch.Size([10, 8192])
+        """
+        
+        b,c,_,_ = x.shape
+
+        # Acquisition
+        x = x.view(b*c,self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = self.acqu(x)                     # shape x = [b*c, 2*M]
+        
+        return x
+    
+    def meas2img(self, y):
+        """Return images from raw measurement vectors
+
+        Args:
+            :attr:`x`: raw measurement vectors
+        
+        Shape:
+            :attr:`x`: :math:`(BC,2M)`
+            
+            :attr:`output`: :math:`(BC,1,H,W)`
+        
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H**2)
+            >>> recnet = PinvNet(noise, prep) 
+            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
+            >>> z = recnet.reconstruct(x)
+            >>> print(z.shape)
+            torch.Size([10, 1, 64, 64])
+        """
+        m = self.prep(y, self.acqu.meas_op)
+        m = torch.nn.functional.pad(m, (0, self.acqu.meas_op.N-self.acqu.meas_op.M))
+        z = m @ self.acqu.meas_op.Perm.weight.data.T
+        z = z.view(-1,1,self.acqu.meas_op.h, self.acqu.meas_op.w)
+        
+        return z
 
     def reconstruct(self, x):
         r""" Reconstruction step of a reconstruction network
@@ -547,7 +607,7 @@ class DCNet(nn.Module):
         
         :attr:`prep`: Preprocessing operator (see :class:`~spyrit.core.prep`)
         
-        :attr:`tikho`: Tikhonov reconstruction operator of type 
+        :attr:`sigma`: UPDATE!! Tikhonov reconstruction operator of type 
         :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag()`
         
         :attr:`denoi` (optional): Image denoising operator 
@@ -576,8 +636,7 @@ class DCNet(nn.Module):
         >>> noise = NoNoise(meas)
         >>> prep = SplitPoisson(1.0, M, H*H)
         >>> sigma = np.random.random([H**2, H**2])
-        >>> tikho = TikhonovMeasurementPriorDiag(sigma, M)
-        >>> recnet = DCNet(noise,prep,tikho)
+        >>> recnet = DCNet(noise,prep,sigma)
         >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
         >>> z = recnet(x)
         >>> print(z.shape)
@@ -586,13 +645,15 @@ class DCNet(nn.Module):
     def __init__(self, 
                  noise, 
                  prep, 
-                 tikho: TikhonovMeasurementPriorDiag, 
-                 denoi = Identity()):
+                 sigma,
+                 denoi = nn.Identity()):
         
         super().__init__()
         self.Acq = noise 
         self.PreP = prep
-        self.DC_layer = tikho
+        Perm = noise.meas_op.Perm.weight.data.cpu().numpy().T
+        sigma_perm = Perm @ sigma @ Perm.T
+        self.DC_layer = TikhonovMeasurementPriorDiag(sigma_perm, noise.meas_op.M)
         self.Denoi = denoi
         
     def forward(self, x):
@@ -613,8 +674,7 @@ class DCNet(nn.Module):
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
             >>> sigma = np.random.random([H**2, H**2])
-            >>> tikho = TikhonovMeasurementPriorDiag(sigma, M)
-            >>> recnet = DCNet(noise,prep,tikho)
+            >>> recnet = DCNet(noise,prep,sigma)
             >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
             >>> z = recnet(x)
             >>> print(z.shape)
@@ -630,6 +690,39 @@ class DCNet(nn.Module):
         # Reconstruction 
         x = self.reconstruct(x)             # shape x = [bc, 1, h,w]
         x = x.view(b,c,self.Acq.meas_op.h, self.Acq.meas_op.w)
+        
+        return x
+    
+    def acquire(self, x):
+        r""" Simulate data acquisition
+            
+        Args:
+            :attr:`x`: ground-truth images
+        
+        Shape:
+            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
+            
+            :attr:`output`: measurement vectors with shape :math:`(BC,2M)`
+        
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H*H)
+            >>> sigma = np.random.random([H**2, H**2])
+            >>> recnet = DCNet(noise,prep,sigma)
+            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+            >>> z = recnet.acquire(x)
+            >>> print(z.shape)
+            torch.Size([10, 8192])
+        """
+        
+        b,c,_,_ = x.shape
+
+        # Acquisition
+        x = x.view(b*c,self.Acq.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = self.Acq(x)                     # shape x = [b*c, 2*M]
         
         return x
 
@@ -649,8 +742,9 @@ class DCNet(nn.Module):
             >>> Ord = np.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H**2)
-            >>> recnet = PinvNet(noise, prep) 
+            >>> prep = SplitPoisson(1.0, M, H*H)
+            >>> sigma = np.random.random([H**2, H**2])
+            >>> recnet = DCNet(noise,prep,sigma)
             >>> x = torch.rand((B*C,2*M), dtype=torch.float)
             >>> z = recnet.reconstruct(x)
             >>> print(z.shape)
