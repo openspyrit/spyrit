@@ -28,7 +28,7 @@ y = meas_op.adjoint(x)
 print('adjoint:', y.shape)
 
 # get_mat
-H = meas_op.get_mat()
+H = meas_op.get_H()
 print('get_mat:', H.shape)
 
 #%% Test LinearSplit
@@ -54,7 +54,7 @@ y = meas_op.adjoint(x)
 print('Adjoint:', y.shape)
 
 # get_mat
-H = meas_op.get_mat()
+H = meas_op.get_H()
 print('Measurement matrix:', H.shape)
 
 #%% Test HadamSplit
@@ -80,7 +80,7 @@ y = meas_op.adjoint(x)
 print('Adjoint:', y.shape)
 
 # get_mat
-H = meas_op.get_mat()
+H = meas_op.get_H()
 print('Measurement matrix:', H.shape)
 
 # pinv
