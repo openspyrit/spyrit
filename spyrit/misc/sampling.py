@@ -1,6 +1,5 @@
 from scipy.stats import rankdata
 import numpy as np
-import torch
 
 # from /misc/statistics.py
 def img2mask(Mat: np.ndarray, M: int):
@@ -25,7 +24,7 @@ def img2mask(Mat: np.ndarray, M: int):
 
 # from /former/_model_Had_DCAN.py
 def meas2img(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
-    """Return measurement image from measurement vector
+    """Return measurement image from a single measurement vector
 
     Args:
         meas : `np.ndarray` with shape :math:`(M,)` 
@@ -43,7 +42,7 @@ def meas2img(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
     return Img
 
 def meas2img2(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
-    """Return measurement image from measurement vector
+    """Return measurement image from multiple measurement vectors
 
     Args:
         meas : `np.ndarray` with shape :math:`(M,B)` 
@@ -80,24 +79,6 @@ def img2meas(Img: np.ndarray, Mat: np.ndarray) -> np.ndarray:
     Perm = Permutation_Matrix(Mat)
     meas = np.dot(Perm, np.ravel(Img))
     return meas
-
-def meas2img_torch(meas, Mat):
-    """Return image from measurement vector (NOT TESTED, requires too much memory?)
-
-    Args:
-        meas (torch.Tensor): Measurement vector.
-        Mat (np.ndarray): Order matrix
-
-    Returns:
-        Img (torch.Tensor): Measurement image
-    """
-    y = torch.nn.functional.pad(meas, (0, Mat.size-meas.shape[2]))
-    Perm = torch.from_numpy(Permutation_Matrix(Mat).astype('float32'))
-    Perm = Perm.to(meas.device)
-    Perm = torch.transpose(Perm,0,1)
-    Img = torch.matmul(Perm,meas) # Requires too much memory
-    
-    return Img
 
 def Permutation_Matrix(Mat: np.ndarray) -> np.ndarray:
     """

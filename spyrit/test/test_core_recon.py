@@ -107,6 +107,16 @@ z = recnet(x)
 print(z.shape)
 print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
 
+# meas2img
+x = torch.rand(B*C,2*M)
+z = recnet.meas2img(x)
+print(z.shape)
+
+# acquire
+x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+z = recnet.acquire(x)
+print(z.shape)
+
 # reconstruct
 x = torch.rand((B*C,2*M), dtype=torch.float)
 z = recnet.reconstruct(x)
@@ -137,13 +147,13 @@ print(x.shape)
 #%% DCNet
 import numpy as np
 import torch
-from spyrit.core.recon import TikhonovMeasurementPriorDiag, DCNet
+from spyrit.core.recon import DCNet
 from spyrit.core.meas import HadamSplit
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import SplitPoisson 
 from spyrit.core.meas import HadamSplit
 
-B, C, H, M = 10, 1, 64, 64**2
+B, C, H, M = 10, 1, 64, 64**2//2
 
 # constructor
 Ord = np.ones((H,H))
@@ -151,8 +161,7 @@ meas = HadamSplit(M, H, Ord)
 noise = NoNoise(meas)
 prep = SplitPoisson(1.0, M, H**2)
 sigma = np.random.random([H**2, H**2])
-tikho = TikhonovMeasurementPriorDiag(sigma, M)
-recnet = DCNet(noise,prep,tikho)
+recnet = DCNet(noise,prep,sigma)
 
 # forward
 x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
