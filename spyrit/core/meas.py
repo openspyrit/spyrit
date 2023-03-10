@@ -17,8 +17,16 @@ class Linear(nn.Module):
         :math:`M` the number of measurements.
         
         Args:
-            :math:`H` (np.ndarray): measurement matrix (linear operator) with 
-            shape :math:`(M, N)`.
+            :attr:`H`: measurement matrix (linear operator) with shape :math:`(M, N)`.
+            
+        Attributes:
+             :attr:`H`: The learnable measurement matrix of shape 
+             :math:`(M,N)` initialized as :math:`H`
+             
+             :attr:`H_adjoint`: The learnable adjoint measurement matrix 
+             of shape :math:`(N,M)` initialized as :math:`H^\top`
+             
+             
         
         Example:
             >>> H = np.array(np.random.random([400, 1000]))
@@ -31,15 +39,13 @@ class Linear(nn.Module):
         self.M = H.shape[0]
         self.N = H.shape[1]
         self.H = nn.Linear(self.N, self.M, False) 
-        self.H.weight.data = torch.from_numpy(H)
+        self.H.weight.data = torch.from_numpy(H).float()
         # Data must be of type float (or double) rather than the default float64 when creating torch tensor
-        self.H.weight.data=self.H.weight.data.float()
         self.H.weight.requires_grad = False
 
-        # adjoint (Replace by backward()?)
+        # adjoint (Remove?)
         self.H_adjoint = nn.Linear(self.M, self.N, False)
-        self.H_adjoint.weight.data = torch.from_numpy(H.transpose())
-        self.H_adjoint.weight.data = self.H_adjoint.weight.data.float()
+        self.H_adjoint.weight.data = torch.from_numpy(H.transpose()).float()
         self.H_adjoint.weight.requires_grad = False
                
     def forward(self, x: torch.tensor) -> torch.tensor: 
@@ -87,14 +93,14 @@ class Linear(nn.Module):
         x = self.H_adjoint(x)        
         return x
 
-    def get_mat(self) -> torch.tensor:          
+    def get_H(self) -> torch.tensor:          
         r""" Returns the measurement matrix :math:`H`.
         
         Shape:
             Output: :math:`(M, N)`
         
         Example:     
-            >>> H = meas_op.get_mat()
+            >>> H = meas_op.get_H()
             >>> print('get_mat:', H.shape)
             get_mat: torch.Size([400, 1000])
             

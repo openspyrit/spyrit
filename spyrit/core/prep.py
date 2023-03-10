@@ -56,12 +56,12 @@ class SplitPoisson(nn.Module):
             :attr:`meas_op`: measurement operator
             
         Shape:
-            x: :math:`(*, 2M)`
+            x: :math:`(B, 2M)` where :math:`B` is the batch dimension
             
             meas_op: the number of measurements :attr:`meas_op.M` should match
             :math:`M`.
             
-            Output: :math:`(*, M)`
+            Output: :math:`(B, M)`
             
         Example:
             >>> x = torch.rand([10,2*400], dtype=torch.float)
@@ -111,14 +111,14 @@ class SplitPoisson(nn.Module):
             intensities.
         
         Shape:
-            x: :math:`(*, 2M)`
+            x: :math:`(B, 2M)` where :math:`B` is the batch dimension
             
             meas_op: the number of measurements :attr:`meas_op.M` should match
             :math:`M`.
             
-            :math:`m`: :math:`(*, M)`
+            :math:`m`: :math:`(B, M)`
             
-            :math:`\alpha`: :math:`(*)` 
+            :math:`\alpha`: :math:`(B)` 
         
         Example:
             >>> Perm = np.random.random([32*32,32*32])
@@ -156,8 +156,8 @@ class SplitPoisson(nn.Module):
             :attr:`x`: batch of images in the Hadamard domain
             
         Shape:
-            - Input: :math:`(*,2*M)`
-            - Output: :math:`(*, M)`
+            - Input: :math:`(B,2*M)` where :math:`B` is the batch dimension
+            - Output: :math:`(B, M)`
             
         Example:
             >>> x = torch.rand([10,2*400], dtype=torch.float)
@@ -201,9 +201,9 @@ class SplitPoisson(nn.Module):
             :attr:`x`: Batch of images in the Hadamard domain.
             
         Shape:
-            Input: :math:`(*,2*M)`
+            Input: :math:`(B,2*M)` where :math:`B` is the batch dimension
             
-            Output: :math:`(*, M)`
+            Output: :math:`(B, M)`
             
         Example:
             >>> x = torch.rand([10,2*32*32], dtype=torch.float)
