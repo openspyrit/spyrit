@@ -17,7 +17,9 @@ import os
 import datetime
 import copy
 import pickle
-import statistics 
+import statistics
+from collections import OrderedDict
+import re
 ######################################################################
 # 1. Visualize a few images from the training set
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -597,11 +599,105 @@ def save_net(title, model):
     print("Model Saved")
 
 
-def load_net(title, model, device = None):
+def load_net(title, model, device = None, strict = True):
     """Loads net defined by title """
     model_out_path = "{}.pth".format(title)
     if device is None :
-        model.load_state_dict(torch.load(model_out_path))
+        model.load_state_dict(torch.load(model_out_path), strict = strict)
     else:
-        model.load_state_dict(torch.load(model_out_path, map_location=torch.device(device)))
+        model.load_state_dict(
+            torch.load(model_out_path, map_location=torch.device(device)), 
+            strict = strict)
     print("Model Loaded: {}".format(title))
+
+            
+def rename_model_attributes(source, old_name, new_name, target=None):
+    """
+    Rename the name of the attributes of a saved model (nn.module)
+
+    Parameters
+    ----------
+    source : str
+        Path to the saved model.
+    old_name : str
+        source pattern for the attributes of the model to be renamed.
+    new_name : str
+        destination pattern for the attributes of the model to be renamed.
+    target : str, optional
+        Path to model with remaned attributes. The default is source.
+
+    Returns
+    -------
+    None.
+    
+    Example
+    -------
+        Rename the key `Denoi.layer.0.weight` and `Denoi.layer.0.weight` as 
+        `denoi.layer.0.weight` and `Denoi.layer.0.weight` and save the 
+        resulting model as `target.pth`   
+    >>> rename_model_attributes('model.pth', 'Denoi.', 'denoi.', 'target.pth')
+    
+    Adapted from
+    https://gist.github.com/the-bass/0bf8aaa302f9ba0d26798b11e4dd73e3
+    
+
+    """
+    if target is None:
+        target = source
+
+    state_dict = torch.load(source)
+    new_state_dict = OrderedDict()
+
+    for key, value in state_dict.items():
+        new_key = attr_transformation(key, old_name, new_name) 
+        new_state_dict[new_key] = value
+        print(f"{key} -> {new_key} ")
+
+    torch.save(new_state_dict, target)
+    
+def remove_model_attributes(source, old_name, target=None):
+    """
+    Remove some attributes of a saved model (nn.module)
+
+    Parameters
+    ----------
+    source : str
+        Path to the saved model.
+    old_name : str
+        source pattern for the attributes of the model to be removed.
+    target : str, optional
+        Path to model with remaned attributes. The default is source.
+
+    Returns
+    -------
+    None.
+    
+    Example
+    -------
+        Remove the attribute `Denoi` of the model saved as `source`. The 
+        resulting model is saved as `target.pth`   
+    >>> rename_model_attributes('model.pth', 'Denoi.', 'target.pth')
+    """
+    if target is None:
+        target = source
+
+    state_dict = torch.load(source)
+    new_state_dict = OrderedDict()
+
+    for key, value in state_dict.items():
+        m = attr_removal(key, old_name) 
+        if m:
+            print(f"{key} has been removed")
+        else:
+            new_state_dict[key] = value
+            print(f"{key} -> {key}")
+
+    torch.save(new_state_dict, target)
+    
+def attr_transformation(old_key, old_name, new_name):
+    new_key = re.sub(old_name, new_name, old_key)
+    return new_key
+
+def attr_removal(old_key, old_name):
+    new_key = re.match(old_name, old_key)
+    return new_key
