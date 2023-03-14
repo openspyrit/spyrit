@@ -97,3 +97,96 @@ def Permutation_Matrix(Mat: np.ndarray) -> np.ndarray:
     P = np.zeros((nx*ny, nx*ny));
     P[Reorder-1, Columns] = 1;
     return P
+
+def reorder(meas: np.ndarray, 
+            ord_acq: np.ndarray, 
+            ord_rec:  np.ndarray) -> np.ndarray:
+    r"""Reorder measurement vectors
+
+    Args:
+        meas (np.ndarray):
+            Measurements with dimensions (:math:`M_{acq} \times K_{rep}`), where 
+            :math:`M_{acq}` is the number of acquired patterns and 
+            :math:`K_{rep}` is the number of acquisition repetitions 
+            (e.g., wavelength or image batch).
+        ord_acq (np.ndarray): 
+            Sampling order used for acquisition 
+            (:math:`N_{acq} \times N_{acq}` square matrix).
+        ord_rec (np.ndarray): 
+            Sampling order used for reconstruction 
+            (:math:`N_{rec} \times N_{rec}` square matrix).
+
+    Returns:
+        (np.ndarray): 
+            Measurements with dimensions (:math:`M_{rec} \times K_{rep}`), 
+            where :math:`M_{rec} = N_{rec}^2`.
+            
+    .. note::    
+            If :math:`M_{rec} < M_{acq}`, the input measurement vectors are 
+            subsampled.
+            
+            If :math:`M_{rec} > M_{acq}`, the input measurement vectors are 
+            filled with zeros.
+    """    
+    # Dimensions (N.B: images are assumed to be square)
+    N_acq = ord_acq.shape[0]
+    N_rec = ord_rec.shape[0]
+    K_rep = meas.shape[1]
+    
+    # Order used for acquisistion
+    Perm_acq = Permutation_Matrix(ord_acq) 
+    Perm_rec = Permutation_Matrix(ord_rec)
+    
+    # Acquisition order -> natural order (fill with zeros if necessary)
+    if N_rec > N_acq:
+        
+        # Square subsampling in the "natural" order
+        Ord_sub = np.zeros((N_rec,N_rec))
+        Ord_sub[:N_acq,:N_acq]= -np.arange(-N_acq**2,0).reshape(N_acq,N_acq)
+        Perm_sub = Permutation_Matrix(Ord_sub) 
+        
+        # Natural order measurements (N_acq resolution)
+        Perm_raw = np.zeros((2*N_acq**2,2*N_acq**2))
+        Perm_raw[::2,::2] = Perm_acq.T     
+        Perm_raw[1::2,1::2] = Perm_acq.T
+        meas = Perm_raw @ meas
+        
+        # Zero filling (needed only when reconstruction resolution is higher 
+        # than acquisition res)
+        zero_filled = np.zeros((2*N_rec**2, K_rep))
+        zero_filled[:2*N_acq**2,:] = meas
+        
+        meas = zero_filled
+        
+        Perm_raw = np.zeros((2*N_rec**2,2*N_rec**2))
+        Perm_raw[::2,::2] = Perm_sub.T     
+        Perm_raw[1::2,1::2] = Perm_sub.T
+        
+        meas = Perm_raw @ meas
+        
+    elif N_rec == N_acq:
+        Perm_sub = Perm_acq[:N_rec**2,:].T
+      
+    elif N_rec < N_acq:
+        # Square subsampling in the "natural" order
+        Ord_sub = np.zeros((N_acq,N_acq))
+        Ord_sub[:N_rec,:N_rec]= -np.arange(-N_rec**2,0).reshape(N_rec,N_rec)
+        Perm_sub = Permutation_Matrix(Ord_sub) 
+        Perm_sub = Perm_sub[:N_rec**2,:]
+        Perm_sub = Perm_sub @ Perm_acq.T    
+        
+    #Reorder measurements when the reconstruction order is not "natural"  
+    if N_rec <= N_acq:   
+        # Get both positive and negative coefficients permutated
+        Perm = Perm_rec @ Perm_sub
+        Perm_raw = np.zeros((2*N_rec**2,2*N_acq**2))
+        
+    elif N_rec > N_acq:
+        Perm = Perm_rec
+        Perm_raw = np.zeros((2*N_rec**2,2*N_rec**2))
+    
+    Perm_raw[::2,::2] = Perm     
+    Perm_raw[1::2,1::2] = Perm
+    meas = Perm_raw @ meas
+    
+    return meas
