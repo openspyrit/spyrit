@@ -654,7 +654,7 @@ class DCNet(nn.Module):
         Perm = noise.meas_op.Perm.weight.data.cpu().numpy().T
         sigma_perm = Perm @ sigma @ Perm.T
         self.DC_layer = TikhonovMeasurementPriorDiag(sigma_perm, noise.meas_op.M)
-        self.Denoi = denoi
+        self.denoi = denoi
         
     def forward(self, x):
         r""" Full pipeline of the reconstruction network
@@ -763,7 +763,7 @@ class DCNet(nn.Module):
         x = x.view(bc,1,self.Acq.meas_op.h, self.Acq.meas_op.w)   # shape x = [b*c,1,h,w]
         
         # Image domain denoising
-        x = self.Denoi(x)               
+        x = self.denoi(x)               
         
         return x        
         
@@ -806,7 +806,7 @@ class DCNet(nn.Module):
         x = x.view(bc,1,self.Acq.meas_op.h, self.Acq.meas_op.w)       # shape x = [b*c,1,h,w]
 
         # Image domain denoising
-        x = self.Denoi(x)                                  # shape x = [b*c,1,h,w]
+        x = self.denoi(x)                                  # shape x = [b*c,1,h,w]
         
         # Denormalization 
         x = self.PreP.denormalize_expe(x, norm, self.Acq.meas_op.h, self.Acq.meas_op.w)
