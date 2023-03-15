@@ -83,6 +83,9 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, device, roo
 
     
     for epoch in range(num_epochs):
+        
+        print(torch.cuda.memory_summary())
+        
         prev_time = time.time()
 #        if disp :
 #            print('Epoch {}/{}'.format(epoch, num_epochs - 1))
@@ -101,12 +104,15 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, device, roo
             for batch_i, (inputs, labels) in enumerate(dataloaders[phase]):
                 inputs = inputs.to(device)
 
+                print(torch.cuda.memory_summary())
                 # zero the parameter gradients
                 optimizer.zero_grad()
 
                 # forward
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
+                    
+                    print(torch.cuda.memory_summary())
                     outputs = model(inputs)
                     loss = criterion(inputs,outputs,model)
 
@@ -141,8 +147,9 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, device, roo
                             time_left,
                         )
                     )
+                    
+                del outputs
     
-
             epoch_loss = running_loss / dataset_sizes[phase]
             train_info[phase].append(epoch_loss);
             
