@@ -48,19 +48,30 @@ def imshow(img, title=""):
 # We  loop over our data iterator, feed the inputs to the
 # network and optimize.
 
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
 def count_trainable_param(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    n_param = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Number of trainable parameters: {n_param}")
+    return n_param
 
 def count_param(model):
-    return sum(p.numel() for p in model.parameters())
+    n_param = sum(p.numel() for p in model.parameters())
+    print(f"Total number of parameters: {n_param}")
+    return n_param
 
+def count_memory(model):
+    mem_params = sum([p.nelement()*p.element_size() for p in model.parameters()])
+    mem_bufs = sum([buf.nelement()*buf.element_size() for buf in model.buffers()])
+    mem = mem_params + mem_bufs
+    print(f"Memory requirement: {mem} bytes")
+    return mem
 
 def train_model(model, criterion, optimizer, scheduler, dataloaders, device, root, num_epochs=25,disp=False, do_checkpoint=0):
     """ Trains the pytorch model 
         """
+    count_trainable_param(model)
+    count_param(model)
+    count_memory(model)
+    
     since = time.time()
     best_loss = float("inf")
     best_model_wts = copy.deepcopy(model.state_dict())
