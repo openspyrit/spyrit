@@ -650,10 +650,10 @@ class DCNet(nn.Module):
         
         super().__init__()
         self.Acq = noise 
-        self.PreP = prep
+        self.prep = prep
         Perm = noise.meas_op.Perm.weight.data.cpu().numpy().T
         sigma_perm = Perm @ sigma @ Perm.T
-        self.DC_layer = TikhonovMeasurementPriorDiag(sigma_perm, noise.meas_op.M)
+        self.tikho = TikhonovMeasurementPriorDiag(sigma_perm, noise.meas_op.M)
         self.denoi = denoi
         
     def forward(self, x):
@@ -754,12 +754,12 @@ class DCNet(nn.Module):
         bc, _ = x.shape
     
         # Preprocessing
-        var_noi = self.PreP.sigma(x)
-        x = self.PreP(x, self.Acq.meas_op) # shape x = [b*c, M]
+        var_noi = self.prep.sigma(x)
+        x = self.prep(x, self.Acq.meas_op) # shape x = [b*c, M]
     
         # measurements to image domain processing
         x_0 = torch.zeros((bc, self.Acq.meas_op.N), device=x.device)
-        x = self.DC_layer(x, x_0, var_noi, self.Acq.meas_op)
+        x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
         x = x.view(bc,1,self.Acq.meas_op.h, self.Acq.meas_op.w)   # shape x = [b*c,1,h,w]
         
         # Image domain denoising
@@ -792,23 +792,23 @@ class DCNet(nn.Module):
         bc, _ = x.shape
         
         # Preprocessing expe
-        var_noi = self.PreP.sigma_expe(x)
-        x, N0_est = self.PreP.forward_expe(x, self.Acq.meas_op) # x <- x/N0_est
-        x = x/self.PreP.gain
-        norm = self.PreP.gain*N0_est
+        var_noi = self.prep.sigma_expe(x)
+        x, N0_est = self.prep.forward_expe(x, self.Acq.meas_op) # x <- x/N0_est
+        x = x/self.prep.gain
+        norm = self.prep.gain*N0_est
         
         # variance of preprocessed measurements
         var_noi = torch.div(var_noi, (norm.view(-1,1).expand(bc,self.Acq.meas_op.M))**2)
     
         # measurements to image domain processing
         x_0 = torch.zeros((bc, self.Acq.meas_op.N), device=x.device)
-        x = self.DC_layer(x, x_0, var_noi, self.Acq.meas_op)
+        x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
         x = x.view(bc,1,self.Acq.meas_op.h, self.Acq.meas_op.w)       # shape x = [b*c,1,h,w]
 
         # Image domain denoising
         x = self.denoi(x)                                  # shape x = [b*c,1,h,w]
         
         # Denormalization 
-        x = self.PreP.denormalize_expe(x, norm, self.Acq.meas_op.h, self.Acq.meas_op.w)
+        x = self.prep.denormalize_expe(x, norm, self.Acq.meas_op.h, self.Acq.meas_op.w)
         
         return x
