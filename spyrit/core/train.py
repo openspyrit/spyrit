@@ -262,6 +262,15 @@ def train_model_supervised(model, criterion, optimizer, scheduler, dataloaders, 
     model.load_state_dict(best_model_wts)
     return model , train_info
 
+class Weight_Decay_Loss(nn.Module):
+    
+    def __init__(self, loss):
+        super(Weight_Decay_Loss,self).__init__()
+        self.loss = loss;
+
+    def forward(self,x,y, net):
+        mse=self.loss(x,y);
+        return mse
 
 class Train_par:
     def __init__(self, batch_size, learning_rate, img_size, reg = 0):
