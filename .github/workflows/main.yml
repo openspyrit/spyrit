@@ -72,18 +72,10 @@ jobs:
     - name: Run the Optic test on Windows
       if: matrix.os == 'windows-latest'
       run: |
-          if(-not (Test-Path -path "data_example")) { mkdir data_example }
-          pip install "scipy<1.8.0"
-          pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          #pip install "scipy<1.8.0"
+          #pip install requests torch==1.9.0+cpu torchvision==0.10.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
           pip install -e .
-          cd data_example
-          if(Test-Path -path "data\stl10_binary.tar.gz") {
-              cd data
-              tar xzvf stl10_binary.tar.gz
-              cd ..
-          }
-          python ..\.github\workflows\example_2020_ISBI.py
-          rm -r -fo data/stl10_binary
+          python spyrit\test\run_tests.py
 
   test_wheel:
     runs-on: ${{ matrix.os }}

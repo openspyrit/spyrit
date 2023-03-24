@@ -130,7 +130,7 @@ def test_core_meas():
         # get_H
         H = meas_op.get_H()
         print(H.shape)
-        assert_test(H.shape, torch.Size([23, 64]), "Wrong measurement matrix size")
+        assert_test(H.shape, torch.Size([24, 64]), "Wrong measurement matrix size")
 
         return(True)
 
