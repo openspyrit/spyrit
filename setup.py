@@ -9,7 +9,7 @@ def readme():
         return f.read()
 
 setup(name='spyrit',
-      version='1.2.0',
+      version='2.0.0',
       description='Demo package',
       url='https://github.com/openspyrit/spyrit',
       long_description = readme(),
