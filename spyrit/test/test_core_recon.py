@@ -41,12 +41,26 @@ print(z.shape)
 print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
 
 #%% PseudoInverseStore
+from spyrit.core.meas import Linear
+#from spyrit.core.prep import DirectPoisson
+from spyrit.core.recon import PseudoInverseStore
+import numpy as np
+import torch
+
+H = np.random.rand(400,32*32)
+meas_op = Linear(H)
+recon_op = PseudoInverseStore(meas_op)
+x = torch.rand([10,400], dtype=torch.float)
+y = recon_op(x)
+print(y.shape)
+
+#%% PseudoInverseStore2
 import numpy as np
 import torch
 from spyrit.core.meas import LinearRowSplit
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import SplitRowPoisson
-from spyrit.core.recon import PseudoInverseStore
+from spyrit.core.recon import PseudoInverseStore2
 from spyrit.misc.walsh_hadamard import walsh_matrix
 
 
@@ -55,7 +69,7 @@ from spyrit.misc.walsh_hadamard import walsh_matrix
 H_pos = np.random.rand(24,64)
 H_neg = np.random.rand(24,64)
 meas_op = LinearRowSplit(H_pos,H_neg)
-recon_op = PseudoInverseStore(meas_op)
+recon_op = PseudoInverseStore2(meas_op)
 
 # forward
 x = torch.rand([10,24,92], dtype=torch.float)
@@ -74,7 +88,7 @@ H_neg = np.where(H<0,-H,0)[:M,:]
 meas_op = LinearRowSplit(H_pos,H_neg)
 noise_op = NoNoise(meas_op)
 split_op = SplitRowPoisson(1.0, M, 92)
-recon_op = PseudoInverseStore(meas_op)
+recon_op = PseudoInverseStore2(meas_op)
 
 # forward
 x = torch.FloatTensor(B,N,92).uniform_(-1, 1)
@@ -120,6 +134,42 @@ print(z.shape)
 # reconstruct
 x = torch.rand((B*C,2*M), dtype=torch.float)
 z = recnet.reconstruct(x)
+print(z.shape)
+
+#%% PinvStoreNet
+import numpy as np
+import torch
+from spyrit.core.meas import HadamSplit
+from spyrit.core.noise import Poisson
+from spyrit.core.prep import DirectPoisson 
+from spyrit.core.recon import PseudoInverseStore, PinvStoreNet
+
+
+B, C, h, M = 85, 1, 32, 600
+
+# constructor
+H = np.random.random([M, h**2])
+meas =  Linear(H)
+meas.h, meas.w = h, h
+noise = NoNoise(meas)
+prep = DirectPoisson(1.0, meas)
+pinv_net = PinvStoreNet(noise, prep)
+
+# forward
+x = torch.FloatTensor(B,C,h,h).uniform_(-1, 1)
+z = pinv_net(x)
+
+print(z.shape)
+print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
+
+# acquire
+x = torch.FloatTensor(B,C,h,h).uniform_(-1, 1)
+z = pinv_net.acquire(x)
+print(z.shape)
+
+# reconstruct
+x = torch.rand((B*C,M), dtype=torch.float)
+z = pinv_net.reconstruct(x)
 print(z.shape)
 
 #%% TikhonovMeasurementPriorDiag
