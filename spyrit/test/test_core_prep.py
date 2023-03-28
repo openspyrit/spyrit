@@ -4,6 +4,31 @@ Created on Wed Feb 15 15:19:24 2023
 
 @author: ducros
 """
+#%% Test DirectPoisson
+from spyrit.core.meas import Linear
+from spyrit.core.prep import DirectPoisson
+import numpy as np
+import torch
+
+# constructor and forward
+x = torch.rand([10,400], dtype=torch.float)
+H = np.random.random([400,32*32])
+meas_op =  Linear(H)
+prep_op = DirectPoisson(1.0, meas_op)
+m = prep_op(x)
+print(m.shape)
+
+# variance
+x = torch.rand([10,400], dtype=torch.float)
+v = prep_op.sigma(x)
+print(v.shape)
+
+# denormalize_expe
+x = torch.rand([10, 1, 32,32], dtype=torch.float)
+beta = 9*torch.rand([10])
+y = prep_op.denormalize_expe(x, beta, 32, 32)
+print(y.shape)
+
 #%% Test SplitPoisson
 import torch
 import numpy as np
