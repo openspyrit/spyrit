@@ -2,22 +2,156 @@ import torch
 import torch.nn as nn
 from spyrit.core.meas import Linear, LinearSplit, LinearRowSplit, HadamSplit
 from typing import Union, Tuple
+  
+#==============================================================================
+class DirectPoisson(nn.Module):
+#==============================================================================
+    r"""
+    Preprocess the raw data acquired with a direct measurement operator assuming 
+    Poisson noise.  It also compensates for the affine transformation applied 
+    to the images to get positive intensities.
+    
+    It computes :math:`m = \frac{2}{\alpha}y - H1` and the variance
+    :math:`\sigma^2 = 4\frac{y}{\alpha^{2}}`, where :math:`y = Hx` are obtained 
+    using a direct linear measurement operator (see :mod:`spyrit.core.Linear`),   
+    :math:`\alpha` is the image intensity, and 1 is the all-ones vector.
+    
+    Args:
+        :attr:`alpha`: maximun image intensity :math:`\alpha` (in counts)
+        
+        :attr:`M`: number of measurements :math:`M`
+        
+        :attr:`N`: number of pixels in the image :math:`N`
+        
+    Example:
+        >>> H = np.random.random([400,32*32])
+        >>> meas_op =  Linear(H)
+        >>> prep_op = DirectPoisson(1.0, meas_op)
 
+    """
+    def __init__(self, alpha: float, meas_op: Linear):
+        super().__init__()
+        self.alpha = alpha
+        self.N = meas_op.N
+        self.M = meas_op.M
+        
+        self.max = nn.MaxPool1d(self.N)
+        self.register_buffer('H_ones',meas_op(torch.ones((1,self.N))))
+            
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r""" 
+        Preprocess measurements to compensate for the affine image normalization
+        
+        It computes :math:`\frac{1}{\alpha}x - H1`, where 1 represents the 
+        all-ones vector.
+        
+        Args:
+            :attr:`x`: batch of images in the Hadamard domain 
+            
+            :attr:`meas_op`: measurement operator
+            
+        Shape:
+            x: :math:`(B, M)` where :math:`B` is the batch dimension
+            
+            meas_op: the number of measurements :attr:`meas_op.M` should match
+            :math:`M`.
+            
+            Output: :math:`(B, M)`
+            
+        Example:
+            >>> x = torch.rand([10,400], dtype=torch.float)
+            >>> H = np.random.random([400,32*32])
+            >>> meas_op =  Linear(H)
+            >>> prep_op = DirectPoisson(1.0, meas_op)
+            >>> m = prep_op(x)
+            >>> print(m.shape)
+            torch.Size([10, 400])
+        """
+        # normalize
+        H_ones = self.H_ones.expand(x.shape[0],self.M)
+        x = 2*x/self.alpha - H_ones
+        return x
+    
+    def sigma(self, x: torch.tensor) -> torch.tensor:
+        r""" Estimates the variance of the preprocessed measurements 
+        
+        The variance is estimated as :math:`\frac{4}{\alpha^2} x`
+        
+        Args:
+            :attr:`x`: batch of images in the measurement domain
+            
+        Shape:
+            :attr:`x`: :math:`(B,M)` where :math:`B` is the batch dimension
+            
+            Output: :math:`(B, M)`
+            
+        Example:
+            >>> x = torch.rand([10,400], dtype=torch.float)
+            >>> v = prep_op.sigma(x)
+            >>> print(v.shape)
+            torch.Size([10, 400])
+            
+        """
+        x = 4*x/(self.alpha**2) # Cov is in [-1,1] so *4
+        return x  
+    
+    def denormalize_expe(self, x, beta, h, w):
+        r""" 
+        Denormalize images from the range [-1;1] to the range [0; :math:`\beta`]
+        
+        It computes :math:`m = \frac{\beta}{2}(x+1)`, where 
+        :math:`\beta` is the normalization factor. 
+        
+        Args:
+            :attr:`x`: Batch of images
+            
+            :attr:`beta`: Normalizarion factor
+            
+            :attr:`h`: Image height
+            
+            :attr:`w`: Image width
+        
+        Shape:
+            :attr:`x`: :math:`(*, 1, h, w)`
+            
+            :attr:`beta`: :math:`(*)` or :math:`(*, 1)` 
+            
+            :attr:`h`: int
+            
+            :attr:`w`: int
+            
+            :attr:`Output`: :math:`(*, 1, h, w)`
+        
+        Example:
+            >>> x = torch.rand([10, 1, 32,32], dtype=torch.float)
+            >>> beta = 9*torch.rand([10])
+            >>> y = prep_op.denormalize_expe(x, beta, 32, 32)
+            >>> print(y.shape)
+            torch.Size([10, 1, 32, 32])
+                        
+        """
+        bc = x.shape[0]
+        
+        # Denormalization
+        beta = beta.view(bc,1,1,1)
+        beta = beta.expand(bc,1,h,w)
+        x = (x+1)/2*beta
+        
+        return x
+    
 #==============================================================================
 class SplitPoisson(nn.Module):
 #==============================================================================
     r"""
-    Preprocess raw data acquired with a split measurement operator
+    Preprocess the raw data acquired with a plit measurement operator assuming 
+    Poisson noise.  It also compensates for the affine transformation applied 
+    to the images to get positive intensities.
     
-    It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha}` and the variance
+    It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha} - H1` and the variance
     :math:`var = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where 
     :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using a 
-    split measurement operator (see :mod:`spyrit.core.LinearSplit`) and 
-    :math:`\alpha` is the image intensity.
-    
-    It also compensates for the affine transformation applied to x to get 
-    positive intensities.
-
+    split measurement operator (see :mod:`spyrit.core.LinearSplit`), 
+    :math:`\alpha` is the image intensity, and 1 is the all-ones vector.
     
     Args:
         alpha (float): maximun image intensity :math:`\alpha` (in counts)
@@ -48,7 +182,7 @@ class SplitPoisson(nn.Module):
         Preprocess to compensates for image normalization and splitting of the 
         measurement operator.
         
-        It computes :math:`\frac{x[0::2]-x[1::2]}{\alpha}`
+        It computes :math:`\frac{x[0::2]-x[1::2]}{\alpha} - H1`
         
         Args:
             :attr:`x`: batch of images in the Hadamard domain 
