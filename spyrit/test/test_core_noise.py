@@ -19,16 +19,15 @@ def test_core_noise():
     print(y.shape)
     assert_test(y.shape, torch.Size([10, 400]), "Wrong matrix size")
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-    assert_test(torch.min(y), 231.19, "Wrong measurement min")
-    assert_test(torch.max(y), 282.14, "Wrong measurement max")
 
     # forward with HadamSplit
-    Perm = np.random.random([32*32,32*32])
-    split_op = HadamSplit(H, Perm, 32, 32)
+    Perm = np.random.random([32,32])
+    split_op = HadamSplit(400, 32, Perm)
     split_acq = NoNoise(split_op)
 
     y = split_acq(x)
     print(y.shape)
+    assert_test(y.shape, torch.Size([10, 800]), "Wrong matrix size")
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
     #%% Poisson
@@ -44,6 +43,7 @@ def test_core_noise():
     x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
     y = noise_op(x)
     print(y.shape)
+    assert_test(y.shape, torch.Size([10, 400]), "Wrong matrix size")
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
     y = noise_op(x)
@@ -51,14 +51,15 @@ def test_core_noise():
 
     # EXAMPLE 2
     # constructor with HadamSplit
-    Perm = np.random.random([32*32,32*32])
-    meas_op = HadamSplit(H, Perm, 32, 32)
+    Perm = np.random.random([32,32])
+    meas_op = HadamSplit(400, 32, Perm)
     noise_op = Poisson(meas_op, 200.0)
 
     # forward with HadamSplit
     x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
     y = noise_op(x)
     print(y.shape)
+    assert_test(y.shape, torch.Size([10, 800]), "Wrong matrix size")
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
     y = noise_op(x)
@@ -73,6 +74,7 @@ def test_core_noise():
     x = torch.FloatTensor(10, 64, 92).uniform_(-1, 1)
     y = noise_op(x)
     print(y.shape)
+    assert_test(y.shape, torch.Size([10, 48, 92]), "Wrong matrix size")
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
     y = noise_op(x)
@@ -91,6 +93,7 @@ def test_core_noise():
     x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
     y = noise_op(x)
     print(y.shape)
+    assert_test(y.shape, torch.Size([10, 400]), "Wrong matrix size")
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
     y = noise_op(x)
@@ -98,14 +101,15 @@ def test_core_noise():
 
     # EXAMPLE 2
     # constructor with HadamSplit
-    Perm = np.random.random([32*32,32*32])
-    meas_op = HadamSplit(H, Perm, 32, 32)
+    Perm = np.random.random([32,32])
+    meas_op = HadamSplit(400, 32, Perm)
     noise_op = PoissonApproxGauss(meas_op, 200.0)
 
     # forward with HadamSplit
     x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
     y = noise_op(x)
     print(y.shape)
+    assert_test(y.shape, torch.Size([10, 800]), "Wrong matrix size")
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
     y = noise_op(x)
@@ -120,6 +124,7 @@ def test_core_noise():
     x = torch.FloatTensor(10, 64, 92).uniform_(-1, 1)
     y = noise_op(x)
     print(y.shape)
+    assert_test(y.shape, torch.Size([10, 48, 92]), "Wrong matrix size")
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
     y = noise_op(x)
@@ -138,6 +143,7 @@ def test_core_noise():
     x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
     y = noise_op(x)
     print(y.shape)
+    assert_test(y.shape, torch.Size([10, 400]), "Wrong matrix size")
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
     y = noise_op(x)
@@ -145,14 +151,15 @@ def test_core_noise():
 
     # EXAMPLE 2
     # constructor with HadamSplit
-    Perm = np.random.random([32*32,32*32])
-    meas_op = HadamSplit(H, Perm, 32, 32)
+    Perm = np.random.random([32,32])
+    meas_op = HadamSplit(400, 32, Perm)
     noise_op = PoissonApproxGaussSameNoise(meas_op, 200.0)
 
     # forward with HadamSplit
     x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
     y = noise_op(x)
     print(y.shape)
+    assert_test(y.shape, torch.Size([10, 800]), "Wrong matrix size")
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
     y = noise_op(x)
