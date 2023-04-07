@@ -19,9 +19,8 @@ class DirectPoisson(nn.Module):
     Args:
         :attr:`alpha`: maximun image intensity :math:`\alpha` (in counts)
         
-        :attr:`M`: number of measurements :math:`M`
+        :attr:`meas_op`: measurement operator (see :mod:`~spyrit.core.meas`)
         
-        :attr:`N`: number of pixels in the image :math:`N`
         
     Example:
         >>> H = np.random.random([400,32*32])
@@ -29,14 +28,14 @@ class DirectPoisson(nn.Module):
         >>> prep_op = DirectPoisson(1.0, meas_op)
 
     """
-    def __init__(self, alpha: float, meas_op: Linear):
+    def __init__(self, alpha: float, meas_op):
         super().__init__()
         self.alpha = alpha
         self.N = meas_op.N
         self.M = meas_op.M
         
         self.max = nn.MaxPool1d(self.N)
-        self.register_buffer('H_ones',meas_op(torch.ones((1,self.N))))
+        self.register_buffer('H_ones', meas_op(torch.ones((1,self.N))))
             
     def forward(self, x: torch.tensor) -> torch.tensor:
         r""" 
@@ -46,9 +45,7 @@ class DirectPoisson(nn.Module):
         all-ones vector.
         
         Args:
-            :attr:`x`: batch of images in the Hadamard domain 
-            
-            :attr:`meas_op`: measurement operator
+            :attr:`x`: batch of measurement vectors 
             
         Shape:
             x: :math:`(B, M)` where :math:`B` is the batch dimension
@@ -78,7 +75,7 @@ class DirectPoisson(nn.Module):
         The variance is estimated as :math:`\frac{4}{\alpha^2} x`
         
         Args:
-            :attr:`x`: batch of images in the measurement domain
+            :attr:`x`: batch of measurement vectors 
             
         Shape:
             :attr:`x`: :math:`(B,M)` where :math:`B` is the batch dimension
@@ -156,28 +153,26 @@ class SplitPoisson(nn.Module):
     Args:
         alpha (float): maximun image intensity :math:`\alpha` (in counts)
         
-        M (int): number of measurements :math:`M`
+        :attr:`meas_op`: measurement operator (see :mod:`~spyrit.core.meas`)
         
-        N (int): number of pixels in the image :math:`N`
         
     Example:
         >>> split_op = SplitPoisson(1.0, 400, 32*32)
 
     """
-    def __init__(self, alpha: float, M: int, N: int):
+    def __init__(self, alpha: float, meas_op):
         super().__init__()
         self.alpha = alpha
-        self.N = N
-        self.M = M
+        self.N = meas_op.N
+        self.M = meas_op.M
         
-        self.even_index = range(0,2*M,2)
-        self.odd_index  = range(1,2*M,2)
-        self.max = nn.MaxPool1d(N)
+        self.even_index = range(0,2*self.M,2)
+        self.odd_index  = range(1,2*self.M,2)
+        self.max = nn.MaxPool1d(self.N)
+        
+        self.register_buffer('H_ones', meas_op.H(torch.ones((1,self.N))))
 
-    def forward(self, 
-                x: torch.tensor, 
-                meas_op: Union[LinearSplit, HadamSplit],
-                ) -> torch.tensor:
+    def forward(self, x: torch.tensor) -> torch.tensor:
         r""" 
         Preprocess to compensates for image normalization and splitting of the 
         measurement operator.
@@ -185,9 +180,7 @@ class SplitPoisson(nn.Module):
         It computes :math:`\frac{x[0::2]-x[1::2]}{\alpha} - H1`
         
         Args:
-            :attr:`x`: batch of images in the Hadamard domain 
-            
-            :attr:`meas_op`: measurement operator
+            :attr:`x`: batch of measurement vectors 
             
         Shape:
             x: :math:`(B, 2M)` where :math:`B` is the batch dimension
@@ -211,10 +204,12 @@ class SplitPoisson(nn.Module):
             >>> print(m.shape)
             torch.Size([10, 400])
         """
+        H_ones = self.H_ones.expand(x.shape[0],self.M)
+        
         # unsplit
         x = x[:,self.even_index] - x[:,self.odd_index]
         # normalize
-        x = 2*x/self.alpha - meas_op.H(torch.ones(x.shape[0], self.N).to(x.device))
+        x = 2*x/self.alpha - H_ones
         return x
     
     def forward_expe(self, 
@@ -274,8 +269,10 @@ class SplitPoisson(nn.Module):
         alpha = alpha.expand(bc,self.M) # shape is (b*c, M)
         
         # normalize
+        H_ones = self.H_ones.expand(bc,self.M)
+        
         x = torch.div(x, alpha)
-        x = 2*x - meas_op.H(torch.ones(bc, self.N).to(x.device))
+        x = 2*x - H_ones
         
         alpha = alpha[:,0]    # shape is (b*c,)
 
