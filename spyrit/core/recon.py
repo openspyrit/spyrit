@@ -35,7 +35,7 @@ class PseudoInverse(nn.Module):
     def __init__(self):
         super().__init__()
         
-    def forward(self, x: torch.tensor, meas_op: HadamSplit) -> torch.tensor:
+    def forward(self, x: torch.tensor, meas_op) -> torch.tensor:
         r""" Compute pseudo-inverse of measurements.
         
         Args:
@@ -44,6 +44,7 @@ class PseudoInverse(nn.Module):
             :attr:`meas_op`: Measurement operator. Any class that 
             implements a :meth:`pinv` method can be used, e.g.,
             :class:`~spyrit.core.forwop.HadamSplit`. 
+            
         Shape:
             
             :attr:`x`: :math:`(*, M)`
@@ -581,7 +582,7 @@ class PinvNet(nn.Module):
             >>> print(z.shape)
             torch.Size([10, 1, 64, 64])
         """
-        m = self.prep(y, self.acqu.meas_op)
+        m = self.prep(y)
         m = torch.nn.functional.pad(m, (0, self.acqu.meas_op.N-self.acqu.meas_op.M))
         z = m @ self.acqu.meas_op.Perm.weight.data.T
         z = z.view(-1,1,self.acqu.meas_op.h, self.acqu.meas_op.w)
@@ -615,7 +616,7 @@ class PinvNet(nn.Module):
         bc, _ = x.shape
     
         # Preprocessing in the measurement domain
-        x = self.prep(x, self.acqu.meas_op) # shape x = [b*c, M]
+        x = self.prep(x) # shape x = [b*c, M]
     
         # measurements to image-domain processing
         x = self.pinv(x, self.acqu.meas_op)               # shape x = [b*c,N]
@@ -623,6 +624,43 @@ class PinvNet(nn.Module):
         # Image-domain denoising
         x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)   # shape x = [b*c,1,h,w]
         x = self.denoi(x)                       
+        
+        return x
+    
+    def reconstruct_pinv(self, x):
+        r""" Reconstruction step of a reconstruction network
+            
+        Args:
+            :attr:`x`: raw measurement vectors
+        
+        Shape:
+            :attr:`x`: :math:`(BC,2M)`
+            
+            :attr:`output`: :math:`(BC,1,H,W)`
+        
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H**2)
+            >>> recnet = PinvNet(noise, prep) 
+            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
+            >>> z = recnet.reconstruct_pinv(x)
+            >>> print(z.shape)
+            torch.Size([10, 1, 64, 64])
+        """
+        # Measurement to image domain mapping
+        bc, _ = x.shape
+    
+        # Preprocessing in the measurement domain
+        x = self.prep(x)#, self.acqu.meas_op) # shape x = [b*c, M]
+    
+        # measurements to image-domain processing
+        x = self.pinv(x, self.acqu.meas_op)               # shape x = [b*c,N]
+                
+        # Image-domain denoising
+        x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)   # shape x = [b*c,1,h,w]                       
         
         return x
 
@@ -984,7 +1022,7 @@ class DCNet(nn.Module):
     
         # Preprocessing
         var_noi = self.prep.sigma(x)
-        x = self.prep(x, self.Acq.meas_op) # shape x = [b*c, M]
+        x = self.prep(x) # shape x = [b*c, M]
     
         # measurements to image domain processing
         x_0 = torch.zeros((bc, self.Acq.meas_op.N), device=x.device)
