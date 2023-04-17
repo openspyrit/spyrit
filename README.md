@@ -59,7 +59,7 @@ https://spyrit.readthedocs.io/
 * Fadoua Taia-Alaoui
 
 # License
-This project is licensed under the Creative Commons Attribution Share Alike 4.0 - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the LGPL-3.0 license - see the [LICENSE.md](LICENSE.md) file for details
 
 # Acknowledgments
 * [Jin LI](https://github.com/happyjin/ConvGRU-pytorch) for his implementation of Convolutional Gated Recurrent Units for PyTorch
