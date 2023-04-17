@@ -1,5 +1,5 @@
-from spyrit.core.Forward_Operator import LinearRowSplit
-from spyrit.core.Preprocess import SplitRowPoisson
+from spyrit.core.meas import LinearRowSplit
+from spyrit.core.prep import SplitRowPoisson
 from spyrit.misc.walsh_hadamard import walsh_matrix
 from spyrit.misc.statistics import data_loaders_stl10
 from spyrit.misc.disp import imagesc

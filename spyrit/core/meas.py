@@ -1,9 +1,11 @@
+import warnings
 import torch
 import torch.nn as nn
 import numpy as np
 from typing import Union
 from spyrit.misc.walsh_hadamard import walsh2_torch, walsh2_matrix
 from spyrit.misc.sampling import Permutation_Matrix
+
 # ==================================================================================
 class Linear(nn.Module):
 # ==================================================================================
@@ -19,25 +21,56 @@ class Linear(nn.Module):
         Args:
             :attr:`H`: measurement matrix (linear operator) with shape :math:`(M, N)`.
             
+            :attr:`pinv`: Option to have access to pseudo inverse solutions. 
+            Defaults to `None` (the pseudo inverse is not initiliazed). 
+            
+            :attr:`reg` (optional): Regularization parameter (cutoff for small 
+            singular values, see :mod:`numpy.linal.pinv`). Only relevant when 
+            :attr:`pinv` is not `None`.
+
+
         Attributes:
-             :attr:`H`: The learnable measurement matrix of shape 
-             :math:`(M,N)` initialized as :math:`H`
+              :attr:`H`: The learnable measurement matrix of shape 
+              :math:`(M,N)` initialized as :math:`H`
              
-             :attr:`H_adjoint`: The learnable adjoint measurement matrix 
-             of shape :math:`(N,M)` initialized as :math:`H^\top`
-             
-             
+              :attr:`H_adjoint`: The learnable adjoint measurement matrix 
+              of shape :math:`(N,M)` initialized as :math:`H^\top`
+              
+              :attr:`H_pinv` (optional): The learnable adjoint measurement 
+              matrix of shape :math:`(N,M)` initialized as :math:`H^\dagger`.
+              Only relevant when :attr:`pinv` is not `None`.
         
         Example:
-            >>> H = np.array(np.random.random([400, 1000]))
+            >>> H = np.random.random([400, 1000])
             >>> meas_op = Linear(H)
+            >>> print(meas_op)
+            Linear(
+              (H): Linear(in_features=1000, out_features=400, bias=False)
+              (H_adjoint): Linear(in_features=400, out_features=1000, bias=False)
+            )
+            
+        Example 2:
+            >>> H = np.random.random([400, 1000])
+            >>> meas_op = Linear(H, True)
+            >>> print(meas_op)
+            Linear(
+              (H): Linear(in_features=1000, out_features=400, bias=False)
+              (H_adjoint): Linear(in_features=400, out_features=1000, bias=False)
+              (H_pinv): Linear(in_features=400, out_features=1000, bias=False)
+            )
     """
 
-    def __init__(self, H: np.ndarray):  
+    def __init__(self, H: np.ndarray, pinv = None, reg: float = 1e-15):  
         super().__init__()
         # instancier nn.linear
         self.M = H.shape[0]
         self.N = H.shape[1]
+        
+        self.h = int(self.N**0.5) 
+        self.w = int(self.N**0.5)
+        if self.h*self.w != self.N:
+            warnings.warn("N is not a square. Please assign self.h and self.w manually.")
+        
         self.H = nn.Linear(self.N, self.M, False) 
         self.H.weight.data = torch.from_numpy(H).float()
         # Data must be of type float (or double) rather than the default float64 when creating torch tensor
@@ -47,6 +80,16 @@ class Linear(nn.Module):
         self.H_adjoint = nn.Linear(self.M, self.N, False)
         self.H_adjoint.weight.data = torch.from_numpy(H.transpose()).float()
         self.H_adjoint.weight.requires_grad = False
+        
+        if pinv is None:
+            H_pinv = pinv
+            print('Pseudo inverse will not instanciated')
+            
+        else: 
+            H_pinv = np.linalg.pinv(H, rcond = reg)
+            self.H_pinv = nn.Linear(self.M, self.N, False)
+            self.H_pinv.weight.data = torch.from_numpy(H_pinv).float()
+            self.H_pinv.weight.requires_grad = False
                
     def forward(self, x: torch.tensor) -> torch.tensor: 
         r""" Applies linear transform to incoming images: :math:`y = Hx`.
@@ -105,7 +148,28 @@ class Linear(nn.Module):
             get_mat: torch.Size([400, 1000])
             
         """
-        return self.H.weight.data;
+        return self.H.weight.data
+    
+    def pinv(self, x: torch.tensor) -> torch.tensor:
+        r""" Computer pseudo inverse solution :math:`y = H^\dagger x`
+
+        Args:
+            :math:`x`:  batch of measurement vectors.
+            
+        Shape:
+            :math:`x`: :math:`(*, M)`
+            
+            Output: :math:`(*, N)`
+            
+        Example:
+            >>> x = torch.rand([10,400], dtype=torch.float)        
+            >>> y = meas_op.pinv(x)
+            >>> print('pinv:', y.shape)
+            adjoint: torch.Size([10, 1000])
+        """
+        #Pmat.transpose()*f
+        x = self.H_pinv(x)        
+        return x
     
 # ==================================================================================
 class LinearSplit(Linear):

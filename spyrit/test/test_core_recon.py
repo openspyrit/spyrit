@@ -32,12 +32,12 @@ def test_core_recon():
     Ord = np.random.random([H,H])
     meas_op = HadamSplit(M, H, Ord)
     noise_op = NoNoise(meas_op)
-    split_op = SplitPoisson(1.0, M, H**2)
+    split_op = SplitPoisson(1.0, meas_op)
     recon_op = PseudoInverse()
 
     x = torch.FloatTensor(B,H**2).uniform_(-1, 1)
     y = noise_op(x)
-    m = split_op(y, meas_op)
+    m = split_op(y)
     z = recon_op(m, meas_op)
     print(z.shape)
     assert_test(z.shape, torch.Size([1, 4096]), "Wrong recon size")
@@ -112,7 +112,7 @@ def test_core_recon():
     Ord = np.ones((H,H))
     meas = HadamSplit(M, H, Ord)
     noise = NoNoise(meas)
-    prep = SplitPoisson(1.0, M, H**2)
+    prep = SplitPoisson(1.0, meas)
     recnet = PinvNet(noise, prep) 
 
     # forward
@@ -209,7 +209,7 @@ def test_core_recon():
     Ord = np.ones((H,H))
     meas = HadamSplit(M, H, Ord)
     noise = NoNoise(meas)
-    prep = SplitPoisson(1.0, M, H**2)
+    prep = SplitPoisson(1.0, meas)
     sigma = np.random.random([H**2, H**2])
     recnet = DCNet(noise,prep,sigma)
 

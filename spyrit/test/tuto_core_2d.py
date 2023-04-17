@@ -34,12 +34,12 @@ x = x.view(b*c,h*w)
 Ord = np.ones((H,H))
 meas_op = HadamSplit(M, H, Ord)
 noise = NoNoise(meas_op) # noiseless
-prep = SplitPoisson(1.0, M, H*H)
+prep = SplitPoisson(1.0, meas_op)
 recon = PseudoInverse()
 
 # measurements and images
 y = noise(x)
-m = prep(y, meas_op)
+m = prep(y)
 z = recon(m, meas_op)
 
 # reshape
@@ -78,7 +78,7 @@ x, _ = next(iter(dataloaders['train']))
 Ord = np.ones((H,H))
 meas_op = HadamSplit(M, H, Ord)
 noise = NoNoise(meas_op)    # noiseless
-prep = SplitPoisson(1.0, M, H*H)
+prep = SplitPoisson(1.0, meas_op)
 pinv_net = PinvNet(noise, prep)
 
 # use GPU, if available
@@ -132,12 +132,12 @@ Ord[0:Mx,0:Mx] = 1
 meas_op = HadamSplit(M, H, Ord)
 noise_op = Poisson(meas_op, alpha)
 #noise_op = PoissonApproxGauss(meas_op, alpha)
-split_op = SplitPoisson(alpha, M, H*H)
+split_op = SplitPoisson(alpha, meas_op)
 recon_op = PseudoInverse()
 
 # measurements and images
 y = noise_op(x)
-m = split_op(y, meas_op)
+m = split_op(y)
 z = recon_op(m, meas_op)
 
 # reshape
@@ -181,7 +181,7 @@ meas = HadamSplit(M, H, Ord)
 
 noise = Poisson(meas, alpha)
 #noise  = NoNoise(meas)    # noiseless
-prep  = SplitPoisson(alpha, M, H*H)
+prep  = SplitPoisson(alpha, meas)
 pinet = PinvNet(noise, prep)
 dcnet = DCNet(noise, prep, Cov)
 

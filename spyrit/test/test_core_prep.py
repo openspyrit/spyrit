@@ -38,23 +38,21 @@ def test_core_prep():
     from spyrit.core.meas import LinearSplit, HadamSplit
     from spyrit.core.prep import SplitPoisson
 
-    # constructor
-    split_op = SplitPoisson(10, 400, 32*32)
-
     # forward with LinearSplit
     x = torch.rand([10,2*400], dtype=torch.float)
     H = np.random.random([400,32*32])
 
-    # forward
     meas_op =  LinearSplit(H)
-    m = split_op(x, meas_op)
+    split_op = SplitPoisson(10, meas_op)
+    m = split_op(x)
     print(m.shape)
     assert_test(m.shape, torch.Size([10, 400]), "Wrong matrix size")
 
     # forward with HadamSplit
     Perm = np.random.random([32,32])
     meas_op = HadamSplit(400, 32,  Perm)
-    m = split_op(x, meas_op)
+    split_op = SplitPoisson(10, meas_op)
+    m = split_op(x)
     print(m.shape)
     assert_test(m.shape, torch.Size([10, 400]), "Wrong matrix size")
 
