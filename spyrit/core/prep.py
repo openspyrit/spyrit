@@ -157,7 +157,14 @@ class SplitPoisson(nn.Module):
         
         
     Example:
-        >>> split_op = SplitPoisson(1.0, 400, 32*32)
+        >>> H = np.random.random([400,32*32])
+        >>> meas_op =  LinearSplit(H)
+        >>> split_op = SplitPoisson(10, meas_op)
+
+    Example 2:
+        >>> Perm = np.random.random([32,32])
+        >>> meas_op = HadamSplit(400, 32,  Perm)
+        >>> split_op = SplitPoisson(10, meas_op)
 
     """
     def __init__(self, alpha: float, meas_op):
@@ -194,13 +201,17 @@ class SplitPoisson(nn.Module):
             >>> x = torch.rand([10,2*400], dtype=torch.float)
             >>> H = np.random.random([400,32*32])
             >>> meas_op =  LinearSplit(H)
-            >>> m = split_op(x, meas_op)
+            >>> split_op = SplitPoisson(10, meas_op)
+            >>> m = split_op(x)
+            >>> print(m.shape)
             torch.Size([10, 400])
             
         Example 2:
-            >>> Perm = np.random.random([32*32,32*32])
-            >>> meas_op = HadamSplit(H, Perm, 32, 32)
-            >>> m = split_op(x, meas_op)
+            >>> x = torch.rand([10,2*400], dtype=torch.float)
+            >>> Perm = np.random.random([32,32])
+            >>> meas_op = HadamSplit(400, 32,  Perm)
+            >>> split_op = SplitPoisson(10, meas_op)
+            >>> m = split_op(x)
             >>> print(m.shape)
             torch.Size([10, 400])
         """
@@ -250,8 +261,10 @@ class SplitPoisson(nn.Module):
             :math:`\alpha`: :math:`(B)` 
         
         Example:
-            >>> Perm = np.random.random([32*32,32*32])
-            >>> meas_op = HadamSplit(H, Perm, 32, 32)
+            >>> x = torch.rand([10,2*400], dtype=torch.float)
+            >>> Perm = np.random.random([32,32])
+            >>> meas_op = HadamSplit(400, 32,  Perm)
+            >>> split_op = SplitPoisson(10, meas_op)
             >>> m, alpha = split_op.forward_expe(x, meas_op)
             >>> print(m.shape)
             >>> print(alpha.shape)
@@ -376,9 +389,10 @@ class SplitPoisson(nn.Module):
             Output: :math:`(*, M)`
             
         Example:
-            >>> x = torch.rand([10,32*32], dtype=torch.float)
-            >>> Perm = np.random.random([32*32,32*32])
-            >>> meas_op = HadamSplit(H, Perm, 32, 32)
+            >>> x = torch.rand([10,2*400], dtype=torch.float)
+            >>> Perm = np.random.random([32,32])
+            >>> meas_op = HadamSplit(400, 32,  Perm)
+            >>> split_op = SplitPoisson(10, meas_op)
             >>> v = split_op.sigma_from_image(x, meas_op)
             >>> print(v.shape)
             torch.Size([10, 400])
