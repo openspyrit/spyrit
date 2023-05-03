@@ -99,8 +99,8 @@ def Permutation_Matrix(Mat: np.ndarray) -> np.ndarray:
     return P
 
 def reorder(meas: np.ndarray, 
-            ord_acq: np.ndarray, 
-            ord_rec:  np.ndarray) -> np.ndarray:
+            Perm_acq: np.ndarray, 
+            Perm_rec:  np.ndarray) -> np.ndarray:
     r"""Reorder measurement vectors
 
     Args:
@@ -109,11 +109,13 @@ def reorder(meas: np.ndarray,
             :math:`M_{acq}` is the number of acquired patterns and 
             :math:`K_{rep}` is the number of acquisition repetitions 
             (e.g., wavelength or image batch).
-        ord_acq (np.ndarray): 
-            Sampling order used for acquisition 
-            (:math:`N_{acq} \times N_{acq}` square matrix).
-        ord_rec (np.ndarray): 
-            Sampling order used for reconstruction 
+
+        Perm_acq (np.ndarray): 
+            Permutation matrix used for acquisition 
+            (:math:`N_{acq}^2 \times N_{acq}^2` square matrix).
+            
+        Perm_rec (np.ndarray): 
+            Permutation matrix used for reconstruction 
             (:math:`N_{rec} \times N_{rec}` square matrix).
 
     Returns:
@@ -129,13 +131,9 @@ def reorder(meas: np.ndarray,
             filled with zeros.
     """    
     # Dimensions (N.B: images are assumed to be square)
-    N_acq = ord_acq.shape[0]
-    N_rec = ord_rec.shape[0]
+    N_acq = int(Perm_acq.shape[0]**.5)
+    N_rec = int(Perm_rec.shape[0]**.5)
     K_rep = meas.shape[1]
-    
-    # Order used for acquisistion
-    Perm_acq = Permutation_Matrix(ord_acq) 
-    Perm_rec = Permutation_Matrix(ord_rec)
     
     # Acquisition order -> natural order (fill with zeros if necessary)
     if N_rec > N_acq:

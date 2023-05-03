@@ -51,12 +51,21 @@ Simple reconstruction examples can be found in [spyrit/test/tuto_core_2d.py](htt
 # API Documentation
 https://spyrit.readthedocs.io/
 
-# Authors (alphabetical order)
+# Contributors (alphabetical order)
 * Thomas Baudier
 * Sebastien Crombez
 * Nicolas Ducros - [Website](https://www.creatis.insa-lyon.fr/~ducros/WebPage/index.html)
 * Antonio Tomas Lorente Mur - [Website](https://www.creatis.insa-lyon.fr/~lorente/)
 * Fadoua Taia-Alaoui
+
+# How to cite?
+When using SPyRiT in scientific publications, please cite the following paper:
+
+* G. Beneti-Martin, L Mahieu-Williame, T Baudier, N Ducros, "OpenSpyrit: an Ecosystem for Reproducible Single-Pixel Hyperspectral Imaging," Optics Express, Vol. 31, No. 10, (2023). https://doi.org/10.1364/OE.483937.
+
+When using SPyRiT specifically for the denoised completion network, please cite the following paper:
+
+* A Lorente Mur, P Leclerc, F Peyrin, and N Ducros, "Single-pixel image reconstruction from experimental data using neural networks," Opt. Express 29, 17097-17110 (2021). https://doi.org/10.1364/OE.424228. 
 
 # License
 This project is licensed under the LGPL-3.0 license - see the [LICENSE.md](LICENSE.md) file for details
