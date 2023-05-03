@@ -4,6 +4,184 @@ import numpy as np
 import math
 
 # ==================================================================================
+class PseudoInverseStore(nn.Module):
+# ==================================================================================
+    r""" Moore-Penrose Pseudoinverse
+    
+    Considering linear measurements :math:`y = Hx`, where :math:`H` is the
+    measurement matrix and :math:`x` is a vectorized image, it estimates 
+    :math:`x` from :math:`y` by computing :math:`\hat{x} = H^\dagger y`, where 
+    :math:`H^\dagger` is the Moore-Penrose pseudo inverse of :math:`H`.
+
+    Args:           
+        :attr:`meas_op`: Measurement operator that defines :math:`H`. Any class
+        that implements a :meth:`get_H` method can be used, e.g.,
+        :class:`~spyrit.core.forwop.Linear`. 
+        
+        :attr:`reg` (optional): Regularization parameter (cutoff for small 
+        singular values, see :mod:`numpy.linal.pinv`). 
+        
+        :attr:`learn` (optional): Option to learn the pseudo inverse matrix. By 
+        default the pseudo inverse is frozen during training. 
+
+    Attributes:
+        :attr:`H_pinv`: The learnable pseudo inverse matrix of shape 
+        :math:`(N,M)` initialized as :math:`H^\dagger`.
+        
+    .. note::
+        Contrary to :class:`~spyrit.core.recon.PseudoInverse`, the pseudoinverse
+        matrix is stored and therefore learnable
+    
+    Example:
+        >>> H = np.random.rand(400,32*32)
+        >>> meas_op = Linear(H)
+        >>> recon_op = PseudoInverseStore(meas_op)
+    """
+    def __init__(self, 
+                 meas_op: Linear, 
+                 reg: float = 1e-15,
+                 learn: bool = False):
+        
+        H = meas_op.get_H() 
+        M, N = H.shape
+        H_pinv = np.linalg.pinv(H, rcond = reg)
+        
+        super().__init__()
+        self.H_pinv = nn.Linear(M, N, False)
+        self.H_pinv.weight.data = torch.from_numpy(H_pinv).float()
+        self.H_pinv.weight.requires_grad = learn
+        
+        
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r""" Compute pseudo-inverse of measurements.
+        
+        Args:
+            - :attr:`x`: Batch of measurement vectors.
+            
+        Shape:
+            - :attr:`x`: :math:`(*, M)`
+            - :attr:`output`: :math:`(*, N)`
+
+        Example:
+            >>> H = np.random.rand(400,32*32)
+            >>> meas_op = Linear(H)
+            >>> recon_op = PseudoInverseStore(meas_op)
+            >>> x = torch.rand([10,400], dtype=torch.float)
+            >>> y = recon_op(x)
+            >>> print(y.shape)
+            torch.Size([10, 1024])
+        """
+        x = self.H_pinv(x)
+        return x
+
+# ==================================================================================
+class PseudoInverseStore2(nn.Module):
+# ==================================================================================
+    r""" Moore-Penrose Pseudoinverse
+    
+    Considering linear measurements :math:`y = Hx`, where :math:`H` is the
+    measurement matrix and :math:`x` is a vectorized image, it estimates 
+    :math:`x` from :math:`y` by computing :math:`\hat{x} = H^\dagger y`, where 
+    :math:`H^\dagger` is the Moore-Penrose pseudo inverse of :math:`H`.
+
+    Args:           
+        :attr:`meas_op`: Measurement operator that defines :math:`H`. Any class
+        that implements a :meth:`get_H` method can be used, e.g.,
+        :class:`~spyrit.core.forwop.LinearRowSplit`. 
+        
+        :attr:`reg` (optional): Regularization parameter (cutoff for small 
+        singular values, see :mod:`numpy.linal.pinv`). 
+        
+        :attr:`learn` (optional): Option to learn the pseudo inverse matrix. By 
+        default the pseudo inverse is frozen during training. 
+
+    Attributes:
+        :attr:`H_pinv`: The learnable pseudo inverse matrix of shape 
+        :math:`(N,M)` initialized as :math:`H^\dagger`.
+        
+    .. note::
+        Contrary to :class:`~spyrit.core.recon.PseudoInverse`, the pseudoinverse
+        matrix is stored and therefore learnable
+    
+    Example 1:
+        >>> H_pos = np.random.rand(24,64)
+        >>> H_neg = np.random.rand(24,64)
+        >>> meas_op = LinearRowSplit(H_pos,H_neg)
+        >>> recon_op = PseudoInverseStore2(meas_op)
+        
+    Example 2:
+        >>> M = 63
+        >>> N = 64
+        >>> B = 1
+        >>> H = walsh_matrix(N)
+        >>> H_pos = np.where(H>0,H,0)[:M,:]
+        >>> H_neg = np.where(H<0,-H,0)[:M,:]
+        >>> meas_op = LinearRowSplit(H_pos,H_neg)
+        >>> recon_op = PseudoInverseStore2(meas_op)
+        
+    """
+    def __init__(self, 
+                 meas_op: LinearRowSplit, 
+                 reg: float = 1e-15,
+                 learn: bool = False):
+        
+        H = meas_op.get_H() 
+        M, N = H.shape
+        H_pinv = np.linalg.pinv(H, rcond = reg)
+        
+        super().__init__()
+        
+        self.H_pinv = nn.Linear(M, N, False)
+        self.H_pinv.weight.data = torch.from_numpy(H_pinv).float()
+        self.H_pinv.weight.requires_grad = learn
+        
+        
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r""" Compute pseudo-inverse of measurements.
+        
+        Args:
+            - :attr:`x`: Batch of measurement vectors.
+            
+        Shape:
+            - :attr:`x`: :math:`(*, M)`
+            - :attr:`output`: :math:`(*, N)`
+
+        Example 1:
+            >>> H_pos = np.random.rand(24,64)
+            >>> H_neg = np.random.rand(24,64)
+            >>> meas_op = LinearRowSplit(H_pos,H_neg)
+            >>> recon_op = PseudoInverseStore2(meas_op)
+            >>> x = torch.rand([10,24,92], dtype=torch.float)
+            >>> y = recon_op(x)
+            >>> print(y.shape)
+            torch.Size([10, 64, 92])
+            
+        Example 2:
+            >>> M = 63
+            >>> N = 64
+            >>> B = 1
+            >>> H = walsh_matrix(N)
+            >>> H_pos = np.where(H>0,H,0)[:M,:]
+            >>> H_neg = np.where(H<0,-H,0)[:M,:]
+            >>> meas_op = LinearRowSplit(H_pos,H_neg)
+            >>> noise_op = NoNoise(meas_op)
+            >>> split_op = SplitRowPoisson(1.0, M, 92)
+            >>> recon_op = PseudoInverseStore2(meas_op)
+            >>> x = torch.FloatTensor(B,N,92).uniform_(-1, 1)
+            >>> y = noise_op(x)
+            >>> m = split_op(y, meas_op)
+            >>> z = recon_op(m)
+            >>> print(z.shape)
+            >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
+            torch.Size([1, 64, 92])
+            tensor(0.1338)
+        """
+        x = torch.transpose(x,1,2) #swap last two dimensions
+        x = self.H_pinv(x)
+        x = torch.transpose(x,1,2) #swap last two dimensions
+        return x
+
+# ==================================================================================
 class learned_measurement_to_image(nn.Module):
 # ==================================================================================
     r""" Measurement to image.
@@ -683,7 +861,164 @@ class List_Generalized_Orthogonal_Tikhonov(nn.Module):
 #  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #  RECONSTRUCTION NETWORKS
 #  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#%%=============================================================================
+class PinvStoreNet(nn.Module):
+#=============================================================================
+    r""" Pseudo inverse reconstruction network
+    
+    .. math:
+        
+        
+    Args:
+        :attr:`noise`: Acquisition operator (see :class:`~spyrit.core.noise`) 
+        
+        :attr:`prep`: Preprocessing operator (see :class:`~spyrit.core.prep`)
+        
+        :attr:`denoi` (optional): Image denoising operator 
+        (see :class:`~spyrit.core.nnet`). 
+        Default :class:`~spyrit.core.nnet.Identity`
+    
+    Input / Output:
+        :attr:`input`: Ground-truth images with shape :math:`(B,C,H,W)` 
+        
+        :attr:`output`: Reconstructed images with shape :math:`(B,C,H,W)`
+    
+    Attributes:
+        :attr:`acqu`: Acquisition operator initialized as :attr:`noise`
+        
+        :attr:`prep`: Preprocessing operator initialized as :attr:`prep`
+        
+        :attr:`pinv`: Analytical reconstruction operator initialized as 
+        :class:`~spyrit.core.recon.PseudoInverse()`
+        
+        :attr:`Denoi`: Image denoising operator initialized as :attr:`denoi`
+    
+    Example:
+        >>> H = np.random.random([M, h**2])
+        >>> meas =  Linear(H)
+        >>> meas.h, meas.w = h, h
+        >>> noise = NoNoise(meas)
+        >>> prep = DirectPoisson(1.0, meas)
+        >>> pinv_net = PinvStoreNet(noise, prep)
+        >>> print(z.shape)
+        >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
+        torch.Size([85, 1, 32, 32])
+        tensor(0.0003)
+    """
+    def __init__(self, noise, prep, reg: float = 1e-15, denoi=nn.Identity()):
+        super().__init__()
+        self.acqu = noise
+        self.prep = prep
+        self.pinv = PseudoInverseStore(noise.meas_op, reg)
+        self.denoi = denoi
 
+    def forward(self, x):
+        r""" Full pipeline of reconstrcution network
+            
+        Args:
+            :attr:`x`: ground-truth images
+        
+        Shape:
+            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
+            
+            :attr:`output`: reconstructed images with shape :math:`(B,C,H,W)`
+        
+        Example:
+            >>> H = np.random.random([M, h**2])
+            >>> meas =  Linear(H)
+            >>> meas.h, meas.w = h, h
+            >>> noise = NoNoise(meas)
+            >>> prep = DirectPoisson(1.0, meas)
+            >>> pinv_net = PinvStoreNet(noise, prep)
+            >>> z = pinv_net(x)
+            >>> print(z.shape)
+            >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
+            torch.Size([85, 1, 32, 32])
+            tensor(0.6429)
+        """
+        
+        b,c,_,_ = x.shape
+
+        # Acquisition
+        x = x.view(b*c,self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = self.acqu(x)                     # shape x = [b*c, 2*M]
+
+        # Reconstruction 
+        x = self.reconstruct(x)             # shape x = [bc, 1, h,w]
+        x = x.view(b,c,self.acqu.meas_op.h, self.acqu.meas_op.w)
+        
+        return x
+    
+    def acquire(self, x):
+        r""" Simulate data acquisition
+            
+        Args:
+            :attr:`x`: ground-truth images
+        
+        Shape:
+            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
+            
+            :attr:`output`: measurement vectors with shape :math:`(BC,M)`
+        
+        Example:
+            >>> H = np.random.random([M, h**2])
+            >>> meas =  Linear(H)
+            >>> meas.h, meas.w = h, h
+            >>> noise = NoNoise(meas)
+            >>> prep = DirectPoisson(1.0, meas)
+            >>> pinv_net = PinvStoreNet(noise, prep)
+            >>> x = torch.FloatTensor(B,C,h,h).uniform_(-1, 1)
+            >>> z = pinv_net.acquire(x)
+            >>> print(z.shape)
+            torch.Size([85, 600])
+        """
+        
+        b,c,_,_ = x.shape
+
+        # Acquisition
+        x = x.view(b*c,self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = self.acqu(x)                     # shape x = [b*c, 2*M]
+        
+        return x
+
+    def reconstruct(self, x):
+        r""" Reconstruction step of a reconstruction network
+            
+        Args:
+            :attr:`x`: raw measurement vectors
+        
+        Shape:
+            :attr:`x`: :math:`(BC,M)`
+            
+            :attr:`output`: :math:`(BC,1,H,W)`
+        
+        Example:
+            >>> H = np.random.random([M, h**2])
+            >>> meas =  Linear(H)
+            >>> meas.h, meas.w = h, h
+            >>> noise = NoNoise(meas)
+            >>> prep = DirectPoisson(1.0, meas)
+            >>> pinv_net = PinvStoreNet(noise, prep)
+            >>> x = torch.rand((B*C,M), dtype=torch.float)
+            >>> z = pinv_net.reconstruct(x)
+            >>> print(z.shape)
+            torch.Size([85, 1, 32, 32])
+        """
+        # Measurement to image domain mapping
+        bc, _ = x.shape
+    
+        # Preprocessing in the measurement domain
+        x = self.prep(x) # shape x = [b*c, M]
+    
+        # measurements to image-domain processing
+        x = self.pinv(x)               # shape x = [b*c,N]
+                
+        # Image-domain denoising
+        x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)   # shape x = [b*c,1,h,w]
+        x = self.denoi(x)                       
+        
+        return x
+        
 # ===========================================================================================
 class MoDL(nn.Module):
 # ===========================================================================================
