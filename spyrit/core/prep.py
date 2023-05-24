@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from spyrit.core.meas import Linear, LinearSplit, LinearRowSplit, HadamSplit
 from typing import Union, Tuple
+import math
   
 #==============================================================================
 class DirectPoisson(nn.Module):
@@ -190,12 +191,12 @@ class SplitPoisson(nn.Module):
             :attr:`x`: batch of measurement vectors 
             
         Shape:
-            x: :math:`(B, 2M)` where :math:`B` is the batch dimension
+            x: :math:`(*, 2M)` where :math:`*` indicates one or more dimensions
             
             meas_op: the number of measurements :attr:`meas_op.M` should match
             :math:`M`.
             
-            Output: :math:`(B, M)`
+            Output: :math:`(*, M)`
             
         Example:
             >>> x = torch.rand([10,2*400], dtype=torch.float)
@@ -215,10 +216,11 @@ class SplitPoisson(nn.Module):
             >>> print(m.shape)
             torch.Size([10, 400])
         """
-        H_ones = self.H_ones.expand(x.shape[0],self.M)
+        s = x.shape[:-1] + torch.Size([self.M]) # torch.Size([*,M])
+        H_ones = self.H_ones.expand(s)
         
         # unsplit
-        x = x[:,self.even_index] - x[:,self.odd_index]
+        x = x[...,self.even_index] - x[...,self.odd_index]
         # normalize
         x = 2*x/self.alpha - H_ones
         return x
