@@ -7,7 +7,6 @@ Subpackages
 .. toctree::
 
    spyrit.core
-   spyrit.former
    spyrit.misc
 
 
