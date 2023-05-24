@@ -83,7 +83,7 @@ class Linear(nn.Module):
         
         if pinv is None:
             H_pinv = pinv
-            print('Pseudo inverse will not instanciated')
+            print('Pseudo inverse will not be instanciated')
             
         else: 
             H_pinv = np.linalg.pinv(H, rcond = reg)
@@ -197,8 +197,8 @@ class LinearSplit(Linear):
         >>> meas_op =  LinearSplit(H)
     """
 
-    def __init__(self, H: np.ndarray): 
-        super().__init__(H)
+    def __init__(self, H: np.ndarray, pinv = None, reg: float = 1e-15): 
+        super().__init__(H, pinv, reg)
         
         # [H^+, H^-]
                 
