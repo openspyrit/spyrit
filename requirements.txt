@@ -11,4 +11,5 @@ wget
 sympy
 imageio
 astropy
+sphinx_gallery
 
