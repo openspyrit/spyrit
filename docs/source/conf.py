@@ -71,11 +71,11 @@ exclude_patterns = []
 sphinx_gallery_conf = {
     # path to your examples scripts
     "examples_dirs": [
-        "../../spyrit/test",
+        "../../spyrit/tutorial",
     ],
     # path where to save gallery generated examples
     "gallery_dirs": ["gallery", "tutorials"],
-    "filename_pattern": r"tuto.*\.py",
+    "filename_pattern": r"\.py",
     # Remove the "Download all examples" button from the top level gallery
     "download_all_examples": False,
     # Sort gallery example by file name instead of number of lines (default)
