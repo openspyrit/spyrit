@@ -54,9 +54,11 @@ download_cov = True             # Dwonload covariance matrix;
                                 # otherwise, set to unit matrix
 ind_img = 1                     # Image index for image selection
 
-imgs_path = './spyrit/images'
+spyritPath = os.getcwd()
+imgs_path = os.path.join(spyritPath, '../images')
+print(imgs_path)
 
-cov_name = './stat/Cov_64x64.npy'
+cov_name = os.path.join(spyritPath, '../../stat/Cov_64x64.npy')
 
 # use GPU, if available
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

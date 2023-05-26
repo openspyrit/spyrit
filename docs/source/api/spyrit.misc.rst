@@ -29,7 +29,7 @@ spyrit.misc.examples module
    :show-inheritance:
 
 spyrit.misc.load_data module
----------------------------
+----------------------------
 
 .. automodule:: spyrit.misc.load_data
    :members:
@@ -61,15 +61,15 @@ spyrit.misc.pattern\_choice module
    :show-inheritance:
 
 spyrit.misc.sampling module
-----------------------------------
+---------------------------
 
-.. automodule:: spyrit.misc.pattern_choice
+.. automodule:: spyrit.misc.sampling
    :members:
    :undoc-members:
    :show-inheritance:
 
 spyrit.misc.statistics module
-------------------------
+-----------------------------
 
 .. automodule:: spyrit.misc.statistics
    :members:

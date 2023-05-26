@@ -12,3 +12,7 @@ sympy
 imageio
 astropy
 tensorboard
+sphinx_gallery
+girder-client
+gdown
+

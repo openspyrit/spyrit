@@ -20,6 +20,7 @@ Image reconstruction is preformed using the following methods:
 
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 from spyrit.core.meas import HadamSplit
 from spyrit.core.noise import NoNoise, Poisson, PoissonApproxGauss
 from spyrit.core.prep import SplitPoisson
@@ -41,9 +42,11 @@ load_unet = True                # Load pretrained UNet denoising
 download_cov = False            # Download covariance matrix;
                                 # otherwise, set to unit matrix
 
-imgs_path = './spyrit/images'
+spyritPath = os.getcwd()
+imgs_path = os.path.join(spyritPath, '../images')
+print(imgs_path)
 
-cov_name = './stat/Cov_64x64.npy'
+cov_name = os.path.join(spyritPath, '../../stat/Cov_64x64.npy')
 
 # use GPU, if available
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

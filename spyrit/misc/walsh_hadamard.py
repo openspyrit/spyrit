@@ -42,15 +42,14 @@ import torch
 #-- To generate sequency (aka Walsh) order --------------------------------------
 #------------------------------------------------------------------------------
 def b2_to_b10(l):
-    """Convert a list of numbers in base 2 to base 10    
+    r"""Convert a list of numbers in base 2 to base 10    
+    
     Args:
-        l (list[str]): base2 numbers.
+        :math:`l` (list[str]): base2 numbers.
 
     Returns:
         list[int]: base10 numbers
 
-    Examples:
-        >>> 
     """ 
     N = len(l)
     for i in range(N):
@@ -109,16 +108,16 @@ def bit_reversed_list(n):
     return br
 
 def sequency_perm(X, ind=None):
-    """ Permute the rows of a matrix to get sequency order   
+    r""" Permute the rows of a matrix to get sequency order   
+
     Args:
-        X (np.ndarray): n-by-m input matrix
-        ind : index list of length n
+        :attr:`X` (np.ndarray): n-by-m input matrix
+        
+        :attr:`ind` : index list of length n
 
     Returns:
         np.ndarray: n-by-m input matrix 
 
-    Examples:
-        >>> 
     """ 
     if ind is None:
         ind = sequency_perm_ind(len(X))
@@ -130,10 +129,12 @@ def sequency_perm(X, ind=None):
     return Y
 
 def sequency_perm_torch(X, ind=None):
-    """ Permute the last dimension of a tensor to get sequency order    
+    r""" Permute the last dimension of a tensor to get sequency order    
+
     Args:
-        X (torch.tensor): -by-n input matrix
-        ind : index list of length n
+        :attr:`X` (torch.tensor): -by-n input matrix
+
+        :attr:`ind` : index list of length n
 
     Returns:
         torch.tensor: -by-n input matrix 
@@ -152,9 +153,10 @@ def sequency_perm_torch(X, ind=None):
     return Y
 
 def sequency_perm_matrix(n):
-    """Return permutation matrix to get sequency from the natural order    
+    r"""Return permutation matrix to get sequency from the natural order    
+
     Args:
-        n (int): Order of the matrix, a power of two.
+        :attr:`n` (int): Order of the matrix, a power of two.
     
     Returns:
         np.ndarray: A n-by-n permutation matrix
@@ -169,10 +171,10 @@ def sequency_perm_matrix(n):
     return GC @ BR
 
 def sequency_perm_ind(n):
-    """Return permutation indices to get sequency from the natural order
+    r"""Return permutation indices to get sequency from the natural order
      
     Args:
-        n (int): Order of the matrix, a power of two.
+        :attr:`n` (int): Order of the matrix, a power of two.
     
     Returns:
         list: 
@@ -356,12 +358,14 @@ def walsh_G(x, G=None):
     return G @ x
 
 def fwalsh_G(x,ind=True): 
-    """Fast Walsh G-transform of x
+    r"""Fast Walsh G-transform of x
 
     Args:
-        x (np.ndarray): n-by-1 signal. n+1 should be a power of two.
-        ind (bool, optional): True for sequency (default)
-        ind (list, optional): permutation indices. This is faster than True 
+        :attr:`x` (np.ndarray): n-by-1 signal. n+1 should be a power of two.
+
+        :attr:`ind` (bool, optional): True for sequency (default)
+
+        :attr:`ind` (list, optional): permutation indices. This is faster than True 
                             when repeating the sequency-ordered transform 
                             multilple times.  
 
@@ -498,12 +502,14 @@ def iwalsh_S(s, T=None):
     return T @ s
 
 def fwalsh_S(x,ind=True): 
-    """Fast Walsh S-transform of x
+    r"""Fast Walsh S-transform of x
 
     Args:
-        x (np.ndarray): n-by-1 signal. n+1 should be a power of two.
-        ind (bool, optional): True for sequency (default)
-        ind (list, optional): permutation indices. This is faster than True 
+        :attr:`x` (np.ndarray): n-by-1 signal. n+1 should be a power of two.
+
+        :attr:`ind` (bool, optional): True for sequency (default)
+
+        :attr:`ind` (list, optional): permutation indices. This is faster than True 
                             when repeating the sequency-ordered transform 
                             multilple times.  
 
@@ -572,12 +578,14 @@ def fwalsh_S(x,ind=True):
     return s    
 
 def ifwalsh_S(s, ind=True): 
-    """Inverse fast Walsh S-transform of s
+    r"""Inverse fast Walsh S-transform of s
 
     Args:
-        x (np.ndarray): n-by-1 signal. n+1 should be a power of two.
-        ind (bool, optional): True for sequency (default).
-        ind (list, optional): permutation indices. This is faster than True 
+        :attr:`x` (np.ndarray): n-by-1 signal. n+1 should be a power of two.
+
+        :attr:`ind` (bool, optional): True for sequency (default).
+
+        :attr:`ind` (list, optional): permutation indices. This is faster than True 
                             when repeating the sequency-ordered transform 
                             multilple times.  
 
@@ -674,12 +682,14 @@ def fwalsh2_S(X,ind=True):
     return S
 
 def ifwalsh2_S(Y,ind=True): 
-    """Inverse Fast Walsh S-transform of Y in "2D"
+    r"""Inverse Fast Walsh S-transform of Y in "2D"
 
     Args:
-        Y (np.ndarray): n-by-n signal. n**2 should be a power of two.
-        ind (bool, optional): True for sequency (default)
-        ind (list, optional): permutation indices.
+        :attr:`Y` (np.ndarray): n-by-n signal. n**2 should be a power of two.
+
+        :attr:`ind` (bool, optional): True for sequency (default)
+
+        :attr:`ind` (list, optional): permutation indices.
 
     Returns:
         np.ndarray: n-by-1 S-transformed signal
@@ -725,11 +735,12 @@ def walsh2_S(X,S=None):
     return Y
 
 def iwalsh2_S(Y,T=None): 
-    """Inverse Fast Walsh S-transform of Y in "2D"
+    r"""Inverse Fast Walsh S-transform of Y in "2D"
 
     Args:
-        Y (np.ndarray): n-by-n signal. n**2 should be a power of two.
-        T (np.ndarray): Inverse S-matrix 
+        :attr:`Y` (np.ndarray): n-by-n signal. n**2 should be a power of two.
+
+        :attr:`T` (np.ndarray): Inverse S-matrix 
         
     Returns:
         np.ndarray: n-by-1 S-transformed signal
@@ -940,18 +951,17 @@ def fwht_torch(x, order=True):
 
 
 def fwalsh_G_torch(x,ind=True): 
-    """Fast Walsh G-transform of x
+    r"""Fast Walsh G-transform of x
 
     Args:
-        :attr:`x` (torch.tensor):  input signal with shape `(*, n)`. `n`+1 
-                                should be a power of two.
+        :attr:`x` (torch.tensor):  input signal with shape :math:`(*, n)`. :math:`n`+1 should be a power of two.
+
         :attr:`ind` (bool, optional): True for sequency (default)
-        :attr:`ind` (list, optional): permutation indices. This is faster than
-                                True when repeating the sequency-ordered 
-                                transform multilple times.  
+
+        :attr:`ind` (list, optional): permutation indices. This is faster than True when repeating the sequency-ordered transform multilple times.
 
     Returns:
-        torch.tensor: S-transformed signal with shape `(*, n)`.
+        torch.tensor: S-transformed signal with shape :math:`(*, n)`.
     
     Example 1:
         Walsh-ordered G-transform of a signal of length 7
@@ -1007,13 +1017,15 @@ def fwalsh_G_torch(x,ind=True):
     return y
 
 def fwalsh_S_torch(x,ind=True): 
-    """Fast Walsh S-transform of x
+    r"""Fast Walsh S-transform of x
 
     Args:
         :attr:`x` (torch.tensor):  input signal with shape `(*, n)`. `n`+1
                             should be a power of two.
-        ind (bool, optional): True for sequency (default)
-        ind (list, optional): permutation indices. This is faster than True 
+
+        :attr:`ind` (bool, optional): True for sequency (default)
+
+        :attr:`ind` (list, optional): permutation indices. This is faster than True 
                             when repeating the sequency-ordered transform 
                             multilple times.  
 
