@@ -1,16 +1,11 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Feb 16 12:16:27 2023
-
-@author: ducros
-
-NB (15-Sep-22): to debug needs to run
-
-import collections
-collections.Callable = collections.abc.Callable
+r"""
+01. Tutorial 2D
+======================
+This tutorial focuses on Bayesian inversion, a special type of inverse problem
+that aims at incorporating prior information in terms of model and data
+probabilities in the inversion process.
 """
 
-#%% Using the core modules only, no noise
 import numpy as np
 from spyrit.core.meas import HadamSplit
 from spyrit.core.noise import NoNoise
@@ -23,6 +18,10 @@ from spyrit.misc.sampling import meas2img2
 M = 64*64 // 2
 H = 64
 B = 10
+
+###############################################################################
+# So far we have been able to estimate our posterion mean. What about its
+# uncertainties (i.e., posterion covariance)?
 
 # A batch of images
 dataloaders = data_loaders_stl10('../../../data', img_size=H, batch_size=10)  
@@ -219,3 +218,9 @@ imagesc(m_plot[b,:,:], 'Measurement')
 imagesc(x_pi_plot[b,:,:], f'Pinv reconstruction #1 ({device})')
 imagesc(x_dc_plot[b,:,:], f'DC reconstruction #1 ({device})')
 imagesc(x_dc_2_plot[b,:,:], f'DC reconstruction #2 ({device})')
+
+###############################################################################
+# Note that here we have been able to compute a sample posterior covariance
+# from its estimated samples. By displaying it we can see  how both the overall
+# variances and the correlation between different parameters have become
+# narrower compared to their prior counterparts.

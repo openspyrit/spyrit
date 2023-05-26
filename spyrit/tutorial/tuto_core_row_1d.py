@@ -1,3 +1,11 @@
+r"""
+01. Tutorial Row 1D
+======================
+This tutorial focuses on Bayesian inversion, a special type of inverse problem
+that aims at incorporating prior information in terms of model and data
+probabilities in the inversion process.
+"""
+
 from spyrit.core.meas import LinearRowSplit
 from spyrit.core.prep import SplitRowPoisson
 from spyrit.misc.walsh_hadamard import walsh_matrix
@@ -6,12 +14,18 @@ from spyrit.misc.disp import imagesc
 
 import numpy as np
 
+###############################################################################
+# Let's start by creating our images
+
 M=24
 N=64
 
 # A batch of images
 dataloaders = data_loaders_stl10('../../../data', img_size=N, batch_size=10)  
 x, _ = next(iter(dataloaders['train']))
+
+###############################################################################
+# And now measure
 
 # Associated measurements
 H = walsh_matrix(N)
@@ -32,3 +46,10 @@ m = split(x, linop)
 imagesc(x[0,:,:])
 imagesc(y[0,:,:])
 imagesc(m[0,:,:])
+
+###############################################################################
+# Note that here we have been able to compute a sample posterior covariance
+# from its estimated samples. By displaying it we can see  how both the overall
+# variances and the correlation between different parameters have become
+# narrower compared to their prior counterparts.
+
