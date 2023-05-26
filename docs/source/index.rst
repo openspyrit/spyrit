@@ -11,14 +11,14 @@ reconstruction. While it is primarily designed for single-pixel image
 reconstruction, it can solve other linear reconstruction problems.
 
 .. image:: fig/principle.png
-  :width: 700
-:align: center
+   :width: 700
+   :align: center
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 5
    :caption: Contents:
 
-   api
+   api/modules
 
 
 .. Indices and tables
