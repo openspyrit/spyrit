@@ -43,6 +43,7 @@ extensions = [
     'sphinx.ext.napoleon',
     #'sphinxcontrib.bibtex',
     'sphinx.ext.viewcode',
+    'sphinx_gallery.gen_gallery',
     'sphinx.ext.coverage']
 
 # Napoleon settings
@@ -67,6 +68,25 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+sphinx_gallery_conf = {
+    # path to your examples scripts
+    "examples_dirs": [
+        "../../spyrit/test",
+    ],
+    # path where to save gallery generated examples
+    "gallery_dirs": ["gallery", "tutorials"],
+    "filename_pattern": r"tuto.*\.py",
+    # Remove the "Download all examples" button from the top level gallery
+    "download_all_examples": False,
+    # Sort gallery example by file name instead of number of lines (default)
+    # "within_subsection_order": ExampleTitleSortKey,
+    # directory where function granular galleries are stored
+    "backreferences_dir": "api/generated/backreferences",
+    # Modules for which function level galleries are created.
+    "doc_module": "spyrit",
+    # Insert links to documentation of objects in the examples
+    "reference_url": {"spyrit": None},
+}
 
 # -- Options for HTML output -------------------------------------------------
 
