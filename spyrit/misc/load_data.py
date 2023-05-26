@@ -18,10 +18,6 @@ import glob
 import numpy as np
 from PIL import Image
 
-sys.path.append('/home/crombez/Documents/PhD/python/libreries/')
-
-from matrix_tools import *
-
 def Files_names(Path,name_type):
     files = glob.glob(Path+name_type)
     print
