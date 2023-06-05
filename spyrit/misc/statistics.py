@@ -106,8 +106,23 @@ def data_loaders_ImageNet(train_root, val_root=None, img_size=64,
     
     return dataloaders
 
+def transform_gray_norm(img_size): 
+    """ 
+    Args:
+        img_size=int, image size
+    
+    Create torchvision transform for natural images (stl10, imagenet):
+    convert them to grayscale, then to tensor, and normalize between [-1, 1]
+    """
+    transform = torchvision.transforms.Compose(
+        [torchvision.transforms.functional.to_grayscale,
+        torchvision.transforms.Resize((img_size, img_size)),
+        torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize([0.5], [0.5])])
+    return transform
+
 def data_loaders_stl10(data_root, img_size=64, batch_size=512, seed=7, 
-                       shuffle=False): 
+                       shuffle=False, download=False): 
     """ 
     Args:
         shuffle=True to shuffle train set only (test set not shuffled)
@@ -117,19 +132,15 @@ def data_loaders_stl10(data_root, img_size=64, batch_size=512, seed=7,
     converted into grayscale images.
         
     """
-    transform = torchvision.transforms.Compose(
-        [torchvision.transforms.functional.to_grayscale,
-        torchvision.transforms.Resize((img_size, img_size)),
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize([0.5], [0.5])])
+    transform = transform_gray_norm(img_size)   
 
     trainset = torchvision.datasets.STL10(root=data_root, split='train+unlabeled',
-                                          download=False, transform=transform)
+                                          download=download, transform=transform)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
                                               shuffle=shuffle)
  
     testset = torchvision.datasets.STL10(root=data_root, split='test',
-                                         download=False, transform=transform)
+                                         download=download, transform=transform)
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
                                              shuffle=False)
     

@@ -6,26 +6,47 @@ that aims at incorporating prior information in terms of model and data
 probabilities in the inversion process.
 """
 
+import os
 import numpy as np
 from spyrit.core.meas import HadamSplit
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import SplitPoisson
 from spyrit.core.recon import PseudoInverse
-from spyrit.misc.statistics import data_loaders_stl10
+from spyrit.misc.statistics import data_loaders_stl10, transform_gray_norm
 from spyrit.misc.disp import imagesc
 from spyrit.misc.sampling import meas2img2
+
+import torch
+import torchvision
  
 M = 64*64 // 2
 H = 64
 B = 10
 
+imgs_path = './spyrit/images'
+
+# To check the righ path
+print(f'Current directory: {os.getcwd()}')
+print(f'Files: {os.listdir()}')
+print(f"Files in 'images' folder: {os.listdir(imgs_path)}")
+
 ###############################################################################
 # So far we have been able to estimate our posterion mean. What about its
 # uncertainties (i.e., posterion covariance)?
 
+# Uncomment to download stl10 dataset
 # A batch of images
-dataloaders = data_loaders_stl10('../../../data', img_size=H, batch_size=10)  
-x, _ = next(iter(dataloaders['train']))
+# dataloaders = data_loaders_stl10('../../../data', img_size=H, batch_size=10)  
+# dataloader = dataloaders['train']
+
+# Create a transform for natural images to normalized tensors
+transform = transform_gray_norm(img_size=H)
+
+# Create dataset and loader (expects class folder 'images/test/')
+dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size = min(B, len(dataset)))
+
+x, _ = next(iter(dataloader))
 b,c,h,w = x.shape
 x = x.view(b*c,h*w)
 
