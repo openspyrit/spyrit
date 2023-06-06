@@ -90,8 +90,12 @@ H = 64
 B = 10
 
 # A batch of images
-dataloaders = data_loaders_stl10('../../../data', img_size=H, batch_size=10)  
-x, _ = next(iter(dataloaders['train']))
+# dataloaders = data_loaders_stl10('../../../data', img_size=H, batch_size=10)  
+# dataloader = dataloaders['train']
+dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size = min(B, len(dataset)))
+
+x, _ = next(iter(dataloader))
 # N.B.: no view here compared to previous example
 
 # Operators
@@ -141,8 +145,12 @@ H = 64
 B = 10
 
 # A batch of images
-dataloaders = data_loaders_stl10('../../../data', img_size=H, batch_size=10)  
-x, _ = next(iter(dataloaders['train']))
+# dataloaders = data_loaders_stl10('../../../data', img_size=H, batch_size=10)  
+# dataloader = dataloaders['train']
+dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size = min(B, len(dataset)))
+
+x, _ = next(iter(dataloader))
 b,c,h,w = x.shape
 x = x.view(b*c,h*w)
 
@@ -206,8 +214,12 @@ pinet = PinvNet(noise, prep)
 dcnet = DCNet(noise, prep, Cov)
 
 # A batch of images
-dataloaders = data_loaders_stl10('../../../data', img_size=H, batch_size=10)  
-x, _ = next(iter(dataloaders['val']))
+# dataloaders = data_loaders_stl10('../../../data', img_size=H, batch_size=10)  
+# dataloader = dataloaders['val']
+dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size = min(B, len(dataset)))
+
+x, _ = next(iter(dataloader))
 
 # use GPU, if available
 #device = "cpu"

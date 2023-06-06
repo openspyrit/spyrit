@@ -116,7 +116,8 @@ def transform_gray_norm(img_size):
     """
     transform = torchvision.transforms.Compose(
         [torchvision.transforms.functional.to_grayscale,
-        torchvision.transforms.Resize((img_size, img_size)),
+        torchvision.transforms.Resize(img_size),
+        torchvision.transforms.CenterCrop(img_size),
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize([0.5], [0.5])])
     return transform
