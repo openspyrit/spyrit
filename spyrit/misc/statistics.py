@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+from typing import Any
 import torch
 import torchvision
 #from torchvision import datasets, transforms
@@ -106,6 +107,25 @@ def data_loaders_ImageNet(train_root, val_root=None, img_size=64,
     
     return dataloaders
 
+
+class CenterCrop:
+    """
+    Args:
+        img_size=int, image size   
+
+    Center crop if image not square in order to ensure that all images have same size
+    """
+    def __init__(self, img_size):
+        self.img_size = img_size
+        self.centerCrop = torchvision.transforms.CenterCrop(img_size)
+    def __call__(self, inputs, *args: Any, **kwds: Any):
+        # Center crop if not square
+        img_shape = inputs.size
+        if img_shape[0] != img_shape[1]:
+            return self.centerCrop(inputs)
+        else:
+            return inputs
+
 def transform_gray_norm(img_size): 
     """ 
     Args:
@@ -117,7 +137,8 @@ def transform_gray_norm(img_size):
     transform = torchvision.transforms.Compose(
         [torchvision.transforms.functional.to_grayscale,
         torchvision.transforms.Resize(img_size),
-        torchvision.transforms.CenterCrop(img_size),
+        #torchvision.transforms.CenterCrop(img_size),
+        CenterCrop(img_size),
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize([0.5], [0.5])])
     return transform
