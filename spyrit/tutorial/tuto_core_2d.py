@@ -34,6 +34,7 @@ imgs_path = './spyrit/images'
 # dataloaders = data_loaders_stl10('../../../data', img_size=H, batch_size=10)  
 # dataloader = dataloaders['train']
 
+
 # Create a transform for natural images to normalized grayscale image tensors
 transform = transform_gray_norm(img_size=H)
 
