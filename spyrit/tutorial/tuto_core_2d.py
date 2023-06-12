@@ -8,6 +8,7 @@ probabilities in the inversion process.
 
 import os
 import numpy as np
+import spyrit
 from spyrit.core.meas import HadamSplit
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import SplitPoisson
@@ -23,7 +24,8 @@ M = 64*64 // 2
 H = 64              
 B = 10              
 
-imgs_path = './spyrit/images'
+spyritPath = spyrit.__path__[0]
+imgs_path = os.path.join(spyritPath, 'images')
 
 ###############################################################################
 # So far we have been able to estimate our posterion mean. What about its
@@ -74,6 +76,7 @@ imagesc(z_plot[0,:,:],'Reconstructed image')
 import torch
 import torchvision
 import numpy as np
+import spyrit
 from spyrit.core.meas import HadamSplit
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import SplitPoisson
@@ -86,7 +89,8 @@ M = 64*64 // 2
 H = 64
 B = 10
 
-imgs_path = './spyrit/images'
+spyritPath = spyrit.__path__[0]
+imgs_path = os.path.join(spyritPath, 'images')
 
 # A batch of images
 # dataloaders = data_loaders_stl10('../../../data', img_size=H, batch_size=10)  
@@ -130,6 +134,7 @@ imagesc(z_plot[0,:,:], f'Reconstructed image ({device})')
 import torch
 import torchvision
 import numpy as np
+import spyrit
 from spyrit.core.meas import HadamSplit
 from spyrit.core.noise import Poisson, PoissonApproxGauss
 from spyrit.core.prep import SplitPoisson
@@ -146,7 +151,8 @@ M = Mx*Mx
 H = 64
 B = 10
 
-imgs_path = './spyrit/images'
+spyritPath = spyrit.__path__[0]
+imgs_path = os.path.join(spyritPath, 'images')
 
 # A batch of images
 # dataloaders = data_loaders_stl10('../../../data', img_size=H, batch_size=10)  
@@ -190,6 +196,7 @@ imagesc(z_plot[0,:,:],'Reconstructed image')
 import numpy as np
 import torch
 import torchvision
+import spyrit
 from spyrit.misc.statistics import Cov2Var
 from spyrit.core.noise import NoNoise, Poisson
 from spyrit.core.prep import SplitPoisson
@@ -205,7 +212,8 @@ H = 64
 M = H**2 // 8 # subsampled by factor 8
 B = 10
 
-imgs_path = './spyrit/images'
+spyritPath = spyrit.__path__[0]
+imgs_path = os.path.join(spyritPath, 'images')
 
 # init reconstrcution networks
 #cov_file = '../../../stat/ILSVRC2012_v10102019/Cov_8_64x64.npy'
