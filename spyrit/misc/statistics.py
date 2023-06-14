@@ -144,7 +144,7 @@ def transform_gray_norm(img_size):
     return transform
 
 def data_loaders_stl10(data_root, img_size=64, batch_size=512, seed=7, 
-                       shuffle=False, download=False): 
+                       shuffle=False, download=True): 
     """ 
     Args:
         shuffle=True to shuffle train set only (test set not shuffled)
