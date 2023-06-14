@@ -22,6 +22,9 @@ from spyrit.core.train import train_model, Train_par, save_net, Weight_Decay_Los
 from spyrit.core.nnet import Unet, ConvNet, ConvNetBN
 from spyrit.misc.statistics import Cov2Var, data_loaders_ImageNet, data_loaders_stl10
 
+# pip install -e git+https://github.com/openspyrit/spas.git@v1.4#egg=spas
+# python3 ./spyrit-examples/2022_OE_spyrit2/download_data.py
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # Acquisition
@@ -56,7 +59,7 @@ if __name__ == "__main__":
     opt.data_root = Path(opt.data_root)
     
     if opt.data == 'stl10':
-        opt.data_root = './data/'
+        opt.data_root = '../../../data/'
     
     print(opt)
     
@@ -76,7 +79,7 @@ if __name__ == "__main__":
                                         img_size=opt.img_size, 
                                         batch_size=opt.batch_size, 
                                         seed=7,
-                                        shuffle=True, download=True)        
+                                        shuffle=True, download=False)        
     elif opt.data == 'imagenet':
         dataloaders = data_loaders_ImageNet(opt.data_root / 'test', 
                                         opt.data_root / 'val', 

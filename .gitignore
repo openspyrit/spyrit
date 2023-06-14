@@ -17,4 +17,6 @@ spyrit.egg-info
 stats_walsh
 **/.ipynb_checkpoints/*
 docs/source/_build*
+model/
 !spyrit/tutorial/tuto_core_2d_short.ipynb
+!spyrit/tutorial/tuto_run_train_colab.ipynb
