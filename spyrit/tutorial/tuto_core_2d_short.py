@@ -9,22 +9,27 @@ probabilities in the inversion process.
 import numpy as np
 import matplotlib.pyplot as plt
 from spyrit.core.meas import HadamSplit
-from spyrit.core.noise import NoNoise, Poisson
+from spyrit.core.noise import NoNoise, Poisson, PoissonApproxGauss
 from spyrit.core.prep import SplitPoisson
 from spyrit.core.recon import PseudoInverse, PinvNet, DCNet
 from spyrit.misc.statistics import Cov2Var, data_loaders_stl10, transform_gray_norm
 from spyrit.misc.disp import imagesc
 from spyrit.misc.sampling import meas2img2
+from spyrit.core.nnet import Unet
+from spyrit.core.train import load_net
 
 import torch
 import torchvision
 
 H = 64                          # Image height (assumed squared image)
-M = H**2 // 2                   # Num measurements = subsampled by factor 2
+M = H**2 // 4                   # Num measurements = subsampled by factor 2
 B = 10                          # Batch size
 alpha = 100                     # ph/pixel max: number of counts
 
 imgs_path = './spyrit/images'
+
+# use GPU, if available
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 ###############################################################################
 # So far we have been able to estimate our posterion mean. What about its
@@ -112,7 +117,9 @@ Data Simulation:
 # Order matrix with shape (H, H) used to compute the permutation matrix 
 # (as undersampling taking the first rows only)
 # Ord = np.ones((H,H))            
-Cov = np.eye(H*H)
+#Cov = np.eye(H*H)
+Cov  = np.load('./stat/Cov_64x64.npy')
+
 Ord = Cov2Var(Cov)
 
 # Measurement operator: 
@@ -123,7 +130,8 @@ meas_op = HadamSplit(M, H, Ord)
 # Simulates raw split measurements from images in the range [0,1] assuming images provided in range [-1,1]
 # y=0.5*H(1 + x)
 # noise = NoNoise(meas_op) # noiseless
-noise = Poisson(meas_op, alpha)
+#noise = Poisson(meas_op, alpha)
+noise = PoissonApproxGauss(meas_op, alpha) # faster than Poisson
 
 # Preprocess the raw data acquired with split measurement operator assuming Poisson noise
 prep = SplitPoisson(alpha, meas_op)
@@ -136,6 +144,16 @@ pinvnet = PinvNet(noise, prep)
 
 # Reconstruction with for DCNet (linear net + denoising net)
 dcnet = DCNet(noise, prep, Cov)
+
+# Pretreined DC UNet (UNet denoising)
+denoi = Unet()
+dcnet_unet = DCNet(noise, prep, Cov, denoi)
+# Load previously trained model
+
+model_path = "./model/dc-net_unet_imagenet_var_N0_10_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07_light"
+#model_path = './model/dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth'
+#dcnet_unet.load_state_dict(torch.load(model_path), loa)
+load_net(model_path, dcnet_unet, device, False)
 
 # Simulate measurements
 y = noise(x)
@@ -150,9 +168,6 @@ z_pinv = pinv(m, meas_op)
 print(f'Shape of reconstructed image z: {z_pinv.shape}')
 
 # Pseudo-inverse net
-# 
-# use GPU, if available
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 pinvnet = pinvnet.to(device)
 
 x = x0.detach().clone()
@@ -165,7 +180,11 @@ z_pinvnet = pinvnet(x)
 #m = pinvnet.meas2img(y)        # zero-padded images (after preprocessing)
 dcnet = dcnet.to(device)
 z_dcnet = dcnet.reconstruct(y.to(device))  # reconstruct from raw measurements
-#x_dcnet_2 = dcnet(x)   # another reconstruction, from the ground-truth image
+
+# DC UNET 
+dcnet_unet = dcnet_unet.to(device)
+with torch.no_grad():
+    z_dcunet = dcnet_unet.reconstruct(y.to(device))  # reconstruct from raw measurements
 
 # Plots
 x_plot = x.view(-1,H,H).cpu().numpy()    
@@ -193,6 +212,9 @@ imagesc(z_plot[0,:,:],'Pseudo-inverse net reconstruction', show=False)
 
 z_plot = z_dcnet.view(-1,H,H).cpu().numpy()
 imagesc(z_plot[0,:,:],'DCNet reconstruction', show=False)
+
+z_plot = z_dcunet.view(-1,H,H).detach().cpu().numpy()
+imagesc(z_plot[0,:,:],'DC UNet reconstruction', show=False)
 plt.show()
 
 ###############################################################################

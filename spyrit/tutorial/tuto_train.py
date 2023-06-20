@@ -9,10 +9,15 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 from torch.optim import lr_scheduler
+import torch.profiler
+from torch.utils.tensorboard import SummaryWriter
+
 import numpy as np
 import argparse
 from pathlib import Path
 import pickle
+import os
+import datetime
 
 from spyrit.core.noise import PoissonApproxGauss
 from spyrit.core.meas import HadamSplit
@@ -35,7 +40,7 @@ if __name__ == "__main__":
     # Network and training
     parser.add_argument("--data",       type=str,   default="stl10", help="stl10 or imagenet")
     parser.add_argument("--model_root", type=str,   default='./model/', help="Path to model saving files")
-    parser.add_argument("--data_root",  type=str,   default="./data/ILSVRC2012_v10102019", help="Path to the dataset")
+    parser.add_argument("--data_root",  type=str,   default="./data/", help="Path to the dataset")
     
     parser.add_argument("--N0",         type=float, default=10,   help="Mean maximum total number of photons")
     parser.add_argument("--stat_root",  type=str,   default="./stat/", help="Path to precomputed data")
@@ -52,14 +57,18 @@ if __name__ == "__main__":
     parser.add_argument("--step_size",  type=int,   default=10,   help="Scheduler Step Size")
     parser.add_argument("--gamma",      type=float, default=0.5,  help="Scheduler Decrease Rate")
     parser.add_argument("--checkpoint_model", type=str, default="", help="Optional path to checkpoint model")
-    parser.add_argument("--checkpoint_interval", type=int, default=0, help="Interval between saving model checkpoints"
-    )
+    parser.add_argument("--checkpoint_interval", type=int, default=0, help="Interval between saving model checkpoints")
+    
+    # Tensorboard
+    parser.add_argument("--tb_path",    type=str,   default=False, help="Relative path for Tensorboard experiment tracking logs")
+    parser.add_argument("--tb_prof",    type=bool,   default=False, help="Profiler for code with Tensorboard")
+
     opt = parser.parse_args()
     opt.model_root = Path(opt.model_root)
     opt.data_root = Path(opt.data_root)
     
-    if opt.data == 'stl10':
-        opt.data_root = '../../../data/'
+    #if opt.data == 'stl10':
+    #    opt.data_root = '../../../data/'
     
     print(opt)
     
@@ -75,11 +84,17 @@ if __name__ == "__main__":
     # 1. Loading and normalizing data
     #==========================================================================
     if opt.data == 'stl10':
+        print(os.listdir(opt.data_root))
         dataloaders = data_loaders_stl10(opt.data_root, 
                                         img_size=opt.img_size, 
                                         batch_size=opt.batch_size, 
                                         seed=7,
-                                        shuffle=True, download=False)        
+                                        shuffle=True, download=True)   
+
+        now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+        opt.tb_path = f'runs_stdl10_n100_m1024/{now}'
+        opt.num_epochs = 5
+
     elif opt.data == 'imagenet':
         dataloaders = data_loaders_ImageNet(opt.data_root / 'test', 
                                         opt.data_root / 'val', 
@@ -148,7 +163,7 @@ if __name__ == "__main__":
     
     if opt.checkpoint_model:
         model.load_state_dict(torch.load(opt.checkpoint_model))
-    
+
     #==========================================================================
     # 4. Define a Loss function optimizer and scheduler
     #==========================================================================
@@ -164,7 +179,7 @@ if __name__ == "__main__":
     # We  loop over our data iterator, feed the inputs to the
     model, train_info = train_model(model, criterion, \
             optimizer, scheduler, dataloaders, device, opt.model_root, num_epochs=opt.num_epochs,\
-            disp=True, do_checkpoint=opt.checkpoint_interval)
+            disp=True, do_checkpoint=opt.checkpoint_interval, tb_path=opt.tb_path)
     
     #==========================================================================
     # 6. Saving the model so that it can later be utilized
@@ -195,3 +210,4 @@ if __name__ == "__main__":
     with open(train_path, 'wb') as param_file:
         pickle.dump(params,param_file)
     torch.cuda.empty_cache()
+
