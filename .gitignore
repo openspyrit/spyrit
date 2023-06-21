@@ -18,5 +18,6 @@ stats_walsh
 **/.ipynb_checkpoints/*
 docs/source/_build*
 model/
+runs/
 !spyrit/tutorial/tuto_core_2d_short.ipynb
 !spyrit/tutorial/tuto_run_train_colab.ipynb

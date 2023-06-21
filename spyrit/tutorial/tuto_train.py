@@ -4,6 +4,7 @@ Created on Wed Sep  7 15:25:43 2022
 
 @author: ducros
 """
+
 from __future__ import print_function, division
 import torch
 import torch.optim as optim
@@ -91,9 +92,8 @@ if __name__ == "__main__":
                                         seed=7,
                                         shuffle=True, download=True)   
 
-        now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
-        opt.tb_path = f'runs_stdl10_n100_m1024/{now}'
-        opt.num_epochs = 5
+        #now = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+        #opt.tb_path = f'runs/runs_stdl10_n100_m1024/{now}'
 
     elif opt.data == 'imagenet':
         dataloaders = data_loaders_ImageNet(opt.data_root / 'test', 
