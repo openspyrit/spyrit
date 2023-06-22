@@ -21,3 +21,4 @@ model/
 runs/
 !spyrit/tutorial/tuto_core_2d_short.ipynb
 !spyrit/tutorial/tuto_run_train_colab.ipynb
+!spyrit/figures/*.png

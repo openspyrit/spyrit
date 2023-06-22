@@ -1,9 +1,21 @@
 r"""
-01. Tutorial 2D
+01. Tutorial 2D - Image reconstruction for single-pixel imaging
 ======================
 This tutorial focuses on Bayesian inversion, a special type of inverse problem
 that aims at incorporating prior information in terms of model and data
 probabilities in the inversion process.
+
+It shows how to simulate data and perform image reconstruction with spyrit toolbox. 
+For data simulation, it loads an image from ImageNet and simulated measurements based on 
+an undersampled Hadamard operator. You can select number of counts and undersampled factor. 
+
+Image reconstruction is preformed using the following methods: 
+    Pseudo-inverse
+    PInvNet:        Linear net
+    DCNet:          Data completion net with unit matrix denoising
+    DCUNet:         Data completion with UNet denoising, trained on stl10 dataset.
+                    Refer to tuto_run_train_colab.ipynb for an example to train DCUNet.
+
 """
 
 import numpy as np
@@ -25,8 +37,12 @@ H = 64                          # Image height (assumed squared image)
 M = H**2 // 4                   # Num measurements = subsampled by factor 2
 B = 10                          # Batch size
 alpha = 100                     # ph/pixel max: number of counts
+                                # otherwise, set to unit matrix
+load_unet = True                # Load pretrained UNet denoising
 
 imgs_path = './spyrit/images'
+
+cov_name = './stat/Cov_64x64_7.npy'
 
 # use GPU, if available
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -47,7 +63,9 @@ transform = transform_gray_norm(img_size=H)
 dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size = min(B, len(dataset)))
 
+# Select image
 x0, _ = next(iter(dataloader))
+x0 = x0[1:6,:,:,:]
 x = x0.detach().clone()
 b,c,h,w = x.shape
 x = x.view(b*c,h*w)
@@ -116,9 +134,11 @@ Data Simulation:
 #
 # Order matrix with shape (H, H) used to compute the permutation matrix 
 # (as undersampling taking the first rows only)
-# Ord = np.ones((H,H))            
-#Cov = np.eye(H*H)
-Cov  = np.load('./stat/Cov_64x64.npy')
+try:
+    Cov  = np.load(cov_name)
+except:
+    Cov = np.eye(H*H)
+    print(f"Cov matrix {cov_name} not found! Set to the identity")
 
 Ord = Cov2Var(Cov)
 
@@ -148,12 +168,17 @@ dcnet = DCNet(noise, prep, Cov)
 # Pretreined DC UNet (UNet denoising)
 denoi = Unet()
 dcnet_unet = DCNet(noise, prep, Cov, denoi)
-# Load previously trained model
 
-model_path = "./model/dc-net_unet_imagenet_var_N0_10_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07_light"
-#model_path = './model/dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth'
-#dcnet_unet.load_state_dict(torch.load(model_path), loa)
-load_net(model_path, dcnet_unet, device, False)
+# Load previously trained model
+try:
+    model_path = "./model/dc-net_unet_imagenet_var_N0_10_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07_light"
+    #model_path = './model/dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth'
+    #dcnet_unet.load_state_dict(torch.load(model_path), loa)
+    load_net(model_path, dcnet_unet, device, False)
+    print(f'Model {model_path} loaded.')
+except:
+    print(f'Model {model_path} not found!')
+    load_unet = False
 
 # Simulate measurements
 y = noise(x)
@@ -182,9 +207,10 @@ dcnet = dcnet.to(device)
 z_dcnet = dcnet.reconstruct(y.to(device))  # reconstruct from raw measurements
 
 # DC UNET 
-dcnet_unet = dcnet_unet.to(device)
-with torch.no_grad():
-    z_dcunet = dcnet_unet.reconstruct(y.to(device))  # reconstruct from raw measurements
+if (load_unet is True):
+    dcnet_unet = dcnet_unet.to(device)
+    with torch.no_grad():
+        z_dcunet = dcnet_unet.reconstruct(y.to(device))  # reconstruct from raw measurements
 
 # Plots
 x_plot = x.view(-1,H,H).cpu().numpy()    
@@ -213,9 +239,10 @@ imagesc(z_plot[0,:,:],'Pseudo-inverse net reconstruction', show=False)
 z_plot = z_dcnet.view(-1,H,H).cpu().numpy()
 imagesc(z_plot[0,:,:],'DCNet reconstruction', show=False)
 
-z_plot = z_dcunet.view(-1,H,H).detach().cpu().numpy()
-imagesc(z_plot[0,:,:],'DC UNet reconstruction', show=False)
-plt.show()
+if (load_unet is True):
+    z_plot = z_dcunet.view(-1,H,H).detach().cpu().numpy()
+    imagesc(z_plot[0,:,:],'DC UNet reconstruction', show=False)
+    plt.show()
 
 ###############################################################################
 # Note that here we have been able to compute a sample posterior covariance
