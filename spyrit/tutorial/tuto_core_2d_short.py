@@ -37,12 +37,13 @@ H = 64                          # Image height (assumed squared image)
 M = H**2 // 4                   # Num measurements = subsampled by factor 2
 B = 10                          # Batch size
 alpha = 100                     # ph/pixel max: number of counts
-                                # otherwise, set to unit matrix
 load_unet = True                # Load pretrained UNet denoising
+download_cov = True             # Dwonload covariance matrix;
+                                # otherwise, set to unit matrix
 
 imgs_path = './spyrit/images'
 
-cov_name = './stat/Cov_64x64_7.npy'
+cov_name = './stat/Cov_64x64.npy'
 
 # use GPU, if available
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -134,6 +135,28 @@ Data Simulation:
 #
 # Order matrix with shape (H, H) used to compute the permutation matrix 
 # (as undersampling taking the first rows only)
+
+if (download_cov is True):
+    import girder_client
+
+    # api Rest url of the warehouse
+    url='https://pilot-warehouse.creatis.insa-lyon.fr/api/v1'
+    
+    # Generate the warehouse client
+    gc = girder_client.GirderClient(apiUrl=url)
+
+    # Download the covariance matrix and mean image
+    data_folder = './stat/'
+    dataId_list = [
+            '63935b624d15dd536f0484a5', # for reconstruction (imageNet, 64)
+            '63935a224d15dd536f048496', # for reconstruction (imageNet, 64)
+            ]
+    for dataId in dataId_list:
+        myfile = gc.getFile(dataId)
+        gc.downloadFile(dataId, data_folder + myfile['name'])
+
+    print(f'Created {data_folder}') 
+
 try:
     Cov  = np.load(cov_name)
 except:
