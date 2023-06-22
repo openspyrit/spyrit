@@ -85,7 +85,6 @@ if __name__ == "__main__":
     # 1. Loading and normalizing data
     #==========================================================================
     if opt.data == 'stl10':
-        print(os.listdir(opt.data_root))
         dataloaders = data_loaders_stl10(opt.data_root, 
                                         img_size=opt.img_size, 
                                         batch_size=opt.batch_size, 
