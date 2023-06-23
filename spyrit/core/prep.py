@@ -227,10 +227,11 @@ class SplitPoisson(nn.Module):
     
     def forward_expe(self, 
                      x: torch.tensor, 
-                     meas_op: Union[LinearSplit, HadamSplit]
+                     meas_op: Union[LinearSplit, HadamSplit],
+                     dim = -1
                      ) -> Tuple[torch.tensor, torch.tensor]:
         r""" 
-        Preprocess to compensate for image normalization and splitting of the 
+        [Update] Preprocess to compensate for image normalization and splitting of the 
         measurement operator.
         
         It computes :math:`m = \frac{x[0::2]-x[1::2]}{\alpha}`, where 
@@ -251,16 +252,18 @@ class SplitPoisson(nn.Module):
                 
             Output (:math:`m`, :math:`\alpha`): preprocess measurement and estimated 
             intensities.
+            
+            :attr:`meas_op`: dimensions across which the maximum is computed
         
         Shape:
-            x: :math:`(B, 2M)` where :math:`B` is the batch dimension
+            x: :math:`(*, 2M)` where :math:`B` is the batch dimension
             
             meas_op: the number of measurements :attr:`meas_op.M` should match
             :math:`M`.
             
-            :math:`m`: :math:`(B, M)`
+            :math:`m`: :math:`(*, M)`
             
-            :math:`\alpha`: :math:`(B)` 
+            :math:`\alpha`: :math:`(*, 1)` 
         
         Example:
             >>> x = torch.rand([10,2*400], dtype=torch.float)
@@ -271,25 +274,17 @@ class SplitPoisson(nn.Module):
             >>> print(m.shape)
             >>> print(alpha.shape)
             torch.Size([10, 400])
-            torch.Size([10])
+            torch.Size([10, 1])
         """
-        bc = x.shape[0]
-        
+               
         # unsplit
-        x = x[:,self.even_index] - x[:,self.odd_index]
+        x = x[...,self.even_index] - x[...,self.odd_index]
         
         # estimate alpha
         x_pinv = meas_op.pinv(x)
-        alpha = self.max(x_pinv)
-        alpha = alpha.expand(bc,self.M) # shape is (b*c, M)
-        
-        # normalize
-        H_ones = self.H_ones.expand(bc,self.M)
-        
-        x = torch.div(x, alpha)
-        x = 2*x - H_ones
-        
-        alpha = alpha[:,0]    # shape is (b*c,)
+        alpha = torch.amax(x_pinv, dim=dim, keepdim=True)
+        x = x/alpha
+        x = 2*x - self.H_ones
 
         return x, alpha
     
@@ -302,8 +297,9 @@ class SplitPoisson(nn.Module):
             :attr:`x`: batch of images in the Hadamard domain
             
         Shape:
-            - Input: :math:`(*,2*M)` :math:`*` indicates one or more dimensions
+            - Input: :math:`(*,2*M)` where :math:`*` indicates one or more dimensions
             - Output: :math:`(*, M)`
+            
             
         Example:
             >>> x = torch.rand([10,2*400], dtype=torch.float)
@@ -347,9 +343,9 @@ class SplitPoisson(nn.Module):
             :attr:`x`: Batch of images in the Hadamard domain.
             
         Shape:
-            Input: :math:`(B,2*M)` where :math:`B` is the batch dimension
+            Input: :math:`(*,2*M)` where :math:`*` indicates one or more dimensions
             
-            Output: :math:`(B, M)`
+            Output: :math:`(*, M)`
             
         Example:
             >>> x = torch.rand([10,2*32*32], dtype=torch.float)
@@ -360,7 +356,7 @@ class SplitPoisson(nn.Module):
         """
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
-        x = x[:,self.even_index] + x[:,self.odd_index]
+        x = x[...,self.even_index] + x[...,self.odd_index]
         x = self.gain*(x - 2*self.nbin*self.mudark) + 2*self.nbin*self.sigdark**2
         x = 4*x     # to get the cov of an image in [-1,1], not in [0,1]
 
@@ -428,17 +424,12 @@ class SplitPoisson(nn.Module):
         
         Example:
             >>> x = torch.rand([10, 1, 32,32], dtype=torch.float)
-            >>> beta = 9*torch.rand([10])
+            >>> beta = 9*torch.rand_like(x)
             >>> y = split_op.denormalize_expe(x, beta, 32, 32)
             >>> print(y.shape)
             torch.Size([10, 1, 32, 32])
                         
         """
-        bc = x.shape[0]
-        
-        # Denormalization
-        beta = beta.view(bc,1,1,1)
-        beta = beta.expand(bc,1,h,w)
         x = (x+1)/2*beta
         
         return x
