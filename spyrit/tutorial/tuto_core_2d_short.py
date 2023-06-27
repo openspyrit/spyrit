@@ -38,7 +38,7 @@ M = H**2 // 4                   # Num measurements = subsampled by factor 2
 B = 10                          # Batch size
 alpha = 100                     # ph/pixel max: number of counts
 load_unet = True                # Load pretrained UNet denoising
-download_cov = True             # Dwonload covariance matrix;
+download_cov = False            # Download covariance matrix;
                                 # otherwise, set to unit matrix
 
 imgs_path = './spyrit/images'
