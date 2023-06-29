@@ -11,9 +11,11 @@ import torch.optim as optim
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
+from torch.utils.tensorboard import SummaryWriter
+
 import matplotlib.pyplot as plt
 import time
-import os
+from pathlib import Path
 import datetime
 import copy
 import pickle
@@ -65,7 +67,64 @@ def count_memory(model):
     print(f"Memory requirement: {mem} bytes")
     return mem
 
-def train_model(model, criterion, optimizer, scheduler, dataloaders, device, root, num_epochs=25,disp=False, do_checkpoint=0):
+def images_norm(images):
+    return 0.5*(images+1)
+
+def tb_writer_init(tb_path, samples=None):
+    """Tensorboard log for torch
+    """
+    writer = SummaryWriter(tb_path)        
+
+    # Add model graph for visualization
+    #with torch.no_grad():
+    #    writer.add_graph(model, samples)
+    
+    # Add sample image
+    if samples is not None:
+        print('samples')
+        img_grid = torchvision.utils.make_grid(images_norm(samples))
+        writer.add_image('data_sample', img_grid)
+        writer.close()
+    return writer
+
+def tb_writer_add_scalar(writer, name_metric, val_metric, step):
+    """Tensorboard writer: Add a scalar (loss)
+    """    
+    writer.add_scalar(name_metric, val_metric, step)
+    
+def tb_writer_add_image(writer, name_metric, images, step):
+    """Tensorboard writer: Add an image)
+    """      
+    # Prediction
+    img_grid = torchvision.utils.make_grid(images_norm(images))
+    writer.add_image(name_metric, img_grid, global_step=step)
+
+
+def tb_profiler(path_prof, model,criterion, optimizer, dataloader, device, wait=1, warmup=1, active=3, repeat=2):
+    """Tensorboard profiler: Profile code execution
+    """ 
+    prof = torch.profiler.profile(
+    schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=2),
+    on_trace_ready=torch.profiler.tensorboard_trace_handler(path_prof),
+    record_shapes=True,
+    with_stack=True)
+
+    prof.start()
+
+    for step, (inputs, labels) in enumerate(dataloader):
+        if step >= (wait + warmup + active) * repeat:
+            break        
+        inputs = inputs.to(device)
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(inputs,outputs,model)
+        loss.backward()
+        optimizer.step()
+
+        prof.step()
+    prof.stop()
+
+def train_model(model, criterion, optimizer, scheduler, dataloaders, device, root, num_epochs=25,disp=False, do_checkpoint=0, tb_path=False, tb_prof=False):
     """ Trains the pytorch model 
         """
     count_trainable_param(model)
@@ -80,7 +139,12 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, device, roo
     train_info  = {};
     train_info['train'] = [];
     train_info['val'] = [];
-
+    
+    # Set tensorboard writer
+    if tb_path:
+        samples, _ = next(iter(dataloaders['val']))
+        samples = samples[:3,:,:,:].to(device)
+        writer = tb_writer_init(tb_path, samples)
     
     for epoch in range(num_epochs):
         prev_time = time.time()
@@ -143,10 +207,23 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, device, roo
                         )
                     )
                     
+                if tb_path:
+                    tb_freq = 5
+                    if batch_i % tb_freq == 0:
+                        # Loss
+                        tb_writer_add_scalar(writer, name_metric=f'{phase}_loss', val_metric=loss.item() * inputs.size(0), step=epoch * dataset_sizes[phase] + batch_i)
+                        
+                        # Prediction
+                        with torch.no_grad():
+                            samples_pred = model(samples)
+                            tb_writer_add_image(writer, name_metric='model_preds', images=samples_pred, step=epoch * dataset_sizes[phase] + batch_i)
+                    
+
                 del outputs
-    
+
             epoch_loss = running_loss / dataset_sizes[phase]
             train_info[phase].append(epoch_loss);
+
             
             if phase == 'train':
                 scheduler.step();
@@ -168,6 +245,11 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, device, roo
     if disp:
         print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
         print('Best val Loss: {:4f}'.format(best_loss))
+
+    # Tensorboard profiler
+    if tb_prof:
+        tb_profiler(tb_path, model,criterion, optimizer, dataloaders['train'], device, wait=1, warmup=1, active=3, repeat=2)
+
 
     # load best model weights
     model.load_state_dict(best_model_wts)
