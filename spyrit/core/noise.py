@@ -16,7 +16,7 @@ class NoNoise(nn.Module):
     .. note::
         Assumes that the incoming images :math:`x` are in the range [-1;1]
         
-    The class is constructed from a measuremznt operator (see the
+    The class is constructed from a measurement operator (see the
     :mod:`~spyrit.core.meas` submodule)
     
     Args:
