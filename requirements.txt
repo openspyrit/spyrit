@@ -11,4 +11,4 @@ wget
 sympy
 imageio
 astropy
-
+tensorboard
