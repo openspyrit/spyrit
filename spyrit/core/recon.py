@@ -743,3 +743,130 @@ class DCNet(nn.Module):
         x = self.prep.denormalize_expe(x, norm, self.Acq.meas_op.h, self.Acq.meas_op.w)
         
         return x
+
+class PositiveParameters(nn.Module):
+    def __init__(self, size, val_min=1e-6):
+        super(PositiveParameters, self).__init__()
+        self.val_min = torch.tensor(val_min)
+        self.params = nn.Parameter(torch.abs(val_min*torch.ones(size,1)), requires_grad=True)
+        
+    def forward(self):
+        return torch.abs(self.params)
+
+class PositiveMonoDecreaseParameters(nn.Module):
+    def __init__(self, size, val_min=1e-6):
+        super(PositiveMonoDecreaseParameters, self).__init__()
+        self.val_min = torch.tensor(val_min)
+        self.params = nn.Parameter(torch.abs(val_min*torch.ones(size,1)), requires_grad=True)
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        
+    def forward(self):
+        for i in range(1, len(self.params)):
+            self.params[i].data = torch.clamp(self.params[i].data, min=self.val_min.to(self.device), max=self.params[i-1].data)
+        return torch.abs(self.params)
+
+
+class UPGD(DCNet):
+    def __init__(self, 
+                 noise, 
+                 prep, 
+                 sigma, 
+                 denoi=nn.Identity(),
+                 num_iter = 6, 
+                 lamb = 1e-5, 
+                 lamb_min = 1e-6):
+        super().__init__(noise, prep, sigma, denoi)
+        self.num_iter = num_iter
+        self.lamb = lamb
+        self.lamb_min = lamb_min
+        # Set a trainable tensor for the regularization parameter with dimension num_iter
+        # and constrained to be positive with clamp(min=0.0, max=None)        
+        self.lambs = PositiveMonoDecreaseParameters(num_iter, lamb_min) # shape lambs = [num_iter,1]
+        self.noise = noise
+        # Pseudo-inverse, adjoint???
+        self.pinv = PseudoInverse()
+
+    def adjoint(self, x):
+        r""" Adjoint step of a reconstruction network
+        
+        Same as :meth:`reconstruct` reconstruct except that:
+            
+            1. The regularization parameter is trainable
+            
+        Args:
+            :attr:`x`: raw measurement vectors
+        
+        Shape:
+            :attr:`x`: :math:`(BC,2M)`
+            
+            :attr:`output`: :math:`(BC,1,H,W)`
+        """
+        # x of shape [b*c, 2M]
+        bc, _ = x.shape
+    
+
+        # Compute the adjoint of the measurement operator
+        # First reconstruction estimate
+
+        # Preprocessing
+        x = self.prep(x)
+
+        # Adjoint of measurements to image domain processing
+        x = self.pinv(x, self.noise.meas_op)          
+
+        x = x.view(bc,1,self.Acq.meas_op.h, self.Acq.meas_op.w)
+        return x
+
+
+    def reconstruct(self, x):
+        r""" Reconstruction step of a reconstruction network
+        
+        Same as :meth:`reconstruct` reconstruct except that:
+            
+            1. The regularization parameter is trainable
+            
+        Args:
+            :attr:`x`: raw measurement vectors
+        
+        Shape:
+            :attr:`x`: :math:`(BC,2M)`
+            
+            :attr:`output`: :math:`(BC,1,H,W)`
+        """
+
+        # Save measurement
+        m = x.clone()
+
+        # x of shape [b*c, 2M]
+        bc, _ = x.shape    
+
+        # Compute the adjoint of the measurement operator
+        # First reconstruction estimate: Tikhonov solution
+
+        # Preprocessing
+        var_noi = self.prep.sigma(x)
+        x = self.prep(x)
+
+        # measurements to image domain processing
+        x_0 = torch.zeros((bc, self.Acq.meas_op.N), device=x.device)
+        x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
+        x = x.view(bc,1,self.Acq.meas_op.h, self.Acq.meas_op.w)   # shape x = [b*c,1,h,w]
+
+        # Unroll network
+        # Ensure step size is positive and monotonically decreasing and larger than self.lamb!
+        lambs = self.lambs()
+        for n in range(self.num_iter):
+            # Projection onto the measurement space
+            proj = self.acquire(x)
+
+            # Residual
+            res = proj - m
+
+            # Gradient step
+            x = x + lambs[n].clamp_min(self.lamb_min)*self.adjoint(res)
+
+            # Denoising step
+            x = self.denoi(x)
+        return x            
+    
+
