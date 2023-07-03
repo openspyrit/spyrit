@@ -46,12 +46,15 @@ import spyrit
 ```
 
 ## Examples
-Simple reconstruction examples can be found in [spyrit/test/tuto_core_2d.py](https://github.com/openspyrit/spyrit/blob/master/spyrit/test/tuto_core_2d.py).
+Simple reconstruction examples can be found in [spyrit/tutorial/tuto_core_2d_short.py](https://github.com/openspyrit/spyrit/blob/master/spyrit/test/tuto_core_2d_short.py). 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/openspyrit/spyrit/blob/demo_colab/spyrit/tutorial/tuto_core_2d_short.ipynb)
+
 
 # API Documentation
 https://spyrit.readthedocs.io/
 
 # Contributors (alphabetical order)
+* Juan Abascal - [Website](https://juanabascal78.wixsite.com/juan-abascal-webpage)
 * Thomas Baudier
 * Sebastien Crombez
 * Nicolas Ducros - [Website](https://www.creatis.insa-lyon.fr/~ducros/WebPage/index.html)
