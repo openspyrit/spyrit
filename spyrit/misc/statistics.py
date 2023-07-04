@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+from typing import Any
 import torch
 import torchvision
 #from torchvision import datasets, transforms
@@ -106,8 +107,44 @@ def data_loaders_ImageNet(train_root, val_root=None, img_size=64,
     
     return dataloaders
 
+
+class CenterCrop:
+    """
+    Args:
+        img_size=int, image size   
+
+    Center crop if image not square in order to ensure that all images have same size
+    """
+    def __init__(self, img_size):
+        self.img_size = img_size
+        self.centerCrop = torchvision.transforms.CenterCrop(img_size)
+    def __call__(self, inputs, *args: Any, **kwds: Any):
+        # Center crop if not square
+        img_shape = inputs.size
+        if img_shape[0] != img_shape[1]:
+            return self.centerCrop(inputs)
+        else:
+            return inputs
+
+def transform_gray_norm(img_size): 
+    """ 
+    Args:
+        img_size=int, image size
+    
+    Create torchvision transform for natural images (stl10, imagenet):
+    convert them to grayscale, then to tensor, and normalize between [-1, 1]
+    """
+    transform = torchvision.transforms.Compose(
+        [torchvision.transforms.functional.to_grayscale,
+        torchvision.transforms.Resize(img_size),
+        #torchvision.transforms.CenterCrop(img_size),
+        CenterCrop(img_size),
+        torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize([0.5], [0.5])])
+    return transform
+
 def data_loaders_stl10(data_root, img_size=64, batch_size=512, seed=7, 
-                       shuffle=False): 
+                       shuffle=False, download=True): 
     """ 
     Args:
         shuffle=True to shuffle train set only (test set not shuffled)
@@ -117,19 +154,15 @@ def data_loaders_stl10(data_root, img_size=64, batch_size=512, seed=7,
     converted into grayscale images.
         
     """
-    transform = torchvision.transforms.Compose(
-        [torchvision.transforms.functional.to_grayscale,
-        torchvision.transforms.Resize((img_size, img_size)),
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize([0.5], [0.5])])
+    transform = transform_gray_norm(img_size)   
 
     trainset = torchvision.datasets.STL10(root=data_root, split='train+unlabeled',
-                                          download=False, transform=transform)
+                                          download=download, transform=transform)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
                                               shuffle=shuffle)
  
     testset = torchvision.datasets.STL10(root=data_root, split='test',
-                                         download=False, transform=transform)
+                                         download=download, transform=transform)
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
                                              shuffle=False)
     

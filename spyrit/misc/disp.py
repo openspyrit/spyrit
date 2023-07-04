@@ -120,7 +120,7 @@ def uint8(dsp):
     return x;
 
 
-def imagesc(Img, title='', colormap=plt.cm.gray):
+def imagesc(Img, title='', colormap=plt.cm.gray, show=True):
     """ 
     imagesc(IMG) Display image Img with scaled colors with greyscale 
     colormap and colorbar
@@ -137,7 +137,8 @@ def imagesc(Img, title='', colormap=plt.cm.gray):
     divider = make_axes_locatable(ax);
     cax = plt.axes([0.85, 0.1, 0.075, 0.8]);
     plt.colorbar(cax=cax);
-    plt.show();
+    if show is True:
+        plt.show();
     
 def imagecomp(Img1, Img2, suptitle='', title1='', title2='', colormap1=plt.cm.gray, colormap2=plt.cm.gray):
     f, (ax1, ax2) = plt.subplots(1, 2)
