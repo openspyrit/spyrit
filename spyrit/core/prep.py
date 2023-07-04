@@ -141,7 +141,7 @@ class DirectPoisson(nn.Module):
 class SplitPoisson(nn.Module):
 #==============================================================================
     r"""
-    Preprocess the raw data acquired with a plit measurement operator assuming 
+    Preprocess the raw data acquired with a split measurement operator assuming 
     Poisson noise.  It also compensates for the affine transformation applied 
     to the images to get positive intensities.
     
