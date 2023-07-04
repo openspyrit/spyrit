@@ -205,7 +205,7 @@ except:
 
 
 # UPGD (UNet denoising)
-upgd_unet = UPGD(noise, prep, Cov, denoi, lamb=1e-5)
+upgd_unet = UPGD(noise, prep, denoi, split=True)
 
 
 # Simulate measurements
