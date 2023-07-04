@@ -766,57 +766,26 @@ class PositiveMonoDecreaseParameters(nn.Module):
         return torch.abs(self.params)
 
 
-class UPGD(DCNet):
+class UPGD(PinvNet):
     def __init__(self, 
                  noise, 
                  prep, 
-                 sigma, 
                  denoi=nn.Identity(),
                  num_iter = 6, 
                  lamb = 1e-5, 
-                 lamb_min = 1e-6):
-        super().__init__(noise, prep, sigma, denoi)
+                 lamb_min = 1e-6, 
+                 split=False):
+        super().__init__(noise, prep, denoi)
         self.num_iter = num_iter
         self.lamb = lamb
         self.lamb_min = lamb_min
         # Set a trainable tensor for the regularization parameter with dimension num_iter
         # and constrained to be positive with clamp(min=0.0, max=None)        
-        self.lambs = PositiveMonoDecreaseParameters(num_iter, lamb_min) # shape lambs = [num_iter,1]
-        self.noise = noise
+        self.lambs = PositiveParameters(num_iter, lamb_min) # shape lambs = [num_iter,1]
+        #self.noise = noise
         # Pseudo-inverse, adjoint???
         self.pinv = PseudoInverse()
-
-    def adjoint(self, x):
-        r""" Adjoint step of a reconstruction network
-        
-        Same as :meth:`reconstruct` reconstruct except that:
-            
-            1. The regularization parameter is trainable
-            
-        Args:
-            :attr:`x`: raw measurement vectors
-        
-        Shape:
-            :attr:`x`: :math:`(BC,2M)`
-            
-            :attr:`output`: :math:`(BC,1,H,W)`
-        """
-        # x of shape [b*c, 2M]
-        bc, _ = x.shape
-    
-
-        # Compute the adjoint of the measurement operator
-        # First reconstruction estimate
-
-        # Preprocessing
-        x = self.prep(x)
-
-        # Adjoint of measurements to image domain processing
-        x = self.pinv(x, self.noise.meas_op)          
-
-        x = x.view(bc,1,self.Acq.meas_op.h, self.Acq.meas_op.w)
-        return x
-
+        self.split = split
 
     def reconstruct(self, x):
         r""" Reconstruction step of a reconstruction network
@@ -834,36 +803,42 @@ class UPGD(DCNet):
             :attr:`output`: :math:`(BC,1,H,W)`
         """
 
+        # Measurement operator
+        #if self.split:
+        #    meas = super().Acq.meas_op        
+        #else:
+        #    meas = self.Acq.meas_op        
+        meas = self.acqu.meas_op
+
         # Save measurement
         m = x.clone()
 
         # x of shape [b*c, 2M]
         bc, _ = x.shape    
 
-        # Compute the adjoint of the measurement operator
-        # First reconstruction estimate: Tikhonov solution
-
-        # Preprocessing
-        var_noi = self.prep.sigma(x)
+        # First estimate: Pseudo inverse
+        # Preprocessing in the measurement domain
         x = self.prep(x)
 
         # measurements to image domain processing
-        x_0 = torch.zeros((bc, self.Acq.meas_op.N), device=x.device)
-        x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
-        x = x.view(bc,1,self.Acq.meas_op.h, self.Acq.meas_op.w)   # shape x = [b*c,1,h,w]
+        x = self.pinv(x, self.acqu.meas_op)               # shape x = [b*c,N]
+        x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)   # shape x = [b*c,1,h,w]
 
         # Unroll network
         # Ensure step size is positive and monotonically decreasing and larger than self.lamb!
         lambs = self.lambs()
         for n in range(self.num_iter):
             # Projection onto the measurement space
-            proj = self.acquire(x)
+            proj = self.acqu.meas_op.forward_H(x)
+            #proj = self.Acq.meas_op.H(x)
+            #proj = super().self.Acq.meas_op.H(x)
 
             # Residual
             res = proj - m
 
             # Gradient step
-            x = x + lambs[n].clamp_min(self.lamb_min)*self.adjoint(res)
+            x = x + lambs[n].clamp_min(self.lamb_min)*self.Acq.meas_op.adjoint(res)
+            #x = x + lambs[n].clamp_min(self.lamb_min)*self.Acq.meas_op.H_adjoint(res)
 
             # Denoising step
             x = self.denoi(x)
