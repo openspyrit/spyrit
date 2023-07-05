@@ -46,8 +46,8 @@ import spyrit
 ```
 
 ## Examples
-Simple reconstruction examples can be found in [tuto_core_2d_short.ipynb](https://github.com/openspyrit/spyrit/blob/master/spyrit/test/tuto_core_2d_short.ipynb). 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/openspyrit/spyrit/blob/demo_colab_new/spyrit/tutorial/tuto_core_2d_short.ipynb)
+Simple reconstruction examples can be found in [tutorial](https://github.com/openspyrit/spyrit/blob/master/spyrit/tutorial). 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/openspyrit/spyrit/blob/master/spyrit/tutorial/tuto_core_2d_short.ipynb)
 
 
 # API Documentation
