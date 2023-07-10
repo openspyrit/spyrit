@@ -23,7 +23,7 @@ import datetime
 from spyrit.core.noise import PoissonApproxGauss
 from spyrit.core.meas import HadamSplit
 from spyrit.core.prep import SplitPoisson
-from spyrit.core.recon import DCNet, PinvNet
+from spyrit.core.recon import DCNet, PinvNet, UPGD
 from spyrit.core.train import train_model, Train_par, save_net, Weight_Decay_Loss
 from spyrit.core.nnet import Unet, ConvNet, ConvNetBN
 from spyrit.misc.statistics import Cov2Var, data_loaders_ImageNet, data_loaders_stl10
@@ -71,6 +71,8 @@ if __name__ == "__main__":
     #if opt.data == 'stl10':
     #    opt.data_root = '../../../data/'
     
+    opt.arch = "upgd"
+
     print(opt)
     
     #==========================================================================
@@ -153,6 +155,9 @@ if __name__ == "__main__":
         
     elif opt.arch == 'pinv-net':    # Pseudo Inverse Network
         model = PinvNet(noise, prep, denoi)
+
+    elif opt.arch == 'upgd':        # Unrolled Proximal Gradient Descent
+        model = UPGD(noise, prep, denoi, num_iter=2)
     
     if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
