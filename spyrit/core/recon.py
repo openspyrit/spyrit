@@ -753,17 +753,25 @@ class PositiveParameters(nn.Module):
     def forward(self):
         return torch.abs(self.params)
 
-class PositiveMonoDecreaseParameters(nn.Module):
-    def __init__(self, size, val_min=1e-6):
-        super(PositiveMonoDecreaseParameters, self).__init__()
-        self.val_min = torch.tensor(val_min)
-        self.params = nn.Parameter(torch.abs(val_min*torch.ones(size,1)), requires_grad=True)
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        
+class PositiveMonoIncreaseParameters(PositiveParameters):
+    def __init__(self, size, val_min=0.000001):
+        super().__init__(size, val_min)
+    
     def forward(self):
-        for i in range(1, len(self.params)):
-            self.params[i].data = torch.clamp(self.params[i].data, min=self.val_min.to(self.device), max=self.params[i-1].data)
-        return torch.abs(self.params)
+        # cumsum in opposite order
+        return super().forward().cumsum(dim=0).flip(dims=[0])
+
+# class PositiveMonoDecreaseParameters(nn.Module):
+#     def __init__(self, size, val_min=1e-6):
+#         super(PositiveMonoDecreaseParameters, self).__init__()
+#         self.val_min = torch.tensor(val_min)
+#         self.params = nn.Parameter(torch.abs(val_min*torch.ones(size,1)), requires_grad=True)
+#         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        
+#     def forward(self):
+#         for i in range(1, len(self.params)):
+#             self.params[i].data = torch.clamp(self.params[i].data, min=self.val_min.to(self.device), max=self.params[i-1].data)
+#         return torch.abs(self.params)
 
 
 class UPGD(PinvNet):
@@ -775,16 +783,14 @@ class UPGD(PinvNet):
                  lamb = 1e-5, 
                  lamb_min = 1e-6, 
                  split=False):
-        super().__init__(noise, prep, denoi)
+        super(UPGD, self).__init__(noise, prep, denoi)
         self.num_iter = num_iter
         self.lamb = lamb
         self.lamb_min = lamb_min
         # Set a trainable tensor for the regularization parameter with dimension num_iter
         # and constrained to be positive with clamp(min=0.0, max=None)        
-        self.lambs = PositiveParameters(num_iter, lamb_min) # shape lambs = [num_iter,1]
+        self.lambs = PositiveMonoIncreaseParameters(num_iter, lamb_min) # shape lambs = [num_iter,1]
         #self.noise = noise
-        # Pseudo-inverse, adjoint???
-        self.pinv = PseudoInverse()
         self.split = split
 
     def reconstruct(self, x):
@@ -805,43 +811,42 @@ class UPGD(PinvNet):
 
         # Measurement operator
         #if self.split:
-        #    meas = super().Acq.meas_op        
+        #    meas = super().Acq.meas_op     
         #else:
-        #    meas = self.Acq.meas_op        
+            #meas = self.Acq.meas_op        
         meas = self.acqu.meas_op
-
-        # Save measurement
-        m = x.clone()
 
         # x of shape [b*c, 2M]
         bc, _ = x.shape    
 
         # First estimate: Pseudo inverse
         # Preprocessing in the measurement domain
-        x = self.prep(x)
+        x = self.prep(x) # [5, 1024]
+
+        # Save measurements
+        m = x.clone() # [5, 1024]
 
         # measurements to image domain processing
-        x = self.pinv(x, self.acqu.meas_op)               # shape x = [b*c,N]
-        x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)   # shape x = [b*c,1,h,w]
+        x = self.pinv(x, self.acqu.meas_op)  # [5, 4096]         # shape x = [b*c,N]
+        #x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)   # shape x = [b*c,1,h,w]
 
         # Unroll network
         # Ensure step size is positive and monotonically decreasing and larger than self.lamb!
         lambs = self.lambs()
         for n in range(self.num_iter):
             # Projection onto the measurement space
-            proj = self.acqu.meas_op.forward_H(x)
-            #proj = self.Acq.meas_op.H(x)
-            #proj = super().self.Acq.meas_op.H(x)
+            proj = self.acqu.meas_op.forward_H(x) # [5, 1024]
 
             # Residual
-            res = proj - m
+            res = proj - m # [5, 1024]
 
             # Gradient step
-            x = x + lambs[n].clamp_min(self.lamb_min)*self.Acq.meas_op.adjoint(res)
-            #x = x + lambs[n].clamp_min(self.lamb_min)*self.Acq.meas_op.H_adjoint(res)
+            x = x + lambs[n]*self.acqu.meas_op.H_adjoint(res) # [5, 4096]
 
             # Denoising step
+            x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w) # [5, 1, 64, 64]
             x = self.denoi(x)
+            x = x.view(bc, self.acqu.meas_op.N) # [5, 4096]
         return x            
     
 
