@@ -1,11 +1,8 @@
 r"""
 01. Tutorial 2D - Image reconstruction for single-pixel imaging using pretrained DRUNet denoising network
 ======================
-This tutorial focuses on Bayesian inversion, a special type of inverse problem
-that aims at incorporating prior information in terms of model and data
-probabilities in the inversion process.
-
-It shows how to simulate data and perform image reconstruction with spyrit toolbox. 
+This tutorial shows how to simulate data and perform image reconstruction with DC-DRUNet 
+(data completion with pretrained DRUNet denoising network) for single-pixel imaging. 
 For data simulation, it loads an image from ImageNet and simulated measurements based on 
 an undersampled Hadamard operator. You can select number of counts and undersampled factor. 
 
@@ -15,7 +12,7 @@ Image reconstruction is preformed using the following methods:
     DCNet:          Data completion net with unit matrix denoising
     DCUNet:         Data completion with UNet denoising, trained on stl10 dataset.
                     Refer to tuto_run_train_colab.ipynb for an example to train DCUNet.
-    DCUNetRes:      Data completion with pretrained DRUNet denoising.
+    DCDRUNet:       Data completion with pretrained DRUNet denoising.
 
     DRUNet taken from https://github.com/cszn/DPIR
     Deep Plug-and-Play Image Restoration (DPIR) toolbox
@@ -40,6 +37,8 @@ from spyrit.core.train import load_net
 
 import torch
 import torchvision
+# pip install girder-client
+# pip install gdown
 import girder_client
 import gdown
 
@@ -53,8 +52,6 @@ B = 10                          # Batch size
 alpha = 100                     # ph/pixel max: number of counts
 download_cov = True             # Dwonload covariance matrix;
                                 # otherwise, set to unit matrix
-load_unet = True                # Load pretrained UNet denoising
-load_drunet = True              # Load pretrained DRUNet denoising
 ind_img = 1                     # Image index for image selection
 
 imgs_path = './spyrit/images'
@@ -147,53 +144,59 @@ dcnet = DCNet(noise, prep, Cov)
 denoi = Unet()
 dcunet = DCNet(noise, prep, Cov, denoi)
 
-# Load previously trained model
-try:
-    model_path = "./model/dc-net_unet_imagenet_var_N0_10_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07_light"
-    #model_path = './model/dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth'
-    #dcnet_unet.load_state_dict(torch.load(model_path), loa)
-    load_net(model_path, dcunet, device, False)
-    print(f'Model {model_path} loaded.')
-except:
-    print(f'Model {model_path} not found!')
-    load_unet = False
+# Load previously trained UNet model
 
+# Path to model
+models_path = "./model"
+model_unet_path = os.path.join(models_path, "dc-net_unet_imagenet_var_N0_10_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07_light")
+if os.path.exists(models_path) is False:
+    os.mkdir(models_path)
+    print(f'Created {models_path}')
+
+try:
+    # Download weights
+    url_unet = 'https://drive.google.com/file/d/1LBrjU0B-Tecd4GBRozX9-24LTRzIiMzA/view?usp=drive_link'
+    gdown.download(url_unet, f'{model_unet_path}.pth', quiet=False,fuzzy=True)
+
+    # Load model from path
+    load_net(model_unet_path, dcunet, device, False)
+    print(f'Model {model_unet_path} loaded.')
+    load_unet = True
+except:
+    print(f'Model {model_unet_path} not found!')
+    load_unet = False
 
 # DCDRUNet
 #
-# Download weights
-model_drunet_path = './spyrit/model_zoo'
+# Download DRUNet weights
 url_drunet = 'https://drive.google.com/file/d/1oSsLjPPn6lqtzraFZLZGmwP_5KbPfTES/view?usp=drive_link'
+model_drunet_path = os.path.join(models_path, 'drunet_gray.pth')
+try:
+    gdown.download(url_drunet, model_drunet_path, quiet=False,fuzzy=True)
 
-if os.path.exists(model_drunet_path) is False:
-    os.mkdir(model_drunet_path)
-    print(f'Created {model_drunet_path}')
+    # Define denoising network
+    n_channels = 1                   # 1 for grayscale image    
+    denoi_drunet = drunet(in_nc=n_channels+1, out_nc=n_channels, nc=[64, 128, 256, 512], nb=4, act_mode='R',                     
+                downsample_mode="strideconv", upsample_mode="convtranspose")  
 
-model_drunet_path = os.path.join(model_drunet_path, 'drunet_gray.pth')
-gdown.download(url_drunet, model_drunet_path, quiet=False,fuzzy=True)
-
-# Define denoising network
-n_channels = 1                   # 1 for grayscale image    
-denoi_drunet = drunet(in_nc=n_channels+1, out_nc=n_channels, nc=[64, 128, 256, 512], nb=4, act_mode='R',                     
-            downsample_mode="strideconv", upsample_mode="convtranspose")  
-
-# Load pretrained model
-try:       
+    # Load pretrained model
     denoi_drunet.load_state_dict(torch.load(model_drunet_path), strict=True)       
     print(f'Model {model_drunet_path} loaded.')
+    load_drunet = True
 except:
-    print(f'Model {model_path} not found!')
+    print(f'Model {model_drunet_path} not found!')
     load_drunet = False
 
-denoi_drunet.eval()         
-for k, v in denoi_drunet.named_parameters():             
-    v.requires_grad = False  
-print(sum(map(lambda x: x.numel(), denoi_drunet.parameters())) )  
+if load_drunet is True:
+    denoi_drunet.eval()         
+    for k, v in denoi_drunet.named_parameters():             
+        v.requires_grad = False  
+    print(sum(map(lambda x: x.numel(), denoi_drunet.parameters())) )  
 
-# Define DCDRUNet
-#noise_level = 10
-#dcdrunet = DCDRUNet(noise, prep, Cov, denoi_drunet, noise_level=noise_level)
-dcdrunet = DCDRUNet(noise, prep, Cov, denoi_drunet)
+    # Define DCDRUNet
+    #noise_level = 10
+    #dcdrunet = DCDRUNet(noise, prep, Cov, denoi_drunet, noise_level=noise_level)
+    dcdrunet = DCDRUNet(noise, prep, Cov, denoi_drunet)
 
 # Simulate measurements
 y = noise(x)
@@ -228,18 +231,8 @@ if (load_unet is True):
         z_dcunet = dcunet.reconstruct(y.to(device))  # reconstruct from raw measurements
 
 # DC DRUNET 
-# Denoise original image
-noise_level = 10
-x_sample = 0.5*(x[0,0,:,:] + 1).cpu().numpy()
-imagesc(x_sample  ,'Ground-truth image normalized', show=False)
-
-x_sample = uint2single(255*x_sample)
-x_sample = single2tensor4(x_sample[:,:,np.newaxis])
-x_sample = torch.cat((x_sample, torch.FloatTensor([noise_level/255.]).repeat(1, 1, x_sample.shape[2], x_sample.shape[3])), dim=1)        
-x_sample = x_sample.to(device)
-
 if (load_drunet is True):
-    # Reconstruct
+    # Reconstruct with DCDRUNet
     # Uncomment to set a new noise level: The higher the noise, the higher the denoising
     noise_level = 10
     dcdrunet.set_noise_level(noise_level)
@@ -249,9 +242,18 @@ if (load_drunet is True):
         z_dcdrunet = dcdrunet.reconstruct(y.to(device))  
 
     denoi_drunet = denoi_drunet.to(device)
-    # Denoise
-    z_den_drunet = denoi_drunet(x_sample)
 
+    # -----------
+    # Denoise original image with DRUNet
+    noise_level = 10
+    x_sample = 0.5*(x[0,0,:,:] + 1).cpu().numpy()
+    imagesc(x_sample  ,'Ground-truth image normalized', show=False)
+
+    x_sample = uint2single(255*x_sample)
+    x_sample = single2tensor4(x_sample[:,:,np.newaxis])
+    x_sample = torch.cat((x_sample, torch.FloatTensor([noise_level/255.]).repeat(1, 1, x_sample.shape[2], x_sample.shape[3])), dim=1)        
+    x_sample = x_sample.to(device)
+    z_den_drunet = denoi_drunet(x_sample)
 
 # Plots
 x_plot = x.view(-1,H,H).cpu().numpy()    

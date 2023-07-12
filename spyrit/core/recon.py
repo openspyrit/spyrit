@@ -765,8 +765,7 @@ class DCDRUNet(DCNet):
         (see :class:`~spyrit.core.nnet`). 
         Default :class:`~spyrit.core.nnet.Identity`
 
-        :attr:`noise_level` (optional): Noise level in the range [0, 50] for an 
-        image between [0, 255], default is noise_level=5
+        :attr:`noise_level` (optional): Noise level in the range [0, 255], default is noise_level=5
 
     
     Input / Output:
@@ -880,7 +879,7 @@ class DCDRUNet(DCNet):
         r""" Reset noise level value
             
         Args:
-            :attr:`noise_level`: noise level value
+            :attr:`noise_level`: noise level value in the range [0, 255] 
         
         Shape:
             :attr:`noise_level`: float value noise level :math:`(1)`
