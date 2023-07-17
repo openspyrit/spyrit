@@ -47,6 +47,7 @@ if __name__ == "__main__":
     parser.add_argument("--stat_root",  type=str,   default="./stat/", help="Path to precomputed data")
     parser.add_argument("--arch",       type=str,   default="dc-net", help="Choose among 'dc-net','pinv-net',")
     parser.add_argument("--denoi",      type=str,   default="unet", help="Choose among 'cnn','cnnbn', 'unet'")
+    parser.add_argument("--device",     type=str,   default="", help="Choose among 'cuda','cpu'")
     #parser.add_argument("--no_denoi",   default=False, action='store_true', help="No denoising layer")
 
 
@@ -68,11 +69,6 @@ if __name__ == "__main__":
     opt.model_root = Path(opt.model_root)
     opt.data_root = Path(opt.data_root)
     
-    #if opt.data == 'stl10':
-    #    opt.data_root = '../../../data/'
-    
-    opt.arch = "upgd"
-
     print(opt)
     
     #==========================================================================
@@ -80,7 +76,10 @@ if __name__ == "__main__":
     #==========================================================================
     # The device of the machine, number of workers...
     # 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    if opt.device: 
+        device = torch.device(opt.device)
+    else:
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(f'Device: {device}')
     
     #==========================================================================
