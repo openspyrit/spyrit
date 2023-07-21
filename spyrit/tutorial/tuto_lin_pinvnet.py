@@ -84,17 +84,15 @@ imagesc(x_plot[0,:,:], 'Ground-truth image normalized to [-1,1]')
 #         meas_op = Linear(H, pinv=True) 
 #    
 # 2. Normalization operator: 
-#     An operator that normalizes the image *x* from [-1,1] to an image 
-#     .. math::
-#       \tilde{x}=\frac{x+1}{2}
+#     An operator that normalizes the image *x* from [-1,1] to an image in [0,1]
+# .. math::
+#   \tilde{x}=\frac{x+1}{2}
 #      
-#     in [0,1].
-#    
 #     For a noiseless case, the operator *spyrit.core.NoNoise(nn.Module)* is used:
 #         noise = NoNoise(meas_op)      
 #
 #     Measurements are then obtained for :math:`\tilde{x}` as 
-#     .. math::
+# .. math::
 #       y=H\tilde{x}=\frac{H(x+1)}{2}.
 #     
 #
@@ -103,8 +101,8 @@ imagesc(x_plot[0,:,:], 'Ground-truth image normalized to [-1,1]')
 #     measurements *m* for the original image *x*. For instance, using the 
 #     operator *spyrit.core.prep.DirectPoisson(nn.Module)*, the measurements $m$ for $x$ are 
 #     then obtained as
-#     .. math::
-#       m=2y-H*I.
+# ..math::
+#   m=2y-H*I.
 #     
 #        
 # Similarly, for the Poisson case, :math:`y=\alpha \mathcal{P}(H\tilde{x})` and 
@@ -203,7 +201,6 @@ imagesc(x_plot[0,:,:], 'Linear noiseless prep measurements m=DirectPoisson(x)')
 # PinvNet allows to perform image reconstruction using the pseudoinverse. 
 # *spyrit.core.recon.PinvNet* includes the measurement operator, 
 # the noise model and reconstruction. 
-#    
 # Measurements can be obtained as 
 #   y = pinv_net.acquire(x)
 # Alternatively, the measurements can be obtained as
