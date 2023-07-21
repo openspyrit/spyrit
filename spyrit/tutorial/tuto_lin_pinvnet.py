@@ -1,6 +1,6 @@
 
 r"""
-1.1. Tutorial 2D - Image reconstruction using the pseudoinverse for linear measurements
+1.1. Pseudoinverse for linear measurements
 ======================
 This tutorial shows how to simulate data and perform image reconstruction. 
 The measurement operator is a Hadamard matrix with positive coefficients. 
@@ -42,7 +42,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # Load data
 # ---------------------
 # 
-# Images $x$ for training expect values in $[-1,1]$. The images are normalized
+# Images *x* for training expect values in [-1,1]. The images are normalized
 # using the *transform_gray_norm* function.
 
 # A batch of images
@@ -77,44 +77,44 @@ imagesc(x_plot[0,:,:], 'Ground-truth image normalized to [-1,1]')
 # Measurements comprises three operators:
 #
 # 1. Measurement operator:
-#     An operator that applies the measurement matrix $H$ to the image.     
+#     An operator that applies the measurement matrix *H* to the image.     
 #     For instance, we can define a linear operator, *spyrit.core.meas.Linear(nn.Module)*, 
-#     that applies the measurement matrix $H$ to the image:
+#     that applies the measurement matrix *H* to the image:
 #
 #         meas_op = Linear(H, pinv=True) 
 #    
 # 2. Normalization operator: 
-#     An operator that normalizes the image $x$ from $[-1,1]$ to an image 
-#     $$
-#     \tilde{x}=\frac{x+1}{2}
-#     $$ 
-#     in $[0,1]$.
+#     An operator that normalizes the image *x* from [-1,1] to an image 
+#     .. math::
+#       \tilde{x}=\frac{x+1}{2}
+#      
+#     in [0,1].
 #    
 #     For a noiseless case, the operator *spyrit.core.NoNoise(nn.Module)* is used:
 #         noise = NoNoise(meas_op)      
 #
-#     Measurements are then obtained for $\tilde{x}$ as 
-#     $$
-#     y=H\tilde{x}=\frac{H(x+1)}{2}.
-#     $$
+#     Measurements are then obtained for :math:`\tilde{x}` as 
+#     .. math::
+#       y=H\tilde{x}=\frac{H(x+1)}{2}.
+#     
 #
 # 3. Preprocessing operator:
-#     The preprocessing operator allows to convert the measurements $y$ to 
-#     measurements $m$ for the original image $x$. For instance, using the 
+#     The preprocessing operator allows to convert the measurements *y* to 
+#     measurements *m* for the original image *x*. For instance, using the 
 #     operator *spyrit.core.prep.DirectPoisson(nn.Module)*, the measurements $m$ for $x$ are 
 #     then obtained as
-#     $$
-#     m=2y-H*I.
-#     $$
+#     .. math::
+#       m=2y-H*I.
+#     
 #        
-# Similarly, for the Poisson case, $y=\alpha \mathcal{P}(H\tilde{x})$ and 
-# $m=\frac{2y}{\alpha}-H\mathbf{I}$.
+# Similarly, for the Poisson case, :math:`y=\alpha \mathcal{P}(H\tilde{x})` and 
+# :math:`m=\frac{2y}{\alpha}-H\mathbf{I}`.
 #
 #
 #
-# Prior to reconstruction, images are normalized so $\tilde{x}$ in $[0,1]$ using *NoNoise(nn.Module)*. 
-# By defening a linear operator equal to the identity, the measurements are then 
-# the normalized images.
+# Prior to reconstruction, images are normalized so :math:`\tilde{x}` in [0,1] 
+# using *NoNoise(nn.Module)*. By defening a linear operator equal to the identity, 
+# the measurements are then the normalized images.
 
 # Linear operator
 meas_op_eye = Linear(np.eye(h*h), pinv=True) 
@@ -130,15 +130,15 @@ imagesc(x_plot[0,:,:], r'Image $\tilde{x}$ in [0, 1]')
 # We now define the measurement linear operator from a given matrix of choice. 
 # For instance, we can use a Hadamard matrix with positive coefficients or 
 # a identity operator with randomly selected coefficients set to zero, as 
-# in the case of impainting. Measurements $y$ are then obtained as 
+# in the case of impainting. Measurements *y* are then obtained as 
 #
 #     H = extract_hadamard_matrix(M, h)
 #     meas_op = Linear(H, pinv=True) 
 #     noise = NoNoise(meas_op)  
 #     y = noise(x.view(b*c,h*w))
 #
-# Note, that if we apply directly 'Linear', we would obtained negative values 
-# as NoNoise is not applied.
+# Note, that if we apply directly *Linear*, we would obtained negative values 
+# as *NoNoise* is not applied.
 
 # Measurement matrix as positive Hadamard matrix
 def extract_hadamard_matrix(M, h):
@@ -187,7 +187,7 @@ print(f'Shape of preprocessed data y: {y.shape}')
 x_plot = y.view(b*c,h//und,h).cpu().numpy() 
 imagesc(x_plot[0,:,:], 'Linear noiseless measurements y=noise(x)')
 
-# Preprocessing operator to convert measurements to original image $x$ in [-1,1]
+# Preprocessing operator to convert measurements to original image *x* in [-1,1]
 # which would be used during only training 
 m = prep(y)
 
@@ -204,16 +204,15 @@ imagesc(x_plot[0,:,:], 'Linear noiseless prep measurements m=DirectPoisson(x)')
 # *spyrit.core.recon.PinvNet* includes the measurement operator, 
 # the noise model and reconstruction. 
 #    
-#     Measurements can be obtained as 
-#         y = pinv_net.acquire(x)
-#     Alternatively, the measurements can be obtained as
-#         y = noise(x)
+# Measurements can be obtained as 
+#   y = pinv_net.acquire(x)
+# Alternatively, the measurements can be obtained as
+#   y = noise(x)
 #
-#     The reconstruction can be obtained as
-#         z = pinv_net.reconstruct(y)
-#     or as 
-#         z = pinv_net(x)
-        
+# The reconstruction can be obtained as
+#   z = pinv_net.reconstruct(y)
+# or as 
+#   z = pinv_net(x)       
 
 pinv_net = PinvNet(noise, prep)
 
