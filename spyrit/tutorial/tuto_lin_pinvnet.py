@@ -87,7 +87,8 @@ imagesc(x_plot[0,:,:], 'Ground-truth image normalized to [-1,1]')
 #     An operator that normalizes the image *x* from [-1,1] to an image in [0,1]
 # .. math::
 #       \tilde{x}=\frac{x+1}{2}
-#      
+#     
+#  
 #     For a noiseless case, the operator *spyrit.core.NoNoise(nn.Module)* is used:
 #         noise = NoNoise(meas_op)      
 #
