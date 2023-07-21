@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import torch
 import torchvision
 import numpy as np
+import os
 from spyrit.core.prep import DirectPoisson
 from spyrit.core.recon import PinvNet
 from spyrit.core.meas import Linear, HadamSplit
@@ -29,8 +30,14 @@ M = 32*32 // und        # number of measurements (undersampling factor = 2)
 B = 10                  # batch size
 alpha = 100             # number of mean photon counts
 ind_img = 1             # Image index (modify to change the image)
-imgs_path = './spyrit/images'
 mode_noise = False      # noiseless or 'poisson'
+
+spyritPath = os.getcwd()
+imgs_path = os.path.join(spyritPath, '../images')
+cov_name = os.path.join(spyritPath, '../../stat/Cov_64x64.npy')
+
+# use GPU, if available
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 ###############################################################################
 # Load data
@@ -218,9 +225,6 @@ the noise model and reconstruction.
 
 pinv_net = PinvNet(noise, prep)
 
-# use GPU, if available
-#device = "cpu"
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 pinv_net = pinv_net.to(device)
 x = x.to(device)
 
