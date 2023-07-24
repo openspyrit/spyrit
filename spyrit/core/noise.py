@@ -367,3 +367,27 @@ class PoissonApproxGaussSameNoise(NoNoise):
         x = F.relu(x)           # remove small negative values
         x = x + torch.sqrt(x)*torch.randn(1, x.shape[1])
         return x
+    
+# ==================================================================================
+class PoissonGaussian(NoNoise):
+# ================================================================================== 
+    r""" 
+    Simulates measurements corrupted by Poisson-Gaussian noise
+    """
+    def __init__(self, meas_op: Union[Linear, 
+                                      LinearSplit, 
+                                      HadamSplit, 
+                                      LinearRowSplit], 
+                 alpha = 50.0, gain=1.0, mudark=0.0, sigdark=0.0):
+        super().__init__(meas_op)
+        self.alpha = alpha
+        self.gain = gain
+        self.mudark = mudark
+        self.sigdark = sigdark
+
+    def forward(self, x):
+        x = super().forward(x)  # NoNoise forward
+        x = self.alpha*x
+        x = F.relu(x)           # troncate negative values to zero
+        x = self.gain*poisson(x) + self.mudark + self.sigdark*torch.randn_like(x)
+        return x
