@@ -278,11 +278,44 @@ class SplitPoisson(nn.Module):
         """
                
         # unsplit
-        x = x[...,self.even_index] - x[...,self.odd_index]
+        x = x[..., self.even_index] - x[..., self.odd_index]
         
-        # estimate alpha
+        # estimate intensity x gain (in counts)
         x_pinv = meas_op.pinv(x)
-        alpha = torch.amax(x_pinv, dim=dim, keepdim=True)
+        alpha = torch.amax(x_pinv, dim=dim, keepdim=True) - torch.amin(x_pinv, dim=dim, keepdim=True)
+        #alpha = alpha/2 # does it make sense ??? NO
+        x = x/alpha
+        x = 2*x - self.H_ones
+
+        return x, alpha
+    
+    def forward_expe2(self, 
+                     x: torch.tensor, 
+                     meas_op: Union[LinearSplit, HadamSplit],
+                     dim = -1
+                     ) -> Tuple[torch.tensor, torch.tensor]:
+
+        # estimate intensity x gain (in counts)
+        z = x[..., self.even_index] + x[..., self.odd_index]
+        mu = torch.mean(z, dim, keepdim=True)
+        alpha = (2/self.N)*(mu - 2*self.mudark)/self.gain
+        
+        # alternative based on the variance
+        #var = torch.var(z, dim, keepdim=True)
+        #alpha_2 = (2/self.N)*(var - 2*self.sigdark**2)/self.gain**2
+        
+        #gain = (var - 2*self.sigdark**2)/(mu - 2*self.mudark)
+        
+        # Alternative where all rows of an image have the same normalization
+        alpha = torch.amax(alpha, -2, keepdim=True)
+        
+        # intensity x gain (in counts)
+        alpha *= self.gain
+        
+        # unsplit
+        x = x[..., self.even_index] - x[..., self.odd_index]
+        
+        # normalize
         x = x/alpha
         x = 2*x - self.H_ones
 
@@ -402,7 +435,7 @@ class SplitPoisson(nn.Module):
         return x
    
     
-    def denormalize_expe(self, x, beta, h, w):
+    def denormalize_expe(self, x, beta):
         r""" 
         Denormalize images from the range [-1;1] to the range [0; :math:`\beta`]
         
