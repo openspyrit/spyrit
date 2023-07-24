@@ -66,10 +66,13 @@ class Linear(nn.Module):
         self.M = H.shape[0]
         self.N = H.shape[1]
         
-        self.h = int(self.N**0.5) 
-        self.w = int(self.N**0.5)
-        if self.h*self.w != self.N:
+        h = int(self.N**0.5) 
+        w = int(self.N**0.5)
+        if h*w != self.N:
             warnings.warn("N is not a square. Please assign self.h and self.w manually.")
+        else:
+            self.h = h
+            self.w = w
         
         self.H = nn.Linear(self.N, self.M, False) 
         self.H.weight.data = torch.from_numpy(H).float()
