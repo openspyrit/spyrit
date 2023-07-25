@@ -83,17 +83,18 @@ meas_op_eye = Linear(np.eye(h*h), pinv=True)
 ############################################################################### 
 # Then, we define a noise operator. We start by considering the noiseless case 
 # handled by :class:`~spyrit.core.NoNoise`. This operator normalizes 
-# the image :math:`x` from [-1,1] to an image in [0,1], i.e.,
+# the image :math:`x` from [-1,1] to get an image :math:`\tilde{x}=\frac{x+1}{2}` 
+# in [0,1] before applying measurement matrix, i.e.,
 # 
 # .. math::
-#       \tilde{x}=\frac{x+1}{2}
+#       y = H\tilde{x} = \frac{H(x+1)}{2},
 #
-# This will be usefull later on, when considering Poisson noise. The class is 
+# The normalization will be usefull when considering distributions such
+# as the Poisson distribution that is defined on positive intergers. The 
 # constructed from a measurement operator (see the :mod:`~spyrit.core.meas` 
 # submodule), such that the "noisy" measurements are then obtained as
 #
-# .. math::
-#       y = H\tilde{x} = \frac{H(x+1)}{2}.
+
 
 from spyrit.core.noise import NoNoise
 noise_op_eye = NoNoise(meas_op_eye) 
