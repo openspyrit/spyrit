@@ -1,7 +1,7 @@
 
 r"""
 1.0. Acquisition operators
-======================
+==========================
 This tutorial shows how to simulate measurements using the :class:`spyrit.core`
 submodule, which is based on three classes:
 
@@ -162,9 +162,9 @@ imagesc(x_plot[0,:,:], r'Image $\tilde{x}$ in [0, 1]')
 ###############################################################################
 # We now discuss the preprocessing operator that allows to convert the 
 # measurements *y* to 
-#     measurements *m* for the original image *x*. For instance, using the 
-#     operator *spyrit.core.prep.DirectPoisson(nn.Module)*, the measurements $m$ for $x$ are 
-#     then obtained as
+# measurements *m* for the original image *x*. For instance, using the 
+# operator *spyrit.core.prep.DirectPoisson(nn.Module)*, the measurements $m$ for $x$ are 
+# then obtained as
 #
 # .. math::
 #       m=2y-H*I.
