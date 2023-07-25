@@ -1,6 +1,6 @@
 
 r"""
-1.1. Pseudoinverse for linear measurements
+1.1. Pseudoinverse solution from linear measurements
 ======================
 This tutorial shows how to simulate data and perform image reconstruction. 
 The measurement operator is a Hadamard matrix with positive coefficients. 
@@ -9,197 +9,250 @@ measurements are simulated by selecting the undersampling factor.
 
 """
 
-import matplotlib.pyplot as plt
-import torch
-import torchvision
-import numpy as np
+# import matplotlib.pyplot as plt
+# 
+# from spyrit.core.prep import DirectPoisson
+# from spyrit.core.recon import PinvNet
+# from spyrit.core.meas import Linear, HadamSplit
+# from spyrit.core.noise import NoNoise, Poisson
+
+
+# %%
+# Load a batch of images
+#-----------------------
+
+###############################################################################
+# Images :math:`x` for training expect values in [-1,1]. The images are normalized
+# using the :func:`transform_gray_norm` function.
+
 import os
-from spyrit.core.prep import DirectPoisson
-from spyrit.core.recon import PinvNet
-from spyrit.core.meas import Linear, HadamSplit
-from spyrit.core.noise import NoNoise, Poisson
-from spyrit.misc.statistics import Cov2Var, data_loaders_stl10, transform_gray_norm
+from spyrit.misc.statistics import transform_gray_norm
+import torchvision
+import torch
 from spyrit.misc.disp import imagesc
-from spyrit.misc.walsh_hadamard import walsh2_matrix
-from spyrit.misc.sampling import Permutation_Matrix
 
-h = 32                  # image size hxh 
-und = 2                 # undersampling factor
-M = 32*32 // und        # number of measurements (undersampling factor = 2)
-B = 10                  # batch size
-alpha = 100             # number of mean photon counts
-ind_img = 1             # Image index (modify to change the image)
-mode_noise = False      # noiseless or 'poisson'
-
+h = 64            # image size hxh 
+i = 1             # Image index (modify to change the image) 
 spyritPath = os.getcwd()
 imgs_path = os.path.join(spyritPath, '../images')
-cov_name = os.path.join(spyritPath, '../../stat/Cov_64x64.npy')
 
-# use GPU, if available
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# %% 
-# Load data
-# ---------------------
-# 
-# Images *x* for training expect values in [-1,1]. The images are normalized
-# using the *transform_gray_norm* function.
-
-# A batch of images
-#dataloaders = data_loaders_stl10('../../data', img_size=h, batch_size=10)  
-#x, _ = next(iter(dataloaders['train']))
-
-# N.B.: no view here compared to previous example
 # Create a transform for natural images to normalized grayscale image tensors
 transform = transform_gray_norm(img_size=h)
 
 # Create dataset and loader (expects class folder 'images/test/')
 dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
-dataloader = torch.utils.data.DataLoader(dataset, batch_size = min(B, len(dataset)))
+dataloader = torch.utils.data.DataLoader(dataset, batch_size = 7)
+
+x, _ = next(iter(dataloader))
+print(f'Shape of input images: {x.shape}')
 
 # Select image
-x0, _ = next(iter(dataloader))
-x0 = x0[ind_img:6,:,:,:]
-x = x0.detach().clone()
+x = x[i:i+1,:,:,:]
+x = x.detach().clone()
 b,c,h,w = x.shape
-#x = x.view(b*c,h*w)
-print(f'Shape of incoming image (b*c,h*w): {x.view(b*c,h*w).shape}')
-
 
 # plot
 x_plot = x.view(-1,h,h).cpu().numpy() 
-imagesc(x_plot[0,:,:], 'Ground-truth image normalized to [-1,1]')
+imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 
 # %% 
-# Measurement operator
-# ---------------------
-#
-# Measurements comprises three operators:
-#
-# 1. Measurement operator:
-#     An operator that applies the measurement matrix *H* to the image.     
-#     For instance, we can define a linear operator, *spyrit.core.meas.Linear(nn.Module)*, 
-#     that applies the measurement matrix *H* to the image:
-#
-#         meas_op = Linear(H, pinv=True) 
-#    
-# 2. Normalization operator: 
-#     An operator that normalizes the image *x* from [-1,1] to an image in [0,1]
-# .. math::
-#       \tilde{x}=\frac{x+1}{2}
-#     
-#  
-#     For a noiseless case, the operator *spyrit.core.NoNoise(nn.Module)* is used:
-#         noise = NoNoise(meas_op)      
-#
-#     Measurements are then obtained for :math:`\tilde{x}` as 
-# .. math::
-#       y=H\tilde{x}=\frac{H(x+1)}{2}.
-#     
-#
-# 3. Preprocessing operator:
-#     The preprocessing operator allows to convert the measurements *y* to 
-#     measurements *m* for the original image *x*. For instance, using the 
-#     operator *spyrit.core.prep.DirectPoisson(nn.Module)*, the measurements $m$ for $x$ are 
-#     then obtained as
-# .. math::
-#       m=2y-H*I.
-#     
-#        
-# Similarly, for the Poisson case, :math:`y=\alpha \mathcal{P}(H\tilde{x})` and 
-# :math:`m=\frac{2y}{\alpha}-H\mathbf{I}`.
-#
-#
-#
-# Prior to reconstruction, images are normalized so :math:`\tilde{x}` in [0,1] 
-# using *NoNoise(nn.Module)*. By defening a linear operator equal to the identity, 
-# the measurements are then the normalized images.
+# Define a measurement operator
+#------------------------------
 
-# Linear operator
-meas_op_eye = Linear(np.eye(h*h), pinv=True) 
-noise_op_eye = NoNoise(meas_op_eye)  
-y_eye = noise_op_eye(x.view(b*c,h*w))
+###############################################################################
+# We consider the case where the measurement matrix is the positive
+# component of a Hadamard matrix, which if often used in single-pixel imaging.
+# First, we compute a full Hadamard matrix that computes the 2D transforme of an
+# image of size :attr:`h` and take its positive part.
+
+from spyrit.misc.walsh_hadamard import walsh2_matrix
+import numpy as np
+
+F = walsh2_matrix(h)
+F = np.where(F>0, F, 0)
+
+###############################################################################
+# Next we subsample the rows of the measurement matrix to simulate an 
+# accelerated acquisition. For this, we use the 
+# :func:`spyrit.misc.sampling.Permutation_Matrix` function 
+# that returns a :attr:`h*h`-by-:attr:`h*h` permutation matrix from a 
+# :attr:`h`-by-:attr:`h` sampling maps that indicates the location of the most 
+# relevant coefficients in the transformed domain.
+#
+# To keep the low-frequency Hadamard coefficients, we choose a sampling map 
+# with ones in the top left corner and zeros elsewhere.
+
+import math 
+
+und = 4                # undersampling factor
+M = h**2 // und        # number of measurements (undersampling factor = 4)
+
+Sampling_map = np.ones((h,h))
+M_xy = math.ceil(M**0.5)
+Sampling_map[:,M_xy:] = 0
+Sampling_map[M_xy:,:] = 0
+
+imagesc(Sampling_map, 'low-frequency sampling map')
+
+###############################################################################
+# After permutation of the full Hadamrd matrix, we keep only its first 
+# :attr:`M` rows
+
+from spyrit.misc.sampling import Permutation_Matrix
+
+Perm = Permutation_Matrix(Sampling_map)
+F = Perm@F 
+H = F[:M,:]
+
+print(f"Shape of the measurement matrix: {H.shape}")
+
+###############################################################################
+# Then, we instantiate a :class:`spyrit.core.meas.Linear` measurement operator
+
+from spyrit.core.meas import Linear
+meas_op = Linear(H, pinv=True)      
+
+# %% 
+# Noiseless case
+#------------------------------
+
+###############################################################################
+# In the noiseless case, we consider a :class:`spyrit.core.noise.NoNoise` noise
+# operator, together with a :class:`spyrit.core.prep.DirectPoisson` 
+# preprocessing operator with :math:`\alpha` = 1, which correct only for the 
+# image normalisation in [0,1] (see `tuto_acquisition_operators`).
+
+from spyrit.core.prep import DirectPoisson
+from spyrit.core.noise import NoNoise
+
+
+noise = NoNoise(meas_op)        
+prep = DirectPoisson(1.0, meas_op) # To undo the "NoNoise" operator
+
+# Simulate measurements 
+y = noise(x.view(b*c,h*w))
+print(f'Shape of raw measurements: {y.shape}')
+
+###############################################################################
+# To display the subsampled measurement vector as an image in the transformed 
+# domain, we use the :func:`spyrit.misc.sampling.meas2img2` function
 
 # plot
-x_plot = y_eye.view(-1,h,h).cpu().numpy() 
-imagesc(x_plot[0,:,:], r'Image $\tilde{x}$ in [0, 1]')
+from spyrit.misc.disp import add_colorbar, noaxis
+from spyrit.misc.sampling import meas2img
+
+y_plot = y.detach().numpy().squeeze()
+y_plot = meas2img(y_plot, Sampling_map)
+print(f'Shape of the raw measurement image: {y_plot.shape}')
+
+imagesc(y_plot, 'Raw measurements')
 
 
 ###############################################################################
-# We now define the measurement linear operator from a given matrix of choice. 
-# For instance, we can use a Hadamard matrix with positive coefficients or 
-# a identity operator with randomly selected coefficients set to zero, as 
-# in the case of impainting. Measurements *y* are then obtained as 
-#
-#     H = extract_hadamard_matrix(M, h)
-#     meas_op = Linear(H, pinv=True) 
-#     noise = NoNoise(meas_op)  
-#     y = noise(x.view(b*c,h*w))
-#
-# Note, that if we apply directly *Linear*, we would obtained negative values 
-# as *NoNoise* is not applied.
-
-# Measurement matrix as positive Hadamard matrix
-def extract_hadamard_matrix(M, h):
-    # Compute a Hadamard matrix, take positive values only and undersample it
-    # meas_op = HadamSplit(M, h, Ord)
-    F = walsh2_matrix(h)
-    F = np.where(F>0, F, 0)
-    Cov = np.eye(h*h)
-    Ord = Cov2Var(Cov)
-    Perm = Permutation_Matrix(Ord)
-    F = Perm@F 
-    H = F[:M,:]
-    return H
-
-# Measurement matrix for simple random impainting
-def lin_operator_inpainting(h, M):
-    H = np.eye(h*h)
-    # Define randon indices
-    ind = np.random.choice(h*h, h*h-M, replace=False)
-    #H[ind,:] = 0
-    H = H[ind,:]
-    return H
-
-H = extract_hadamard_matrix(M, h)
-#H = lin_operator_inpainting(h, M)
-print(f"Shape of the measurement matrix: {H.shape}")
-
-# Measurement operator
-meas_op = Linear(H, pinv=True) 
-meas_op.h, meas_op.w = h, h     
-
-# Normalization operator
-if mode_noise is False:
-    noise = NoNoise(meas_op)        # noiseless
-    prep = DirectPoisson(1.0, meas_op)
-elif mode_noise == 'poisson':
-    noise = Poisson(meas_op, alpha) # poisson noise
-    prep = DirectPoisson(alpha, meas_op)
-
-# Simulate measurements
-# y_lin = meas_op(x.view(b*c,h*w))
-y = noise(x.view(b*c,h*w))
-
-# plot
-print(f'Shape of preprocessed data y: {y.shape}')
-x_plot = y.view(b*c,h//und,h).cpu().numpy() 
-imagesc(x_plot[0,:,:], 'Linear noiseless measurements y=noise(x)')
-
-# Preprocessing operator to convert measurements to original image *x* in [-1,1]
-# which would be used during only training 
+# Preprocessed measurements corresponding to an image in [-1,1]
 m = prep(y)
+print(f'Shape of the preprocessed measurements: {m.shape}')
 
 # plot
-print(f'Shape of simulated measurements m: {m.shape}')
-x_plot = m.view(b*c,h//und,h).cpu().numpy() 
-imagesc(x_plot[0,:,:], 'Linear noiseless prep measurements m=DirectPoisson(x)')
+m_plot = m.detach().numpy().squeeze()
+m_plot = meas2img(m_plot, Sampling_map)
+print(f'Shape of the preprocessed measurement image: {m_plot.shape}')
+
+imagesc(m_plot, 'Preprocessed measurements')
 
 # %% 
 # PinvNet Network 
 # ---------------------
 #
-# PinvNet allows to perform image reconstruction using the pseudoinverse. 
+# [UPDATE !!]  PinvNet allows to perform image reconstruction using the pseudoinverse. 
+# *spyrit.core.recon.PinvNet* includes the measurement operator, 
+# the noise model and reconstruction. 
+# Measurements can be obtained as 
+#   y = pinv_net.acquire(x)
+# Alternatively, the measurements can be obtained as
+#   y = noise(x)
+#
+# The reconstruction can be obtained as
+#   z = pinv_net.reconstruct(y)
+# or as 
+#   z = pinv_net(x)       
+
+
+from spyrit.core.recon import PinvNet
+
+pinv_net = PinvNet(noise, prep)
+
+# measurements and images
+with torch.no_grad():
+    y = pinv_net.acquire(x)
+    z = pinv_net.reconstruct(y)
+#z = pinv_net(x)
+
+# reshape
+x_plot = x.view(-1,h,h).cpu().numpy() 
+z_plot = z.view(-1,h,h).cpu().numpy()
+z_plot[0,0,0] = 0.0
+
+# plot
+imagesc(z_plot[0,:,:], 'Reconstructed image with PinvNet')
+
+
+# %% 
+# Poisson-corrupted measurement
+#------------------------------
+
+###############################################################################
+# Here again, we consider a :class:`spyrit.core.noise.NoNoise` noise
+# operator, together with a :class:`spyrit.core.prep.DirectPoisson` 
+# preprocessing operator (see `tuto_acquisition_operators`).
+
+alpha = 100  # maximum number of photons in the image
+
+from spyrit.core.noise import Poisson
+noise = Poisson(meas_op, alpha)        
+prep = DirectPoisson(alpha, meas_op) # To undo the "NoNoise" operator
+
+# Simulate measurements 
+y = noise(x.view(b*c,h*w))
+print(f'Shape of raw measurements: {y.shape}')
+
+###############################################################################
+# To display the subsampled measurement vector as an image in the transformed 
+# domain, we use the :func:`spyrit.misc.sampling.meas2img2` function
+
+# plot
+from spyrit.misc.sampling import meas2img
+
+y_plot = y.detach().numpy().squeeze()
+y_plot = meas2img(y_plot, Sampling_map)
+print(f'Shape of the raw measurement image: {y_plot.shape}')
+
+imagesc(y_plot, 'Raw measurements')
+
+
+###############################################################################
+# Preprocessed measurements corresponding to an image in [-1,1] [!! The range of values look weird !!]
+m = prep(y)
+print(f'Shape of the preprocessed measurements: {m.shape}')
+
+# plot
+m_plot = m.detach().numpy().squeeze()
+m_plot = meas2img(m_plot, Sampling_map)
+print(f'Shape of the preprocessed measurement image: {m_plot.shape}')
+
+imagesc(m_plot, 'Preprocessed measurements')
+
+
+###############################################################################
+# Postprocessing can be added as a last layer of PinvNet, as shown in the 
+# next tutorial.
+
+# %% 
+# PinvNet Network 
+# ---------------------
+#
+# [UPDATE !!] PinvNet allows to perform image reconstruction using the pseudoinverse. 
 # *spyrit.core.recon.PinvNet* includes the measurement operator, 
 # the noise model and reconstruction. 
 # Measurements can be obtained as 
@@ -214,13 +267,10 @@ imagesc(x_plot[0,:,:], 'Linear noiseless prep measurements m=DirectPoisson(x)')
 
 pinv_net = PinvNet(noise, prep)
 
-pinv_net = pinv_net.to(device)
-x = x.to(device)
-
 # measurements and images
 with torch.no_grad():
     y = pinv_net.acquire(x)
-    z = pinv_net.reconstruct(y.to(device))
+    z = pinv_net.reconstruct(y)
 #z = pinv_net(x)
 
 # reshape
@@ -229,10 +279,4 @@ z_plot = z.view(-1,h,h).cpu().numpy()
 z_plot[0,0,0] = 0.0
 
 # plot
-imagesc(z_plot[0,:,:], f'Reconstructed image with PinvNet')
-
-plt.show()
-
-###############################################################################
-# Postprocessing can be added as a last layer of PinvNet, as shown in the 
-# next tutorial.
+imagesc(z_plot[0,:,:], 'Reconstructed image with PinvNet')
