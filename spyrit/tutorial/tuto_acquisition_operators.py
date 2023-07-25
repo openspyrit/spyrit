@@ -161,16 +161,16 @@ y1_plot = y1.view(b,h,h).detach().numpy()
 y2_plot = y2.view(b,h,h).detach().numpy() 
 y3_plot = y3.view(b,h,h).detach().numpy() 
 
-f, axs = plt.subplots(1, 3)
-axs[0].set_title('maximum 100 photons')
+f, axs = plt.subplots(1, 3, figsize=(10,5))
+axs[0].set_title('100 photons')
 im = axs[0].imshow(y1_plot[0,:,:], cmap='gray') 
 add_colorbar(im, 'bottom')
 
-axs[1].set_title('maximum 100 photons')
+axs[1].set_title('100 photons')
 im = axs[1].imshow(y2_plot[0,:,:], cmap='gray') 
 add_colorbar(im, 'bottom')
 
-axs[2].set_title('maximum 1000 photons')
+axs[2].set_title('1000 photons')
 im = axs[2].imshow(y3_plot[0,:,:], cmap='gray') 
 add_colorbar(im, 'bottom')
 
@@ -246,16 +246,16 @@ m1 = m1.view(b,h,h).detach().numpy()
 m2 = m2.view(b,h,h).detach().numpy() 
 m3 = m3.view(b,h,h).detach().numpy() 
 
-f, axs = plt.subplots(1, 3)
-axs[0].set_title('maximum 100 photons')
+f, axs = plt.subplots(1, 3, figsize=(10,5))
+axs[0].set_title('100 photons')
 im = axs[0].imshow(m1[0,:,:], cmap='gray') 
 add_colorbar(im, 'bottom')
 
-axs[1].set_title('maximum 100 photons')
+axs[1].set_title('100 photons')
 im = axs[1].imshow(m2[0,:,:], cmap='gray') 
 add_colorbar(im, 'bottom')
 
-axs[2].set_title('maximum 1000 photons')
+axs[2].set_title('1000 photons')
 im = axs[2].imshow(m3[0,:,:], cmap='gray') 
 add_colorbar(im, 'bottom')
 
