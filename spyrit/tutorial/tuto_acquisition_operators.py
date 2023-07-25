@@ -5,14 +5,14 @@ r"""
 This tutorial shows how to simulate measurements using the :class:`spyrit.core`
 submodule, which is based on three classes:
 
-* **Measurement operators** compute linear measurements :math:`y = Hx` from 
-  images :math:`x`, where :math:`H` is a linear operator (matrix) and :math:`x`
-  is a vectorized image.
+1. **Measurement operators** compute linear measurements :math:`y = Hx` from 
+   images :math:`x`, where :math:`H` is a linear operator (matrix) and :math:`x`
+   is a vectorized image (see :mod:`spyrit.core.meas`)
 
-* **Noise operator** corrupts measurements :math:`y` with noise
+2. **Noise operator** corrupts measurements :math:`y` with noise (see :mod:`spyrit.core.noise`)
 
-* **Preprocessing operators** are typically used to process the noisy 
-  measurements prior to reconstruction
+3. **Preprocessing operators** are typically used to process the noisy 
+   measurements prior to reconstruction (see :mod:`spyrit.core.prep`)
 
 """
 
@@ -21,14 +21,6 @@ import os
 from spyrit.misc.disp import imagesc
 import matplotlib.pyplot as plt
 
-und = 2                 # undersampling factor
-M = 32*32 // und        # number of measurements (undersampling factor = 2)
-B = 10                  # batch size
-alpha = 100             # number of mean photon counts
-mode_noise = False      # noiseless or 'poisson'
-
-spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, '../images')
 
 # %%
 # Load a batch of images
@@ -42,142 +34,236 @@ from spyrit.misc.statistics import transform_gray_norm
 import torchvision
 import torch
 
-# A batch of images
-#dataloaders = data_loaders_stl10('../../data', img_size=h, batch_size=10)  
-#x, _ = next(iter(dataloaders['train']))
-h = 64                  # image size hxh 
-ind_img = 1             # Image index (modify to change the image) 
+h = 64            # image size hxh 
+i = 1             # Image index (modify to change the image) 
+spyritPath = os.getcwd()
+imgs_path = os.path.join(spyritPath, '../images')
 
-# N.B.: no view here compared to previous example
+
 # Create a transform for natural images to normalized grayscale image tensors
 transform = transform_gray_norm(img_size=h)
 
 # Create dataset and loader (expects class folder 'images/test/')
 dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
-dataloader = torch.utils.data.DataLoader(dataset, batch_size = min(B, len(dataset)))
+dataloader = torch.utils.data.DataLoader(dataset, batch_size = 7)
+
+x, _ = next(iter(dataloader))
+print(f'Shape of input images: {x.shape}')
 
 # Select image
-x0, _ = next(iter(dataloader))
-x0 = x0[ind_img:6,:,:,:]
-x = x0.detach().clone()
+x = x[i:i+1,:,:,:]
+x = x.detach().clone()
 b,c,h,w = x.shape
-#x = x.view(b*c,h*w)
-print(f'Shape of incoming image (b*c,h*w): {x.view(b*c,h*w).shape}')
-
 
 # plot
 x_plot = x.view(-1,h,h).cpu().numpy() 
-imagesc(x_plot[0,:,:], 'Ground-truth image normalized to [-1,1]')
+imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
+
+# %%
+# The measurement and noise operators
+#-------------------
+
+############################################################################### 
+# Noise operators are defined in the :mod:`~spyrit.core.noise` module. A noise
+# operator computes the following three steps sequentially: 
+#   1. Normalization of the image :math:`x` with values in [-1,1] to get an 
+#      image :math:`\tilde{x}=\frac{x+1}{2}` in [0,1]
+#   2. Application of the measurement model, i.e., computation of :math:`H\tilde{x}`
+#   3. Application of the noise model
+# 
+# .. math::
+#       y \sim \texttt{Noise}(H\tilde{x}) = \texttt{Noise}\left(\frac{H(x+1)}{2}\right),
+#
+# The normalization is usefull when considering distributions such
+# as the Poisson distribution that are defined on positive values. 
+#
+# .. note::
+#   The noise operator is constructed from a measurement operator (see the 
+#   :mod:`~spyrit.core.meas` submodule) in order to compute the measurements 
+#   :math:`H\tilde{x}`, as given by step #2.
+
 
 # %% 
 # A simple example: identity measurement matrix and no noise
 #-----------------------------------------------------------
 
 ###############################################################################
-# We  define a linear operator, :class:`~spyrit.core.meas.Linear` that 
-# applies the measurement matrix to the image. We start with a basis example
-# where  :math:`y = x`, i.e., where the measurement matrix :math:`H` is the identity
-from spyrit.core.meas import Linear
-meas_op_eye = Linear(np.eye(h*h), pinv=True) 
-
-############################################################################### 
-# Then, we define a noise operator. We start by considering the noiseless case 
-# handled by :class:`~spyrit.core.NoNoise`. This operator normalizes 
-# the image :math:`x` from [-1,1] to get an image :math:`\tilde{x}=\frac{x+1}{2}` 
-# in [0,1] before applying measurement matrix, i.e.,
-# 
 # .. math::
-#       y = H\tilde{x} = \frac{H(x+1)}{2},
-#
-# The normalization will be usefull when considering distributions such
-# as the Poisson distribution that is defined on positive intergers. The 
-# constructed from a measurement operator (see the :mod:`~spyrit.core.meas` 
-# submodule), such that the "noisy" measurements are then obtained as
-#
-
-
-from spyrit.core.noise import NoNoise
-noise_op_eye = NoNoise(meas_op_eye) 
+#       y = \tilde{x}
 
 ###############################################################################
-# We finally simulate the measurements that we visualise as an image
-x = x.view(b*c,h*w)      # vectorized image
-y_eye = noise_op_eye(x)  # noisy measurement vector
+# We start with a simple example where the measurement matrix :math:`H` is 
+# the identity, which can be handled  by the more general 
+# :class:`spyrit.core.meas.Linear` class. We consider the noiseless case handled 
+# by the :class:`spyrit.core.noise.NoNoise` class.
+
+from spyrit.core.meas import Linear
+from spyrit.core.noise import NoNoise
+meas_op = Linear(np.eye(h*h)) 
+noise_op = NoNoise(meas_op) 
+
+###############################################################################
+# We simulate the measurement vector :math:`y` that we visualise as an image. 
+# Remember that the input image :math:`x` is handled as a vector.  
+x = x.view(b*c,h*w)  # vectorized image
+y_eye = noise_op(x)  # noisy measurement vector
 
 # plot
 x_plot = y_eye.view(-1,h,h).cpu().numpy() 
-imagesc(x_plot[0,:,:], r'Image $\tilde{x}$ in [0, 1]')
+imagesc(x_plot[0,:,:], r'$\tilde{x}$ in [0, 1]')
 
 ###############################################################################
-# Note that the image is normalized between [0,1].
-
+# .. note::
+#   Note that the image identical to the original one, except it has been 
+#   normalized in [0,1].
 
 # %% 
 # Same example with Poisson noise
 #--------------------------------
 
 ###############################################################################
-# We now consider Poisson noise, i.e., noisy measurement vector given by
+# We now consider Poisson noise, i.e., a noisy measurement vector given by
 #
 # .. math::
-#       \hat{x}_\alpha \sim \mathcal{P}(\alpha H \tilde{x}),
+#       \hat{y}_\alpha \sim \mathcal{P}(\alpha H \tilde{x}),
 #
-# where :math:`\alpha` is a scalar value that represents the image intensity
+# where :math:`\alpha` is a scalar value that represents the maximum image intensity
 # (in photons). The larger :math:`\alpha`, the higher the signal-to-noise ratio.
-# 
+#
+
+###############################################################################
+# We consider the :class:`spyrit.core.noise.Poisson` class and set :math:`\alpha`
+# to 100 photons.
+
 from spyrit.core.noise import Poisson
+from spyrit.misc.disp import add_colorbar, noaxis
 
-alpha = 10 # number of photons
-noise_op_eye = Poisson(meas_op_eye, alpha) 
+alpha = 100 # number of photons
+noise_op = Poisson(meas_op, alpha) 
 
-# noisy measurement vector
-y_1 = noise_op_eye(x)  
+###############################################################################
+# We simulate two noisy measurement vectors
 
-# another noisy measurement vector
-y_2 = noise_op_eye(x)  
+y1 = noise_op(x) # a noisy measurement vector
+y2 = noise_op(x) # another noisy measurement vector
 
-# another noisy measurement vector  
-noise_op_eye.alpha = 100
-y_2 = noise_op_eye(x)  # noisy measurement vector
+###############################################################################
+# We now consider the case :math:`\alpha = 1000` photons.
+
+noise_op.alpha = 1000
+y3 = noise_op(x)  # noisy measurement vector
+
+###############################################################################
+# We finally plot the measurement vectors as images
 
 # plot
-x_plot = y_eye.view(-1,h,h).cpu().numpy() 
-imagesc(x_plot[0,:,:], r'Image $\tilde{x}$ in [0, 1]')
+y1_plot = y1.view(b,h,h).detach().numpy()
+y2_plot = y2.view(b,h,h).detach().numpy() 
+y3_plot = y3.view(b,h,h).detach().numpy() 
 
-# plot
-# f, axs = plt.subplots(3, 1)
-# axs[0].set_title('Target measurement patterns')
-# im = axs[0].imshow(y_1, cmap='gray') 
-# add_colorbar(im, 'bottom')
-# axs[0].get_xaxis().set_visible(False)
+f, axs = plt.subplots(1, 3)
+axs[0].set_title('maximum 100 photons')
+im = axs[0].imshow(y1_plot[0,:,:], cmap='gray') 
+add_colorbar(im, 'bottom')
 
-# axs[1].set_title('Experimental measurement patterns')
-# im = axs[1].imshow(y_2, cmap='gray') 
-# add_colorbar(im, 'bottom')
-# axs[1].get_xaxis().set_visible(False)
+axs[1].set_title('maximum 100 photons')
+im = axs[1].imshow(y2_plot[0,:,:], cmap='gray') 
+add_colorbar(im, 'bottom')
+
+axs[2].set_title('maximum 1000 photons')
+im = axs[2].imshow(y3_plot[0,:,:], cmap='gray') 
+add_colorbar(im, 'bottom')
+
+noaxis(axs)
+
+###############################################################################
+# As expected the signal-to-noise ratio of the measurement vector is higher for 
+# 1,000 photons than for 100 photons
+#
+# .. note::
+#   Not only the signal-to-noise, but also the scale of the measurements 
+#   depends on :math:`\alpha`, which motivate the introduction of the 
+#   preprocessing operator.
 
 # %% 
 # The preprocessing operator
 #---------------------------
 
 ###############################################################################
-# We now discuss the preprocessing operator that allows to convert the 
-# measurements *y* to 
-# measurements *m* for the original image *x*. For instance, using the 
-# operator *spyrit.core.prep.DirectPoisson(nn.Module)*, the measurements $m$ for $x$ are 
-# then obtained as
+# Preprocessing operators are defined in the :mod:`spyrit.core.prep` module. 
+# A preprocessing operator applies to the noisy measurements 
+# 
+# .. math::
+#       m = \texttt{Prep}(y),
+# 
+# For instance, a preprocessing operator can be used to compensate for the 
+# scaling factors that appear in the measurement or noise operators. In this 
+# case, a preprocessing operator is closely linked to its measurement and/or 
+# noise operator counterpart.
+
+# %% 
+# Preprocessing measurements corrupted by Poisson noise
+#------------------------------------------------------
+
+###############################################################################
+# We consider the :class:`spyrit.core.prep.DirectPoisson` class that intends 
+# to "undo" the :class:`spyrit.core.noise.Poisson` class by compensating for
+#   * the scaling that appears when computing Poisson-corrupted measurements
+#   * the affine transformation to get images in [0,1] from images in [-1,1]
+#
+# For this, it computes
 #
 # .. math::
-#       m=2y-H*I.
+#       m = \frac{2}{\alpha} y - H1
 #     
-#        
-# Similarly, for the Poisson case, :math:`y=\alpha \mathcal{P}(H\tilde{x})` and 
-# :math:`m=\frac{2y}{\alpha}-H\mathbf{I}`.
+
+###############################################################################
+# We consider the :class:`spyrit.core.prep.DirectPoisson` class and set :math:`\alpha`
+# to 100 photons.
+
+from spyrit.core.prep import DirectPoisson
+
+alpha = 100 # number of photons
+prep_op = DirectPoisson(alpha, meas_op) 
+
+###############################################################################
+# We preprocess the first two noisy measurement vectors
+
+m1 = prep_op(y1) 
+m2 = prep_op(y2) 
+
+###############################################################################
+# We now consider the case :math:`\alpha = 1000` photons to preprocess the third
+# measurement vector
+prep_op.alpha = 1000
+m3 = prep_op(y3)
+
+###############################################################################
+# We finally plot the preprocessed measurement vectors as images
+
+# plot
+m1 = m1.view(b,h,h).detach().numpy()
+m2 = m2.view(b,h,h).detach().numpy() 
+m3 = m3.view(b,h,h).detach().numpy() 
+
+f, axs = plt.subplots(1, 3)
+axs[0].set_title('maximum 100 photons')
+im = axs[0].imshow(m1[0,:,:], cmap='gray') 
+add_colorbar(im, 'bottom')
+
+axs[1].set_title('maximum 100 photons')
+im = axs[1].imshow(m2[0,:,:], cmap='gray') 
+add_colorbar(im, 'bottom')
+
+axs[2].set_title('maximum 1000 photons')
+im = axs[2].imshow(m3[0,:,:], cmap='gray') 
+add_colorbar(im, 'bottom')
+
+noaxis(axs)
+
+###############################################################################
 #
-# Prior to reconstruction, images are normalized so :math:`\tilde{x}` in [0,1] 
-# using *NoNoise(nn.Module)*. By defening a linear operator equal to the identity, 
-# the measurements are then the normalized images.
-#
-# The measurement operator is a Hadamard matrix with positive coefficients. 
-# Note that this matrix can be replaced with the desired matrix. Undersampled 
-# measurements are simulated by selecting the undersampling factor. 
+# .. note::
+#   The preprocessed measurements still have different the signal-to-noise ratios
+#   depending on :math:`\alpha`; however, they (approximately) all lie within 
+#   the same range (here, [-1, 1]).
