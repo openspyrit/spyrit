@@ -1,6 +1,6 @@
 
 r"""
-1.0. Acquisition operators
+01. Acquisition operators
 ==========================
 This tutorial shows how to simulate measurements using the :class:`spyrit.core`
 submodule, which is based on three classes:
@@ -125,7 +125,7 @@ imagesc(x_plot[0,:,:], r'$\tilde{x}$ in [0, 1]')
 # We now consider Poisson noise, i.e., a noisy measurement vector given by
 #
 # .. math::
-#       \hat{y}_\alpha \sim \mathcal{P}(\alpha H \tilde{x}),
+#       y \sim \mathcal{P}(\alpha H \tilde{x}),
 #
 # where :math:`\alpha` is a scalar value that represents the maximum image intensity
 # (in photons). The larger :math:`\alpha`, the higher the signal-to-noise ratio.

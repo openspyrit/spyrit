@@ -1,20 +1,11 @@
 
 r"""
-1.1. Pseudoinverse solution from linear measurements
+02. Pseudoinverse solution from linear measurements
 ======================
-This tutorial shows how to simulate data and perform image reconstruction. 
-The measurement operator is a Hadamard matrix with positive coefficients. 
-Note that this matrix can be replaced with the desired matrix. Undersampled 
-measurements are simulated by selecting the undersampling factor. 
-
+This tutorial shows how to simulate measurements and perform image reconstruction. 
+The measurement operator is chosen as a Hadamard matrix with positive coefficients. 
+Note that this matrix can be replaced any the desired matrix. 
 """
-
-# import matplotlib.pyplot as plt
-# 
-# from spyrit.core.prep import DirectPoisson
-# from spyrit.core.recon import PinvNet
-# from spyrit.core.meas import Linear, HadamSplit
-# from spyrit.core.noise import NoNoise, Poisson
 
 
 # %%
@@ -118,17 +109,12 @@ meas_op = Linear(H, pinv=True)
 #------------------------------
 
 ###############################################################################
-# In the noiseless case, we consider a :class:`spyrit.core.noise.NoNoise` noise
-# operator, together with a :class:`spyrit.core.prep.DirectPoisson` 
-# preprocessing operator with :math:`\alpha` = 1, which correct only for the 
-# image normalisation in [0,1] (see `tuto_acquisition_operators`).
+# In the noiseless case, we consider the :class:`spyrit.core.noise.NoNoise` noise
+# operator
 
-from spyrit.core.prep import DirectPoisson
 from spyrit.core.noise import NoNoise
 
-
 noise = NoNoise(meas_op)        
-prep = DirectPoisson(1.0, meas_op) # To undo the "NoNoise" operator
 
 # Simulate measurements 
 y = noise(x.view(b*c,h*w))
@@ -139,18 +125,28 @@ print(f'Shape of raw measurements: {y.shape}')
 # domain, we use the :func:`spyrit.misc.sampling.meas2img2` function
 
 # plot
-from spyrit.misc.disp import add_colorbar, noaxis
 from spyrit.misc.sampling import meas2img
 
 y_plot = y.detach().numpy().squeeze()
 y_plot = meas2img(y_plot, Sampling_map)
 print(f'Shape of the raw measurement image: {y_plot.shape}')
 
-imagesc(y_plot, 'Raw measurements')
+imagesc(y_plot, 'Raw measurements (no noise)')
 
 
 ###############################################################################
-# Preprocessed measurements corresponding to an image in [-1,1]
+# We now compute and plot the preprocessed measurements corresponding to an 
+# image in [-1,1]
+# 
+# .. note::
+#    
+#       Using :class:`spyrit.core.prep.DirectPoisson` with :math:`\alpha` = 1 
+#       allows to compensate for the image normalisation achieved by 
+#       :class:`spyrit.core.noise.NoNoise`.
+
+from spyrit.core.prep import DirectPoisson
+prep = DirectPoisson(1.0, meas_op) # "Undo" the NoNoise operator
+
 m = prep(y)
 print(f'Shape of the preprocessed measurements: {m.shape}')
 
@@ -159,124 +155,88 @@ m_plot = m.detach().numpy().squeeze()
 m_plot = meas2img(m_plot, Sampling_map)
 print(f'Shape of the preprocessed measurement image: {m_plot.shape}')
 
-imagesc(m_plot, 'Preprocessed measurements')
+imagesc(m_plot, 'Preprocessed measurements (no noise)')
 
 # %% 
 # PinvNet Network 
-# ---------------------
-#
-# [UPDATE !!]  PinvNet allows to perform image reconstruction using the pseudoinverse. 
-# *spyrit.core.recon.PinvNet* includes the measurement operator, 
-# the noise model and reconstruction. 
-# Measurements can be obtained as 
-#   y = pinv_net.acquire(x)
-# Alternatively, the measurements can be obtained as
-#   y = noise(x)
-#
-# The reconstruction can be obtained as
-#   z = pinv_net.reconstruct(y)
-# or as 
-#   z = pinv_net(x)       
+# ---------------
 
+###############################################################################
+# We consider the :class:`spyrit.core.recon.PinvNet` class that reconstructs an
+# image by computing the pseudoinverse solution, which is fed to a neural 
+# networker denoiser. To compute the pseudoinverse solution only, the denoiser  
+# can be set to the identity operator 
 
 from spyrit.core.recon import PinvNet
+pinv_net = PinvNet(noise, prep, denoi=torch.nn.Identity())
 
+###############################################################################
+# or equivalently
 pinv_net = PinvNet(noise, prep)
 
-# measurements and images
-with torch.no_grad():
-    y = pinv_net.acquire(x)
-    z = pinv_net.reconstruct(y)
-#z = pinv_net(x)
+###############################################################################
+# Then, we reconstruct the image from the measurement vector :attr:`y` using the 
+# :func:`~spyrit.core.recon.PinvNet.reconstruct` method
 
-# reshape
-x_plot = x.view(-1,h,h).cpu().numpy() 
-z_plot = z.view(-1,h,h).cpu().numpy()
-z_plot[0,0,0] = 0.0
+x_rec = pinv_net.reconstruct(y)
 
 # plot
-imagesc(z_plot[0,:,:], 'Reconstructed image with PinvNet')
+x_plot = x_rec.squeeze().cpu().numpy() 
+imagesc(x_plot, 'Pseudoinverse reconstruction (no noise)')
 
+###############################################################################
+# Alternatively, the measurement vector can be simulated using the 
+# :func:`~spyrit.core.recon.PinvNet.acquire` method
+
+y = pinv_net.acquire(x)
+x_rec = pinv_net.reconstruct(y)
+
+# plot
+x_plot = x_rec.squeeze().cpu().numpy() 
+imagesc(x_plot, 'Another pseudoinverse reconstruction (no noise)')
+
+###############################################################################
+# Note that the full module :attr:`pinv_net` both simulates noisy measurements 
+# and reconstruct them
+
+x_rec = pinv_net(x)
+print(f'Ground-truth image x: {x.shape}')
+print(f'Reconstructed x_rec: {x_rec.shape}')     
+
+# plot
+x_plot = x_rec.squeeze().cpu().numpy() 
+imagesc(x_plot, 'One more pseudoinverse reconstruction (no noise)')
 
 # %% 
 # Poisson-corrupted measurement
 #------------------------------
 
 ###############################################################################
-# Here again, we consider a :class:`spyrit.core.noise.NoNoise` noise
-# operator, together with a :class:`spyrit.core.prep.DirectPoisson` 
+# Here, we consider the :class:`spyrit.core.noise.Poisson` class
+# together with a :class:`spyrit.core.prep.DirectPoisson` 
 # preprocessing operator (see `tuto_acquisition_operators`).
 
-alpha = 100  # maximum number of photons in the image
+alpha = 10  # maximum number of photons in the image
 
 from spyrit.core.noise import Poisson
+from spyrit.misc.disp import imagecomp
+
 noise = Poisson(meas_op, alpha)        
-prep = DirectPoisson(alpha, meas_op) # To undo the "NoNoise" operator
-
-# Simulate measurements 
-y = noise(x.view(b*c,h*w))
-print(f'Shape of raw measurements: {y.shape}')
-
-###############################################################################
-# To display the subsampled measurement vector as an image in the transformed 
-# domain, we use the :func:`spyrit.misc.sampling.meas2img2` function
-
-# plot
-from spyrit.misc.sampling import meas2img
-
-y_plot = y.detach().numpy().squeeze()
-y_plot = meas2img(y_plot, Sampling_map)
-print(f'Shape of the raw measurement image: {y_plot.shape}')
-
-imagesc(y_plot, 'Raw measurements')
-
-
-###############################################################################
-# Preprocessed measurements corresponding to an image in [-1,1] [!! The range of values look weird !!]
-m = prep(y)
-print(f'Shape of the preprocessed measurements: {m.shape}')
-
-# plot
-m_plot = m.detach().numpy().squeeze()
-m_plot = meas2img(m_plot, Sampling_map)
-print(f'Shape of the preprocessed measurement image: {m_plot.shape}')
-
-imagesc(m_plot, 'Preprocessed measurements')
-
-
-###############################################################################
-# Postprocessing can be added as a last layer of PinvNet, as shown in the 
-# next tutorial.
-
-# %% 
-# PinvNet Network 
-# ---------------------
-#
-# [UPDATE !!] PinvNet allows to perform image reconstruction using the pseudoinverse. 
-# *spyrit.core.recon.PinvNet* includes the measurement operator, 
-# the noise model and reconstruction. 
-# Measurements can be obtained as 
-#   y = pinv_net.acquire(x)
-# Alternatively, the measurements can be obtained as
-#   y = noise(x)
-#
-# The reconstruction can be obtained as
-#   z = pinv_net.reconstruct(y)
-# or as 
-#   z = pinv_net(x)       
-
+prep = DirectPoisson(alpha, meas_op) # To undo the "Poisson" operator
 pinv_net = PinvNet(noise, prep)
 
-# measurements and images
-with torch.no_grad():
-    y = pinv_net.acquire(x)
-    z = pinv_net.reconstruct(y)
-#z = pinv_net(x)
-
-# reshape
-x_plot = x.view(-1,h,h).cpu().numpy() 
-z_plot = z.view(-1,h,h).cpu().numpy()
-z_plot[0,0,0] = 0.0
+x_rec_1 = pinv_net(x)
+x_rec_2 = pinv_net(x)
+print(f'Ground-truth image x: {x.shape}')
+print(f'Reconstructed x_rec: {x_rec.shape}')     
 
 # plot
-imagesc(z_plot[0,:,:], 'Reconstructed image with PinvNet')
+x_plot_1 = x_rec_1.squeeze().cpu().numpy() 
+x_plot_1[:2,:2] = 0.0 # hide the top left "crazy pixel" that collects noise
+x_plot_2 = x_rec_2.squeeze().cpu().numpy() 
+x_plot_2[:2,:2] = 0.0 # hide the top left "crazy pixel" that collects noise
+imagecomp(x_plot_1, x_plot_2,'Pseudoinverse reconstruction', 'Noise #1', 'Noise #2')
+
+###############################################################################
+# As shown in the next tutorial, a denoising neural network can be trained to
+# postprocess the pseudo inverse solution. 
