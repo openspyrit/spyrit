@@ -72,6 +72,7 @@ sphinx_gallery_conf = {
     # path where to save gallery generated examples
     "gallery_dirs": ["gallery"],
     "filename_pattern": "/tuto_",
+    "ignore_pattern": "/_",
     # Remove the "Download all examples" button from the top level gallery
     "download_all_examples": False,
     # Sort gallery example by file name instead of number of lines (default)
