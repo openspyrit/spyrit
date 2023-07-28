@@ -23,7 +23,7 @@ copyright = '2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombe
 author = 'Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier'
 
 # The full version, including alpha/beta/rc tags
-release = '1.0.0'
+release = '2.1.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -32,17 +32,14 @@ release = '1.0.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    #'nbsphinx',
-    #'IPython.sphinxext.ipython_console_highlighting',
-    #'IPython.sphinxext.ipython_directive',
     'sphinx.ext.intersphinx',
-    'sphinx.ext.autodoc',
+    #'sphinx.ext.autodoc',
     'sphinx.ext.mathjax',
     'sphinx.ext.todo',
-    'sphinx.ext.autosummary',
+    #'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
-    #'sphinxcontrib.bibtex',
     'sphinx.ext.viewcode',
+    'sphinx_gallery.gen_gallery',
     'sphinx.ext.coverage']
 
 # Napoleon settings
@@ -67,6 +64,26 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+sphinx_gallery_conf = {
+    # path to your examples scripts
+    "examples_dirs": [
+        "../../spyrit/tutorial",
+    ],
+    # path where to save gallery generated examples
+    "gallery_dirs": ["gallery"],
+    "filename_pattern": "/tuto_",
+    "ignore_pattern": "/_",
+    # Remove the "Download all examples" button from the top level gallery
+    "download_all_examples": False,
+    # Sort gallery example by file name instead of number of lines (default)
+    # "within_subsection_order": ExampleTitleSortKey,
+    # directory where function granular galleries are stored
+    "backreferences_dir": "api/generated/backreferences",
+    # Modules for which function level galleries are created.
+    "doc_module": "spyrit",
+    # Insert links to documentation of objects in the examples
+    "reference_url": {"spyrit": None},
+}
 
 # -- Options for HTML output -------------------------------------------------
 
