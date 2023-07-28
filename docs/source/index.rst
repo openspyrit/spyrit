@@ -19,7 +19,7 @@ reconstruction, it can solve other linear reconstruction problems.
    :caption: Contents:
 
    api/modules
-
+   gallery/index
 
 .. Indices and tables
     ==================

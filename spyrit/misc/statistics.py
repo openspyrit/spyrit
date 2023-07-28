@@ -17,18 +17,16 @@ def stat_walsh_ImageNet(stat_root = Path('./stats/'),
                         n_loop=1,
                         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
                         ):
-    """ 
+    r""" 
     Args:
-        'data_root' needs to have all images in a subfolder
+        :attr:`data_root` needs to have all images in a subfolder
     
     Example:
-        from pathlib import Path
-        from spyrit.misc.statistics import stat_walsh_ImageNet
-        
-        data_root =  Path('../data/ILSVRC2012_v10102019')
-        stat_root =  Path('../stat/ILSVRC2012_v10102019')
-        stat_walsh_ImageNet(stat_root = stat_root, data_root = data_root,
-                            img_size = 32, batch_size = 1024)
+        >>> from pathlib import Path
+        >>> from spyrit.misc.statistics import stat_walsh_ImageNet
+        >>> data_root =  Path('../data/ILSVRC2012_v10102019')
+        >>> stat_root =  Path('../stat/ILSVRC2012_v10102019')
+        >>> stat_walsh_ImageNet(stat_root = stat_root, data_root = data_root, img_size = 32, batch_size = 1024)
            
     """
 
@@ -50,15 +48,14 @@ def stat_walsh_stl10(stat_root = Path('./stats/'),
                      ):
     """
     Args:
-        'data_root' is expected to contain an 'stl10_binary' subfolder with the 
+        :attr:`data_root` is expected to contain an 'stl10_binary' subfolder with the 
         test*.bin, train*.bin and unlabeled_X.bin files.
     
     Example:
-        data_root =  Path('../datasets/')
-        stat_root =  Path('../stat/stl10')
-    
-        from spyrit.misc.statistics import stat_walsh_stl10
-        stat_walsh_stl10(stat_root = stat_root, data_root = data_root)
+        >>> data_root =  Path('../datasets/')
+        >>> stat_root =  Path('../stat/stl10')
+        >>> from spyrit.misc.statistics import stat_walsh_stl10
+        >>> stat_walsh_stl10(stat_root = stat_root, data_root = data_root)
     
     """
     dataloaders = data_loaders_stl10(data_root, img_size=img_size, 
