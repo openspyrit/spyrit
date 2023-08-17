@@ -196,11 +196,12 @@ imagesc(x_plot, 'Pseudoinverse reconstruction (no noise)')
 # We consider the :class:`spyrit.core.nnet.ConvNet` class that defines a CNN. 
 
 from spyrit.misc.disp import imagesc
-from spyrit.core.nnet import ConvNet
+from spyrit.core.nnet import ConvNet, Unet
 from spyrit.core.train import load_net
 
 # Define PInvNet with ConvNet denoising layer
 denoi = ConvNet()
+#denoi = Unet()
 pinv_net_cnn = PinvNet(noise, prep, denoi)
 
 # Send to GPU if available 
@@ -212,7 +213,7 @@ pinv_net_cnn = pinv_net_cnn.to(device)
 
 # Load pretrained model
 try:
-    model_path = "./model/"
+    model_path = "./model/pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_1_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07"
     load_net(model_path, pinv_net_cnn, device, False)
     print(f'Model {model_path} loaded.')
 except:
@@ -221,10 +222,11 @@ except:
 # We now reconstruct the image using PinvNet with pretrained CNN denoising
 with torch.no_grad():
     x_rec_cnn = pinv_net_cnn.reconstruct(y.to(device))
+    x_rec_cnn = pinv_net_cnn(x.to(device))
 
 # reshape
 x_plot = x_rec_cnn.squeeze().cpu().numpy() 
-imagesc(x_plot, f'PinvNet ConvNet image')
+imagesc(x_plot, f'PinvNet ConvNet image after training for 1 epoch')
 
 ###############################################################################
 # In the next tutorial, we will show how to train a CNN denoiser from scratch.
