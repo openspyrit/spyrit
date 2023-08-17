@@ -1,5 +1,6 @@
 
 r"""
+.. _tuto_acquisition_operators:
 01. Acquisition operators
 ==========================
 This tutorial shows how to simulate measurements using the :class:`spyrit.core`
@@ -27,7 +28,7 @@ import matplotlib.pyplot as plt
 #-----------------------
 
 ###############################################################################
-# Images :math:`x` for training expect values in [-1,1]. The images are normalized
+# Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
 # using the :func:`transform_gray_norm` function.
 
 from spyrit.misc.statistics import transform_gray_norm
@@ -67,7 +68,7 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 # Noise operators are defined in the :mod:`~spyrit.core.noise` module. A noise
 # operator computes the following three steps sequentially: 
 #   1. Normalization of the image :math:`x` with values in [-1,1] to get an 
-#      image :math:`\tilde{x}=\frac{x+1}{2}` in [0,1]
+#      image :math:`\tilde{x}=\frac{x+1}{2}` in [0,1], as it is required for measurement simulation
 #   2. Application of the measurement model, i.e., computation of :math:`H\tilde{x}`
 #   3. Application of the noise model
 # 
@@ -106,7 +107,9 @@ noise_op = NoNoise(meas_op)
 # We simulate the measurement vector :math:`y` that we visualise as an image. 
 # Remember that the input image :math:`x` is handled as a vector.  
 x = x.view(b*c,h*w)  # vectorized image
+print(f'Shape of vectorized image: {x.shape}')
 y_eye = noise_op(x)  # noisy measurement vector
+print(f'Shape of simulated measurements y: {y_eye.shape}')
 
 # plot
 x_plot = y_eye.view(-1,h,h).cpu().numpy() 
@@ -199,7 +202,8 @@ noaxis(axs)
 # For instance, a preprocessing operator can be used to compensate for the 
 # scaling factors that appear in the measurement or noise operators. In this 
 # case, a preprocessing operator is closely linked to its measurement and/or 
-# noise operator counterpart.
+# noise operator counterpart. While scaling factors are required to simulate 
+# realistic measurements, they are not required for reconstruction.
 
 # %% 
 # Preprocessing measurements corrupted by Poisson noise
