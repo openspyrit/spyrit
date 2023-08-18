@@ -1,6 +1,7 @@
 
 
 r"""
+.. _tuto_pseudoinverse_cnn_linear:
 03. Pseudoinverse solution + CNN denoising from linear measurements
 ======================
 This tutorial shows how to simulate measurements and perform image reconstruction 
@@ -90,7 +91,7 @@ Sampling_map[M_xy:,:] = 0
 imagesc(Sampling_map, 'low-frequency sampling map')
 
 ###############################################################################
-# After permutation of the full Hadamrd matrix, we keep only its first 
+# After permutation of the full Hadamard matrix, we keep only its first 
 # :attr:`M` rows
 
 from spyrit.misc.sampling import Permutation_Matrix
@@ -166,7 +167,7 @@ imagesc(m_plot, 'Preprocessed measurements (no noise)')
 ###############################################################################
 # We consider the :class:`spyrit.core.recon.PinvNet` class that reconstructs an
 # image by computing the pseudoinverse solution, which is fed to a neural 
-# networker denoiser. To compute the pseudoinverse solution only, the denoiser  
+# network denoiser. To compute the pseudoinverse solution only, the denoiser  
 # can be set to the identity operator 
 
 from spyrit.core.recon import PinvNet
@@ -192,8 +193,9 @@ imagesc(x_plot, 'Pseudoinverse reconstruction (no noise)')
 # ----------------
 
 ###############################################################################
-# Artefacts can be removed by placing a CNN denoising layer as the last layer of PinvNet. 
-# We consider the :class:`spyrit.core.nnet.ConvNet` class that defines a CNN. 
+# Artefacts can be removed by selecting a neural network denoiser 
+# (last layer of PinvNet). We select a simple CNN using the 
+# :class:`spyrit.core.nnet.ConvNet` class. 
 
 from spyrit.misc.disp import imagesc
 from spyrit.core.nnet import ConvNet, Unet
@@ -201,7 +203,6 @@ from spyrit.core.train import load_net
 
 # Define PInvNet with ConvNet denoising layer
 denoi = ConvNet()
-#denoi = Unet()
 pinv_net_cnn = PinvNet(noise, prep, denoi)
 
 # Send to GPU if available 
@@ -213,11 +214,24 @@ pinv_net_cnn = pinv_net_cnn.to(device)
 
 # Load pretrained model
 try:
+    # Download weights
+    import gdown
+    url_cnn = 'https://drive.google.com/file/d/1iGjxOk06nlB5hSm3caIfx0vy2byQd-ZC/view?usp=drive_link'
+    model_cnn_path = "./model"
+
+    if os.path.exists(model_cnn_path) is False:
+        os.mkdir(model_cnn_path)
+        print(f'Created {model_cnn_path}')
+
+    model_cnn_path = os.path.join(model_cnn_path, 'dc-net_unet_imagenet_var_N0_10_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07_light')
+    gdown.download(url_cnn, f'{model_cnn_path}.pth', quiet=False,fuzzy=True)
+
     model_path = "./model/pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_1_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07"
-    load_net(model_path, pinv_net_cnn, device, False)
+    load_net(model_cnn_path, pinv_net_cnn, device, False)
     print(f'Model {model_path} loaded.')
 except:
     print(f'Model {model_path} not found!')
+
 
 # We now reconstruct the image using PinvNet with pretrained CNN denoising
 with torch.no_grad():
@@ -229,5 +243,5 @@ x_plot = x_rec_cnn.squeeze().cpu().numpy()
 imagesc(x_plot, f'PinvNet ConvNet image after training for 1 epoch')
 
 ###############################################################################
-# In the next tutorial, we will show how to train a CNN denoiser from scratch.
+# In the next tutorial, we will show how to train the CNN denoiser from scratch.
 
