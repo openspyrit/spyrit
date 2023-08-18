@@ -1,6 +1,6 @@
 
 r"""
-.. _tuto_pseudoinverse_linear:
+.. _tuto_train_pseudoinverse_linear:
 02. Pseudoinverse solution from linear measurements
 ======================
 This tutorial shows how to simulate measurements and perform image reconstruction. 

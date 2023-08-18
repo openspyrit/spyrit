@@ -1,218 +1,228 @@
-# -*- coding: utf-8 -*-
+r"""
+.. _tuto_train_pseudoinverse_cnn_linear:
+04. Train pseudoinverse solution + CNN denoising from linear measurements
+======================
+This tutorial shows how to train the pseudoinverse with a CNN denoiser for 
+reconstruction of linear measurements used in tutorial :ref:`tuto_pseudoinverse_cnn_linear`. 
+We have used a small CNN as an example, which can be replaced by the denoiser 
+of your choice, for example Unet. Training is performed on the STL-10 dataset. 
+
+You can use Tensorboard for Pytorch to visualize the training process (losses) as well 
+as intermediate results (reconstructed images at different epochs).
+
+The measurement operator is chosen as a Hadamard matrix with positive coefficients. 
+Note that this matrix can be replaced any the desired matrix. 
 """
-Created on Wed Sep  7 15:25:43 2022
 
-@author: ducros
-"""
+# %% 
+# We define a dataloader for STL-10 dataset using :func:`spyrit.misc.statistics.data_loaders_stl10`.
+# This will download the dataset if it is not already downloaded. It is based on torch.utils.data.DataLoader 
+# and it creates a generator that returns a batch of images and labels at each iteration.
 
-from __future__ import print_function, division
-import torch
-import torch.optim as optim
-import torch.nn as nn
-from torch.optim import lr_scheduler
-import torch.profiler
-from torch.utils.tensorboard import SummaryWriter
-
-import numpy as np
-import argparse
+from spyrit.misc.statistics import data_loaders_stl10
 from pathlib import Path
-import pickle
-import os
-from datetime import datetime
-import math
+
+# Parameters
+h = 64                  # image size hxh 
+data_root = Path("./data")   # path to data folder (where the dataset is stored)
+batch_size = 512
+
+# Dataloader for STL-10 dataset
+dataloaders = data_loaders_stl10(data_root, 
+                                    img_size=h, 
+                                    batch_size=batch_size, 
+                                    seed=7,
+                                    shuffle=True, download=True)  
+
+
+# %% 
+# Define a measurement operator
+#------------------------------
+
+###############################################################################
+# We consider the sample operator as in the previous tutorials 
+# (see :ref:`tuto_pseudoinverse_linear`). 
+# We consider the case where the measurement matrix is the positive
+# component of a Hadamard matrix, which if often used in single-pixel imaging.
+# First, we compute a full Hadamard matrix that computes the 2D transforme of an
+# image of size :attr:`h` and take its positive part. 
+# Then, we subsample the rows of the measurement matrix to simulate an 
+# accelerated acquisition. 
+# To keep the low-frequency Hadamard coefficients, we choose a sampling map 
+# with ones in the top left corner and zeros elsewhere.
+# After permutation of the full Hadamard matrix, we keep only its first 
+# :attr:`M` rows
 
 from spyrit.misc.walsh_hadamard import walsh2_matrix
+import numpy as np
+import math 
+from spyrit.misc.disp import imagesc
 from spyrit.misc.sampling import Permutation_Matrix
 
-from spyrit.core.recon import DCNet, PinvNet, UPGD
-from spyrit.core.train import train_model, Train_par, save_net, Weight_Decay_Loss
-from spyrit.core.nnet import Unet, ConvNet, ConvNetBN
-from spyrit.misc.statistics import Cov2Var, data_loaders_ImageNet, data_loaders_stl10
+und = 4                # undersampling factor
+M = h**2 // und        # number of measurements (undersampling factor = 4)
 
-# pip install -e git+https://github.com/openspyrit/spas.git@v1.4#egg=spas
-# python3 ./spyrit-examples/2022_OE_spyrit2/download_data.py
-
-# python tuto_train_pseudoinverse_cnn_linear.py --data_root ../../data/ --model_root ./model/ --stat_root ./stat/ --tb_path ./runs/runs_stdl10_n100_m1024/ --data stl10 --N0 100 --M 1024 --num_epochs 30 --batch_size 512 --lr 1e-3 --step_size 10 --gamma 0.5 --reg 1e-7 --arch dc-net --denoi unet --device cuda:0
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    # Acquisition
-    parser.add_argument("--img_size",   type=int,   default=64,   help="Height / width dimension")
-    parser.add_argument("--M",          type=int,   default=512,  help="Number of patterns")
-    parser.add_argument("--subs",       type=str,   default="var",  help="Among 'var','rect'")
-    
-    # Network and training
-    parser.add_argument("--data",       type=str,   default="stl10", help="stl10 or imagenet")
-    parser.add_argument("--model_root", type=str,   default='./model/', help="Path to model saving files")
-    parser.add_argument("--data_root",  type=str,   default="./data/", help="Path to the dataset")
-    
-    parser.add_argument("--N0",         type=float, default=10,   help="Mean maximum total number of photons")
-    parser.add_argument("--stat_root",  type=str,   default="./stat/", help="Path to precomputed data")
-    parser.add_argument("--arch",       type=str,   default="dc-net", help="Choose among 'dc-net','pinv-net',")
-    parser.add_argument("--denoi",      type=str,   default="unet", help="Choose among 'cnn','cnnbn', 'unet'")
-    parser.add_argument("--device",     type=str,   default="", help="Choose among 'cuda','cpu'")
-    #parser.add_argument("--no_denoi",   default=False, action='store_true', help="No denoising layer")
+F = walsh2_matrix(h)
+F = np.where(F>0, F, 0)
 
 
-    # Optimisation
-    parser.add_argument("--num_epochs", type=int,   default=30,   help="Number of training epochs")
-    parser.add_argument("--batch_size", type=int,   default=512, help="Size of each training batch")
-    parser.add_argument("--reg",        type=float, default=1e-7, help="Regularisation Parameter")
-    parser.add_argument("--lr",         type=float, default=1e-3, help="Learning Rate")
-    parser.add_argument("--step_size",  type=int,   default=10,   help="Scheduler Step Size")
-    parser.add_argument("--gamma",      type=float, default=0.5,  help="Scheduler Decrease Rate")
-    parser.add_argument("--checkpoint_model", type=str, default="", help="Optional path to checkpoint model")
-    parser.add_argument("--checkpoint_interval", type=int, default=0, help="Interval between saving model checkpoints")
-    
-    # Tensorboard
-    parser.add_argument("--tb_path",    type=str,   default=False, help="Relative path for Tensorboard experiment tracking logs")
-    parser.add_argument("--tb_prof",    type=bool,   default=False, help="Profiler for code with Tensorboard")
+Sampling_map = np.ones((h,h))
+M_xy = math.ceil(M**0.5)
+Sampling_map[:,M_xy:] = 0
+Sampling_map[M_xy:,:] = 0
 
-    opt = parser.parse_args()
-    opt.model_root = Path(opt.model_root)
-    opt.data_root = Path(opt.data_root)
-    
-    # Define parameters
-    opt.data_root = Path("../data/")
-    opt.subs = 'had+'
-    opt.M = 1024
-    opt.arch = 'pinv-net'
-    opt.denoi = 'cnn'
-    opt.tb_prof = True
-    now = datetime.now().strftime('%Y-%m-%d_%H-%M')
-    opt.tb_path = f'runs/runs_stdl10_n1_m1024/{now}'
-    opt.num_epochs = 1
-    opt.N0 = 1
+# imagesc(Sampling_map, 'low-frequency sampling map')
 
-    print(opt)
-    
-    #==========================================================================
-    # 0. Setting up parameters for training
-    #==========================================================================
-    # The device of the machine, number of workers...
-    # 
-    if opt.device: 
-        device = torch.device(opt.device)
-    else:
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(f'Device: {device}')
-    
-    #==========================================================================
-    # 1. Loading and normalizing data
-    #==========================================================================
-    if opt.data == 'stl10':
-        dataloaders = data_loaders_stl10(opt.data_root, 
-                                        img_size=opt.img_size, 
-                                        batch_size=opt.batch_size, 
-                                        seed=7,
-                                        shuffle=True, download=True)  
+Perm = Permutation_Matrix(Sampling_map)
+F = Perm@F 
+H = F[:M,:]
 
-        
+print(f"Shape of the measurement matrix: {H.shape}")
 
-    elif opt.data == 'imagenet':
-        dataloaders = data_loaders_ImageNet(opt.data_root / 'test', 
-                                        opt.data_root / 'val', 
-                                        img_size=opt.img_size, 
-                                        batch_size=opt.batch_size, 
-                                        seed=7,
-                                        shuffle=True)
-   
-    #==========================================================================
-    # 2. Subsampling
-    #==========================================================================
-    print('Subsampling: low frequency (rect)')      
-    h = opt.img_size
-    M = opt.M
-    F = walsh2_matrix(h)
-    F = np.where(F>0, F, 0)
-    Sampling_map = np.ones((h,h))
-    M_xy = math.ceil(M**0.5)
-    Sampling_map[:,M_xy:] = 0
-    Sampling_map[M_xy:,:] = 0
-    Perm = Permutation_Matrix(Sampling_map)
-    F = Perm@F 
-    H = F[:M,:]
+###############################################################################
+# Then, we instantiate a :class:`spyrit.core.meas.Linear` measurement operator 
+# and a :class:`spyrit.core.noise.NoNoise` noise operator for noiseless case.
+# We recall that we can simulate the measurements by using the noise operator.
+from spyrit.core.meas import Linear
+from spyrit.core.noise import NoNoise
+meas_op = Linear(H, pinv=True)  
+noise = NoNoise(meas_op)        
 
-    #==========================================================================
-    # 3. Define Measuremt operators
-    #==========================================================================
-    from spyrit.core.meas import Linear
-    from spyrit.core.noise import NoNoise
-    from spyrit.core.prep import DirectPoisson
+###############################################################################
+# Finally, we define the preprocessing measurements operator corresponding to an 
+# image in [-1,1]. For this, we use the :class:`spyrit.core.prep.DirectPoisson` 
+# with :math:`\alpha` = 1, which allows to compensate for the image normalisation 
+# achieved by :class:`spyrit.core.noise.NoNoise`.
 
-    meas_op = Linear(H, pinv=True)  
+from spyrit.core.prep import DirectPoisson
+N0 = 1.0            # Mean maximum total number of photons
+prep = DirectPoisson(N0, meas_op) # "Undo" the NoNoise operator
 
-    # Noiseless case
-    noise = NoNoise(meas_op)        
-    prep = DirectPoisson(1.0, meas_op) # "Undo" the NoNoise operator
+# %% 
+# PinvNet Network 
+# ---------------
 
-    #meas = HadamSplit(opt.M, opt.img_size, Ord)
-    #prep = SplitPoisson(opt.N0, meas)
-    #noise = PoissonApproxGauss(meas, opt.N0) # faster than Poisson
-    
-    # Image-domain denoising layer
-    if opt.denoi == 'cnn':      # CNN no batch normalization
-        denoi = ConvNet()
-    elif opt.denoi == 'cnnbn':  # CNN with batch normalization
-        denoi = ConvNetBN()
-    elif opt.denoi == 'unet':   # Unet
-        denoi = Unet()    
-        
-    if opt.arch == 'pinv-net':    # Pseudo Inverse Network
-        model = PinvNet(noise, prep, denoi)
-    
-    if torch.cuda.device_count() > 1:
-        print("Let's use", torch.cuda.device_count(), "GPUs!")
-        model = nn.DataParallel(model)
-    
-    model = model.to(device)
-    
-    if opt.checkpoint_model:
-        model.load_state_dict(torch.load(opt.checkpoint_model))
+###############################################################################
+# We consider the :class:`spyrit.core.recon.PinvNet` class that reconstructs an
+# image by computing the pseudoinverse solution, which is fed to a neural 
+# network denoiser. First, we define the denoiser as a small CNN using the 
+# :class:`spyrit.core.nnet.ConvNet` class. Then, we define the PinvNet network
+# with the noise and preprocessing operators defined above and with the denoiser.
 
-    #==========================================================================
-    # 4. Define a Loss function optimizer and scheduler
-    #==========================================================================
-    # Penalization defined in DCAN.py
-    loss = nn.MSELoss();
-    criterion = Weight_Decay_Loss(loss);
-    optimizer = optim.Adam(model.parameters(), lr=opt.lr);
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=opt.step_size, gamma=opt.gamma)
-    
-    #==========================================================================
-    # 5. Train the network
-    #==========================================================================
-    # We  loop over our data iterator, feed the inputs to the
-    model, train_info = train_model(model, criterion, \
-            optimizer, scheduler, dataloaders, device, opt.model_root, num_epochs=opt.num_epochs,\
-            disp=True, do_checkpoint=opt.checkpoint_interval, tb_path=opt.tb_path)
-    
-    #==========================================================================
-    # 6. Saving the model so that it can later be utilized
-    #==========================================================================
-    #- network's architecture
-    train_type = 'N0_{:g}'.format(opt.N0) 
-        
-    #- training parameters
-    suffix = 'N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}_reg_{}'.format(\
-           opt.img_size, opt.M, opt.num_epochs, opt.lr, opt.step_size,\
-           opt.gamma, opt.batch_size, opt.reg)
+import torch
+from spyrit.core.nnet import ConvNet
+from spyrit.core.recon import PinvNet
 
-    title = opt.model_root / f'{opt.arch}_{opt.denoi}_{opt.data}_{train_type}_{suffix}'    
-    print(title)
-    
-    Path(opt.model_root).mkdir(parents=True, exist_ok=True)
-   
-    if opt.checkpoint_interval:
-       Path(title).mkdir(parents=True, exist_ok=True)
-       
-    save_net(title, model)
-    
-    #- save training history
-    params = Train_par(opt.batch_size, opt.lr, opt.img_size,reg=opt.reg);
-    params.set_loss(train_info);
-    train_path = opt.model_root / f'TRAIN_{opt.arch}_{opt.denoi}_{opt.data}_{train_type}_{suffix}.pkl'
-    
-    with open(train_path, 'wb') as param_file:
-        pickle.dump(params,param_file)
-    torch.cuda.empty_cache()
+denoiser = ConvNet()
+model = PinvNet(noise, prep, denoi=denoiser)
 
+# Send to GPU if available 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+# Use multiple GPUs if available
+if torch.cuda.device_count() > 1:
+    print("Let's use", torch.cuda.device_count(), "GPUs!")
+    model = nn.DataParallel(model)
+
+model = model.to(device)
+
+
+# %%
+# Define a Loss function optimizer and scheduler
+#
+# ----------------
+
+###############################################################################
+# In order to train the network, we need to define a loss function, an optimizer
+# and a scheduler. We use the Mean Square Error (MSE) loss function, weigh decay 
+# loss and the Adam optimizer. We use a scheduler to decrease the learning rate
+# by a factor of :attr:`gamma` every :attr:`step_size` epochs.
+
+import torch.nn as nn
+import torch.optim as optim
+from torch.optim import lr_scheduler
+from spyrit.core.train import save_net, Weight_Decay_Loss
+
+# Parameters
+lr = 1e-3
+step_size = 10
+gamma = 0.5
+
+loss = nn.MSELoss()
+criterion = Weight_Decay_Loss(loss)
+optimizer = optim.Adam(model.parameters(), lr=lr)
+scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
+
+# %%
+# Train the network
+#
+# ----------------
+
+###############################################################################
+# To train the network, we use the :func:`~spyrit.core.train.train_model` function, 
+# which handles the training process. We loop over our data iterator, feed the inputs to the
+# network and optimize. You can train for one epoch only to check that everything works fine. 
+# The training process can be monitored using Tensorboard by typing in the console:
+# tensorboard --logdir runs
+
+from spyrit.core.train import train_model
+from datetime import datetime
+
+# Parameters
+model_root = Path("./model")# path to model saving files
+num_epochs = 1              # number of training epochs (num_epochs = 30)
+checkpoint_interval = 5     # interval between saving model checkpoints 
+tb_path = True              
+
+# Path for Tensorboard experiment tracking logs
+now = datetime.now().strftime('%Y-%m-%d_%H-%M')
+tb_path = f'runs/runs_stdl10_n1_m1024/{now}'
+
+# Train the network
+model, train_info = train_model(model, criterion, \
+            optimizer, scheduler, dataloaders, device, model_root, num_epochs=num_epochs,\
+            disp=True, do_checkpoint=checkpoint_interval, tb_path=tb_path)
+    
+# %%
+#  Saving the model so that it can later be utilized
+#
+# ----------------
+
+###############################################################################
+# We save the model so that it can later be utilized. We save the network's
+# architecture, the training parameters and the training history.
+
+from spyrit.core.train import save_net
+
+# Training parameters
+train_type = 'N0_{:g}'.format(N0) 
+arch = 'pinv-net'
+denoi = 'cnn'
+data = 'stl10'
+reg = 1e-7      # Default value
+suffix = 'N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}'.format(\
+        h, M, num_epochs, lr, step_size,gamma, batch_size)
+title = model_root / f'{arch}_{denoi}_{data}_{train_type}_{suffix}'    
+print(title)
+
+Path(model_root).mkdir(parents=True, exist_ok=True)
+
+if checkpoint_interval:
+    Path(title).mkdir(parents=True, exist_ok=True)
+    
+save_net(title, model)
+
+# Save training history
+import pickle
+from spyrit.core.train import Train_par
+
+params = Train_par(batch_size, lr, h, reg=reg)
+params.set_loss(train_info)
+train_path = model_root / f'TRAIN_{arch}_{denoi}_{data}_{train_type}_{suffix}.pkl'
+
+with open(train_path, 'wb') as param_file:
+    pickle.dump(params,param_file)
+torch.cuda.empty_cache()
+
+###############################################################################
+# In a future tutorial, we will show how to train the network step by step.
