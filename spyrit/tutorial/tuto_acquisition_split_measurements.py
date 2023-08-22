@@ -136,12 +136,6 @@ print(f'Shape of vectorized image: {x.shape}')
 y_noiseless = nonoise_op(x)  # noiseless measurement vector
 print(f'Shape of simulated measurements y: {y_noiseless.shape}')
 
-# Plot
-y_plot = y_noiseless.numpy()   
-y_plot = meas2img2(y_plot.T, Ord)
-y_plot = np.moveaxis(y_plot,-1, 0)
-imagesc(y_plot[0,:,:], r'Noiseless measurements $y$')
-
 # %% 
 # Same example with Poisson noise
 #--------------------------------
@@ -162,17 +156,97 @@ imagesc(y_plot[0,:,:], r'Noiseless measurements $y$')
 
 from spyrit.core.noise import Poisson
 from spyrit.misc.disp import add_colorbar, noaxis
+from spyrit.misc.disp import imagecomp
 
 alpha = 100.0 # number of photons
 noise_op = Poisson(meas_op, alpha) 
 y_noisy = noise_op(x) # a noisy measurement vector
 
-# Plot
+# Plot the two measurement vectors
+y_plot = y_noiseless.numpy()   
+y_plot = meas2img2(y_plot.T, Ord)
+y_plot = np.moveaxis(y_plot,-1, 0)
+
 y_plot2 = y_noisy.numpy()   
 y_plot2 = meas2img2(y_plot2.T, Ord)
 y_plot2 = np.moveaxis(y_plot2,-1, 0)
-imagesc(y_plot2[0,:,:], r'Noisy measurements $y$ ($N=100$ photons)')
+imagecomp(y_plot[0,:,:], y_plot2[0,:,:], r'Measurements $y$', 'Noiseless', r'Noisy ($N=100$ photons)')
 
+# %% 
+# Full-covariance matrix
+#------------------------------------------------------
+
+###############################################################################
+# We have previously considered a unit Covariance matrix, i.e.,
+# image pixels are assumed to be independent. Results can be improved by
+# considering a full-covariance matrix, i.e., image pixels are assumed to be
+# correlated. We consider a full-covariance matrix that has been obtained 
+# from a set of natural images.
+
+###############################################################################
+# Frist, we download the covariance matrix and load it.
+
+import girder_client
+
+# api Rest url of the warehouse
+url='https://pilot-warehouse.creatis.insa-lyon.fr/api/v1'
+
+# Generate the warehouse client
+gc = girder_client.GirderClient(apiUrl=url)
+
+# Download the covariance matrix and mean image
+data_folder = './stat/'
+dataId_list = [
+        '63935b624d15dd536f0484a5', # for reconstruction (imageNet, 64)
+        '63935a224d15dd536f048496', # for reconstruction (imageNet, 64)
+        ]
+cov_name = './stat/Cov_64x64.npy'
+
+for dataId in dataId_list:
+    myfile = gc.getFile(dataId)
+    gc.downloadFile(dataId, data_folder + myfile['name'])
+
+print(f'Created {data_folder}') 
+
+try:
+    Cov  = np.load(cov_name)
+    print(f"Cov matrix {cov_name} loaded")
+except:
+    Cov = np.eye(h*h)
+    print(f"Cov matrix {cov_name} not found! Set to the identity")
+    
+###############################################################################
+# We define the order matrix :math:`Ord` from the full covariance, and then the  
+# measurement and noise operators.
+from spyrit.misc.statistics import Cov2Var
+
+Ord_cov = Cov2Var(Cov)
+meas_cov_op = HadamSplit(M, h, Ord_cov)
+noise_cov_op = Poisson(meas_cov_op, alpha) 
+
+# Finally we simulate a noisy measurement vector.
+y_noisy_cov = noise_cov_op(x) # a noisy measurement vector
+
+# Plot the three measurement vectors
+y_plot3 = y_noisy_cov.numpy()   
+y_plot3 = meas2img2(y_plot3.T, Ord_cov)
+y_plot3 = np.moveaxis(y_plot3,-1, 0)
+
+f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15,5))
+im1=ax1.imshow(y_plot[0,:,:], cmap='gray')
+ax1.set_title(r'Noiseless measurements $y$')
+noaxis(ax1)
+add_colorbar(im1, 'bottom')
+
+im2=ax2.imshow(y_plot2[0,:,:], cmap='gray')
+ax2.set_title(r'Noisy measurements $y$')
+noaxis(ax2)
+add_colorbar(im2, 'bottom')
+
+im3=ax3.imshow(y_plot3[0,:,:], cmap='gray')
+ax3.set_title(r'Noisy measurements $y$ (full Cov)')
+noaxis(ax3)
+add_colorbar(im3, 'bottom')
 
 # %% 
 # The preprocessing operator
@@ -212,42 +286,116 @@ imagesc(y_plot2[0,:,:], r'Noisy measurements $y$ ($N=100$ photons)')
 from spyrit.core.prep import SplitPoisson
 
 alpha = 100.0 # number of photons
-prep_op_noisy = SplitPoisson(alpha, meas_op) 
-m_noisy = prep_op_noisy(y_noisy) 
+prep_noisy_op = SplitPoisson(alpha, meas_op) 
+m_noisy = prep_noisy_op(y_noisy) 
+
+###############################################################################
+# Similarly, we can preprocess the noiseless measurement by setting :math:`\alpha` to 1.
+prep_noiseless_op = SplitPoisson(1.0, meas_op) 
+m_noiseless = prep_noiseless_op(y_noiseless)
 
 # plot
 m_plot = m_noisy.numpy()   
 m_plot = meas2img2(m_plot.T, Ord)
 m_plot = np.moveaxis(m_plot,-1, 0)
-imagesc(m_plot[0,:,:], r'Noiseless measurements $m$')
-
-###############################################################################
-# Similarly, we can preprocess the noiseless measurement by setting :math:`\alpha` to 1.
-prep_op_noiseless = SplitPoisson(1.0, meas_op) 
-m_noiseless = prep_op_noiseless(y_noiseless)
-
-# Plot
 m_plot2 = m_noiseless.numpy()   
 m_plot2 = meas2img2(m_plot2.T, Ord)
 m_plot2 = np.moveaxis(m_plot2,-1, 0)
-imagesc(m_plot2[0,:,:], r'Noisy measurements $m$ (N=100 photons)')
+imagecomp(m_plot[0,:,:], m_plot2[0,:,:], r'Measurements $m$', 'Noiseless', r'Noisy ($N=100$ photons)')
 
 ###############################################################################
-#
-# In the next tutorial, we will show how to reconstruct images from split measurements.
+# Finally, we can preprocess the noisy measurement for full covariance
+prep_noisy_cov_op = SplitPoisson(1.0, meas_cov_op) 
+m_noisy_cov = prep_noisy_cov_op(y_noisy_cov)
+
+# Plot the three measurement vectors
+m_plot3 = m_noisy_cov.numpy()   
+m_plot3 = meas2img2(m_plot3.T, Ord_cov)
+m_plot3 = np.moveaxis(m_plot3,-1, 0)
+
+f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15,5))
+im1=ax1.imshow(m_plot[0,:,:], cmap='gray')
+ax1.set_title(r'Noiseless measurements $m$')
+noaxis(ax1)
+add_colorbar(im1, 'bottom')
+
+im2=ax2.imshow(m_plot2[0,:,:], cmap='gray')
+ax2.set_title(r'Noisy measurements $m$')
+noaxis(ax2)
+add_colorbar(im2, 'bottom')
+
+im3=ax3.imshow(m_plot3[0,:,:], cmap='gray')
+ax3.set_title(r'Noisy measurements $m$ (full Cov)')
+noaxis(ax3)
+add_colorbar(im3, 'bottom')
+
 
 # %%
-# Check reconstructions
-from spyrit.core.recon import PseudoInverse
+# PinvNet network 
+#------------------------------------------------------
 
+###############################################################################
+# We recontruct with the :class:`spyrit.core.recon.PinvNet` class.
+
+from spyrit.core.recon import PseudoInverse
+from spyrit.misc.disp import add_colorbar, noaxis
 recon_op = PseudoInverse()
 z_noiseless = recon_op(m_noiseless, meas_op)
 z_noisy = recon_op(m_noisy, meas_op)
 
 # Plot
 x_plot = x.view(-1,h,h).numpy() 
-imagesc(x_plot[0,:,:],'Ground-truth image')
-z_plot = z_noiseless.view(-1,h,h).numpy() 
-imagesc(z_plot[0,:,:],'Reconstructed noiseless')
-z_plot = z_noisy.view(-1,h,h).numpy() 
-imagesc(z_plot[0,:,:],'Reconstructed noisy')
+z_plot_noiseless = z_noiseless.view(-1,h,h).numpy() 
+z_plot_noisy = z_noisy.view(-1,h,h).numpy() 
+
+f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15,5))
+im1=ax1.imshow(x_plot[0,:,:], cmap='gray')
+ax1.set_title('Ground-truth image')
+noaxis(ax1)
+add_colorbar(im1, 'bottom')
+
+im2=ax2.imshow(z_plot_noiseless[0,:,:], cmap='gray')
+ax2.set_title('Reconstruction noiseless')
+noaxis(ax2)
+add_colorbar(im2, 'bottom')
+
+im3=ax3.imshow(z_plot_noisy[0,:,:], cmap='gray')
+ax3.set_title('Reconstruction noisy')
+noaxis(ax3)
+add_colorbar(im3, 'bottom')
+
+###############################################################################
+# We can also reconstruct with the full covariance matrix
+z_noisy_cov = recon_op(m_noisy_cov, meas_cov_op)
+
+# Plot
+z_plot_noisy_cov = z_noisy_cov.view(-1,h,h).numpy() 
+
+f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(15,5))
+im1=ax1.imshow(x_plot[0,:,:], cmap='gray')
+ax1.set_title('Ground-truth image')
+noaxis(ax1)
+add_colorbar(im1, 'bottom')
+
+im2=ax2.imshow(z_plot_noiseless[0,:,:], cmap='gray')
+ax2.set_title('Reconstruction noiseless')
+noaxis(ax2)
+add_colorbar(im2, 'bottom')
+
+im3=ax3.imshow(z_plot_noisy[0,:,:], cmap='gray')
+ax3.set_title('Reconstruction noisy')
+noaxis(ax3)
+add_colorbar(im3, 'bottom')
+
+im4=ax4.imshow(z_plot_noisy_cov[0,:,:], cmap='gray')
+ax4.set_title('Reconstruction noisy (full Cov)')
+noaxis(ax4)
+add_colorbar(im4, 'bottom')
+
+############ħ###################################################################
+# .. note::
+# Note that reconstructed images are pixelized as pixels when using a unit covariance matrix  
+# while they are smooth when using a full covariance matrix. 
+#
+# Another way to further improve results is to include a nonlinear post-processing step, 
+# which we will consider in a future tutorial. 
