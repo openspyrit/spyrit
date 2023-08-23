@@ -1,8 +1,8 @@
 
 r"""
-.. _tuto_acquisition_split_measurements:
 05. Acquisition operators 2 - Split measurements
 ==========================
+.. _tuto_acquisition_split_measurements:
 This tutorial is a continuation of :ref:`tuto_acquisition_operators` for single-pixel imaging. 
 The previous tutorial showed how to simulate linear measurements using the :class:`spyrit.core` submodule 
 (based on three classes :class:`spyrit.core.meas, :class:`spyrit.core.noise`, and :class:`spyrit.core.prep`). 
@@ -55,6 +55,7 @@ b,c,h,w = x.shape
 # plot
 x_plot = x.view(-1,h,h).cpu().numpy() 
 imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
+
 
 # %%
 # The measurement and noise operators
@@ -162,15 +163,6 @@ alpha = 100.0 # number of photons
 noise_op = Poisson(meas_op, alpha) 
 y_noisy = noise_op(x) # a noisy measurement vector
 
-# Plot the two measurement vectors
-y_plot = y_noiseless.numpy()   
-y_plot = meas2img2(y_plot.T, Ord)
-y_plot = np.moveaxis(y_plot,-1, 0)
-
-y_plot2 = y_noisy.numpy()   
-y_plot2 = meas2img2(y_plot2.T, Ord)
-y_plot2 = np.moveaxis(y_plot2,-1, 0)
-imagecomp(y_plot[0,:,:], y_plot2[0,:,:], r'Measurements $y$', 'Noiseless', r'Noisy ($N=100$ photons)')
 
 # %% 
 # Full-covariance matrix
@@ -227,26 +219,6 @@ noise_cov_op = Poisson(meas_cov_op, alpha)
 # Finally we simulate a noisy measurement vector.
 y_noisy_cov = noise_cov_op(x) # a noisy measurement vector
 
-# Plot the three measurement vectors
-y_plot3 = y_noisy_cov.numpy()   
-y_plot3 = meas2img2(y_plot3.T, Ord_cov)
-y_plot3 = np.moveaxis(y_plot3,-1, 0)
-
-f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15,5))
-im1=ax1.imshow(y_plot[0,:,:], cmap='gray')
-ax1.set_title(r'Noiseless measurements $y$')
-noaxis(ax1)
-add_colorbar(im1, 'bottom')
-
-im2=ax2.imshow(y_plot2[0,:,:], cmap='gray')
-ax2.set_title(r'Noisy measurements $y$')
-noaxis(ax2)
-add_colorbar(im2, 'bottom')
-
-im3=ax3.imshow(y_plot3[0,:,:], cmap='gray')
-ax3.set_title(r'Noisy measurements $y$ (full Cov)')
-noaxis(ax3)
-add_colorbar(im3, 'bottom')
 
 # %% 
 # The preprocessing operator
@@ -294,21 +266,20 @@ m_noisy = prep_noisy_op(y_noisy)
 prep_noiseless_op = SplitPoisson(1.0, meas_op) 
 m_noiseless = prep_noiseless_op(y_noiseless)
 
-# plot
-m_plot = m_noisy.numpy()   
-m_plot = meas2img2(m_plot.T, Ord)
-m_plot = np.moveaxis(m_plot,-1, 0)
-m_plot2 = m_noiseless.numpy()   
-m_plot2 = meas2img2(m_plot2.T, Ord)
-m_plot2 = np.moveaxis(m_plot2,-1, 0)
-imagecomp(m_plot[0,:,:], m_plot2[0,:,:], r'Measurements $m$', 'Noiseless', r'Noisy ($N=100$ photons)')
-
 ###############################################################################
 # Finally, we can preprocess the noisy measurement for full covariance
 prep_noisy_cov_op = SplitPoisson(1.0, meas_cov_op) 
 m_noisy_cov = prep_noisy_cov_op(y_noisy_cov)
 
 # Plot the three measurement vectors
+m_plot = m_noisy.numpy()   
+m_plot = meas2img2(m_plot.T, Ord)
+m_plot = np.moveaxis(m_plot,-1, 0)
+
+m_plot2 = m_noiseless.numpy()   
+m_plot2 = meas2img2(m_plot2.T, Ord)
+m_plot2 = np.moveaxis(m_plot2,-1, 0)
+
 m_plot3 = m_noisy_cov.numpy()   
 m_plot3 = meas2img2(m_plot3.T, Ord_cov)
 m_plot3 = np.moveaxis(m_plot3,-1, 0)
@@ -343,35 +314,17 @@ recon_op = PseudoInverse()
 z_noiseless = recon_op(m_noiseless, meas_op)
 z_noisy = recon_op(m_noisy, meas_op)
 
-# Plot
-x_plot = x.view(-1,h,h).numpy() 
-z_plot_noiseless = z_noiseless.view(-1,h,h).numpy() 
-z_plot_noisy = z_noisy.view(-1,h,h).numpy() 
-
-f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15,5))
-im1=ax1.imshow(x_plot[0,:,:], cmap='gray')
-ax1.set_title('Ground-truth image')
-noaxis(ax1)
-add_colorbar(im1, 'bottom')
-
-im2=ax2.imshow(z_plot_noiseless[0,:,:], cmap='gray')
-ax2.set_title('Reconstruction noiseless')
-noaxis(ax2)
-add_colorbar(im2, 'bottom')
-
-im3=ax3.imshow(z_plot_noisy[0,:,:], cmap='gray')
-ax3.set_title('Reconstruction noisy')
-noaxis(ax3)
-add_colorbar(im3, 'bottom')
-
 ###############################################################################
 # We can also reconstruct with the full covariance matrix
 z_noisy_cov = recon_op(m_noisy_cov, meas_cov_op)
 
 # Plot
+x_plot = x.view(-1,h,h).numpy() 
+z_plot_noiseless = z_noiseless.view(-1,h,h).numpy() 
+z_plot_noisy = z_noisy.view(-1,h,h).numpy() 
 z_plot_noisy_cov = z_noisy_cov.view(-1,h,h).numpy() 
 
-f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(15,5))
+f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(18,7))
 im1=ax1.imshow(x_plot[0,:,:], cmap='gray')
 ax1.set_title('Ground-truth image')
 noaxis(ax1)
@@ -391,6 +344,8 @@ im4=ax4.imshow(z_plot_noisy_cov[0,:,:], cmap='gray')
 ax4.set_title('Reconstruction noisy (full Cov)')
 noaxis(ax4)
 add_colorbar(im4, 'bottom')
+
+plt.show()
 
 ############ħ###################################################################
 # .. note::

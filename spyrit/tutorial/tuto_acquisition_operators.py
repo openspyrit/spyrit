@@ -1,8 +1,8 @@
 
 r"""
-.. _tuto_acquisition_operators:
 01. Acquisition operators
 ==========================
+.. _tuto_acquisition_operators:
 This tutorial shows how to simulate measurements using the :class:`spyrit.core`
 submodule, which is based on three classes:
 
@@ -14,8 +14,8 @@ submodule, which is based on three classes:
 
 3. **Preprocessing operators** are typically used to process the noisy 
    measurements prior to reconstruction (see :mod:`spyrit.core.prep`)
-
 """
+
 
 import numpy as np
 import os
@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 
 # %%
 # Load a batch of images
-#-----------------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
@@ -62,7 +62,7 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 
 # %%
 # The measurement and noise operators
-#-------------------
+#------------------------------------------------------------------------------
 
 ############################################################################### 
 # Noise operators are defined in the :mod:`~spyrit.core.noise` module. A noise
@@ -86,7 +86,7 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 
 # %% 
 # A simple example: identity measurement matrix and no noise
-#-----------------------------------------------------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # .. math::
@@ -106,6 +106,7 @@ noise_op = NoNoise(meas_op)
 ###############################################################################
 # We simulate the measurement vector :math:`y` that we visualise as an image. 
 # Remember that the input image :math:`x` is handled as a vector.  
+
 x = x.view(b*c,h*w)  # vectorized image
 print(f'Shape of vectorized image: {x.shape}')
 y_eye = noise_op(x)  # noisy measurement vector
@@ -122,7 +123,7 @@ imagesc(x_plot[0,:,:], r'$\tilde{x}$ in [0, 1]')
 
 # %% 
 # Same example with Poisson noise
-#--------------------------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # We now consider Poisson noise, i.e., a noisy measurement vector given by
@@ -132,7 +133,7 @@ imagesc(x_plot[0,:,:], r'$\tilde{x}$ in [0, 1]')
 #
 # where :math:`\alpha` is a scalar value that represents the maximum image intensity
 # (in photons). The larger :math:`\alpha`, the higher the signal-to-noise ratio.
-#
+
 
 ###############################################################################
 # We consider the :class:`spyrit.core.noise.Poisson` class and set :math:`\alpha`
@@ -190,7 +191,7 @@ noaxis(axs)
 
 # %% 
 # The preprocessing operator
-#---------------------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # Preprocessing operators are defined in the :mod:`spyrit.core.prep` module. 
@@ -207,7 +208,7 @@ noaxis(axs)
 
 # %% 
 # Preprocessing measurements corrupted by Poisson noise
-#------------------------------------------------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # We consider the :class:`spyrit.core.prep.DirectPoisson` class that intends 
@@ -239,6 +240,7 @@ m2 = prep_op(y2)
 ###############################################################################
 # We now consider the case :math:`\alpha = 1000` photons to preprocess the third
 # measurement vector
+
 prep_op.alpha = 1000
 m3 = prep_op(y3)
 

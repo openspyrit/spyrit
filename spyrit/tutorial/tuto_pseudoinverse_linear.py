@@ -1,8 +1,8 @@
 
 r"""
-.. _tuto_train_pseudoinverse_linear:
 02. Pseudoinverse solution from linear measurements
-======================
+==========================
+.. _tuto_pseudoinverse_linear:
 This tutorial shows how to simulate measurements and perform image reconstruction. 
 The measurement operator is chosen as a Hadamard matrix with positive coefficients. 
 Note that this matrix can be replaced by any desired matrix. 
@@ -11,7 +11,7 @@ Note that this matrix can be replaced by any desired matrix.
 
 # %%
 # Load a batch of images
-#-----------------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # Images :math:`x` for training expect values in [-1,1]. The images are normalized
@@ -50,7 +50,7 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 
 # %% 
 # Define a measurement operator
-#------------------------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # We consider the case where the measurement matrix is the positive
@@ -107,7 +107,7 @@ meas_op = Linear(H, pinv=True)
 
 # %% 
 # Noiseless case
-#------------------------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # In the noiseless case, we consider the :class:`spyrit.core.noise.NoNoise` noise
@@ -160,7 +160,7 @@ imagesc(m_plot, 'Preprocessed measurements (no noise)')
 
 # %% 
 # PinvNet Network 
-# ---------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # We consider the :class:`spyrit.core.recon.PinvNet` class that reconstructs an
@@ -210,7 +210,7 @@ imagesc(x_plot, 'One more pseudoinverse reconstruction (no noise)')
 
 # %% 
 # Poisson-corrupted measurement
-#------------------------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # Here, we consider the :class:`spyrit.core.noise.Poisson` class

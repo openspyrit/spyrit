@@ -1,7 +1,8 @@
+
 r"""
+04. Train pseudoinverse solution + CNN denoising 
+==========================
 .. _tuto_train_pseudoinverse_cnn_linear:
-04. Train pseudoinverse solution + CNN denoising from linear measurements
-======================
 This tutorial shows how to train the pseudoinverse with a CNN denoiser for 
 reconstruction of linear measurements used in tutorial :ref:`tuto_pseudoinverse_cnn_linear`. 
 We have used a small CNN as an example, which can be replaced by the denoiser 
@@ -28,7 +29,9 @@ data_root = Path("./data")   # path to data folder (where the dataset is stored)
 batch_size = 512
 
 # Dataloader for STL-10 dataset
-dataloaders = data_loaders_stl10(data_root, 
+mode_run = False
+if mode_run:
+    dataloaders = data_loaders_stl10(data_root, 
                                     img_size=h, 
                                     batch_size=batch_size, 
                                     seed=7,
@@ -179,7 +182,8 @@ now = datetime.now().strftime('%Y-%m-%d_%H-%M')
 tb_path = f'runs/runs_stdl10_n1_m1024/{now}'
 
 # Train the network
-model, train_info = train_model(model, criterion, \
+if mode_run:
+    model, train_info = train_model(model, criterion, \
             optimizer, scheduler, dataloaders, device, model_root, num_epochs=num_epochs,\
             disp=True, do_checkpoint=checkpoint_interval, tb_path=tb_path)
     
@@ -213,16 +217,17 @@ if checkpoint_interval:
 save_net(title, model)
 
 # Save training history
-import pickle
-from spyrit.core.train import Train_par
+if mode_run:
+    import pickle
+    from spyrit.core.train import Train_par
 
-params = Train_par(batch_size, lr, h, reg=reg)
-params.set_loss(train_info)
-train_path = model_root / f'TRAIN_{arch}_{denoi}_{data}_{train_type}_{suffix}.pkl'
+    params = Train_par(batch_size, lr, h, reg=reg)
+    params.set_loss(train_info)
+    train_path = model_root / f'TRAIN_{arch}_{denoi}_{data}_{train_type}_{suffix}.pkl'
 
-with open(train_path, 'wb') as param_file:
-    pickle.dump(params,param_file)
-torch.cuda.empty_cache()
+    with open(train_path, 'wb') as param_file:
+        pickle.dump(params,param_file)
+    torch.cuda.empty_cache()
 
 ###############################################################################
 # In a future tutorial, we will show how to train the network step by step.

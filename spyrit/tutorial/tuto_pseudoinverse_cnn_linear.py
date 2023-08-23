@@ -1,19 +1,18 @@
 
-
 r"""
+03. Pseudoinverse solution + CNN denoising 
+==========================
 .. _tuto_pseudoinverse_cnn_linear:
-03. Pseudoinverse solution + CNN denoising from linear measurements
-======================
-This tutorial shows how to simulate measurements and perform image reconstruction 
-using PinvNet (Linear net pseudoinverse) with CNN denoising. 
-The measurement operator is chosen as a Hadamard matrix with positive coefficients. 
-Note that this matrix can be replaced any the desired matrix. 
+This tutorial is a continuation shows how to simulate measurements and perform image reconstruction 
+using PinvNet (Linear net pseudoinverse) with CNN denoising. It is based on the previous tutorial 
+:ref:`tuto_pseudoinverse_linear` where the measurement operator is chosen as a Hadamard matrix with 
+positive coefficients. Note that this matrix can be replaced any the desired matrix. 
 """
 
 
 # %%
 # Load a batch of images
-#-----------------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # Images :math:`x` for training expect values in [-1,1]. The images are normalized
@@ -53,7 +52,7 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 
 # %% 
 # Define a measurement operator
-#------------------------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # We consider the case where the measurement matrix is the positive
@@ -110,7 +109,7 @@ meas_op = Linear(H, pinv=True)
 
 # %% 
 # Noiseless case
-#------------------------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # In the noiseless case, we consider the :class:`spyrit.core.noise.NoNoise` noise
@@ -162,7 +161,7 @@ imagesc(m_plot, 'Preprocessed measurements (no noise)')
 
 # %% 
 # PinvNet Network 
-# ---------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # We consider the :class:`spyrit.core.recon.PinvNet` class that reconstructs an
@@ -190,7 +189,7 @@ imagesc(x_plot, 'Pseudoinverse reconstruction (no noise)')
 # %%
 # Removing artefacts with a CNN
 #
-# ----------------
+#------------------------------------------------------------------------------
 
 ###############################################################################
 # Artefacts can be removed by selecting a neural network denoiser 
