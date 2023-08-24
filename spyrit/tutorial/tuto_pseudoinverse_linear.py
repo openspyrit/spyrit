@@ -11,7 +11,7 @@ Note that this matrix can be replaced by any desired matrix.
 
 # %%
 # Load a batch of images
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # Images :math:`x` for training expect values in [-1,1]. The images are normalized
@@ -50,7 +50,8 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 
 # %% 
 # Define a measurement operator
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# .. _hadamard_positive:
 
 ###############################################################################
 # We consider the case where the measurement matrix is the positive
@@ -74,6 +75,7 @@ F = np.where(F>0, F, 0)
 #
 # To keep the low-frequency Hadamard coefficients, we choose a sampling map 
 # with ones in the top left corner and zeros elsewhere.
+# .. _low_frequency:
 
 import math 
 
@@ -107,7 +109,7 @@ meas_op = Linear(H, pinv=True)
 
 # %% 
 # Noiseless case
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # In the noiseless case, we consider the :class:`spyrit.core.noise.NoNoise` noise
@@ -160,7 +162,7 @@ imagesc(m_plot, 'Preprocessed measurements (no noise)')
 
 # %% 
 # PinvNet Network 
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # We consider the :class:`spyrit.core.recon.PinvNet` class that reconstructs an
@@ -210,7 +212,7 @@ imagesc(x_plot, 'One more pseudoinverse reconstruction (no noise)')
 
 # %% 
 # Poisson-corrupted measurement
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # Here, we consider the :class:`spyrit.core.noise.Poisson` class

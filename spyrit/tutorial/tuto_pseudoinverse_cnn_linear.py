@@ -3,20 +3,21 @@ r"""
 03. Pseudoinverse solution + CNN denoising 
 ==========================
 .. _tuto_pseudoinverse_cnn_linear:
-This tutorial is a continuation shows how to simulate measurements and perform image reconstruction 
-using PinvNet (Linear net pseudoinverse) with CNN denoising. It is based on the previous tutorial 
-:ref:`tuto_pseudoinverse_linear` where the measurement operator is chosen as a Hadamard matrix with 
-positive coefficients. Note that this matrix can be replaced any the desired matrix. 
-"""
+This tutorial shows how to simulate measurements and perform image reconstruction 
+using PinvNet (pseudoinverse linear network) with CNN denoising as a last layer. 
+This tutorial is a continuation of the :ref:`Pseudoinverse solution tutorial <tuto_pseudoinverse_linear>` 
+but uses a CNN denoiser instead of the identity operator in order to remove artefacts.
 
+The measurement operator is chosen as a Hadamard matrix with positive coefficients, 
+which can be replaced by any matrix. 
+"""
 
 # %%
 # Load a batch of images
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
-# Images :math:`x` for training expect values in [-1,1]. The images are normalized
-# using the :func:`transform_gray_norm` function.
+# First, we load an image :math:`x` and normalized it to [-1,1], as in previous examples. 
 
 import os
 from spyrit.misc.statistics import transform_gray_norm
@@ -28,7 +29,6 @@ h = 64            # image size hxh
 i = 1             # Image index (modify to change the image) 
 spyritPath = os.getcwd()
 imgs_path = os.path.join(spyritPath, '../images')
-
 
 # Create a transform for natural images to normalized grayscale image tensors
 transform = transform_gray_norm(img_size=h)
@@ -52,33 +52,21 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 
 # %% 
 # Define a measurement operator
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # We consider the case where the measurement matrix is the positive
-# component of a Hadamard matrix, which if often used in single-pixel imaging.
-# First, we compute a full Hadamard matrix that computes the 2D transforme of an
-# image of size :attr:`h` and take its positive part.
+# component of a Hadamard matrix and the sampling operator preserves only 
+# the first :attr:`M` low-frequency coefficients 
+# (see :ref:`Positive Hadamard matrix <hadamard_positive>` for full explantion).
 
-from spyrit.misc.walsh_hadamard import walsh2_matrix
 import numpy as np
+import math 
+from spyrit.misc.sampling import Permutation_Matrix
+from spyrit.misc.walsh_hadamard import walsh2_matrix
 
 F = walsh2_matrix(h)
 F = np.where(F>0, F, 0)
-
-###############################################################################
-# Next we subsample the rows of the measurement matrix to simulate an 
-# accelerated acquisition. For this, we use the 
-# :func:`spyrit.misc.sampling.Permutation_Matrix` function 
-# that returns a :attr:`h*h`-by-:attr:`h*h` permutation matrix from a 
-# :attr:`h`-by-:attr:`h` sampling maps that indicates the location of the most 
-# relevant coefficients in the transformed domain.
-#
-# To keep the low-frequency Hadamard coefficients, we choose a sampling map 
-# with ones in the top left corner and zeros elsewhere.
-
-import math 
-
 und = 4                # undersampling factor
 M = h**2 // und        # number of measurements (undersampling factor = 4)
 
@@ -87,19 +75,12 @@ M_xy = math.ceil(M**0.5)
 Sampling_map[:,M_xy:] = 0
 Sampling_map[M_xy:,:] = 0
 
-imagesc(Sampling_map, 'low-frequency sampling map')
-
-###############################################################################
-# After permutation of the full Hadamard matrix, we keep only its first 
-# :attr:`M` rows
-
-from spyrit.misc.sampling import Permutation_Matrix
-
 Perm = Permutation_Matrix(Sampling_map)
 F = Perm@F 
 H = F[:M,:]
-
 print(f"Shape of the measurement matrix: {H.shape}")
+
+imagesc(Sampling_map, 'low-frequency sampling map')
 
 ###############################################################################
 # Then, we instantiate a :class:`spyrit.core.meas.Linear` measurement operator
@@ -109,7 +90,7 @@ meas_op = Linear(H, pinv=True)
 
 # %% 
 # Noiseless case
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # In the noiseless case, we consider the :class:`spyrit.core.noise.NoNoise` noise
@@ -124,27 +105,8 @@ y = noise(x.view(b*c,h*w))
 print(f'Shape of raw measurements: {y.shape}')
 
 ###############################################################################
-# To display the subsampled measurement vector as an image in the transformed 
-# domain, we use the :func:`spyrit.misc.sampling.meas2img2` function
-
-# plot
-from spyrit.misc.sampling import meas2img
-
-y_plot = y.detach().numpy().squeeze()
-y_plot = meas2img(y_plot, Sampling_map)
-print(f'Shape of the raw measurement image: {y_plot.shape}')
-
-imagesc(y_plot, 'Raw measurements (no noise)')
-
-###############################################################################
 # We now compute and plot the preprocessed measurements corresponding to an 
 # image in [-1,1]
-# 
-# .. note::
-#    
-#       Using :class:`spyrit.core.prep.DirectPoisson` with :math:`\alpha` = 1 
-#       allows to compensate for the image normalisation achieved by 
-#       :class:`spyrit.core.noise.NoNoise`.
 
 from spyrit.core.prep import DirectPoisson
 prep = DirectPoisson(1.0, meas_op) # "Undo" the NoNoise operator
@@ -152,7 +114,13 @@ prep = DirectPoisson(1.0, meas_op) # "Undo" the NoNoise operator
 m = prep(y)
 print(f'Shape of the preprocessed measurements: {m.shape}')
 
+###############################################################################
+# To display the subsampled measurement vector as an image in the transformed 
+# domain, we use the :func:`spyrit.misc.sampling.meas2img2` function
+
 # plot
+from spyrit.misc.sampling import meas2img
+
 m_plot = m.detach().numpy().squeeze()
 m_plot = meas2img(m_plot, Sampling_map)
 print(f'Shape of the preprocessed measurement image: {m_plot.shape}')
@@ -161,7 +129,7 @@ imagesc(m_plot, 'Preprocessed measurements (no noise)')
 
 # %% 
 # PinvNet Network 
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # We consider the :class:`spyrit.core.recon.PinvNet` class that reconstructs an
@@ -182,19 +150,16 @@ pinv_net = PinvNet(noise, prep)
 
 x_rec = pinv_net.reconstruct(y)
 
-# plot
-x_plot = x_rec.squeeze().cpu().numpy() 
-imagesc(x_plot, 'Pseudoinverse reconstruction (no noise)')
-
 # %%
 # Removing artefacts with a CNN
 #
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # Artefacts can be removed by selecting a neural network denoiser 
 # (last layer of PinvNet). We select a simple CNN using the 
-# :class:`spyrit.core.nnet.ConvNet` class. 
+# :class:`spyrit.core.nnet.ConvNet` class, but this can be replaced by any 
+# neural network (eg. UNet from :class:`spyrit.core.nnet.Unet`).
 
 from spyrit.misc.disp import imagesc
 from spyrit.core.nnet import ConvNet, Unet
@@ -210,6 +175,7 @@ pinv_net_cnn = pinv_net_cnn.to(device)
 
 ###############################################################################
 # As an example, we use a simple ConvNet that has been pretrained using STL-10 dataset.   
+# We download the pretrained weights and load them into the network.
 
 # Load pretrained model
 try:
@@ -232,15 +198,36 @@ except:
     print(f'Model {model_path} not found!')
 
 
-# We now reconstruct the image using PinvNet with pretrained CNN denoising
+###############################################################################
+# We now reconstruct the image using PinvNet with pretrained CNN denoising 
+# and plot results side by side with the PinvNet without denoising
 with torch.no_grad():
     x_rec_cnn = pinv_net_cnn.reconstruct(y.to(device))
     x_rec_cnn = pinv_net_cnn(x.to(device))
 
-# reshape
-x_plot = x_rec_cnn.squeeze().cpu().numpy() 
-imagesc(x_plot, f'PinvNet ConvNet image after training for 1 epoch')
+# plot
+x_plot = x.squeeze().cpu().numpy() 
+x_plot2 = x_rec.squeeze().cpu().numpy() 
+x_plot3 = x_rec_cnn.squeeze().cpu().numpy() 
+
+import matplotlib.pyplot as plt
+from spyrit.misc.disp import add_colorbar, noaxis
+f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15,5))
+im1=ax1.imshow(x_plot, cmap='gray')
+ax1.set_title('Ground-truth image')
+noaxis(ax1)
+add_colorbar(im1, 'bottom')
+
+im2=ax2.imshow(x_plot2, cmap='gray')
+ax2.set_title('Pseudoinverse reconstruction ')
+noaxis(ax2)
+add_colorbar(im2, 'bottom')
+
+im3=ax3.imshow(x_plot3, cmap='gray')
+ax3.set_title('PinvNet ConvNet image after training for 1 epoch')
+noaxis(ax3)
+add_colorbar(im3, 'bottom')
 
 ###############################################################################
-# In the next tutorial, we will show how to train the CNN denoiser from scratch.
+# In the next tutorial, we will show how to train PinvNet + CNN denoiser.
 

@@ -2,9 +2,10 @@
 r"""
 05. Acquisition operators 2 - Split measurements
 ==========================
+
 .. _tuto_acquisition_split_measurements:
-This tutorial is a continuation of :ref:`tuto_acquisition_operators` for single-pixel imaging. 
-The previous tutorial showed how to simulate linear measurements using the :class:`spyrit.core` submodule 
+This tutorial is a continuation of the :ref:`Acquisition operators tutorial <tuto_acquisition_operators>` 
+for single-pixel imaging, which showed how to simulate linear measurements using the :class:`spyrit.core` submodule 
 (based on three classes :class:`spyrit.core.meas, :class:`spyrit.core.noise`, and :class:`spyrit.core.prep`). 
 This tutorial shows how to simulate linear measurements from Hadamard patterns and 
 split measurements into two parts, in order to handle negative measurements. 
@@ -21,7 +22,7 @@ import matplotlib.pyplot as plt
 
 # %%
 # Load a batch of images
-#-----------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
@@ -59,7 +60,7 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 
 # %%
 # The measurement and noise operators
-#-------------------
+# -----------------------------------------------------------------------------
 
 ############################################################################### 
 # Noise operators are defined in the :mod:`~spyrit.core.noise` module. A noise
@@ -82,7 +83,7 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 
 # %% 
 # Split measurement operator and no noise
-#-----------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # .. math::
@@ -104,7 +105,8 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 # The matrix :math:`H` is obtained by retaining the first :math:`M` rows of 
 # a permuted Hadamard matrix :math:`Perm H`, where :math:`Perm` is a 
 # permutation matrix with shape with shape :math:`(M,N)` and :math:`H` is a 
-# "full" Hadamard matrix with shape :math:`(N,N)` (see :ref:`tuto_pseudoinverse_linear`).
+# "full" Hadamard matrix with shape :math:`(N,N)` 
+# (see :ref:`tutorial on pseudoinverse solution <tuto_pseudoinverse_linear>`).
 # The permutation matrix :math:`Perm` is obtained by permuting the rows of :math:`H`, 
 # as indicated by the order matrix :math:`Ord` with shape :math:`(h,h)`. 
 # 
@@ -113,9 +115,8 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 
 ###############################################################################
 # .. note::
-#   Note that the positive component of a Hadamard matrix has been used in  
-# previous tutorials (see :ref:`tuto_pseudoinverse_linear`). In that case, 
-# we could proceed as with a general linear operator. 
+#   Note that the positive component of a Hadamard matrix has been previously used. 
+# In this case, we could proceed as with a general linear operator. 
 
 # We consider the noiseless case handled 
 # by the :class:`spyrit.core.noise.NoNoise` class.
@@ -139,7 +140,7 @@ print(f'Shape of simulated measurements y: {y_noiseless.shape}')
 
 # %% 
 # Same example with Poisson noise
-#--------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # We now consider Poisson noise, i.e., a noisy measurement vector given by
@@ -166,7 +167,7 @@ y_noisy = noise_op(x) # a noisy measurement vector
 
 # %% 
 # Full-covariance matrix
-#------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # We have previously considered a unit Covariance matrix, i.e.,
@@ -222,7 +223,7 @@ y_noisy_cov = noise_cov_op(x) # a noisy measurement vector
 
 # %% 
 # The preprocessing operator
-#---------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # Preprocessing operators are defined in the :mod:`spyrit.core.prep` module. 
@@ -239,7 +240,7 @@ y_noisy_cov = noise_cov_op(x) # a noisy measurement vector
 
 # %% 
 # Preprocessing measurements corrupted by Poisson noise
-#------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # We consider the :class:`spyrit.core.prep.SplitPoisson` class that intends 
@@ -303,7 +304,7 @@ add_colorbar(im3, 'bottom')
 
 # %%
 # PinvNet network 
-#------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # We recontruct with the :class:`spyrit.core.recon.PinvNet` class.

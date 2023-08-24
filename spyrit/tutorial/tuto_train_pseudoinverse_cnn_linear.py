@@ -4,7 +4,7 @@ r"""
 ==========================
 .. _tuto_train_pseudoinverse_cnn_linear:
 This tutorial shows how to train the pseudoinverse with a CNN denoiser for 
-reconstruction of linear measurements used in tutorial :ref:`tuto_pseudoinverse_cnn_linear`. 
+reconstruction of linear measurements used in the :ref:`previous tutorial <tuto_pseudoinverse_cnn_linear>`. 
 We have used a small CNN as an example, which can be replaced by the denoiser 
 of your choice, for example Unet. Training is performed on the STL-10 dataset. 
 
@@ -15,7 +15,48 @@ The measurement operator is chosen as a Hadamard matrix with positive coefficien
 Note that this matrix can be replaced any the desired matrix. 
 """
 
+# %%
+# Load a batch of images
+# -----------------------------------------------------------------------------
+
+###############################################################################
+# Images :math:`x` for training expect values in [-1,1]. The images are normalized
+# using the :func:`transform_gray_norm` function.
+
+import os
+from spyrit.misc.statistics import transform_gray_norm
+import torchvision
+import torch
+from spyrit.misc.disp import imagesc
+
+h = 64            # image size hxh 
+i = 1             # Image index (modify to change the image) 
+spyritPath = os.getcwd()
+imgs_path = os.path.join(spyritPath, '../images')
+
+
+# Create a transform for natural images to normalized grayscale image tensors
+transform = transform_gray_norm(img_size=h)
+
+# Create dataset and loader (expects class folder 'images/test/')
+dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size = 7)
+
+x, _ = next(iter(dataloader))
+print(f'Shape of input images: {x.shape}')
+
+# Select image
+x = x[i:i+1,:,:,:]
+x = x.detach().clone()
+b,c,h,w = x.shape
+
+# plot
+x_plot = x.view(-1,h,h).cpu().numpy() 
+imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
+
 # %% 
+# Define a dataloader
+# -----------------------------------------------------------------------------
 # We define a dataloader for STL-10 dataset using :func:`spyrit.misc.statistics.data_loaders_stl10`.
 # This will download the dataset if it is not already downloaded. It is based on torch.utils.data.DataLoader 
 # and it creates a generator that returns a batch of images and labels at each iteration.
@@ -37,14 +78,13 @@ if mode_run:
                                     seed=7,
                                     shuffle=True, download=True)  
 
-
 # %% 
 # Define a measurement operator
-#------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # We consider the sample operator as in the previous tutorials 
-# (see :ref:`tuto_pseudoinverse_linear`). 
+# (see :ref:`example <tuto_pseudoinverse_linear>`). 
 # We consider the case where the measurement matrix is the positive
 # component of a Hadamard matrix, which if often used in single-pixel imaging.
 # First, we compute a full Hadamard matrix that computes the 2D transforme of an
@@ -67,7 +107,6 @@ M = h**2 // und        # number of measurements (undersampling factor = 4)
 
 F = walsh2_matrix(h)
 F = np.where(F>0, F, 0)
-
 
 Sampling_map = np.ones((h,h))
 M_xy = math.ceil(M**0.5)
@@ -103,7 +142,7 @@ prep = DirectPoisson(N0, meas_op) # "Undo" the NoNoise operator
 
 # %% 
 # PinvNet Network 
-# ---------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # We consider the :class:`spyrit.core.recon.PinvNet` class that reconstructs an
@@ -132,8 +171,7 @@ model = model.to(device)
 
 # %%
 # Define a Loss function optimizer and scheduler
-#
-# ----------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # In order to train the network, we need to define a loss function, an optimizer
@@ -158,8 +196,7 @@ scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 
 # %%
 # Train the network
-#
-# ----------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # To train the network, we use the :func:`~spyrit.core.train.train_model` function, 
@@ -189,8 +226,7 @@ if mode_run:
     
 # %%
 #  Saving the model so that it can later be utilized
-#
-# ----------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # We save the model so that it can later be utilized. We save the network's
