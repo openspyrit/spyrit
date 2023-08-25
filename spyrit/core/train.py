@@ -124,7 +124,9 @@ def tb_profiler(path_prof, model,criterion, optimizer, dataloader, device, wait=
         prof.step()
     prof.stop()
 
-def train_model(model, criterion, optimizer, scheduler, dataloaders, device, root, num_epochs=25,disp=False, do_checkpoint=0, tb_path=False, tb_prof=False):
+def train_model(model, criterion, optimizer, scheduler, dataloaders, device, root, 
+                num_epochs=25,disp=False, do_checkpoint=0, 
+                tb_path=False, tb_prof=False, tb_freq = 20):
     """ Trains the pytorch model 
         """
     count_trainable_param(model)
@@ -207,8 +209,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, device, roo
                         )
                     )
                     
-                if tb_path:
-                    tb_freq = 5
+                if tb_path:                    
                     if batch_i % tb_freq == 0:
                         # Loss
                         tb_writer_add_scalar(writer, name_metric=f'{phase}_loss', val_metric=loss.item() * inputs.size(0), step=epoch * dataset_sizes[phase] + batch_i)
@@ -216,8 +217,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, device, roo
                         # Prediction
                         with torch.no_grad():
                             samples_pred = model(samples)
-                            tb_writer_add_image(writer, name_metric='model_preds', images=samples_pred, step=epoch * dataset_sizes[phase] + batch_i)
-                    
+                            tb_writer_add_image(writer, name_metric='model_preds', images=samples_pred, step=epoch * dataset_sizes[phase] + batch_i)                    
 
                 del outputs
 
