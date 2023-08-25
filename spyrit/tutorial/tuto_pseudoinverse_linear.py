@@ -66,6 +66,7 @@ F = walsh2_matrix(h)
 F = np.where(F>0, F, 0)
 
 ###############################################################################
+# .. _low_frequency:
 # Next, we subsample the rows of the measurement matrix to simulate an 
 # accelerated acquisition. For this, we use the 
 # :func:`spyrit.misc.sampling.Permutation_Matrix` function 
@@ -75,7 +76,6 @@ F = np.where(F>0, F, 0)
 #
 # To keep the low-frequency Hadamard coefficients, we choose a sampling map 
 # with ones in the top left corner and zeros elsewhere.
-# .. _low_frequency:
 
 import math 
 

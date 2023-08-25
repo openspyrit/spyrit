@@ -5,13 +5,11 @@ r"""
 
 .. _tuto_acquisition_split_measurements:
 This tutorial is a continuation of the :ref:`Acquisition operators tutorial <tuto_acquisition_operators>` 
-for single-pixel imaging, which showed how to simulate linear measurements using the :class:`spyrit.core` submodule 
-(based on three classes :class:`spyrit.core.meas, :class:`spyrit.core.noise`, and :class:`spyrit.core.prep`). 
-This tutorial shows how to simulate linear measurements from Hadamard patterns and 
-split measurements into two parts, in order to handle negative measurements. 
-
-In the next sections, we show how to simulate split measurements and how to reconstruct images from them.         
-
+for single-pixel imaging, which showed how to simulate linear measurements using the 
+:class:`spyrit.core` submodule (based on three classes :class:`spyrit.core.meas`, 
+:class:`spyrit.core.noise`, and :class:`spyrit.core.prep`). 
+This tutorial extends the previous case to Hadamard patterns and introduces 
+split measurements in order to handle negative measurements. 
 """
 
 import numpy as np
@@ -71,19 +69,15 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 #   3. Application of the noise model
 # 
 # .. math::
-#       y \sim \texttt{Noise}(P\tilde{x}) = \texttt{Noise}\left(\frac{P(x+1)}{2}\right),
+#       y \sim \texttt{Noise}(P\tilde{x}) = \texttt{Noise}\left(\frac{P(x+1)}{2}\right).
 #
 # The normalization is usefull when considering distributions such
 # as the Poisson distribution that are defined on positive values. 
 
-###############################################################################
-# .. note::
-#   Note that the image identical to the original one, except it has been 
-#   normalized in [0,1].
-
 # %% 
 # Split measurement operator and no noise
 # -----------------------------------------------------------------------------
+# .. _split_measurements:
 
 ###############################################################################
 # .. math::
@@ -96,27 +90,30 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 # The class relies on a matrix :math:`H` with 
 # shape :math:`(M,N)` where :math:`N` represents the number of pixels in the 
 # image and :math:`M \le N` the number of measurements. The matrix :math:`P` 
-# is obtained by splitting the matrix :math:`H` such that 
-# :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`, where 
+# is obtained by splitting the matrix :math:`H` where 
 # :math:`H_{+} = \max(0,H)`, :math:`H_{-} = \max(0,-H)`, and 
-# :math:`H = H_{+}-H_{-}`.`
+# :math:`H = H_{+}-H_{-}`.
 
 ###############################################################################
-# The matrix :math:`H` is obtained by retaining the first :math:`M` rows of 
-# a permuted Hadamard matrix :math:`Perm H`, where :math:`Perm` is a 
+# Then, we simulate an accelerated acquisition by subsampling the measurement matrix 
+# by retaining only the first :math:`M` rows of 
+# a permuted Hadamard matrix :math:`\textrm{Perm} H`, where :math:`\textrm{Perm}` is a 
 # permutation matrix with shape with shape :math:`(M,N)` and :math:`H` is a 
 # "full" Hadamard matrix with shape :math:`(N,N)` 
 # (see :ref:`tutorial on pseudoinverse solution <tuto_pseudoinverse_linear>`).
-# The permutation matrix :math:`Perm` is obtained by permuting the rows of :math:`H`, 
-# as indicated by the order matrix :math:`Ord` with shape :math:`(h,h)`. 
-# 
-# Then, we simulate an accelerated acquisition by subsampling the measurement matrix 
-# by preserving only the first :math:`M` rows.
+# The permutation matrix :math:`\textrm{Perm}` is obtained from the ordering matrix 
+# :math:`\textrm{Ord}` with shape :math:`(h,h)`. This is all handled internally 
+# by the :class:`spyrit.core.meas.HadamSplit` class.
 
 ###############################################################################
 # .. note::
-#   Note that the positive component of a Hadamard matrix has been previously used. 
-# In this case, we could proceed as with a general linear operator. 
+#   Note that the positive component of a Hadamard matrix has been previously introduced  
+#   :ref:`here <hadamard_positive>` to simulate linear measurements. 
+#   In this case, we could proceed as with other commonly used linear operators. 
+
+###############################################################################
+# We compute the measurement, noise and preprocessing operators and then 
+# simulate a noiseless measurement vector :math:`y`.
 
 # We consider the noiseless case handled 
 # by the :class:`spyrit.core.noise.NoNoise` class.
@@ -130,9 +127,6 @@ Ord = np.ones((h,h))
 meas_op = HadamSplit(M, h, Ord)
 nonoise_op = NoNoise(meas_op) # noiseless
 
-###############################################################################
-# We simulate the measurement vector :math:`y` that we visualise as an image. 
-# Remember that the input image :math:`x` is handled as a vector.  
 x = x.view(b*c,h*w)  # vectorized image
 print(f'Shape of vectorized image: {x.shape}')
 y_noiseless = nonoise_op(x)  # noiseless measurement vector
@@ -153,8 +147,8 @@ print(f'Shape of simulated measurements y: {y_noiseless.shape}')
 #
 
 ###############################################################################
-# We consider the :class:`spyrit.core.noise.Poisson` class and set :math:`\alpha`
-# to 100 photons. We simulate a noisy measurement vector. 
+# We consider the :class:`spyrit.core.noise.Poisson` class, set :math:`\alpha`
+# to 100 photons, and simulate a noisy measurement vector. 
 
 from spyrit.core.noise import Poisson
 from spyrit.misc.disp import add_colorbar, noaxis
@@ -222,25 +216,17 @@ y_noisy_cov = noise_cov_op(x) # a noisy measurement vector
 
 
 # %% 
-# The preprocessing operator
+# The preprocessing operator measurements for split measurements
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# Preprocessing operators are defined in the :mod:`spyrit.core.prep` module. 
-# A preprocessing operator applies to the noisy measurements 
+# We compute the preprocessing operators for the three cases considered above,  
+# using the :mod:`spyrit.core.prep` module. As previously introduced, 
+# a preprocessing operator applies to the noisy measurements in order to 
+# to compensate for the scaling factors that appear in the measurement or noise operators:  
 # 
 # .. math::
 #       m = \texttt{Prep}(y),
-# 
-# For instance, a preprocessing operator can be used to compensate for the 
-# scaling factors that appear in the measurement or noise operators. In this 
-# case, a preprocessing operator is closely linked to its measurement and/or 
-# noise operator counterpart. While scaling factors are required to simulate 
-# realistic measurements, they are not required for reconstruction.
-
-# %% 
-# Preprocessing measurements corrupted by Poisson noise
-# -----------------------------------------------------------------------------
 
 ###############################################################################
 # We consider the :class:`spyrit.core.prep.SplitPoisson` class that intends 
@@ -251,8 +237,10 @@ y_noisy_cov = noise_cov_op(x) # a noisy measurement vector
 # For this, it computes
 #
 # .. math::
-#       m = \frac{2}{\alpha} y - P1
+#       m = \frac{2(y_+-y_-)}{\alpha} - P\mathbb{1},
 #     
+# where :math:`y_+=H_+\tilde{x}` and :math:`y_-=H_-\tilde{x}`. 
+# This in handled internally by the :class:`spyrit.core.prep.SplitPoisson` class.
 
 ###############################################################################
 # We consider first preprocessing the measurements corrupted by Poisson noise
@@ -272,10 +260,15 @@ m_noiseless = prep_noiseless_op(y_noiseless)
 prep_noisy_cov_op = SplitPoisson(1.0, meas_cov_op) 
 m_noisy_cov = prep_noisy_cov_op(y_noisy_cov)
 
+###############################################################################
+# We can now plot the three measurement vectors
+
 # Plot the three measurement vectors
 m_plot = m_noisy.numpy()   
 m_plot = meas2img2(m_plot.T, Ord)
 m_plot = np.moveaxis(m_plot,-1, 0)
+m_plot_max = np.max(m_plot[0,:,:])
+m_plot_min = np.min(m_plot[0,:,:])
 
 m_plot2 = m_noiseless.numpy()   
 m_plot2 = meas2img2(m_plot2.T, Ord)
@@ -287,36 +280,34 @@ m_plot3 = np.moveaxis(m_plot3,-1, 0)
 
 f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15,5))
 im1=ax1.imshow(m_plot[0,:,:], cmap='gray')
-ax1.set_title(r'Noiseless measurements $m$')
+ax1.set_title(r'Noiseless $m$', fontsize=20)
 noaxis(ax1)
-add_colorbar(im1, 'bottom')
+add_colorbar(im1, 'bottom', size="20%")
 
-im2=ax2.imshow(m_plot2[0,:,:], cmap='gray')
-ax2.set_title(r'Noisy measurements $m$')
+im2=ax2.imshow(m_plot2[0,:,:], cmap='gray', vmin=m_plot_min, vmax=m_plot_max)
+ax2.set_title(r'Noisy $m$', fontsize=20)
 noaxis(ax2)
-add_colorbar(im2, 'bottom')
+add_colorbar(im2, 'bottom', size="20%")
 
-im3=ax3.imshow(m_plot3[0,:,:], cmap='gray')
-ax3.set_title(r'Noisy measurements $m$ (full Cov)')
+im3=ax3.imshow(m_plot3[0,:,:], cmap='gray', vmin=m_plot_min, vmax=m_plot_max)
+ax3.set_title(r'Noisy $m$ (full Cov)', fontsize=20)
 noaxis(ax3)
-add_colorbar(im3, 'bottom')
-
+add_colorbar(im3, 'bottom', size="20%")
 
 # %%
 # PinvNet network 
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We recontruct with the :class:`spyrit.core.recon.PinvNet` class.
+# We recontruct with the :class:`spyrit.core.recon.PinvNet` class the three cases 
+# and plot results side by side.
 
 from spyrit.core.recon import PseudoInverse
 from spyrit.misc.disp import add_colorbar, noaxis
 recon_op = PseudoInverse()
+
 z_noiseless = recon_op(m_noiseless, meas_op)
 z_noisy = recon_op(m_noisy, meas_op)
-
-###############################################################################
-# We can also reconstruct with the full covariance matrix
 z_noisy_cov = recon_op(m_noisy_cov, meas_cov_op)
 
 # Plot
@@ -325,33 +316,33 @@ z_plot_noiseless = z_noiseless.view(-1,h,h).numpy()
 z_plot_noisy = z_noisy.view(-1,h,h).numpy() 
 z_plot_noisy_cov = z_noisy_cov.view(-1,h,h).numpy() 
 
-f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(18,7))
-im1=ax1.imshow(x_plot[0,:,:], cmap='gray')
-ax1.set_title('Ground-truth image')
-noaxis(ax1)
+f, axs = plt.subplots(2, 2, figsize=(10,10))
+im1=axs[0,0].imshow(x_plot[0,:,:], cmap='gray')
+axs[0,0].set_title('Ground-truth image')
+noaxis(axs[0,0])
 add_colorbar(im1, 'bottom')
 
-im2=ax2.imshow(z_plot_noiseless[0,:,:], cmap='gray')
-ax2.set_title('Reconstruction noiseless')
-noaxis(ax2)
+im2=axs[0,1].imshow(z_plot_noiseless[0,:,:], cmap='gray')
+axs[0,1].set_title('Reconstruction noiseless')
+noaxis(axs[0,1])
 add_colorbar(im2, 'bottom')
 
-im3=ax3.imshow(z_plot_noisy[0,:,:], cmap='gray')
-ax3.set_title('Reconstruction noisy')
-noaxis(ax3)
+im3=axs[1,0].imshow(z_plot_noisy[0,:,:], cmap='gray')
+axs[1,0].set_title('Reconstruction noisy')
+noaxis(axs[1,0])
 add_colorbar(im3, 'bottom')
 
-im4=ax4.imshow(z_plot_noisy_cov[0,:,:], cmap='gray')
-ax4.set_title('Reconstruction noisy (full Cov)')
-noaxis(ax4)
+im4=axs[1,1].imshow(z_plot_noisy_cov[0,:,:], cmap='gray')
+axs[1,1].set_title('Reconstruction noisy (full Cov)')
+noaxis(axs[1,1])
 add_colorbar(im4, 'bottom')
 
 plt.show()
 
-############ħ###################################################################
+###############################################################################
 # .. note::
-# Note that reconstructed images are pixelized as pixels when using a unit covariance matrix  
-# while they are smooth when using a full covariance matrix. 
-#
-# Another way to further improve results is to include a nonlinear post-processing step, 
-# which we will consider in a future tutorial. 
+#    
+#       Note that reconstructed images are pixelized as pixels when using a unit covariance matrix  
+#       while they are smooth when using a full covariance matrix. 
+#       Another way to further improve results is to include a nonlinear post-processing step, 
+#       which we will consider in a future tutorial. 

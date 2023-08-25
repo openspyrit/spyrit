@@ -3,16 +3,18 @@ r"""
 04. Train pseudoinverse solution + CNN denoising 
 ==========================
 .. _tuto_train_pseudoinverse_cnn_linear:
-This tutorial shows how to train the pseudoinverse with a CNN denoiser for 
-reconstruction of linear measurements used in the :ref:`previous tutorial <tuto_pseudoinverse_cnn_linear>`. 
-We have used a small CNN as an example, which can be replaced by the denoiser 
-of your choice, for example Unet. Training is performed on the STL-10 dataset. 
+This tutorial shows how to train PinvNet with a CNN denoiser for 
+reconstruction of linear measurements (results shown in the 
+:ref:`previous tutorial <tuto_pseudoinverse_cnn_linear>`). 
+As an example, we use a small CNN, which can be replaced by any denoiser, 
+for example Unet. Training is performed on the STL-10 dataset. 
 
-You can use Tensorboard for Pytorch to visualize the training process (losses) as well 
-as intermediate results (reconstructed images at different epochs).
+You can use Tensorboard for Pytorch for experiment tracking and 
+for visualizing the training process: losses, network weights, 
+and intermediate results (reconstructed images at different epochs).
 
-The measurement operator is chosen as a Hadamard matrix with positive coefficients. 
-Note that this matrix can be replaced any the desired matrix. 
+The linear measurement operator is chosen as a Hadamard matrix with positive coefficients, 
+but this matrix can be replaced by any desired matrix. 
 """
 
 # %%
@@ -20,8 +22,7 @@ Note that this matrix can be replaced any the desired matrix.
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# Images :math:`x` for training expect values in [-1,1]. The images are normalized
-# using the :func:`transform_gray_norm` function.
+# First, we load an image :math:`x` and normalized it to [-1,1], as in previous examples. 
 
 import os
 from spyrit.misc.statistics import transform_gray_norm
@@ -58,15 +59,19 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 # Define a dataloader
 # -----------------------------------------------------------------------------
 # We define a dataloader for STL-10 dataset using :func:`spyrit.misc.statistics.data_loaders_stl10`.
-# This will download the dataset if it is not already downloaded. It is based on torch.utils.data.DataLoader 
-# and it creates a generator that returns a batch of images and labels at each iteration.
+# This will download the dataset to the provided path if it is not already downloaded. 
+# It is based on pytorch pre-loaded dataset :class:`torchvision.datasets.STL10` and 
+# :class:`torch.utils.data.DataLoader`, which creates a generator that iterates 
+# through the dataset, returning a batch of images and labels at each iteration. 
+#
+# You must set :attr:`mode_run` to True to download the dataset and for training.
 
 from spyrit.misc.statistics import data_loaders_stl10
 from pathlib import Path
 
 # Parameters
-h = 64                  # image size hxh 
-data_root = Path("./data")   # path to data folder (where the dataset is stored)
+h = 64                      # image size hxh 
+data_root = Path("./data")  # path to data folder (where the dataset is stored)
 batch_size = 512
 
 # Dataloader for STL-10 dataset
@@ -83,18 +88,11 @@ if mode_run:
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We consider the sample operator as in the previous tutorials 
-# (see :ref:`example <tuto_pseudoinverse_linear>`). 
 # We consider the case where the measurement matrix is the positive
-# component of a Hadamard matrix, which if often used in single-pixel imaging.
-# First, we compute a full Hadamard matrix that computes the 2D transforme of an
-# image of size :attr:`h` and take its positive part. 
-# Then, we subsample the rows of the measurement matrix to simulate an 
-# accelerated acquisition. 
-# To keep the low-frequency Hadamard coefficients, we choose a sampling map 
-# with ones in the top left corner and zeros elsewhere.
-# After permutation of the full Hadamard matrix, we keep only its first 
-# :attr:`M` rows
+# component of a Hadamard matrix, which is often used in single-pixel imaging 
+# (see :ref:`Hadamard matrix <hadamard_positive>`). 
+# Then, we simulate an accelerated acquisition by keeping only the first 
+# :attr:`M` low-frequency coefficients (see :ref:`low frequency sampling <low_frequency>`). 
 
 from spyrit.misc.walsh_hadamard import walsh2_matrix
 import numpy as np
@@ -122,23 +120,18 @@ H = F[:M,:]
 print(f"Shape of the measurement matrix: {H.shape}")
 
 ###############################################################################
-# Then, we instantiate a :class:`spyrit.core.meas.Linear` measurement operator 
-# and a :class:`spyrit.core.noise.NoNoise` noise operator for noiseless case.
-# We recall that we can simulate the measurements by using the noise operator.
+# Then, we instantiate a :class:`spyrit.core.meas.Linear` measurement operator, 
+# a :class:`spyrit.core.noise.NoNoise` noise operator for noiseless case, 
+# and a preprocessing measurements operator :class:`spyrit.core.prep.DirectPoisson`.
+
 from spyrit.core.meas import Linear
 from spyrit.core.noise import NoNoise
+from spyrit.core.prep import DirectPoisson
+
 meas_op = Linear(H, pinv=True)  
 noise = NoNoise(meas_op)        
-
-###############################################################################
-# Finally, we define the preprocessing measurements operator corresponding to an 
-# image in [-1,1]. For this, we use the :class:`spyrit.core.prep.DirectPoisson` 
-# with :math:`\alpha` = 1, which allows to compensate for the image normalisation 
-# achieved by :class:`spyrit.core.noise.NoNoise`.
-
-from spyrit.core.prep import DirectPoisson
-N0 = 1.0            # Mean maximum total number of photons
-prep = DirectPoisson(N0, meas_op) # "Undo" the NoNoise operator
+N0 = 1.0                            # Mean maximum total number of photons
+prep = DirectPoisson(N0, meas_op)   # "Undo" the NoNoise operator
 
 # %% 
 # PinvNet Network 
@@ -146,10 +139,11 @@ prep = DirectPoisson(N0, meas_op) # "Undo" the NoNoise operator
 
 ###############################################################################
 # We consider the :class:`spyrit.core.recon.PinvNet` class that reconstructs an
-# image by computing the pseudoinverse solution, which is fed to a neural 
-# network denoiser. First, we define the denoiser as a small CNN using the 
-# :class:`spyrit.core.nnet.ConvNet` class. Then, we define the PinvNet network
-# with the noise and preprocessing operators defined above and with the denoiser.
+# image by computing the pseudoinverse solution and applies a nonlinear 
+# network denoiser. First, we must define the denoiser. As an example, 
+# we choose a small CNN using the :class:`spyrit.core.nnet.ConvNet` class. 
+# Then, we define the PinvNet network by passing the noise and preprocessing operators 
+# and the denoiser.
 
 import torch
 from spyrit.core.nnet import ConvNet
@@ -168,6 +162,13 @@ if torch.cuda.device_count() > 1:
 
 model = model.to(device)
 
+###############################################################################
+# .. note::
+#    
+#       In the example provided, we choose a small CNN using the :class:`spyrit.core.nnet.ConvNet` class. 
+#       This can be replaced by any denoiser, for example the :class:`spyrit.core.nnet.Unet` class 
+#       or a custom denoiser.
+
 
 # %%
 # Define a Loss function optimizer and scheduler
@@ -176,7 +177,7 @@ model = model.to(device)
 ###############################################################################
 # In order to train the network, we need to define a loss function, an optimizer
 # and a scheduler. We use the Mean Square Error (MSE) loss function, weigh decay 
-# loss and the Adam optimizer. We use a scheduler to decrease the learning rate
+# loss and the Adam optimizer. The scheduler decreases the learning rate
 # by a factor of :attr:`gamma` every :attr:`step_size` epochs.
 
 import torch.nn as nn
@@ -200,10 +201,22 @@ scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 
 ###############################################################################
 # To train the network, we use the :func:`~spyrit.core.train.train_model` function, 
-# which handles the training process. We loop over our data iterator, feed the inputs to the
-# network and optimize. You can train for one epoch only to check that everything works fine. 
-# The training process can be monitored using Tensorboard by typing in the console:
-# tensorboard --logdir runs
+# which handles the training process. It iterates through the dataloader, feeds the inputs to the
+# network and optimizes the solution (by computing the loss and its gradients and 
+# updating the network weights at each iteration). In addition, it computes 
+# the loss and desired metrics on the training and validation sets at each iteration.
+#
+# The training process can be monitored using Tensorboard by typing in a new console:
+#
+#       `tensorboard --logdir runs`
+#
+# and opening the provided link in a browser. The training process can be monitored
+# in real time in the "Scalars" tab. The "Images" tab allows to visualize the 
+# reconstructed images at different iterations :attr:`tb_freq`. 
+#
+# You must set :attr:`mode_run` to True for training.
+
+# We train for one epoch only to check that everything works fine. 
 
 from spyrit.core.train import train_model
 from datetime import datetime
@@ -212,7 +225,7 @@ from datetime import datetime
 model_root = Path("./model")# path to model saving files
 num_epochs = 1              # number of training epochs (num_epochs = 30)
 checkpoint_interval = 5     # interval between saving model checkpoints 
-tb_path = True              
+tb_freq = 50                # interval between logging to Tensorboard (iterations through the dataloader)
 
 # Path for Tensorboard experiment tracking logs
 now = datetime.now().strftime('%Y-%m-%d_%H-%M')
@@ -222,7 +235,7 @@ tb_path = f'runs/runs_stdl10_n1_m1024/{now}'
 if mode_run:
     model, train_info = train_model(model, criterion, \
             optimizer, scheduler, dataloaders, device, model_root, num_epochs=num_epochs,\
-            disp=True, do_checkpoint=checkpoint_interval, tb_path=tb_path)
+            disp=True, do_checkpoint=checkpoint_interval, tb_path=tb_path, tb_freq=tb_freq)
     
 # %%
 #  Saving the model so that it can later be utilized

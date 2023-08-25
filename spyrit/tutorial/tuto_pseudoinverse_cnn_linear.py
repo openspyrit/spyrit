@@ -214,19 +214,19 @@ import matplotlib.pyplot as plt
 from spyrit.misc.disp import add_colorbar, noaxis
 f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15,5))
 im1=ax1.imshow(x_plot, cmap='gray')
-ax1.set_title('Ground-truth image')
+ax1.set_title('Ground-truth image', fontsize=20)
 noaxis(ax1)
-add_colorbar(im1, 'bottom')
+add_colorbar(im1, 'bottom', size='20%')
 
 im2=ax2.imshow(x_plot2, cmap='gray')
-ax2.set_title('Pseudoinverse reconstruction ')
+ax2.set_title('Pinv reconstruction', fontsize=20)
 noaxis(ax2)
-add_colorbar(im2, 'bottom')
+add_colorbar(im2, 'bottom', size='20%')
 
 im3=ax3.imshow(x_plot3, cmap='gray')
-ax3.set_title('PinvNet ConvNet image after training for 1 epoch')
+ax3.set_title('Pinv + CNN (trained 1 epoch', fontsize=20)
 noaxis(ax3)
-add_colorbar(im3, 'bottom')
+add_colorbar(im3, 'bottom', size='20%')
 
 ###############################################################################
 # In the next tutorial, we will show how to train PinvNet + CNN denoiser.
