@@ -212,6 +212,8 @@ x_plot3 = x_rec_cnn.squeeze().cpu().numpy()
 
 import matplotlib.pyplot as plt
 from spyrit.misc.disp import add_colorbar, noaxis
+
+# sphinx_gallery_thumbnail_number = 6
 f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15,5))
 im1=ax1.imshow(x_plot, cmap='gray')
 ax1.set_title('Ground-truth image', fontsize=20)

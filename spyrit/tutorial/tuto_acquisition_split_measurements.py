@@ -316,6 +316,7 @@ z_plot_noiseless = z_noiseless.view(-1,h,h).numpy()
 z_plot_noisy = z_noisy.view(-1,h,h).numpy() 
 z_plot_noisy_cov = z_noisy_cov.view(-1,h,h).numpy() 
 
+# sphinx_gallery_thumbnail_number = 3
 f, axs = plt.subplots(2, 2, figsize=(10,10))
 im1=axs[0,0].imshow(x_plot[0,:,:], cmap='gray')
 axs[0,0].set_title('Ground-truth image')
@@ -337,7 +338,6 @@ axs[1,1].set_title('Reconstruction noisy (full Cov)')
 noaxis(axs[1,1])
 add_colorbar(im4, 'bottom')
 
-plt.show()
 
 ###############################################################################
 # .. note::

@@ -223,7 +223,7 @@ from datetime import datetime
 
 # Parameters
 model_root = Path("./model")# path to model saving files
-num_epochs = 1              # number of training epochs (num_epochs = 30)
+num_epochs = 2              # number of training epochs (num_epochs = 30)
 checkpoint_interval = 5     # interval between saving model checkpoints 
 tb_freq = 50                # interval between logging to Tensorboard (iterations through the dataloader)
 
@@ -269,6 +269,7 @@ save_net(title, model)
 if mode_run:
     import pickle
     from spyrit.core.train import Train_par
+    import matplotlib.pyplot as plt
 
     params = Train_par(batch_size, lr, h, reg=reg)
     params.set_loss(train_info)
@@ -277,6 +278,20 @@ if mode_run:
     with open(train_path, 'wb') as param_file:
         pickle.dump(params,param_file)
     torch.cuda.empty_cache()
+
+    # sphinx_gallery_thumbnail_number = 2
+    fig = plt.figure()
+    plt.plot(train_info['train'], label='train loss')
+    plt.plot(train_info['val'], label='train loss')
+    plt.legend()
+
+###############################################################################
+# .. note::
+#    
+#       See the googlecolab notebook `spyrit-examples/tutorial/tuto_train_colab.ipynb <https://github.com/openspyrit/spyrit-examples/tree/tutorials/tutorial>`
+#       for training a reconstruction network on GPU. It shows how to train 
+#       using different architectures, denoisers and other hyperparameters from 
+#       :func:`~spyrit.core.train.train_model` function.
 
 ###############################################################################
 # In a future tutorial, we will show how to train the network step by step.

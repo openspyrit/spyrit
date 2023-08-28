@@ -252,6 +252,7 @@ m1 = m1.view(b,h,h).detach().numpy()
 m2 = m2.view(b,h,h).detach().numpy() 
 m3 = m3.view(b,h,h).detach().numpy() 
 
+# sphinx_gallery_thumbnail_number = 4
 f, axs = plt.subplots(1, 3, figsize=(10,5))
 axs[0].set_title('100 photons')
 im = axs[0].imshow(m1[0,:,:], cmap='gray') 

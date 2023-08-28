@@ -195,6 +195,7 @@ y = pinv_net.acquire(x)
 x_rec = pinv_net.reconstruct(y)
 
 # plot
+# sphinx_gallery_thumbnail_number = 5
 x_plot = x_rec.squeeze().cpu().numpy() 
 imagesc(x_plot, 'Another pseudoinverse reconstruction (no noise)')
 
