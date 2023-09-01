@@ -37,7 +37,7 @@ imgs_path = os.path.join(spyritPath, '../images')
 
 
 # Create a transform for natural images to normalized grayscale image tensors
-transform = transform_gray_norm(img_size=h)
+transform = transform_gray_norm (img_size=h)
 
 # Create dataset and loader (expects class folder 'images/test/')
 dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
@@ -52,6 +52,7 @@ x = x.detach().clone()
 b,c,h,w = x.shape
 
 # plot
+# sphinx_gallery_thumbnail_number = 1
 x_plot = x.view(-1,h,h).cpu().numpy() 
 imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 
@@ -223,13 +224,14 @@ from datetime import datetime
 
 # Parameters
 model_root = Path("./model")# path to model saving files
-num_epochs = 2              # number of training epochs (num_epochs = 30)
-checkpoint_interval = 5     # interval between saving model checkpoints 
+num_epochs = 5              # number of training epochs (num_epochs = 30)
+checkpoint_interval = 2     # interval between saving model checkpoints 
 tb_freq = 50                # interval between logging to Tensorboard (iterations through the dataloader)
 
 # Path for Tensorboard experiment tracking logs
+name_run = "stdl10_hadampos"
 now = datetime.now().strftime('%Y-%m-%d_%H-%M')
-tb_path = f'runs/runs_stdl10_n1_m1024/{now}'
+tb_path = f'runs/runs_{name_run}_n{int(N0)}_m{M}/{now}'
 
 # Train the network
 if mode_run:
@@ -288,10 +290,8 @@ if mode_run:
 ###############################################################################
 # .. note::
 #    
-#       See the googlecolab notebook `spyrit-examples/tutorial/tuto_train_colab.ipynb <https://github.com/openspyrit/spyrit-examples/tree/tutorials/tutorial>`
+#       See the googlecolab notebook `spyrit-examples/tutorial/tuto_train_lin_meas_colab.ipynb <https://github.com/openspyrit/spyrit-examples/tree/tutorials/tutorial>`_
 #       for training a reconstruction network on GPU. It shows how to train 
 #       using different architectures, denoisers and other hyperparameters from 
 #       :func:`~spyrit.core.train.train_model` function.
 
-###############################################################################
-# In a future tutorial, we will show how to train the network step by step.

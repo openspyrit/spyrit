@@ -98,6 +98,7 @@ meas_op = Linear(H, pinv=True)
 
 from spyrit.core.noise import NoNoise
 
+N0 = 1.0         # Noise level (noiseless)
 noise = NoNoise(meas_op)        
 
 # Simulate measurements 
@@ -109,7 +110,7 @@ print(f'Shape of raw measurements: {y.shape}')
 # image in [-1,1]
 
 from spyrit.core.prep import DirectPoisson
-prep = DirectPoisson(1.0, meas_op) # "Undo" the NoNoise operator
+prep = DirectPoisson(N0, meas_op) # "Undo" the NoNoise operator
 
 m = prep(y)
 print(f'Shape of the preprocessed measurements: {m.shape}')
@@ -179,19 +180,36 @@ pinv_net_cnn = pinv_net_cnn.to(device)
 
 # Load pretrained model
 try:
-    # Download weights
     import gdown
-    url_cnn = 'https://drive.google.com/file/d/1iGjxOk06nlB5hSm3caIfx0vy2byQd-ZC/view?usp=drive_link'
-    model_cnn_path = "./model"
 
-    if os.path.exists(model_cnn_path) is False:
-        os.mkdir(model_cnn_path)
-        print(f'Created {model_cnn_path}')
+    pretrained_model_num = 3
+    if pretrained_model_num == 1:
+        # 1 epoch
+        url_cnn = 'https://drive.google.com/file/d/1iGjxOk06nlB5hSm3caIfx0vy2byQd-ZC/view?usp=drive_link' 
+        name_cnn = 'pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_1_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
+        num_epochs = 1
+    elif pretrained_model_num == 2:
+        # 5 epochs
+        url_cnn = 'https://drive.google.com/file/d/1tzZg1lU3AxOi8-EVXFgnxdtqQCJPjQ9f/view?usp=sharing'
+        name_cnn = 'pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_5_lr_0.001_sss_10_sdr_0.5_bs_512'
+        num_epochs = 5
+    elif pretrained_model_num == 3:
+        # 30 epochs 
+        url_cnn = 'https://drive.google.com/file/d/1IZYff1xQxJ3ckAnObqAWyOure6Bjkj4k/view?usp=drive_link'
+        name_cnn = 'pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
+        num_epochs = 30
 
-    model_cnn_path = os.path.join(model_cnn_path, 'dc-net_unet_imagenet_var_N0_10_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07_light')
+    # Create model folder
+    model_path = "./model"
+    if os.path.exists(model_path) is False:
+        os.mkdir(model_path)
+        print(f'Created {model_path}')
+
+    # Download model weights
+    model_cnn_path = os.path.join(model_path, name_cnn)
     gdown.download(url_cnn, f'{model_cnn_path}.pth', quiet=False,fuzzy=True)
 
-    model_path = "./model/pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_1_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07"
+    # Load model weights
     load_net(model_cnn_path, pinv_net_cnn, device, False)
     print(f'Model {model_path} loaded.')
 except:
@@ -226,10 +244,11 @@ noaxis(ax2)
 add_colorbar(im2, 'bottom', size='20%')
 
 im3=ax3.imshow(x_plot3, cmap='gray')
-ax3.set_title('Pinv + CNN (trained 1 epoch', fontsize=20)
+ax3.set_title(f'Pinv + CNN (trained {num_epochs} epochs', fontsize=20)
 noaxis(ax3)
 add_colorbar(im3, 'bottom', size='20%')
 
+plt.show()
 ###############################################################################
 # In the next tutorial, we will show how to train PinvNet + CNN denoiser.
 
