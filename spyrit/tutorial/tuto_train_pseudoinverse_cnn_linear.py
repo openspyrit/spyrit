@@ -297,6 +297,8 @@ else:
 
 ###############################################################################
 # We plot the training loss and validation loss
+
+# Plot
 # sphinx_gallery_thumbnail_number = 2
 import matplotlib.pyplot as plt
 fig = plt.figure()

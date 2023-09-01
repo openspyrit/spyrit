@@ -276,5 +276,7 @@ noaxis(axs)
 
 ###############################################################################
 # We show again one of the preprocessed measurement vectors (tutorial thumbnail purpose)
+
+# Plot
 # sphinx_gallery_thumbnail_number = 5
 imagesc(m2[0,:,:], '100 photons', title_fontsize=20)

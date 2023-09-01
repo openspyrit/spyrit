@@ -249,6 +249,8 @@ add_colorbar(im3, 'bottom', size='20%')
 
 ###############################################################################
 # We show the best result again (tutorial thumbnail purpose)
+
+# Plot
 # sphinx_gallery_thumbnail_number = 5
 imagesc(x_plot3, f'Pinv + CNN (trained {num_epochs} epochs', title_fontsize=20)
 
