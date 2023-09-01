@@ -6,7 +6,7 @@ r"""
 This tutorial shows how to train PinvNet with a CNN denoiser for 
 reconstruction of linear measurements (results shown in the 
 :ref:`previous tutorial <tuto_pseudoinverse_cnn_linear>`). 
-As an example, we use a small CNN, which can be replaced by any denoiser, 
+As an example, we use a small CNN, which can be replaced by any other network, 
 for example Unet. Training is performed on the STL-10 dataset. 
 
 You can use Tensorboard for Pytorch for experiment tracking and 
@@ -52,7 +52,6 @@ x = x.detach().clone()
 b,c,h,w = x.shape
 
 # plot
-# sphinx_gallery_thumbnail_number = 1
 x_plot = x.view(-1,h,h).cpu().numpy() 
 imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 
@@ -238,6 +237,8 @@ if mode_run:
     model, train_info = train_model(model, criterion, \
             optimizer, scheduler, dataloaders, device, model_root, num_epochs=num_epochs,\
             disp=True, do_checkpoint=checkpoint_interval, tb_path=tb_path, tb_freq=tb_freq)
+else:
+    train_info = {}
     
 # %%
 #  Saving the model so that it can later be utilized
@@ -268,24 +269,42 @@ if checkpoint_interval:
 save_net(title, model)
 
 # Save training history
+import pickle
 if mode_run:
-    import pickle
     from spyrit.core.train import Train_par
-    import matplotlib.pyplot as plt
 
     params = Train_par(batch_size, lr, h, reg=reg)
     params.set_loss(train_info)
+    
     train_path = model_root / f'TRAIN_{arch}_{denoi}_{data}_{train_type}_{suffix}.pkl'
 
     with open(train_path, 'wb') as param_file:
         pickle.dump(params,param_file)
     torch.cuda.empty_cache()
+else:
+    # Download training history
+    import gdown
 
-    # sphinx_gallery_thumbnail_number = 2
-    fig = plt.figure()
-    plt.plot(train_info['train'], label='train loss')
-    plt.plot(train_info['val'], label='train loss')
-    plt.legend()
+    train_path = os.path.join(model_root, "TRAIN_pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pkl")
+    url_train = "https://drive.google.com/file/d/13KIbSEigHBZ8ub_JxMUqwRDMHklnFz8A/view?usp=drive_link"
+    gdown.download(url_train, train_path, quiet=False,fuzzy=True)
+
+    with open(train_path, 'rb') as param_file:
+        params = pickle.load(param_file)
+    train_info['train'] = params.train_loss
+    train_info['val'] = params.val_loss
+
+
+###############################################################################
+# We plot the training loss and validation loss
+# sphinx_gallery_thumbnail_number = 2
+import matplotlib.pyplot as plt
+fig = plt.figure()
+plt.plot(train_info['train'], label='train')
+plt.plot(train_info['val'], label='val')
+plt.xlabel('Epochs', fontsize=20)
+plt.ylabel('Loss', fontsize=20)
+plt.legend(fontsize=20)
 
 ###############################################################################
 # .. note::

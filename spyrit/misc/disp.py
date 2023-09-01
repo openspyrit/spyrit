@@ -120,7 +120,7 @@ def uint8(dsp):
     return x;
 
 
-def imagesc(Img, title='', colormap=plt.cm.gray, show=True, figsize=None, cbar_pos=None):
+def imagesc(Img, title='', colormap=plt.cm.gray, show=True, figsize=None, cbar_pos=None, title_fontsize=16):
     """ 
     imagesc(IMG) Display image Img with scaled colors with greyscale 
     colormap and colorbar
@@ -133,7 +133,7 @@ def imagesc(Img, title='', colormap=plt.cm.gray, show=True, figsize=None, cbar_p
     fig = plt.figure(figsize=figsize);
     ax = fig.add_subplot(1, 1, 1)
     plt.imshow(Img, cmap=colormap);
-    plt.title(title);
+    plt.title(title, fontsize=title_fontsize);
     divider = make_axes_locatable(ax);
     from mpl_toolkits.axes_grid1.inset_locator import inset_axes
     if cbar_pos == 'bottom':

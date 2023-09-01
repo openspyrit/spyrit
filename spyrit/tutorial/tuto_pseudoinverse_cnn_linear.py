@@ -190,7 +190,7 @@ try:
         num_epochs = 1
     elif pretrained_model_num == 2:
         # 5 epochs
-        url_cnn = 'https://drive.google.com/file/d/1tzZg1lU3AxOi8-EVXFgnxdtqQCJPjQ9f/view?usp=sharing'
+        url_cnn = 'https://drive.google.com/file/d/1tzZg1lU3AxOi8-EVXFgnxdtqQCJPjQ9f/view?usp=drive_link'
         name_cnn = 'pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_5_lr_0.001_sss_10_sdr_0.5_bs_512'
         num_epochs = 5
     elif pretrained_model_num == 3:
@@ -231,7 +231,6 @@ x_plot3 = x_rec_cnn.squeeze().cpu().numpy()
 import matplotlib.pyplot as plt
 from spyrit.misc.disp import add_colorbar, noaxis
 
-# sphinx_gallery_thumbnail_number = 6
 f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15,5))
 im1=ax1.imshow(x_plot, cmap='gray')
 ax1.set_title('Ground-truth image', fontsize=20)
@@ -248,7 +247,13 @@ ax3.set_title(f'Pinv + CNN (trained {num_epochs} epochs', fontsize=20)
 noaxis(ax3)
 add_colorbar(im3, 'bottom', size='20%')
 
+###############################################################################
+# We show the best result again (tutorial thumbnail purpose)
+# sphinx_gallery_thumbnail_number = 5
+imagesc(x_plot3, f'Pinv + CNN (trained {num_epochs} epochs', title_fontsize=20)
+
 plt.show()
+
 ###############################################################################
 # In the next tutorial, we will show how to train PinvNet + CNN denoiser.
 

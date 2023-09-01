@@ -252,7 +252,6 @@ m1 = m1.view(b,h,h).detach().numpy()
 m2 = m2.view(b,h,h).detach().numpy() 
 m3 = m3.view(b,h,h).detach().numpy() 
 
-# sphinx_gallery_thumbnail_number = 4
 f, axs = plt.subplots(1, 3, figsize=(10,5))
 axs[0].set_title('100 photons')
 im = axs[0].imshow(m1[0,:,:], cmap='gray') 
@@ -274,3 +273,8 @@ noaxis(axs)
 #   The preprocessed measurements still have different the signal-to-noise ratios
 #   depending on :math:`\alpha`; however, they (approximately) all lie within 
 #   the same range (here, [-1, 1]).
+
+###############################################################################
+# We show again one of the preprocessed measurement vectors (tutorial thumbnail purpose)
+# sphinx_gallery_thumbnail_number = 5
+imagesc(m2[0,:,:], '100 photons', title_fontsize=20)

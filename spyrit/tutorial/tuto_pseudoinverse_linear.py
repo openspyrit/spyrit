@@ -184,8 +184,9 @@ pinv_net = PinvNet(noise, prep)
 x_rec = pinv_net.reconstruct(y)
 
 # plot
+# sphinx_gallery_thumbnail_number = 5
 x_plot = x_rec.squeeze().cpu().numpy() 
-imagesc(x_plot, 'Pseudoinverse reconstruction (no noise)')
+imagesc(x_plot, 'Pseudoinverse reconstruction (no noise)', title_fontsize=20)
 
 ###############################################################################
 # Alternatively, the measurement vector can be simulated using the 
@@ -195,7 +196,6 @@ y = pinv_net.acquire(x)
 x_rec = pinv_net.reconstruct(y)
 
 # plot
-# sphinx_gallery_thumbnail_number = 5
 x_plot = x_rec.squeeze().cpu().numpy() 
 imagesc(x_plot, 'Another pseudoinverse reconstruction (no noise)')
 
