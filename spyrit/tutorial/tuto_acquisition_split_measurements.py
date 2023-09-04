@@ -257,7 +257,7 @@ m_noiseless = prep_noiseless_op(y_noiseless)
 
 ###############################################################################
 # Finally, we can preprocess the noisy measurement for full covariance
-prep_noisy_cov_op = SplitPoisson(1.0, meas_cov_op) 
+prep_noisy_cov_op = SplitPoisson(alpha, meas_cov_op) 
 m_noisy_cov = prep_noisy_cov_op(y_noisy_cov)
 
 ###############################################################################
@@ -338,6 +338,7 @@ axs[1,1].set_title('Reconstruction noisy (full Cov)')
 noaxis(axs[1,1])
 add_colorbar(im4, 'bottom')
 
+plt.show()
 
 ###############################################################################
 # .. note::
