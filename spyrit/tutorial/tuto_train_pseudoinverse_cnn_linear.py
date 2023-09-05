@@ -64,7 +64,8 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 # :class:`torch.utils.data.DataLoader`, which creates a generator that iterates 
 # through the dataset, returning a batch of images and labels at each iteration. 
 #
-# You must set :attr:`mode_run` to True to download the dataset and for training.
+# You must set :attr:`mode_run` to True to download the dataset and for training; 
+# otherwise, pretrained weights and results will be download for display.
 
 from spyrit.misc.statistics import data_loaders_stl10
 from pathlib import Path
@@ -204,17 +205,26 @@ scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 # which handles the training process. It iterates through the dataloader, feeds the inputs to the
 # network and optimizes the solution (by computing the loss and its gradients and 
 # updating the network weights at each iteration). In addition, it computes 
-# the loss and desired metrics on the training and validation sets at each iteration.
+# the loss and desired metrics on the training and validation sets at each iteration. 
+# The training process can be monitored using Tensorboard.
+
+
+###############################################################################
+# .. note::
+#    
+#       To launch Tensorboard type in a new console:
 #
-# The training process can be monitored using Tensorboard by typing in a new console:
+#           tensorboard --logdir runs
 #
-#       `tensorboard --logdir runs`
-#
-# and opening the provided link in a browser. The training process can be monitored
-# in real time in the "Scalars" tab. The "Images" tab allows to visualize the 
-# reconstructed images at different iterations :attr:`tb_freq`. 
-#
-# You must set :attr:`mode_run` to True for training.
+#       and open the provided link in a browser. The training process can be monitored
+#       in real time in the "Scalars" tab. The "Images" tab allows to visualize the 
+#       reconstructed images at different iterations :attr:`tb_freq`. 
+
+
+###############################################################################
+# In order to train, you must set :attr:`mode_run` to True for training. It is set to False
+# by default to download the pretrained weights and results for display, 
+# as training takes around 40 min for 30 epochs.
 
 # We train for one epoch only to check that everything works fine. 
 
@@ -311,7 +321,7 @@ plt.legend(fontsize=20)
 ###############################################################################
 # .. note::
 #    
-#       See the googlecolab notebook `spyrit-examples/tutorial/tuto_train_lin_meas_colab.ipynb <https://github.com/openspyrit/spyrit-examples/tree/tutorials/tutorial>`_
+#       See the googlecolab notebook `spyrit-examples/tutorial/tuto_train_lin_meas_colab.ipynb <https://github.com/openspyrit/spyrit-examples/tree/master/tutorial>`_
 #       for training a reconstruction network on GPU. It shows how to train 
 #       using different architectures, denoisers and other hyperparameters from 
 #       :func:`~spyrit.core.train.train_model` function.
