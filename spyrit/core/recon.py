@@ -886,7 +886,7 @@ class DCDRUNet(DCNet):
             
             :attr:`output`: noise level tensor with shape :math:`(1)`
         """
-        self.noise_level = torch.FloatTensor([noise_level/255.])
+        self.noise_level = torch.FloatTensor([noise_level/255.]).to(self.noise_level.device)
 
 
 #%%===========================================================================================
