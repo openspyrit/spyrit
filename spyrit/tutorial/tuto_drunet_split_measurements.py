@@ -37,7 +37,7 @@ As in previous tutorials, we consider split Hadamard operator and poisson noise
 #          author={Zhang, Kai and Zuo, Wangmeng and Gu, Shuhang and Zhang, Lei},
 #          booktitle={IEEE Conference on Computer Vision and Pattern Recognition},
 #          pages={3929--3938},
-#          year={2017},}
+#          year={2017}}
 
 import numpy as np
 import os
@@ -248,7 +248,7 @@ x_plot = z_dcdrunet.view(-1,h,h).cpu().numpy()
 x_plot2 = z_dcdrunet_2.view(-1,h,h).cpu().numpy() 
 
 # sphinx_gallery_thumbnail_number = 3
-f, axs = plt.subplots(1, 2, figsize=(10,10))
+f, axs = plt.subplots(1, 2, figsize=(10, 5))
 im1=axs[0].imshow(x_plot[0,:,:], cmap='gray')
 axs[0].set_title(f'DCDRUNet (n map={noise_level_1})', fontsize=16)
 noaxis(axs[0])
