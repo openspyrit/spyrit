@@ -156,35 +156,86 @@ imagesc(m_plot, r'Measurements $m$')
 # and load them into the network.
 
 from spyrit.core.nnet import ConvNet
-from spyrit.core.train import load_net
+from spyrit.core.train import load_net, save_net
 from spyrit.core.recon import UPGD
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Denoising network
-denoi_op = ConvNet()
+denoi = ConvNet()
 
 # UPGD 
-upgd_unet = UPGD(noise_op, prep_op, denoi_op, 
-                 num_iter = 6, lamb = 1e-5, 
-                 split=True)
-upgd_unet = upgd_unet.to(device)
+num_iter = 2  # number of unrolled iterations
+upgd_cnn = UPGD(noise_op, prep_op, denoi, num_iter = num_iter, split=True)
+upgd_cnn = upgd_cnn.to(device)
+
+# Load previously trained model
+try:
+    import gdown
+    model_path = "./model"    
+    if os.path.exists(model_path) is False:
+        os.mkdir(model_path)
+        print(f'Created {model_path}')
+
+    num_epochs = 30 # Number epochs used for training
+    if num_epochs == 0:
+        url_upgd = 'https://drive.google.com/file/d/1g_sJpmMZX3E8w1uIFyg28Uk7W9yumCUP/view?usp=drive_link'
+        name_net = 'upgd_cnn_stl10_N0_100_N_64_M_1024_epo_0_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
+    elif num_epochs == 10:
+        url_upgd = 'https://drive.google.com/file/d/1KCtYrSA-E-oh5uUwdpbyHGYAMYaZD5Wy/view?usp=drive_link'
+        name_net = 'upgd_cnn_stl10_N0_100_N_64_M_1024_epo_10_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
+    elif num_epochs == 30:
+        url_upgd = 'https://drive.google.com/file/d/1SKvolg1ICXDeQJmPS7ejcGKfPWny5RpS/view?usp=drive_link'
+        name_net = 'upgd_cnn_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07_uit_2_la_1e-05'
+
+    model_upgd_path = os.path.join(model_path, name_net)
+
+    # Download weights
+    gdown.download(url_upgd, f'{model_upgd_path}.pth', quiet=False,fuzzy=True)
+    
+    """
+    model_upgd_path = './model/upgd_cnn_stl10_N0_100_N_64_M_1024_epo_2_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
+    """
+
+    # Load pretrained model
+    load_net(model_upgd_path, upgd_cnn, device=device, strict=False)
+except:
+    print(f'Model not found!')
+
+# Reconstruction
+with torch.no_grad():
+    z_upgd = upgd_cnn.reconstruct(y.to(device))  # reconstruct from raw measurements
+
+# %%
+# DCNET network 
+# -----------------------------------------------------------------------------
+
+###############################################################################
+# We can finally compare the results with the DCNET + UNet network (see :ref:`tuto_dcnet_split_measurements`).
+
+# Pretrained DC UNet (UNet denoising)
+from spyrit.core.recon import DCNet
+from spyrit.core.nnet import Unet
+denoi = Unet()
+dcnet_unet = DCNet(noise_op, prep_op, Cov, denoi)
+dcnet_unet = dcnet_unet.to(device)
 
 # Load previously trained model
 try:
     import gdown
 
     # Download weights
-    url_upgd = ''
+    url_dcnet = 'https://drive.google.com/file/d/15PRRZj5OxKpn1iJw78lGwUUBtTbFco1l/view?usp=drive_link'
+    name_net = 'dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
     model_path = "./model"    
     if os.path.exists(model_path) is False:
         os.mkdir(model_path)
         print(f'Created {model_path}')
-    model_unet_path = os.path.join(model_path, 'upgd_cnn_imagenet_var_N0_10_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07_light')
-    gdown.download(url_upgd, f'{model_path}.pth', quiet=False,fuzzy=True)
+    model_unet_path = os.path.join(model_path, name_net)
+    gdown.download(url_dcnet, f'{model_path}.pth', quiet=False,fuzzy=True)
 
     # Load pretrained model
-    load_net(model_path, url_upgd, device, False)
+    load_net(model_path, dcnet_unet, device, False)
     print(f'Model {model_path} loaded.')
 except:
     print(f'Model {model_path} not found!')
@@ -192,7 +243,7 @@ except:
 
 # Reconstruction
 with torch.no_grad():
-    z_upgd = upgd_unet.reconstruct(y.to(device))  # reconstruct from raw measurements
+    z_dcnet_unet = dcnet_unet.reconstruct(y.to(device))  # reconstruct from raw measurements
 
 ###############################################################################
 # We plot all results side by side.
@@ -200,18 +251,27 @@ with torch.no_grad():
 from spyrit.misc.disp import add_colorbar, noaxis
 
 x_plot = x.view(-1,h,h).cpu().numpy()    
-x_plot2 = z_upgd.view(-1,h,h).cpu().numpy() 
+x_plot2 = z_dcnet_unet.view(-1,h,h).cpu().numpy() 
+x_plot3 = z_upgd.view(-1,h,h).cpu().numpy() 
 
-f, axs = plt.subplots(2, 2, figsize=(10,10))
-im1=axs[0,0].imshow(x_plot[0,:,:], cmap='gray')
-axs[0,0].set_title('Ground-truth image', fontsize=16)
-noaxis(axs[0,0])
+f, axs = plt.subplots(1, 3, figsize=(10,5))
+im1=axs[0].imshow(x_plot[0,:,:], cmap='gray')
+axs[0].set_title('Ground-truth image', fontsize=16)
+noaxis(axs[0])
 add_colorbar(im1, 'bottom')
 
-im2=axs[0,1].imshow(x_plot2[0,:,:], cmap='gray')
-axs[0,1].set_title('UPGD', fontsize=16)
-noaxis(axs[0,1])
+im2=axs[1].imshow(x_plot2[0,:,:], cmap='gray')
+axs[1].set_title(f'DCNet(UNet) (N0=10!)', fontsize=16)
+noaxis(axs[1])
 add_colorbar(im2, 'bottom')
 
+im3=axs[2].imshow(x_plot3[0,:,:], cmap='gray')
+axs[2].set_title(f'UPGD (CNN, uit={num_iter}, epochs={num_epochs})', fontsize=16)
+noaxis(axs[2])
+add_colorbar(im3, 'bottom')
 
 plt.show()
+
+###############################################################################
+# UPGD with a small CNN and 2 iterations is able to recover an image already slightly better 
+# than DCNet with a UNet denoiser. 

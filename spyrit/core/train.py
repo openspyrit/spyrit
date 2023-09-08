@@ -13,6 +13,7 @@ import torchvision
 from torchvision import datasets, models, transforms
 from torch.utils.tensorboard import SummaryWriter
 
+import os
 import matplotlib.pyplot as plt
 import time
 from pathlib import Path
@@ -706,13 +707,19 @@ def save_net(title, model):
 def load_net(title, model, device = None, strict = True):
     """Loads net defined by title """
     model_out_path = "{}.pth".format(title)
-    if device is None :
-        model.load_state_dict(torch.load(model_out_path), strict = strict)
-    else:
-        model.load_state_dict(
-            torch.load(model_out_path, map_location=torch.device(device)), 
-            strict = strict)
-    print("Model Loaded: {}".format(title))
+    try:
+        if device is None :
+            model.load_state_dict(torch.load(model_out_path), strict = strict)
+        else:
+            model.load_state_dict(
+                torch.load(model_out_path, map_location=torch.device(device)), 
+                strict = strict)
+        print("Model Loaded: {}".format(title))
+    except:
+        if os.path.isfile(model_out_path):
+            print("Model no loaded at {}".format(model_out_path))
+        else:
+            print("Model not found at {}".format(model_out_path))
 
             
 def rename_model_attributes(source, old_name, new_name, target=None):
