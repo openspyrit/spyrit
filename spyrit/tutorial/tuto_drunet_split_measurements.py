@@ -314,12 +314,12 @@ noaxis(axs[0,0])
 add_colorbar(im1, 'bottom')
 
 im2=axs[0,1].imshow(x_plot2[0,:,:], cmap='gray')
-axs[0,1].set_title('DCNet', fontsize=16)
+axs[0,1].set_title('DCNet + I', fontsize=16)
 noaxis(axs[0,1])
 add_colorbar(im2, 'bottom')
 
 im3=axs[1,0].imshow(x_plot3[0,:,:], cmap='gray')
-axs[1,0].set_title(f'1) DCNet + 2) DRUNet (n map={noise_level_3})', fontsize=16)
+axs[1,0].set_title(f'1) DCNet+I. 2) DRUNet (n map={noise_level_3})', fontsize=16)
 noaxis(axs[1,0])
 add_colorbar(im3, 'bottom')
 
@@ -329,6 +329,11 @@ noaxis(axs[1,1])
 add_colorbar(im4, 'bottom')
 
 plt.show()
+
+###############################################################################
+# We see the reasults by DCNet + I (without denoising network), DCNet + DRUNet (with 
+# PnP denoising network for noise level map equal to 7) and DCDRUNet (with noise level map equal to 7). 
+# Note that the last two results are equivalent, as expected.
 
 ###############################################################################
 # .. note::

@@ -108,7 +108,7 @@ from spyrit.core.prep import SplitPoisson
 
 # Measurement parameters
 M = 64*64 // 4      # Number of measurements (here, 1/4 of the pixels)
-alpha = 10.0       # number of photons
+alpha = 100.0       # number of photons
 
 # Measurement and noise operators
 Ord = Cov2Var(Cov)
@@ -187,7 +187,7 @@ from spyrit.core.train import load_net
 import matplotlib.pyplot as plt
 from spyrit.misc.disp import add_colorbar, noaxis
 
-# Pretreined DC UNet (UNet denoising)
+# Pretrained DC UNet (UNet denoising)
 denoi = Unet()
 dcnet_unet = DCNet(noise_op, prep_op, Cov, denoi)
 dcnet_unet = dcnet_unet.to(device)
@@ -197,12 +197,12 @@ try:
     import gdown
 
     # Download weights
-    url_unet = 'https://drive.google.com/file/d/1LBrjU0B-Tecd4GBRozX9-24LTRzIiMzA/view?usp=drive_link'
+    url_unet = 'https://drive.google.com/file/d/15PRRZj5OxKpn1iJw78lGwUUBtTbFco1l/view?usp=drive_link'
     model_path = "./model"    
     if os.path.exists(model_path) is False:
         os.mkdir(model_path)
         print(f'Created {model_path}')
-    model_unet_path = os.path.join(model_path, 'dc-net_unet_imagenet_var_N0_10_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07_light')
+    model_unet_path = os.path.join(model_path, 'dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07')
     gdown.download(url_unet, f'{model_path}.pth', quiet=False,fuzzy=True)
 
     # Load pretrained model
@@ -243,7 +243,7 @@ noaxis(axs[1,0])
 add_colorbar(im3, 'bottom')
 
 im4=axs[1,1].imshow(x_plot4[0,:,:], cmap='gray')
-axs[1,1].set_title(f'DCNet + UNet ($N0=10$)', fontsize=16)
+axs[1,1].set_title(f'DCNet + UNet', fontsize=16)
 noaxis(axs[1,1])
 add_colorbar(im4, 'bottom')
 

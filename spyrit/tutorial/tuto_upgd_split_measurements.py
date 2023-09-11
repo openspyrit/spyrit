@@ -3,14 +3,14 @@ r"""
 ==========================
 .. _tuto_upgd_split_measurements:
 This tutorial shows how to perform image reconstruction with an unrolled proximal gradient 
-descent (UPGD) network) for single-pixel imaging. An unrolled network is an end-to-end 
-network that replicates a fix number of iterations of an iterative method where the
-proximal operator is replaced by a denoising network. These methods are more robust 
+descent (UPGD) network for single-pixel imaging. An unrolled network is an end-to-end 
+network that replicates a fix number of iterations of an splitting iterative method where the
+proximal operator or denoising step is replaced by a denoising network. These methods are more robust 
 than post-processing methods as they impose the data consistency constraint at each 
 iteration. In addition, they are faster than the equivalent iterative method and 
 generally lead to improved results as they learn an optimal proximal operator (image prior) 
 from the data. The UPGD network is one of the simplest versions where data update consists 
-on a single gradient descent step. 
+on a simple gradient descent step. 
 
 As in previous tutorials, we consider split Hadamard operator and poisson noise 
 (see :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`).  
@@ -103,7 +103,7 @@ except:
 
 ###############################################################################
 # We define the measurement, noise and preprocessing operators and then 
-# simulate a noiseless measurement vector :math:`y`. As in the previous tutorial,
+# simulate a measurement vector :math:`m` corrupted by Poisson noise. As in the previous tutorial,
 # we simulate an accelerated acquisition by subsampling the measurement matrix 
 # by retaining only the first :math:`M` rows of a Hadamard matrix :math:`\textrm{Perm} H`. 
 
@@ -143,13 +143,14 @@ imagesc(m_plot, r'Measurements $m$')
 # The UPGD is updated iteratively as follows:
 #
 # .. math::
-#       x_{k+1} = \mathcall{P}(x_{k}-\eta H^T(Hx_k-m)),  
+#       x_{k+1} = \mathcal{P}(x_{k}-\eta H^T(Hx_k-m)),  
 #
-# where :math:`\mathcall{P}` can be replaced by a denoising network. 
+# where :math:`\mathcal{P}` can be replaced by a denoising network. 
 #
-# UPGD is defined by the :class:`~spyrit.core.recon.UPGD` class, by inheritage 
-# of the :class:`~spyrit.core.recon.PinvNet`. It requires the number of unrolled iterations 
+# UPGD is defined by the :class:`~spyrit.core.recon.UPGD` class, which inheritages 
+# from :class:`~spyrit.core.recon.PinvNet`. It requires to set the number of unrolled iterations 
 # :attr:`num_iter`, which is set to 6 by default, and the denoising network :attr:`denoi`. 
+# We create two UPGD instances with different number of iterations.
 #
 # We define the denoising network as a small CNN, using the class :class:`spyrit.core.nnet.ConvNet`, 
 # and then instantiate the UPGD network. Then, we download the pretrained weights  
@@ -164,12 +165,15 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # Denoising network
 denoi = ConvNet()
 
-# UPGD 
-num_iter = 2  # number of unrolled iterations
-upgd_cnn = UPGD(noise_op, prep_op, denoi, num_iter = num_iter, split=True)
-upgd_cnn = upgd_cnn.to(device)
+# UPGD for 2 iterations
+upgd_cnn_2it = UPGD(noise_op, prep_op, denoi, num_iter = 2, split=True)
+upgd_cnn_2it = upgd_cnn_2it.to(device)
 
-# Load previously trained model
+# UPGD for 6 iterations
+upgd_cnn_6it = UPGD(noise_op, prep_op, denoi, num_iter = 6, split=True)
+upgd_cnn_6it = upgd_cnn_6it.to(device)
+
+# Load previously trained models
 try:
     import gdown
     model_path = "./model"    
@@ -177,41 +181,59 @@ try:
         os.mkdir(model_path)
         print(f'Created {model_path}')
 
-    num_epochs = 30 # Number epochs used for training
-    if num_epochs == 0:
-        url_upgd = 'https://drive.google.com/file/d/1g_sJpmMZX3E8w1uIFyg28Uk7W9yumCUP/view?usp=drive_link'
-        name_net = 'upgd_cnn_stl10_N0_100_N_64_M_1024_epo_0_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
-    elif num_epochs == 10:
-        url_upgd = 'https://drive.google.com/file/d/1KCtYrSA-E-oh5uUwdpbyHGYAMYaZD5Wy/view?usp=drive_link'
-        name_net = 'upgd_cnn_stl10_N0_100_N_64_M_1024_epo_10_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
-    elif num_epochs == 30:
-        url_upgd = 'https://drive.google.com/file/d/1SKvolg1ICXDeQJmPS7ejcGKfPWny5RpS/view?usp=drive_link'
-        name_net = 'upgd_cnn_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07_uit_2_la_1e-05'
+    url_upgd_2it = 'https://drive.google.com/file/d/1SKvolg1ICXDeQJmPS7ejcGKfPWny5RpS/view?usp=drive_link'
+    name_net_2it = 'upgd_cnn_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07_uit_2_la_1e-05'
 
-    model_upgd_path = os.path.join(model_path, name_net)
+    url_upgd_6it = 'https://drive.google.com/file/d/1Oyn6UZPlpzWyYzQYJ8ZhSooXC4zdREid/view?usp=drive_link'
+    name_net_6it = 'upgd_cnn_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07_uit_6_la_1e-05'
+
+    model_upgd_2it_path = os.path.join(model_path, name_net_2it)
+    model_upgd_6it_path = os.path.join(model_path, name_net_6it)
 
     # Download weights
-    gdown.download(url_upgd, f'{model_upgd_path}.pth', quiet=False,fuzzy=True)
+    gdown.download(url_upgd_2it, f'{model_upgd_2it_path}.pth', quiet=False,fuzzy=True)
+    gdown.download(url_upgd_6it, f'{model_upgd_6it_path}.pth', quiet=False,fuzzy=True)
     
     """
     model_upgd_path = './model/upgd_cnn_stl10_N0_100_N_64_M_1024_epo_2_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
     """
 
     # Load pretrained model
-    load_net(model_upgd_path, upgd_cnn, device=device, strict=False)
+    load_net(model_upgd_2it_path, upgd_cnn_2it, device=device, strict=False)
+    load_net(model_upgd_6it_path, upgd_cnn_6it, device=device, strict=False)
 except:
     print(f'Model not found!')
 
 # Reconstruction
 with torch.no_grad():
-    z_upgd = upgd_cnn.reconstruct(y.to(device))  # reconstruct from raw measurements
+    z_upgd_2it = upgd_cnn_2it.reconstruct(y.to(device))  # reconstruct from raw measurements
+    z_upgd_6it = upgd_cnn_6it.reconstruct(y.to(device))  # reconstruct from raw measurements
+
+
+# %%
+# PinvNet network 
+# -----------------------------------------------------------------------------
+
+###############################################################################
+# We reconstruct with the pseudo inverse using :class:`spyrit.core.recon.PinvNet` class 
+# as in the previous tutorial. For this, we define the neural network and then perform the reconstruction.
+from spyrit.core.recon import PinvNet
+
+# Reconstruction with for Core module (linear net)
+pinvnet = PinvNet(noise_op, prep_op)
+pinvnet = pinvnet.to(device)
+
+# Reconstruction
+with torch.no_grad():
+    z_invnet = pinvnet.reconstruct(y.to(device))  # reconstruct from raw measurements
+
 
 # %%
 # DCNET network 
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We can finally compare the results with the DCNET + UNet network (see :ref:`tuto_dcnet_split_measurements`).
+# We compare the results with the DCNET + UNet network (see :ref:`DCNET tutorial <tuto_dcnet_split_measurements>`).
 
 # Pretrained DC UNet (UNet denoising)
 from spyrit.core.recon import DCNet
@@ -252,26 +274,38 @@ from spyrit.misc.disp import add_colorbar, noaxis
 
 x_plot = x.view(-1,h,h).cpu().numpy()    
 x_plot2 = z_dcnet_unet.view(-1,h,h).cpu().numpy() 
-x_plot3 = z_upgd.view(-1,h,h).cpu().numpy() 
+x_plot3 = z_upgd_2it.view(-1,h,h).cpu().numpy() 
+x_plot4 = z_upgd_6it.view(-1,h,h).cpu().numpy() 
+x_plot5 = z_invnet.view(-1,h,h).cpu().numpy() 
 
-f, axs = plt.subplots(1, 3, figsize=(10,5))
-im1=axs[0].imshow(x_plot[0,:,:], cmap='gray')
-axs[0].set_title('Ground-truth image', fontsize=16)
-noaxis(axs[0])
+f, axs = plt.subplots(2, 3, figsize=(15,12))
+im1=axs[0,0].imshow(x_plot[0,:,:], cmap='gray')
+axs[0,0].set_title('Ground-truth image', fontsize=16)
+noaxis(axs[0,0])
 add_colorbar(im1, 'bottom')
 
-im2=axs[1].imshow(x_plot2[0,:,:], cmap='gray')
-axs[1].set_title(f'DCNet(UNet) (N0=10!)', fontsize=16)
-noaxis(axs[1])
+im2=axs[0,1].imshow(x_plot2[0,:,:], cmap='gray')
+axs[0,1].set_title(f'DCNet (UNet)', fontsize=16)
+noaxis(axs[0,1])
 add_colorbar(im2, 'bottom')
 
-im3=axs[2].imshow(x_plot3[0,:,:], cmap='gray')
-axs[2].set_title(f'UPGD (CNN, uit={num_iter}, epochs={num_epochs})', fontsize=16)
-noaxis(axs[2])
+im5=axs[0,2].imshow(x_plot5[0,:,:], cmap='gray')
+axs[0,2].set_title(f'PinvNet + I', fontsize=16)
+noaxis(axs[0,2])
+add_colorbar(im5, 'bottom')
+
+im3=axs[1,0].imshow(x_plot3[0,:,:], cmap='gray')
+axs[1,0].set_title(f'UPGD (CNN) \n num_iter=2', fontsize=16)
+noaxis(axs[1,0])
 add_colorbar(im3, 'bottom')
+
+im4=axs[1,1].imshow(x_plot4[0,:,:], cmap='gray')
+axs[1,1].set_title(f'UPGD (CNN) \n num_iter=6', fontsize=16)
+noaxis(axs[1,1])
+add_colorbar(im4, 'bottom')
 
 plt.show()
 
 ###############################################################################
-# UPGD with a small CNN and 2 iterations is able to recover an image already slightly better 
-# than DCNet with a UNet denoiser. 
+# UPGD with a small CNN is worse that UNet denoiser, as the latter has a denoiser with 
+# higher capacity. Increasing the capacity of the denoiser in UPGD should lead to better results.
