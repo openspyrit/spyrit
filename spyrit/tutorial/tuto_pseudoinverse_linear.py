@@ -1,16 +1,17 @@
 
 r"""
 02. Pseudoinverse solution from linear measurements
-======================
+==========================
+.. _tuto_pseudoinverse_linear:
 This tutorial shows how to simulate measurements and perform image reconstruction. 
 The measurement operator is chosen as a Hadamard matrix with positive coefficients. 
-Note that this matrix can be replaced any the desired matrix. 
+Note that this matrix can be replaced by any desired matrix. 
 """
 
 
 # %%
 # Load a batch of images
-#-----------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # Images :math:`x` for training expect values in [-1,1]. The images are normalized
@@ -49,13 +50,14 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 
 # %% 
 # Define a measurement operator
-#------------------------------
+# -----------------------------------------------------------------------------
+# .. _hadamard_positive:
 
 ###############################################################################
 # We consider the case where the measurement matrix is the positive
 # component of a Hadamard matrix, which if often used in single-pixel imaging.
-# First, we compute a full Hadamard matrix that computes the 2D transforme of an
-# image of size :attr:`h` and take its positive part.
+# First, we compute a full Hadamard matrix that computes the 2D transform of an
+# image of size :attr:`h` and takes its positive part.
 
 from spyrit.misc.walsh_hadamard import walsh2_matrix
 import numpy as np
@@ -64,7 +66,8 @@ F = walsh2_matrix(h)
 F = np.where(F>0, F, 0)
 
 ###############################################################################
-# Next we subsample the rows of the measurement matrix to simulate an 
+# .. _low_frequency:
+# Next, we subsample the rows of the measurement matrix to simulate an 
 # accelerated acquisition. For this, we use the 
 # :func:`spyrit.misc.sampling.Permutation_Matrix` function 
 # that returns a :attr:`h*h`-by-:attr:`h*h` permutation matrix from a 
@@ -106,7 +109,7 @@ meas_op = Linear(H, pinv=True)
 
 # %% 
 # Noiseless case
-#------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # In the noiseless case, we consider the :class:`spyrit.core.noise.NoNoise` noise
@@ -136,7 +139,7 @@ imagesc(y_plot, 'Raw measurements (no noise)')
 
 ###############################################################################
 # We now compute and plot the preprocessed measurements corresponding to an 
-# image in [-1,1]
+# image in [-1,1]. For details in the preprocessing, see :ref:`tuto_acquisition_operators`.
 # 
 # .. note::
 #    
@@ -159,7 +162,7 @@ imagesc(m_plot, 'Preprocessed measurements (no noise)')
 
 # %% 
 # PinvNet Network 
-# ---------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # We consider the :class:`spyrit.core.recon.PinvNet` class that reconstructs an
@@ -181,8 +184,9 @@ pinv_net = PinvNet(noise, prep)
 x_rec = pinv_net.reconstruct(y)
 
 # plot
+# sphinx_gallery_thumbnail_number = 5
 x_plot = x_rec.squeeze().cpu().numpy() 
-imagesc(x_plot, 'Pseudoinverse reconstruction (no noise)')
+imagesc(x_plot, 'Pseudoinverse reconstruction (no noise)', title_fontsize=20)
 
 ###############################################################################
 # Alternatively, the measurement vector can be simulated using the 
@@ -209,12 +213,12 @@ imagesc(x_plot, 'One more pseudoinverse reconstruction (no noise)')
 
 # %% 
 # Poisson-corrupted measurement
-#------------------------------
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # Here, we consider the :class:`spyrit.core.noise.Poisson` class
 # together with a :class:`spyrit.core.prep.DirectPoisson` 
-# preprocessing operator (see `tuto_acquisition_operators`).
+# preprocessing operator (see :ref:`tuto_acquisition_operators`).
 
 alpha = 10  # maximum number of photons in the image
 
