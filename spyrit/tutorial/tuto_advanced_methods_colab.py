@@ -1,5 +1,5 @@
 r"""
-07. Advanced methods - Colab
+Bonus. Advanced methods - Colab
 ============================
 .. _tuto_advanced_methods_colab:
 We refer to `spyrit-examples/tutorial <https://github.com/openspyrit/spyrit-examples/tree/master/tutorial>`_ 
