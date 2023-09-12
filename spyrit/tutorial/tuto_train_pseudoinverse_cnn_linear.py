@@ -1,7 +1,7 @@
 
 r"""
 04. Train pseudoinverse solution + CNN denoising 
-==========================
+================================================
 .. _tuto_train_pseudoinverse_cnn_linear:
 This tutorial shows how to train PinvNet with a CNN denoiser for 
 reconstruction of linear measurements (results shown in the 
