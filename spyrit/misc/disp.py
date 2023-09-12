@@ -120,7 +120,7 @@ def uint8(dsp):
     return x;
 
 
-def imagesc(Img, title='', colormap=plt.cm.gray, show=True):
+def imagesc(Img, title='', colormap=plt.cm.gray, show=True, figsize=None, cbar_pos=None, title_fontsize=16):
     """ 
     imagesc(IMG) Display image Img with scaled colors with greyscale 
     colormap and colorbar
@@ -130,13 +130,24 @@ def imagesc(Img, title='', colormap=plt.cm.gray, show=True):
     with colormap and colorbar specified by cmap (choose between 'plasma', 
     'jet', and 'grey'), with the title ttl
     """
-    fig = plt.figure();
+    fig = plt.figure(figsize=figsize);
     ax = fig.add_subplot(1, 1, 1)
     plt.imshow(Img, cmap=colormap);
-    plt.title(title);
+    plt.title(title, fontsize=title_fontsize);
     divider = make_axes_locatable(ax);
-    cax = plt.axes([0.85, 0.1, 0.075, 0.8]);
-    plt.colorbar(cax=cax);
+    from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+    if cbar_pos == 'bottom':
+        cax = inset_axes(ax,
+                        width="100%",  
+                        height="5%",
+                        loc='lower center',
+                        borderpad=-5
+                    )
+        plt.colorbar(cax=cax, orientation='horizontal')
+    else:
+        cax = plt.axes([0.85, 0.1, 0.075, 0.8]);
+        plt.colorbar(cax=cax, orientation='vertical');
+
     if show is True:
         plt.show();
     
@@ -192,7 +203,7 @@ def plot(x,y,title='',xlabel='', ylabel='', color='black'):
     plt.ylabel(ylabel);
     plt.show();
     
-def add_colorbar(mappable, position = "right"):
+def add_colorbar(mappable, position = "right", size="5%"):
     """
     Example: 
         f, axs = plt.subplots(1, 2)
