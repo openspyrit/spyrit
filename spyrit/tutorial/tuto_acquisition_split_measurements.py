@@ -1,7 +1,7 @@
 
 r"""
 05. Acquisition operators 2 - Split measurements
-==========================
+================================================
 
 .. _tuto_acquisition_split_measurements:
 This tutorial is a continuation of the :ref:`Acquisition operators tutorial <tuto_acquisition_operators>` 

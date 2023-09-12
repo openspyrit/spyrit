@@ -14,6 +14,7 @@ submodule, which is based on three classes:
 
 3. **Preprocessing operators** are typically used to process the noisy 
    measurements prior to reconstruction (see :mod:`spyrit.core.prep`)
+
 """
 
 
