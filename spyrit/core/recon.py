@@ -932,7 +932,7 @@ class UPGD(PinvNet):
         self.split = split
 
     def reconstruct(self, x):
-        r""" Reconstruction step of a reconstruction network
+        r""" Reconstruction step§ of a reconstruction network
         
         Same as :meth:`reconstruct` reconstruct except that:
             
@@ -952,7 +952,7 @@ class UPGD(PinvNet):
         #    meas = super().Acq.meas_op     
         #else:
             #meas = self.Acq.meas_op        
-        meas = self.acqu.meas_op
+        meas_op = self.acqu.meas_op
 
         # x of shape [b*c, 2M]
         bc, _ = x.shape    
@@ -965,7 +965,7 @@ class UPGD(PinvNet):
         m = x.clone() # [5, 1024]
 
         # measurements to image domain processing
-        x = self.pinv(x, self.acqu.meas_op)  # [5, 4096]         # shape x = [b*c,N]
+        x = self.pinv(x, meas_op)  # [5, 4096]         # shape x = [b*c,N]
         #x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)   # shape x = [b*c,1,h,w]
 
         # Unroll network
@@ -973,17 +973,17 @@ class UPGD(PinvNet):
         lambs = self.lambs()
         for n in range(self.num_iter):
             # Projection onto the measurement space
-            proj = self.acqu.meas_op.forward_H(x) # [5, 1024]
+            proj = meas_op.forward_H(x) # [5, 1024]
 
             # Residual
             res = proj - m # [5, 1024]
 
             # Gradient step
-            x = x + lambs[n]*self.acqu.meas_op.H_adjoint(res) # [5, 4096]
+            x = x + lambs[n]*meas_op.H_adjoint(res) # [5, 4096]
 
             # Denoising step
-            x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w) # [5, 1, 64, 64]
+            x = x.view(bc,1,meas_op.h, meas_op.w) # [5, 1, 64, 64]
             x = self.denoi(x)
-            x = x.view(bc, self.acqu.meas_op.N) # [5, 4096]
+            x = x.view(bc, meas_op.N) # [5, 4096]
         return x            
     
