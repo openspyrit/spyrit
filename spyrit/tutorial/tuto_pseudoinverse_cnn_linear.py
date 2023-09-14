@@ -1,7 +1,7 @@
 
 r"""
 03. Pseudoinverse solution + CNN denoising 
-==========================
+==========================================
 .. _tuto_pseudoinverse_cnn_linear:
 This tutorial shows how to simulate measurements and perform image reconstruction 
 using PinvNet (pseudoinverse linear network) with CNN denoising as a last layer. 

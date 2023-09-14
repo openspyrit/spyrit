@@ -1,7 +1,7 @@
 
 r"""
 02. Pseudoinverse solution from linear measurements
-==========================
+===================================================
 .. _tuto_pseudoinverse_linear:
 This tutorial shows how to simulate measurements and perform image reconstruction. 
 The measurement operator is chosen as a Hadamard matrix with positive coefficients. 
