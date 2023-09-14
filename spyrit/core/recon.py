@@ -948,11 +948,14 @@ class UPGD(PinvNet):
         """
 
         # Measurement operator
-        #if self.split:
-        #    meas = super().Acq.meas_op     
-        #else:
-            #meas = self.Acq.meas_op        
+        # if self.split:
+        #     meas_op = super().Acq.meas_op     
+        #     fwd_op = meas_op.forward_H
+        #     adj_op = meas_op.forward_H_adjoint
+        # else:            
         meas_op = self.acqu.meas_op
+        fwd_op = meas_op.H
+        adj_op = meas_op.H_adjoint
 
         # x of shape [b*c, 2M]
         bc, _ = x.shape    
@@ -973,13 +976,13 @@ class UPGD(PinvNet):
         lambs = self.lambs()
         for n in range(self.num_iter):
             # Projection onto the measurement space
-            proj = meas_op.forward_H(x) # [5, 1024]
+            proj = fwd_op(x) # [5, 1024]
 
             # Residual
             res = proj - m # [5, 1024]
 
             # Gradient step
-            x = x + lambs[n]*meas_op.H_adjoint(res) # [5, 4096]
+            x = x + lambs[n]*adj_op(res) # [5, 4096]
 
             # Denoising step
             x = x.view(bc,1,meas_op.h, meas_op.w) # [5, 1, 64, 64]

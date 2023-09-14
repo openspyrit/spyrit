@@ -189,6 +189,20 @@ pinvnet = pinvnet.to(device)
 pinvnet_cnn = PinvNet(noise_op, prep_op, denoi=denoi)
 pinvnet_cnn = pinvnet_cnn.to(device)
 
+try:
+    url_pinv_cnn = 'https://drive.google.com/file/d/1f3116yCAluHSLORZBSWIGeHM_ZeTFb23/view?usp=drive_link'
+    name_pinv_cnn = 'pinv-net_cnn_stl10_hadpos_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
+    model_pinv_cnn_path = os.path.join(model_path, name_pinv_cnn)
+
+    # Download weights
+    gdown.download(url_pinv_cnn, f'{model_pinv_cnn_path}.pth', quiet=False,fuzzy=True)
+    
+    # Load pretrained model
+    load_net(model_pinv_cnn_path, pinvnet_cnn, device=device, strict=False)
+except:
+    print(f'Model not found!')
+
+
 # Reconstruction
 with torch.no_grad():
     z_invnet = pinvnet.reconstruct(y.to(device))  # reconstruct from raw measurements
@@ -205,30 +219,24 @@ x_plot2 = z_invnet.view(-1,h,h).cpu().numpy()
 x_plot3 = z_invnet_cnn.view(-1,h,h).cpu().numpy() 
 x_plot4 = z_upgd_cnn.view(-1,h,h).cpu().numpy() 
 
-f, axs = plt.subplots(2, 2, figsize=(15,12))
-im1=axs[0,0].imshow(x_plot[0,:,:], cmap='gray')
+f, axs = plt.subplots(2, 2, figsize=(10,10))
+im1=axs[0,0].imshow(x_plot[0,:,:], cmap='gray', vmin=-1, vmax=1)
 axs[0,0].set_title('Ground-truth image', fontsize=16)
 noaxis(axs[0,0])
 add_colorbar(im1, 'bottom')
 
-im2=axs[0,1].imshow(x_plot2[0,:,:], cmap='gray')
+im2=axs[0,1].imshow(x_plot2[0,:,:], cmap='gray', vmin=-1, vmax=1)
 axs[0,1].set_title(f'PinvNet + I', fontsize=16)
 noaxis(axs[0,1])
 add_colorbar(im2, 'bottom')
 
-im5=axs[0,2].imshow(x_plot3[0,:,:], cmap='gray')
-axs[0,2].set_title(f'PinvNet + CNN', fontsize=16)
-noaxis(axs[0,2])
-add_colorbar(im5, 'bottom')
-
-im3=axs[1,0].imshow(x_plot4[0,:,:], cmap='gray')
-axs[1,0].set_title(f'UPGD (CNN)', fontsize=16)
+im3=axs[1,0].imshow(x_plot3[0,:,:], cmap='gray', vmin=-1, vmax=1)
+axs[1,0].set_title(f'PinvNet + CNN', fontsize=16)
 noaxis(axs[1,0])
 add_colorbar(im3, 'bottom')
 
-im4=axs[1,1].imshow(x_plot4[0,:,:], cmap='gray')
-axs[1,1].set_title(f'UPGD (CNN) \n num_iter=6', fontsize=16)
+im4=axs[1,1].imshow(x_plot4[0,:,:], cmap='gray', vmin=-1, vmax=1)
+axs[1,1].set_title(f'UPGD (CNN)', fontsize=16)
 noaxis(axs[1,1])
 add_colorbar(im4, 'bottom')
 
-plt.show()

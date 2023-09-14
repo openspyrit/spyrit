@@ -193,7 +193,7 @@ try:
     # Download weights
     gdown.download(url_upgd_2it, f'{model_upgd_2it_path}.pth', quiet=False,fuzzy=True)
     gdown.download(url_upgd_6it, f'{model_upgd_6it_path}.pth', quiet=False,fuzzy=True)
-    
+
     """
     model_upgd_path = './model/upgd_cnn_stl10_N0_100_N_64_M_1024_epo_2_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
     """
@@ -201,6 +201,7 @@ try:
     # Load pretrained model
     load_net(model_upgd_2it_path, upgd_cnn_2it, device=device, strict=False)
     load_net(model_upgd_6it_path, upgd_cnn_6it, device=device, strict=False)
+
 except:
     print(f'Model not found!')
 
@@ -226,7 +227,6 @@ pinvnet = pinvnet.to(device)
 # Reconstruction
 with torch.no_grad():
     z_invnet = pinvnet.reconstruct(y.to(device))  # reconstruct from raw measurements
-
 
 # %%
 # DCNET network 
@@ -303,6 +303,11 @@ im4=axs[1,1].imshow(x_plot4[0,:,:], cmap='gray')
 axs[1,1].set_title(f'UPGD (CNN) \n num_iter=6', fontsize=16)
 noaxis(axs[1,1])
 add_colorbar(im4, 'bottom')
+
+# im4=axs[1,2].imshow(x_plot6[0,:,:], cmap='gray')
+# axs[1,2].set_title(f'PinvNet (CNN)', fontsize=16)
+# noaxis(axs[1,2])
+# add_colorbar(im4, 'bottom')
 
 plt.show()
 
