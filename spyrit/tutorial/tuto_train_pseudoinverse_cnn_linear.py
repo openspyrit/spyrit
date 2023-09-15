@@ -13,7 +13,7 @@ You can use Tensorboard for Pytorch for experiment tracking and
 for visualizing the training process: losses, network weights, 
 and intermediate results (reconstructed images at different epochs).
 
-The linear measurement operator is chosen as a Hadamard matrix with positive coefficients, 
+The linear measurement operator is chosen as the positive part of a Hadamard matrix, 
 but this matrix can be replaced by any desired matrix. 
 """
 
@@ -64,7 +64,7 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 # :class:`torch.utils.data.DataLoader`, which creates a generator that iterates 
 # through the dataset, returning a batch of images and labels at each iteration. 
 #
-# You must set :attr:`mode_run` to True to download the dataset and for training; 
+# Set :attr:`mode_run` to True in the script below to download the dataset and for training; 
 # otherwise, pretrained weights and results will be download for display.
 
 from spyrit.misc.statistics import data_loaders_stl10
@@ -251,7 +251,7 @@ else:
     train_info = {}
     
 # %%
-#  Saving the model so that it can later be utilized
+# Save the network and training history
 # -----------------------------------------------------------------------------
 
 ###############################################################################
