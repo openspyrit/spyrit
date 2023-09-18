@@ -6,7 +6,7 @@
 SPyRiT's documentation
 ==================================
 
-SPYRIT is a `PyTorch <https://pytorch.org/>`_-based package for deep image 
+SPyRiT is a `PyTorch <https://pytorch.org/>`_-based package for deep image 
 reconstruction. While it is primarily designed for single-pixel image 
 reconstruction, it can solve other linear reconstruction problems.
 
@@ -14,8 +14,26 @@ reconstruction, it can solve other linear reconstruction problems.
    :width: 700
    :align: center
 
+SPyRiT allows to simulate measurements and perform image reconstruction. 
+It main functionality lies in the :class:`spyrit.core`, which is based on five submodules:
+
+1. **Measurement operators** compute linear measurements :math:`y = Hx` from 
+   images :math:`x`, where :math:`H` is a linear operator (matrix) and :math:`x`
+   is a vectorized image (see :mod:`spyrit.core.meas`).
+
+2. **Noise operator** corrupts measurements :math:`y` with noise (see :mod:`spyrit.core.noise`).
+
+3. **Preprocessing operators** are typically used to process the noisy 
+   measurements prior to reconstruction (see :mod:`spyrit.core.prep`).
+
+4. **Reconstruction networks** define the predifined reconstruction networks, which include both forward and reconstruction layers (see :mod:`spyrit.core.recon`). 
+
+5. **Neural network definitions** include well known neural networks, generally used as denoiser layers (see :mod:`spyrit.core.nnet`). 
+
+6. **Training functionality** provide main functionality for training the learnable networks (see :mod:`spyrit.core.train`). 
+
 .. toctree::
-   :maxdepth: 5
+   :maxdepth: 4
    :caption: Contents:
 
    api/modules
@@ -27,3 +45,24 @@ reconstruction, it can solve other linear reconstruction problems.
     * :ref:`genindex`
     * :ref:`modindex`
     * :ref:`search`
+
+Installation
+==================================
+The spyrit package is available for Linux, MacOs and Windows. 
+Installation guidelines are provided at `GitHub <https://github.com/openspyrit/spyrit>`_. 
+
+
+Cite us
+==================================
+When using SPyRiT in scientific publications, please cite the following paper:
+
+   - G. Beneti-Martin, L Mahieu-Williame, T Baudier, N Ducros, "OpenSpyrit: an Ecosystem for Reproducible Single-Pixel Hyperspectral Imaging," Optics Express, Vol. 31, No. 10, (2023). `DOI <https://doi.org/10.1364/OE.483937>`_.
+
+When using SPyRiT specifically for the denoised completion network, please cite the following paper:
+
+   - A Lorente Mur, P Leclerc, F Peyrin, and N Ducros, "Single-pixel image reconstruction from experimental data using neural networks," Opt. Express 29, 17097-17110 (2021). `DOI <https://doi.org/10.1364/OE.424228>`_.
+
+Main developers
+==================================
+Active developers mainting SPyRiT are `Nicolas Ducros <https://www.creatis.insa-lyon.fr/~ducros/WebPage/index.html>`_, Thomas Baudier  
+and `Juan Abascal <https://juanabascal78.wixsite.com/juan-abascal-webpage>`_. 
