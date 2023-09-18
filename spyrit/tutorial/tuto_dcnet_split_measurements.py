@@ -3,7 +3,7 @@ r"""
 =========================================
 .. _tuto_dcnet_split_measurements:
 This tutorial shows how to perform image reconstruction using DCNet (data completion network) with 
-and without UNet denoising as a last layer. In the previous tutorial 
+and without UNet denoising as the last layer of the network. In the previous tutorial 
 :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>` 
 we showed how to handle split measurements for a Hadamard operator 
 and how to perform a pseudo-inverse reconstruction with PInvNet. 
@@ -58,9 +58,10 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 # -----------------------------------------------------------------------------
 
 ############################################################################### 
-# We consider noisy split measurements for a Hadamard operator and a full 
-# covariance matrix to take into account the correlation between measurements 
-# (for more details, we refer to :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`).  
+# We consider noisy split measurements for a Hadamard operator and a 
+# "variance subsampling" strategy that preserves the coefficients with the largest variance, 
+# obtained from a previously estimated covariance matrix (for more details, 
+# refer to :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`).  
 
 ###############################################################################
 # First, we download the covariance matrix and load it.
@@ -110,8 +111,10 @@ from spyrit.core.prep import SplitPoisson
 M = 64*64 // 4      # Number of measurements (here, 1/4 of the pixels)
 alpha = 100.0       # number of photons
 
-# Measurement and noise operators
+# Ordering matrix
 Ord = Cov2Var(Cov)
+
+# Measurement and noise operators
 meas_op = HadamSplit(M, h, Ord)
 noise_op = Poisson(meas_op, alpha) 
 prep_op = SplitPoisson(alpha, meas_op) 
@@ -156,16 +159,20 @@ with torch.no_grad():
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We can improve PinvNet results by using the data-completion network DCNet with the 
-# :class:`spyrit.core.recon.DCNet` class. It estimates the missing measurements, 
-# reconstructs the image using a least square solution, and then it denoises the reconstructed image 
-# using a denoising layer. 
+# We can improve PinvNet results by using the *denoised* completion network DCNet with the 
+# :class:`spyrit.core.recon.DCNet` class. It has four sequential steps:  
+#   i) denoising of the acquired measurements,
+#   ii) estimation of the missing measurements from the denoised ones, 
+#   iii) mapping them to the image domain, and 
+#   iv) denoising in the image-domain. 
+# Only the last step involves learnable parameters. 
+#
 # For the denoiser, we compare the default unit matrix (no denoising) with the UNet denoiser 
 # with the :class:`spyrit.core.nnet.Unet` class. For the latter, we load the pretrained model 
 # weights. 
 
 ###############################################################################
-# Without denoising
+# Without *learnable image-domain* denoising
 
 from spyrit.core.recon import DCNet
 from spyrit.core.nnet import Unet
@@ -180,8 +187,8 @@ with torch.no_grad():
     z_dcnet = dcnet.reconstruct(y.to(device))  # reconstruct from raw measurements
 
 ###############################################################################
-# For a UNet denoising layer, we define the denoising network and 
-# then load the pretrained model. 
+# With a UNet denoising layer, we define the denoising network and 
+# then load the pretrained weights. 
 
 from spyrit.core.train import load_net
 import matplotlib.pyplot as plt
@@ -238,12 +245,12 @@ noaxis(axs[0,1])
 add_colorbar(im2, 'bottom')
 
 im3=axs[1,0].imshow(x_plot3[0,:,:], cmap='gray')
-axs[1,0].set_title(f'DCNet + I', fontsize=16)
+axs[1,0].set_title(f'DCNet (without denoising)', fontsize=16)
 noaxis(axs[1,0])
 add_colorbar(im3, 'bottom')
 
 im4=axs[1,1].imshow(x_plot4[0,:,:], cmap='gray')
-axs[1,1].set_title(f'DCNet + UNet', fontsize=16)
+axs[1,1].set_title(f'DCNet (UNet denoising)', fontsize=16)
 noaxis(axs[1,1])
 add_colorbar(im4, 'bottom')
 
@@ -253,11 +260,10 @@ plt.show()
 # Comparing results, PinvNet provides pixelized reconstruction, DCNet with no denoising 
 # leads to a smoother reconstruction, as expected by a Tikonov regularization, and 
 # DCNet with UNet denoising provides the best reconstruction, as it serves a nonlinear filter.       
-# Note also that we have used higher noise level (:math:`N0=10`) than in the previous tutorial. 
 
 ###############################################################################
 # .. note::
 #    
 #       In this tutorial, we have used DCNet with a UNet denoising layer for split measurements. 
-#       We refer to `spyrit-examples tutorials <http://github.com/openspyrit/spyrit-examples/tree/master/tutorial>`_
+#       We refer to `spyrit-examples tutorials <https://github.com/openspyrit/spyrit-examples/tree/master/tutorial/tuto_core_2d_drunet.ipynb>`_
 #       for a comparison of different solutions for split measurements (pinvNet, DCNet and DRUNet).

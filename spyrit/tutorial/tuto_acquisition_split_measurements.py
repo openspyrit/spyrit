@@ -111,29 +111,25 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 # We simulate an accelerated acquisition by subsampling the measurement matrix. 
 # We consider two subsampling strategies: 
 #   * "Naive subsampling" by retaining only the first :math:`M` rows of the measurement matrix. 
-#   * "Variance subsampling" by retaining only the first :math:`M` rows of a permuted measurement matri
+#   * "Variance subsampling" by retaining only the first :math:`M` rows of a permuted measurement matrix 
 #     where the first rows corresponds to the coefficients with largest variance and the last ones to 
-#     the coefficients that are close to constant. 
-# 
-# The motivation is that almost constant coefficients are less informative than the others. 
-# This can be supported by 
-# both principal component analysis, which states that preserving the components 
-# with largest variance leads to the best linear predictor, and by the information 
-# theory, which states that most probable events are less informative. 
+#     the coefficients that are close to constant. The motivation is that almost constant coefficients are less informative than the others. 
+#     This can be supported by principal component analysis, which states that preserving the components 
+#     with largest variance leads to the best linear predictor. 
 
 ###############################################################################
 # Subsampling is done by retaining only the first :math:`M` rows of 
 # a permuted Hadamard matrix :math:`\textrm{Perm} H`, where :math:`\textrm{Perm}` is a 
 # permutation matrix with shape with shape :math:`(M,N)` and :math:`H` is a 
 # "full" Hadamard matrix with shape :math:`(N,N)` 
-# (see Hadamard matrix ion :ref:`tutorial on pseudoinverse solution <tuto_pseudoinverse_linear>`).
+# (see Hadamard matrix in :ref:`tutorial on pseudoinverse solution <tuto_pseudoinverse_linear>`).
 # The permutation matrix :math:`\textrm{Perm}` is obtained from the ordering matrix 
 # :math:`\textrm{Ord}` with shape :math:`(h,h)`. This is all handled internally 
 # by the :class:`spyrit.core.meas.HadamSplit` class.
 
 ###############################################################################
-# Frist, we download the covariance matrix and load it. The covariance matrix 
-# has been computed from :ref:'ImageNet 2012 dataset <https://www.image-net.org/challenges/LSVRC/2012/>'. 
+# Frist, we download the covariance matrix from our warehouse and load it. The covariance matrix 
+# has been computed from :ref:`ImageNet 2012 dataset <https://www.image-net.org/challenges/LSVRC/2012/>`. 
 
 import girder_client
 
@@ -167,10 +163,11 @@ except:
     print(f"Cov matrix {cov_name} not found! Set to the identity")
     
 ###############################################################################
-# We define the order matrix :math:`Ord` for the two sampling strategies. 
-# For the "variance subsampling", it is computed from the full covariance, and for the 
-# "naive subsampling", it is set to the identity matrix. In the latter case, 
-# the order matrix is constant, as all coefficients are considered equally informative.
+# We define the order matrix :math:`Ord` for the two sampling strategies. It is computed 
+# from the full covariance, for the "variance subsampling", and from the identity matrix 
+# for the "naive subsampling". In the latter case, 
+# the order matrix is constant, as all coefficients are considered equally informative, 
+# and they are retaining in the increasing 'naive' order.
 # We also define the number of measurements :math:`M` that will be used later. 
 
 from spyrit.misc.statistics import Cov2Var
@@ -201,7 +198,7 @@ add_colorbar(im2, 'bottom', size="20%")
 
 ###############################################################################
 # .. note::
-#   Note that in this tutorial the covariance matrix is used only for chosen subsampling strategy. 
+#   Note that in this tutorial the covariance matrix is used only for chosing the subsampling strategy. 
 #   Although the covariance matrix can be also exploited to improve the reconstruction, 
 #   this will be considered in a future tutorial.
 
@@ -308,8 +305,8 @@ m_var = prep_var_op(y_var)
 # For this we use the :class:`spyrit.core.noise.NoNoise` class, which normalizes 
 # the input vector to get an image in [0,1], as explained in 
 # :ref:`acquisition operators tutorial <tuto_acquisition_operators>`. 
-# For the preprocessing operator, we use the :class:`spyrit.core.prep.NoNoise` class,
-# but assign the number of photons equal to one. 
+# For the preprocessing operator, we use the :class:`spyrit.core.prep.NoNoise` class
+# and assign the number of photons equal to one. 
 
 from spyrit.core.noise import NoNoise
 
@@ -338,6 +335,7 @@ m_plot3 = m_var.numpy()
 m_plot3 = meas2img2(m_plot3.T, Ord_var)
 m_plot3 = np.moveaxis(m_plot3,-1, 0)
 
+# sphinx_gallery_thumbnail_number = 3
 f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20,7))
 im1=ax1.imshow(m_plot[0,:,:], cmap='gray')
 ax1.set_title("Noiseless measurements $m$ \n 'Naive' subsampling", fontsize=20)
@@ -364,8 +362,11 @@ add_colorbar(im3, 'bottom', size="20%")
 
 from spyrit.core.recon import PseudoInverse
 from spyrit.misc.disp import add_colorbar, noaxis
+
+# Pseudo-inverse reconstruction operator
 recon_op = PseudoInverse()
 
+# Reconstruction
 z_nai_nonoise = recon_op(m_nai_nonoise, meas_nai_op)
 z_nai = recon_op(m_nai, meas_nai_op)
 z_var = recon_op(m_var, meas_var_op)
@@ -376,7 +377,6 @@ z_plot_nai_nonoise = z_nai_nonoise.view(-1,h,h).numpy()
 z_plot_nai = z_nai.view(-1,h,h).numpy() 
 z_plot_var = z_var.view(-1,h,h).numpy() 
 
-# sphinx_gallery_thumbnail_number = 3
 f, axs = plt.subplots(2, 2, figsize=(10,10))
 im1=axs[0,0].imshow(x_plot[0,:,:], cmap='gray')
 axs[0,0].set_title('Ground-truth image')
@@ -389,12 +389,12 @@ noaxis(axs[0,1])
 add_colorbar(im2, 'bottom')
 
 im3=axs[1,0].imshow(z_plot_nai[0,:,:], cmap='gray')
-axs[1,0].set_title('Reconstruction noisy')
+axs[1,0].set_title("Reconstruction \n 'Naive' subsampling")
 noaxis(axs[1,0])
 add_colorbar(im3, 'bottom')
 
 im4=axs[1,1].imshow(z_plot_var[0,:,:], cmap='gray')
-axs[1,1].set_title('Reconstruction noisy (full Cov)')
+axs[1,1].set_title("Reconstruction \n 'Variance' subsampling")
 noaxis(axs[1,1])
 add_colorbar(im4, 'bottom')
 
@@ -403,7 +403,12 @@ plt.show()
 ###############################################################################
 # .. note::
 #    
-#       Note that reconstructed images are pixelized as pixels when using a unit covariance matrix  
-#       while they are smooth when using a full covariance matrix. 
+#       Note that reconstructed images are pixelized as pixels when using the "naive subsampling",  
+#       while they are smoother when using the "variance subsampling". This is due to the fact that 
+#       the "variance subsampling" preserves the coefficients with largest variance, which 
+#       leads to better reconstruction. Another explanation, it is that "naive subsampling" 
+#       preserves Hadamard coefficients in the provided order, while "variance subsampling"
+#       combines different Hadamard coefficients, related to higher spatial frequencies. 
+#
 #       Another way to further improve results is to include a nonlinear post-processing step, 
 #       which we will consider in a future tutorial. 
