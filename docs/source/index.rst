@@ -15,25 +15,25 @@ reconstruction, it can solve other linear reconstruction problems.
    :align: center
 
 SPyRiT allows to simulate measurements and perform image reconstruction. 
-It main functionality lies in the :class:`spyrit.core`, which is based on five submodules:
+Its main functionalities are impleted in the :class:`spyrit.core` subpackage, which contains six submodules:
 
-1. **Measurement operators** compute linear measurements :math:`y = Hx` from 
+1. **Measurement operators (meas)** compute linear measurements :math:`y = Hx` from 
    images :math:`x`, where :math:`H` is a linear operator (matrix) and :math:`x`
    is a vectorized image (see :mod:`spyrit.core.meas`).
 
-2. **Noise operator** corrupts measurements :math:`y` with noise (see :mod:`spyrit.core.noise`).
+2. **Noise operators (noise)** corrupt measurements :math:`y` with noise (see :mod:`spyrit.core.noise`).
 
-3. **Preprocessing operators** are typically used to process the noisy 
+3. **Preprocessing operators (prep)** are used to process noisy 
    measurements prior to reconstruction (see :mod:`spyrit.core.prep`).
 
-4. **Reconstruction networks** define the predifined reconstruction networks, which include both forward and reconstruction layers (see :mod:`spyrit.core.recon`). 
+4. **Reconstruction operators (recon)** define the predefined reconstruction networks, which include both forward and reconstruction layers (see :mod:`spyrit.core.recon`). 
 
-5. **Neural network definitions** include well known neural networks, generally used as denoiser layers (see :mod:`spyrit.core.nnet`). 
+5. **Neural networks (nnet)** include well-known neural networks, generally used as denoiser layers (see :mod:`spyrit.core.nnet`). 
 
-6. **Training functionality** provide main functionality for training the learnable networks (see :mod:`spyrit.core.train`). 
+6. **Training (train)** provide the functionalities for training reconstruction networks (see :mod:`spyrit.core.train`). 
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 5
    :caption: Contents:
 
    api/modules
@@ -48,8 +48,12 @@ It main functionality lies in the :class:`spyrit.core`, which is based on five s
 
 Installation
 ==================================
-The spyrit package is available for Linux, MacOs and Windows. 
-Installation guidelines are provided at `GitHub <https://github.com/openspyrit/spyrit>`_. 
+The spyrit package is available for Linux, MacOs and Windows:
+```
+pip install spyrit
+```
+
+Advanced installation guidelines are available on `GitHub <https://github.com/openspyrit/spyrit>`_. 
 
 
 Cite us
@@ -62,7 +66,8 @@ When using SPyRiT specifically for the denoised completion network, please cite 
 
    - A Lorente Mur, P Leclerc, F Peyrin, and N Ducros, "Single-pixel image reconstruction from experimental data using neural networks," Opt. Express 29, 17097-17110 (2021). `DOI <https://doi.org/10.1364/OE.424228>`_.
 
-Main developers
+Join the project
 ==================================
-Active developers mainting SPyRiT are `Nicolas Ducros <https://www.creatis.insa-lyon.fr/~ducros/WebPage/index.html>`_, Thomas Baudier  
-and `Juan Abascal <https://juanabascal78.wixsite.com/juan-abascal-webpage>`_. 
+Feel free to contact us by `e-mail <mailto:nicolas.ducros@creatis.insa-lyon.fr>` for any question. Active developers are currently `Nicolas Ducros <https://www.creatis.insa-lyon.fr/~ducros/WebPage/index.html>`_, Thomas Baudier  and `Juan Abascal <https://juanabascal78.wixsite.com/juan-abascal-webpage>`_.  Direct contributions via pull requests (PRs) are welcome. 
+
+The full list of contributors can be found `here <https://github.com/openspyrit/spyrit/blob/master/README.md#contributors-alphabetical-order>`_. 
