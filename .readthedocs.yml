@@ -13,7 +13,10 @@ sphinx:
 formats: all # pdf, epub and htlmzip
 
 # Optionally set the version of Python and requirements required to build your docs
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3.10"
 python:
-  version: 3.7
   install:
     - requirements: requirements.txt
