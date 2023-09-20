@@ -48,11 +48,9 @@ Its main functionalities are impleted in the :class:`spyrit.core` subpackage, wh
 
 Installation
 ==================================
-The spyrit package is available for Linux, MacOs and Windows:
+The spyrit package is available for Linux, MacOs and Windows::
 
-.. code-block:: python
-
-pip install spyrit
+   pip install spyrit
 
 Advanced installation guidelines are available on `GitHub <https://github.com/openspyrit/spyrit>`_. 
 
