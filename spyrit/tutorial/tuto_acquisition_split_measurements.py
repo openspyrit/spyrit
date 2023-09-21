@@ -1,6 +1,6 @@
 
 r"""
-05. Acquisition operators 2 - Split measurements
+05. Acquisition operators (advanced) - Split measurements and subsampling
 ================================================
 
 .. _tuto_acquisition_split_measurements:
@@ -8,8 +8,8 @@ This tutorial is a continuation of the :ref:`Acquisition operators tutorial <tut
 for single-pixel imaging, which showed how to simulate linear measurements using the 
 :class:`spyrit.core` submodule (based on three classes :class:`spyrit.core.meas`, 
 :class:`spyrit.core.noise`, and :class:`spyrit.core.prep`). 
-This tutorial extends the previous case to Hadamard patterns and introduces 
-split measurements in order to handle negative measurements. 
+This tutorial extends the previous case: i) by introducing split measurements that can handle a Hadamard measurement matrix, 
+and ii) by discussing the choice of the subsampling pattern for accelerated acquisitions.
 """
 
 import numpy as np
@@ -90,88 +90,36 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 # The class relies on a matrix :math:`H` with 
 # shape :math:`(M,N)` where :math:`N` represents the number of pixels in the 
 # image and :math:`M \le N` the number of measurements. The matrix :math:`P` 
-# is obtained by splitting the matrix :math:`H` where 
-# :math:`H_{+} = \max(0,H)`, :math:`H_{-} = \max(0,-H)`, and 
-# :math:`H = H_{+}-H_{-}`.
+# is obtained by splitting the matrix :math:`H` as :math:`H = H_{+}-H_{-}` where  
+# :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`. 
+
+# %% 
+# Subsampling
+# -----------------------------------------------------------------------------
 
 ###############################################################################
-# Then, we simulate an accelerated acquisition by subsampling the measurement matrix 
-# by retaining only the first :math:`M` rows of 
+# We simulate an accelerated acquisition by subsampling the measurement matrix. 
+# We consider two subsampling strategies: 
+#   * "Naive subsampling" by retaining only the first :math:`M` rows of the measurement matrix. 
+#   * "Variance subsampling" by retaining only the first :math:`M` rows of a permuted measurement matrix 
+#     where the first rows corresponds to the coefficients with largest variance and the last ones to 
+#     the coefficients that are close to constant. The motivation is that almost constant coefficients are less informative than the others. 
+#     This can be supported by principal component analysis, which states that preserving the components 
+#     with largest variance leads to the best linear predictor. 
+
+###############################################################################
+# Subsampling is done by retaining only the first :math:`M` rows of 
 # a permuted Hadamard matrix :math:`\textrm{Perm} H`, where :math:`\textrm{Perm}` is a 
 # permutation matrix with shape with shape :math:`(M,N)` and :math:`H` is a 
 # "full" Hadamard matrix with shape :math:`(N,N)` 
-# (see :ref:`tutorial on pseudoinverse solution <tuto_pseudoinverse_linear>`).
+# (see Hadamard matrix in :ref:`tutorial on pseudoinverse solution <tuto_pseudoinverse_linear>`).
 # The permutation matrix :math:`\textrm{Perm}` is obtained from the ordering matrix 
 # :math:`\textrm{Ord}` with shape :math:`(h,h)`. This is all handled internally 
 # by the :class:`spyrit.core.meas.HadamSplit` class.
 
 ###############################################################################
-# .. note::
-#   Note that the positive component of a Hadamard matrix has been previously introduced  
-#   :ref:`here <hadamard_positive>` to simulate linear measurements. 
-#   In this case, we could proceed as with other commonly used linear operators. 
-
-###############################################################################
-# We compute the measurement, noise and preprocessing operators and then 
-# simulate a noiseless measurement vector :math:`y`.
-
-# We consider the noiseless case handled 
-# by the :class:`spyrit.core.noise.NoNoise` class.
-M = 64*64 // 4       # number of measurements (here, 1/4 of the pixels)
-
-from spyrit.core.meas import HadamSplit   
-from spyrit.core.noise import NoNoise
-from spyrit.misc.sampling import meas2img2
-
-Ord = np.ones((h,h))                
-meas_op = HadamSplit(M, h, Ord)
-nonoise_op = NoNoise(meas_op) # noiseless
-
-x = x.view(b*c,h*w)  # vectorized image
-print(f'Shape of vectorized image: {x.shape}')
-y_noiseless = nonoise_op(x)  # noiseless measurement vector
-print(f'Shape of simulated measurements y: {y_noiseless.shape}')
-
-# %% 
-# Same example with Poisson noise
-# -----------------------------------------------------------------------------
-
-###############################################################################
-# We now consider Poisson noise, i.e., a noisy measurement vector given by
-#
-# .. math::
-#       y \sim \mathcal{P}(\alpha P \tilde{x}),
-#
-# where :math:`\alpha` is a scalar value that represents the maximum image intensity
-# (in photons). The larger :math:`\alpha`, the higher the signal-to-noise ratio.
-#
-
-###############################################################################
-# We consider the :class:`spyrit.core.noise.Poisson` class, set :math:`\alpha`
-# to 100 photons, and simulate a noisy measurement vector. 
-
-from spyrit.core.noise import Poisson
-from spyrit.misc.disp import add_colorbar, noaxis
-from spyrit.misc.disp import imagecomp
-
-alpha = 100.0 # number of photons
-noise_op = Poisson(meas_op, alpha) 
-y_noisy = noise_op(x) # a noisy measurement vector
-
-
-# %% 
-# Full-covariance matrix
-# -----------------------------------------------------------------------------
-
-###############################################################################
-# We have previously considered a unit Covariance matrix, i.e.,
-# image pixels are assumed to be independent. Results can be improved by
-# considering a full-covariance matrix, i.e., image pixels are assumed to be
-# correlated. We consider a full-covariance matrix that has been obtained 
-# from a set of natural images.
-
-###############################################################################
-# Frist, we download the covariance matrix and load it.
+# First, we download the covariance matrix from our warehouse and load it. The covariance matrix 
+# has been computed from :ref:`ImageNet 2012 dataset <https://www.image-net.org/challenges/LSVRC/2012/>`. 
 
 import girder_client
 
@@ -189,30 +137,108 @@ dataId_list = [
         ]
 cov_name = './stat/Cov_64x64.npy'
 
-for dataId in dataId_list:
-    myfile = gc.getFile(dataId)
-    gc.downloadFile(dataId, data_folder + myfile['name'])
-
-print(f'Created {data_folder}') 
-
 try:
+    for dataId in dataId_list:
+        myfile = gc.getFile(dataId)
+        gc.downloadFile(dataId, data_folder + myfile['name'])
+
+    print(f'Created {data_folder}') 
+    
+    # Load covariance matrix for "variance subsampling"
     Cov  = np.load(cov_name)
     print(f"Cov matrix {cov_name} loaded")
 except:
+    # Set to the identity if not found for "naive subsampling"
     Cov = np.eye(h*h)
     print(f"Cov matrix {cov_name} not found! Set to the identity")
     
 ###############################################################################
-# We define the order matrix :math:`Ord` from the full covariance, and then the  
-# measurement and noise operators.
+# We compute the order matrix :math:`Ord` for the two sampling strategies, 
+# from the covariance matrix for the "variance subsampling", and from the identity matrix 
+# for the "naive subsampling". In the latter case, 
+# the order matrix is constant, as all coefficients are considered equally informative, 
+# and they are retained in the increasing 'naive' order.
+# We also define the number of measurements :math:`M` that will be used later. 
+
 from spyrit.misc.statistics import Cov2Var
+from spyrit.misc.disp import add_colorbar, noaxis
 
-Ord_cov = Cov2Var(Cov)
-meas_cov_op = HadamSplit(M, h, Ord_cov)
-noise_cov_op = Poisson(meas_cov_op, alpha) 
+# number of measurements (here, 1/4 of the pixels)
+M = 64*64 // 4       
 
-# Finally we simulate a noisy measurement vector.
-y_noisy_cov = noise_cov_op(x) # a noisy measurement vector
+# Compute the order matrix 
+# "Naive subsampling"
+Cov_eye = np.eye(h*h)
+Ord_nai = Cov2Var(Cov_eye)
+
+# "Variance subsampling"
+Ord_var = Cov2Var(Cov)
+
+# sphinx_gallery_thumbnail_number = 2
+
+# Display the order matrix
+f, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,5))
+im1=ax1.imshow(Ord_nai, vmin=0, vmax=1)
+ax1.set_title("Order matrix \n'naive subsampling'", fontsize=20)
+noaxis(ax1)
+add_colorbar(im1, 'bottom', size="20%")
+
+im2=ax2.imshow(Ord_var, vmin=0, vmax=500)
+ax2.set_title("Order matrix \n'variance subsampling'", fontsize=20)
+noaxis(ax2)
+add_colorbar(im2, 'bottom', size="20%")
+
+###############################################################################
+# .. note::
+#   Note that in this tutorial the covariance matrix is used only for chosing the subsampling strategy. 
+#   Although the covariance matrix can be also exploited to improve the reconstruction, 
+#   this will be considered in a future tutorial.
+
+# %% 
+# Measurement and noise operators
+# -----------------------------------------------------------------------------
+
+###############################################################################
+# We compute the measurement and noise operators and then 
+# simulate the measurement vector :math:`y`. 
+
+###############################################################################
+# We consider Poisson noise, i.e., a noisy measurement vector given by
+#
+# .. math::
+#       y \sim \mathcal{P}(\alpha P \tilde{x}),
+#
+# where :math:`\alpha` is a scalar value that represents the maximum image intensity
+# (in photons). The larger :math:`\alpha`, the higher the signal-to-noise ratio.
+
+
+###############################################################################
+# We use the :class:`spyrit.core.noise.Poisson` class, set :math:`\alpha`
+# to 100 photons, and simulate a noisy measurement vector for the two sampling strategies. 
+
+from spyrit.core.noise import Poisson
+from spyrit.core.meas import HadamSplit   
+from spyrit.core.noise import Poisson
+
+alpha = 100.0 # number of photons
+
+# "Naive subsampling"
+# Measurement and noise operators
+meas_nai_op = HadamSplit(M, h, Ord_nai)
+noise_nai_op = Poisson(meas_nai_op, alpha) 
+
+# Measurement operator
+x = x.view(b*c,h*w)  # vectorized image
+y_nai = noise_nai_op(x) # a noisy measurement vector
+
+# "Variance subsampling"
+meas_var_op = HadamSplit(M, h, Ord_var)
+noise_var_op = Poisson(meas_var_op, alpha)
+y_var = noise_var_op(x) # a noisy measurement vector
+
+x = x.view(b*c,h*w)  # vectorized image
+print(f'Shape of vectorized image: {x.shape}')
+print(f'Shape of simulated measurements y: {y_var.shape}')
 
 
 # %% 
@@ -223,7 +249,7 @@ y_noisy_cov = noise_cov_op(x) # a noisy measurement vector
 # We compute the preprocessing operators for the three cases considered above,  
 # using the :mod:`spyrit.core.prep` module. As previously introduced, 
 # a preprocessing operator applies to the noisy measurements in order to 
-# to compensate for the scaling factors that appear in the measurement or noise operators:  
+# compensate for the scaling factors that appear in the measurement or noise operators:  
 # 
 # .. math::
 #       m = \texttt{Prep}(y),
@@ -243,54 +269,77 @@ y_noisy_cov = noise_cov_op(x) # a noisy measurement vector
 # This in handled internally by the :class:`spyrit.core.prep.SplitPoisson` class.
 
 ###############################################################################
-# We consider first preprocessing the measurements corrupted by Poisson noise
+# We compute the preprocessing operator and the measurements vectors for 
+# the two sampling strategies.
+
 from spyrit.core.prep import SplitPoisson
 
-alpha = 100.0 # number of photons
-prep_noisy_op = SplitPoisson(alpha, meas_op) 
-m_noisy = prep_noisy_op(y_noisy) 
+# "Naive subsampling"
+#
+# Preprocessing operator
+prep_nai_op = SplitPoisson(alpha, meas_nai_op) 
+
+# Preprocessed measurements
+m_nai = prep_nai_op(y_nai) 
+
+# "Variance subsampling"
+prep_var_op = SplitPoisson(alpha, meas_var_op)
+m_var = prep_var_op(y_var)
+
+
+# %% 
+# Noiseless measurements
+# -----------------------------------------------------------------------------
 
 ###############################################################################
-# Similarly, we can preprocess the noiseless measurement by setting :math:`\alpha` to 1.
-prep_noiseless_op = SplitPoisson(1.0, meas_op) 
-m_noiseless = prep_noiseless_op(y_noiseless)
+# We consider now noiseless measurements for the "naive subsampling" strategy. 
+# We compute the required operators and the noiseless measurement vector. 
+# For this we use the :class:`spyrit.core.noise.NoNoise` class, which normalizes 
+# the input vector to get an image in [0,1], as explained in 
+# :ref:`acquisition operators tutorial <tuto_acquisition_operators>`. 
+# For the preprocessing operator, we assign the number of photons equal to one. 
 
-###############################################################################
-# Finally, we can preprocess the noisy measurement for full covariance
-prep_noisy_cov_op = SplitPoisson(alpha, meas_cov_op) 
-m_noisy_cov = prep_noisy_cov_op(y_noisy_cov)
+from spyrit.core.noise import NoNoise
 
-###############################################################################
+nonoise_nai_op = NoNoise(meas_nai_op) 
+y_nai_nonoise = nonoise_nai_op(x) # a noisy measurement vector
+
+prep_nonoise_op = SplitPoisson(1.0, meas_nai_op)
+m_nai_nonoise = prep_nonoise_op(y_nai_nonoise)
+
+#######################################E########################################
 # We can now plot the three measurement vectors
 
+from spyrit.misc.sampling import meas2img2
+
 # Plot the three measurement vectors
-m_plot = m_noisy.numpy()   
-m_plot = meas2img2(m_plot.T, Ord)
+m_plot = m_nai_nonoise.numpy()   
+m_plot = meas2img2(m_plot.T, Ord_nai)
 m_plot = np.moveaxis(m_plot,-1, 0)
 m_plot_max = np.max(m_plot[0,:,:])
 m_plot_min = np.min(m_plot[0,:,:])
 
-m_plot2 = m_noiseless.numpy()   
-m_plot2 = meas2img2(m_plot2.T, Ord)
+m_plot2 = m_nai.numpy()   
+m_plot2 = meas2img2(m_plot2.T, Ord_nai)
 m_plot2 = np.moveaxis(m_plot2,-1, 0)
 
-m_plot3 = m_noisy_cov.numpy()   
-m_plot3 = meas2img2(m_plot3.T, Ord_cov)
+m_plot3 = m_var.numpy()   
+m_plot3 = meas2img2(m_plot3.T, Ord_var)
 m_plot3 = np.moveaxis(m_plot3,-1, 0)
 
-f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15,5))
+f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20,7))
 im1=ax1.imshow(m_plot[0,:,:], cmap='gray')
-ax1.set_title(r'Noiseless $m$', fontsize=20)
+ax1.set_title("Noiseless measurements $m$ \n 'Naive' subsampling", fontsize=20)
 noaxis(ax1)
 add_colorbar(im1, 'bottom', size="20%")
 
 im2=ax2.imshow(m_plot2[0,:,:], cmap='gray', vmin=m_plot_min, vmax=m_plot_max)
-ax2.set_title(r'Noisy $m$', fontsize=20)
+ax2.set_title("Measurements $m$ \n 'Naive' subsampling", fontsize=20)
 noaxis(ax2)
 add_colorbar(im2, 'bottom', size="20%")
 
 im3=ax3.imshow(m_plot3[0,:,:], cmap='gray', vmin=m_plot_min, vmax=m_plot_max)
-ax3.set_title(r'Noisy $m$ (full Cov)', fontsize=20)
+ax3.set_title("Measurements $m$ \n 'Variance' subsampling", fontsize=20)
 noaxis(ax3)
 add_colorbar(im3, 'bottom', size="20%")
 
@@ -299,42 +348,49 @@ add_colorbar(im3, 'bottom', size="20%")
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We recontruct with the :class:`spyrit.core.recon.PinvNet` class the three cases 
-# and plot results side by side.
+# We use the :class:`spyrit.core.recon.PinvNet` class where 
+# the pseudo inverse reconstruction is performed by a neural network
 
-from spyrit.core.recon import PseudoInverse
+from spyrit.core.recon import PinvNet
+
+# PinvNet(meas_op, prep_op, denoi=torch.nn.Identity())
+pinvnet_nai_nonoise = PinvNet(nonoise_nai_op, prep_nonoise_op)
+pinvnet_nai = PinvNet(noise_nai_op, prep_nai_op)
+pinvnet_var = PinvNet(noise_var_op, prep_var_op)
+
+# Reconstruction
+z_nai_nonoise = pinvnet_nai_nonoise.reconstruct(y_nai_nonoise)
+z_nai = pinvnet_nai.reconstruct(y_nai)
+z_var = pinvnet_var.reconstruct(y_var)
+
+###############################################################################
+# We can now plot the three reconstructed images
 from spyrit.misc.disp import add_colorbar, noaxis
-recon_op = PseudoInverse()
-
-z_noiseless = recon_op(m_noiseless, meas_op)
-z_noisy = recon_op(m_noisy, meas_op)
-z_noisy_cov = recon_op(m_noisy_cov, meas_cov_op)
 
 # Plot
 x_plot = x.view(-1,h,h).numpy() 
-z_plot_noiseless = z_noiseless.view(-1,h,h).numpy() 
-z_plot_noisy = z_noisy.view(-1,h,h).numpy() 
-z_plot_noisy_cov = z_noisy_cov.view(-1,h,h).numpy() 
+z_plot_nai_nonoise = z_nai_nonoise.view(-1,h,h).numpy() 
+z_plot_nai = z_nai.view(-1,h,h).numpy() 
+z_plot_var = z_var.view(-1,h,h).numpy() 
 
-# sphinx_gallery_thumbnail_number = 3
 f, axs = plt.subplots(2, 2, figsize=(10,10))
 im1=axs[0,0].imshow(x_plot[0,:,:], cmap='gray')
 axs[0,0].set_title('Ground-truth image')
 noaxis(axs[0,0])
 add_colorbar(im1, 'bottom')
 
-im2=axs[0,1].imshow(z_plot_noiseless[0,:,:], cmap='gray')
+im2=axs[0,1].imshow(z_plot_nai_nonoise[0,:,:], cmap='gray')
 axs[0,1].set_title('Reconstruction noiseless')
 noaxis(axs[0,1])
 add_colorbar(im2, 'bottom')
 
-im3=axs[1,0].imshow(z_plot_noisy[0,:,:], cmap='gray')
-axs[1,0].set_title('Reconstruction noisy')
+im3=axs[1,0].imshow(z_plot_nai[0,:,:], cmap='gray')
+axs[1,0].set_title("Reconstruction \n 'Naive' subsampling")
 noaxis(axs[1,0])
 add_colorbar(im3, 'bottom')
 
-im4=axs[1,1].imshow(z_plot_noisy_cov[0,:,:], cmap='gray')
-axs[1,1].set_title('Reconstruction noisy (full Cov)')
+im4=axs[1,1].imshow(z_plot_var[0,:,:], cmap='gray')
+axs[1,1].set_title("Reconstruction \n 'Variance' subsampling")
 noaxis(axs[1,1])
 add_colorbar(im4, 'bottom')
 
@@ -343,7 +399,9 @@ plt.show()
 ###############################################################################
 # .. note::
 #    
-#       Note that reconstructed images are pixelized as pixels when using a unit covariance matrix  
-#       while they are smooth when using a full covariance matrix. 
+#       Note that reconstructed images are pixelized when using the "naive subsampling",  
+#       while they are smoother and more similar to the ground-truth image when using the 
+#       "variance subsampling". 
+#
 #       Another way to further improve results is to include a nonlinear post-processing step, 
 #       which we will consider in a future tutorial. 
