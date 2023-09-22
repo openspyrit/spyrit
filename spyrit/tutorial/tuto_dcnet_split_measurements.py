@@ -3,10 +3,10 @@ r"""
 =========================================
 .. _tuto_dcnet_split_measurements:
 This tutorial shows how to perform image reconstruction using DCNet (data completion network) with 
-and without UNet denoising as the last layer of the network. In the previous tutorial 
+and without a trainable image denoiser. In the previous tutorial 
 :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>` 
 we showed how to handle split measurements for a Hadamard operator 
-and how to perform a pseudo-inverse reconstruction with PInvNet. 
+and how to perform a pseudo-inverse reconstruction with PinvNet. 
 
 """
 
@@ -82,13 +82,13 @@ dataId_list = [
         ]
 cov_name = './stat/Cov_64x64.npy'
 
-for dataId in dataId_list:
-    myfile = gc.getFile(dataId)
-    gc.downloadFile(dataId, data_folder + myfile['name'])
-
-print(f'Created {data_folder}') 
-
 try:
+    for dataId in dataId_list:
+        myfile = gc.getFile(dataId)
+        gc.downloadFile(dataId, data_folder + myfile['name'])
+
+    print(f'Created {data_folder}') 
+
     Cov  = np.load(cov_name)
     print(f"Cov matrix {cov_name} loaded")
 except:
@@ -194,8 +194,10 @@ from spyrit.core.train import load_net
 import matplotlib.pyplot as plt
 from spyrit.misc.disp import add_colorbar, noaxis
 
-# Pretrained DC UNet (UNet denoising)
+# Define UNet denoiser
 denoi = Unet()
+
+# Define DCNet (with UNet denoising)
 dcnet_unet = DCNet(noise_op, prep_op, Cov, denoi)
 dcnet_unet = dcnet_unet.to(device)
 
@@ -240,7 +242,7 @@ noaxis(axs[0,0])
 add_colorbar(im1, 'bottom')
 
 im2=axs[0,1].imshow(x_plot2[0,:,:], cmap='gray')
-axs[0,1].set_title('Pinv reconstruction', fontsize=16)
+axs[0,1].set_title('PinvNet', fontsize=16)
 noaxis(axs[0,1])
 add_colorbar(im2, 'bottom')
 
@@ -259,7 +261,7 @@ plt.show()
 ###############################################################################
 # Comparing results, PinvNet provides pixelized reconstruction, DCNet with no denoising 
 # leads to a smoother reconstruction, as expected by a Tikonov regularization, and 
-# DCNet with UNet denoising provides the best reconstruction, as it serves a nonlinear filter.       
+# DCNet with UNet denoising provides the best reconstruction.       
 
 ###############################################################################
 # .. note::
