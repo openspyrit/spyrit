@@ -120,6 +120,8 @@ print(f'Shape of the preprocessed measurements: {m.shape}')
 # domain, we use the :func:`spyrit.misc.sampling.meas2img2` function
 
 # plot
+# sphinx_gallery_thumbnail_number = 3
+
 from spyrit.misc.sampling import meas2img
 
 m_plot = m.detach().numpy().squeeze()
@@ -252,6 +254,7 @@ add_colorbar(im3, 'bottom', size='20%')
 
 # Plot
 # sphinx_gallery_thumbnail_number = 5
+
 imagesc(x_plot3, f'Pinv + CNN (trained {num_epochs} epochs', title_fontsize=20)
 
 plt.show()
