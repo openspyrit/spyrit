@@ -248,6 +248,8 @@ m3 = prep_op(y3)
 ###############################################################################
 # We finally plot the preprocessed measurement vectors as images
 
+# sphinx_gallery_thumbnail_number = 5
+
 # plot
 m1 = m1.view(b,h,h).detach().numpy()
 m2 = m2.view(b,h,h).detach().numpy() 
@@ -279,5 +281,4 @@ noaxis(axs)
 # We show again one of the preprocessed measurement vectors (tutorial thumbnail purpose)
 
 # Plot
-# sphinx_gallery_thumbnail_number = 5
 imagesc(m2[0,:,:], '100 photons', title_fontsize=20)

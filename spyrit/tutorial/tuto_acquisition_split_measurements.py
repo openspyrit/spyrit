@@ -1,6 +1,6 @@
 
 r"""
-05. Acquisition operators 2 - Split measurements
+05. Acquisition operators (advanced) - Split measurements and subsampling
 ================================================
 
 .. _tuto_acquisition_split_measurements:
@@ -8,8 +8,8 @@ This tutorial is a continuation of the :ref:`Acquisition operators tutorial <tut
 for single-pixel imaging, which showed how to simulate linear measurements using the 
 :class:`spyrit.core` submodule (based on three classes :class:`spyrit.core.meas`, 
 :class:`spyrit.core.noise`, and :class:`spyrit.core.prep`). 
-This tutorial extends the previous case to Hadamard patterns and introduces 
-split measurements in order to handle negative measurements. 
+This tutorial extends the previous case: i) by introducing split measurements that can handle a Hadamard measurement matrix, 
+and ii) by discussing the choice of the subsampling pattern for accelerated acquisitions.
 """
 
 import numpy as np
@@ -90,18 +90,8 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 # The class relies on a matrix :math:`H` with 
 # shape :math:`(M,N)` where :math:`N` represents the number of pixels in the 
 # image and :math:`M \le N` the number of measurements. The matrix :math:`P` 
-# is obtained by splitting the matrix :math:`H` where 
-# :math:`H_{+} = \max(0,H)`, :math:`H_{-} = \max(0,-H)`, and 
-# :math:`H = H_{+}-H_{-}`.
-
-###############################################################################
-# .. note::
-#   Note that the positive component of a Hadamard matrix has been previously introduced  
-#   :ref:`here <hadamard_positive>` to simulate linear measurements. 
-#   In that case, we could proceed as with other commonly used linear operators. 
-#   In this tutorial, we consider the split measurements in order to handle negative 
-#   measurements that arise when considering a Hadamard matrix.
-
+# is obtained by splitting the matrix :math:`H` as :math:`H = H_{+}-H_{-}` where  
+# :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`. 
 
 # %% 
 # Subsampling
@@ -128,7 +118,7 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 # by the :class:`spyrit.core.meas.HadamSplit` class.
 
 ###############################################################################
-# Frist, we download the covariance matrix from our warehouse and load it. The covariance matrix 
+# First, we download the covariance matrix from our warehouse and load it. The covariance matrix 
 # has been computed from :ref:`ImageNet 2012 dataset <https://www.image-net.org/challenges/LSVRC/2012/>`. 
 
 import girder_client
@@ -147,13 +137,13 @@ dataId_list = [
         ]
 cov_name = './stat/Cov_64x64.npy'
 
-for dataId in dataId_list:
-    myfile = gc.getFile(dataId)
-    gc.downloadFile(dataId, data_folder + myfile['name'])
-
-print(f'Created {data_folder}') 
-
 try:
+    for dataId in dataId_list:
+        myfile = gc.getFile(dataId)
+        gc.downloadFile(dataId, data_folder + myfile['name'])
+
+    print(f'Created {data_folder}') 
+    
     # Load covariance matrix for "variance subsampling"
     Cov  = np.load(cov_name)
     print(f"Cov matrix {cov_name} loaded")
@@ -163,11 +153,11 @@ except:
     print(f"Cov matrix {cov_name} not found! Set to the identity")
     
 ###############################################################################
-# We define the order matrix :math:`Ord` for the two sampling strategies. It is computed 
-# from the full covariance, for the "variance subsampling", and from the identity matrix 
+# We compute the order matrix :math:`Ord` for the two sampling strategies, 
+# from the covariance matrix for the "variance subsampling", and from the identity matrix 
 # for the "naive subsampling". In the latter case, 
 # the order matrix is constant, as all coefficients are considered equally informative, 
-# and they are retaining in the increasing 'naive' order.
+# and they are retained in the increasing 'naive' order.
 # We also define the number of measurements :math:`M` that will be used later. 
 
 from spyrit.misc.statistics import Cov2Var
@@ -183,6 +173,8 @@ Ord_nai = Cov2Var(Cov_eye)
 
 # "Variance subsampling"
 Ord_var = Cov2Var(Cov)
+
+# sphinx_gallery_thumbnail_number = 2
 
 # Display the order matrix
 f, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,5))
@@ -257,7 +249,7 @@ print(f'Shape of simulated measurements y: {y_var.shape}')
 # We compute the preprocessing operators for the three cases considered above,  
 # using the :mod:`spyrit.core.prep` module. As previously introduced, 
 # a preprocessing operator applies to the noisy measurements in order to 
-# to compensate for the scaling factors that appear in the measurement or noise operators:  
+# compensate for the scaling factors that appear in the measurement or noise operators:  
 # 
 # .. math::
 #       m = \texttt{Prep}(y),
@@ -305,17 +297,17 @@ m_var = prep_var_op(y_var)
 # For this we use the :class:`spyrit.core.noise.NoNoise` class, which normalizes 
 # the input vector to get an image in [0,1], as explained in 
 # :ref:`acquisition operators tutorial <tuto_acquisition_operators>`. 
-# For the preprocessing operator, we use the :class:`spyrit.core.prep.NoNoise` class
-# and assign the number of photons equal to one. 
+# For the preprocessing operator, we assign the number of photons equal to one. 
 
 from spyrit.core.noise import NoNoise
 
 nonoise_nai_op = NoNoise(meas_nai_op) 
 y_nai_nonoise = nonoise_nai_op(x) # a noisy measurement vector
+
 prep_nonoise_op = SplitPoisson(1.0, meas_nai_op)
 m_nai_nonoise = prep_nonoise_op(y_nai_nonoise)
 
-###############################################################################
+#######################################E########################################
 # We can now plot the three measurement vectors
 
 from spyrit.misc.sampling import meas2img2
@@ -335,7 +327,6 @@ m_plot3 = m_var.numpy()
 m_plot3 = meas2img2(m_plot3.T, Ord_var)
 m_plot3 = np.moveaxis(m_plot3,-1, 0)
 
-# sphinx_gallery_thumbnail_number = 3
 f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20,7))
 im1=ax1.imshow(m_plot[0,:,:], cmap='gray')
 ax1.set_title("Noiseless measurements $m$ \n 'Naive' subsampling", fontsize=20)
@@ -357,19 +348,24 @@ add_colorbar(im3, 'bottom', size="20%")
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We recontruct with the :class:`spyrit.core.recon.PinvNet` class the three cases 
-# and plot results side by side.
+# We use the :class:`spyrit.core.recon.PinvNet` class where 
+# the pseudo inverse reconstruction is performed by a neural network
 
-from spyrit.core.recon import PseudoInverse
-from spyrit.misc.disp import add_colorbar, noaxis
+from spyrit.core.recon import PinvNet
 
-# Pseudo-inverse reconstruction operator
-recon_op = PseudoInverse()
+# PinvNet(meas_op, prep_op, denoi=torch.nn.Identity())
+pinvnet_nai_nonoise = PinvNet(nonoise_nai_op, prep_nonoise_op)
+pinvnet_nai = PinvNet(noise_nai_op, prep_nai_op)
+pinvnet_var = PinvNet(noise_var_op, prep_var_op)
 
 # Reconstruction
-z_nai_nonoise = recon_op(m_nai_nonoise, meas_nai_op)
-z_nai = recon_op(m_nai, meas_nai_op)
-z_var = recon_op(m_var, meas_var_op)
+z_nai_nonoise = pinvnet_nai_nonoise.reconstruct(y_nai_nonoise)
+z_nai = pinvnet_nai.reconstruct(y_nai)
+z_var = pinvnet_var.reconstruct(y_var)
+
+###############################################################################
+# We can now plot the three reconstructed images
+from spyrit.misc.disp import add_colorbar, noaxis
 
 # Plot
 x_plot = x.view(-1,h,h).numpy() 
@@ -403,12 +399,9 @@ plt.show()
 ###############################################################################
 # .. note::
 #    
-#       Note that reconstructed images are pixelized as pixels when using the "naive subsampling",  
-#       while they are smoother when using the "variance subsampling". This is due to the fact that 
-#       the "variance subsampling" preserves the coefficients with largest variance, which 
-#       leads to better reconstruction. Another explanation, it is that "naive subsampling" 
-#       preserves Hadamard coefficients in the provided order, while "variance subsampling"
-#       combines different Hadamard coefficients, related to higher spatial frequencies. 
+#       Note that reconstructed images are pixelized when using the "naive subsampling",  
+#       while they are smoother and more similar to the ground-truth image when using the 
+#       "variance subsampling". 
 #
 #       Another way to further improve results is to include a nonlinear post-processing step, 
 #       which we will consider in a future tutorial. 

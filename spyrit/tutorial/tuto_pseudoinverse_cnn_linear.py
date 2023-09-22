@@ -8,7 +8,7 @@ using PinvNet (pseudoinverse linear network) with CNN denoising as a last layer.
 This tutorial is a continuation of the :ref:`Pseudoinverse solution tutorial <tuto_pseudoinverse_linear>` 
 but uses a CNN denoiser instead of the identity operator in order to remove artefacts.
 
-The measurement operator is chosen as the positive part of a Hadamard matrix, 
+The measurement operator is chosen as a Hadamard matrix with positive coefficients, 
 which can be replaced by any matrix. 
 """
 
@@ -58,7 +58,7 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 # We consider the case where the measurement matrix is the positive
 # component of a Hadamard matrix and the sampling operator preserves only 
 # the first :attr:`M` low-frequency coefficients 
-# (see :ref:`Positive part of Hadamard matrix <hadamard_positive>` for full explantion).
+# (see :ref:`Positive Hadamard matrix <hadamard_positive>` for full explantion).
 
 import numpy as np
 import math 
@@ -120,6 +120,8 @@ print(f'Shape of the preprocessed measurements: {m.shape}')
 # domain, we use the :func:`spyrit.misc.sampling.meas2img2` function
 
 # plot
+# sphinx_gallery_thumbnail_number = 3
+
 from spyrit.misc.sampling import meas2img
 
 m_plot = m.detach().numpy().squeeze()
@@ -252,6 +254,7 @@ add_colorbar(im3, 'bottom', size='20%')
 
 # Plot
 # sphinx_gallery_thumbnail_number = 5
+
 imagesc(x_plot3, f'Pinv + CNN (trained {num_epochs} epochs', title_fontsize=20)
 
 plt.show()
