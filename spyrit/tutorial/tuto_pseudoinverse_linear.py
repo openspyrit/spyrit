@@ -128,6 +128,8 @@ print(f'Shape of raw measurements: {y.shape}')
 # domain, we use the :func:`spyrit.misc.sampling.meas2img2` function
 
 # plot
+# sphinx_gallery_thumbnail_number = 3
+
 from spyrit.misc.sampling import meas2img
 
 y_plot = y.detach().numpy().squeeze()
@@ -160,12 +162,32 @@ print(f'Shape of the preprocessed measurement image: {m_plot.shape}')
 
 imagesc(m_plot, 'Preprocessed measurements (no noise)')
 
+# %%
+# Pseudo inverse 
+# -----------------------------------------------------------------------------
+
+###############################################################################
+# We can use the :class:`spyrit.core.recon.PseudoInverse` class to perform the 
+# pseudo inverse reconstruction from the measurements :attr:`y`
+
+from spyrit.core.recon import PseudoInverse
+
+# Pseudo-inverse reconstruction operator
+recon_op = PseudoInverse()
+
+# Reconstruction
+x_rec = recon_op(y, meas_op)
+
+# plot
+x_plot = x_rec.squeeze().view(h, h).cpu().numpy() 
+imagesc(x_plot, 'Pseudoinverse reconstruction (no noise)', title_fontsize=20)
+
 # %% 
 # PinvNet Network 
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We consider the :class:`spyrit.core.recon.PinvNet` class that reconstructs an
+# Alternatively, we can consider the :class:`spyrit.core.recon.PinvNet` class that reconstructs an
 # image by computing the pseudoinverse solution, which is fed to a neural 
 # networker denoiser. To compute the pseudoinverse solution only, the denoiser  
 # can be set to the identity operator 
@@ -184,9 +206,8 @@ pinv_net = PinvNet(noise, prep)
 x_rec = pinv_net.reconstruct(y)
 
 # plot
-# sphinx_gallery_thumbnail_number = 5
 x_plot = x_rec.squeeze().cpu().numpy() 
-imagesc(x_plot, 'Pseudoinverse reconstruction (no noise)', title_fontsize=20)
+imagesc(x_plot, 'PinvNet reconstruction (no noise)', title_fontsize=20)
 
 ###############################################################################
 # Alternatively, the measurement vector can be simulated using the 
