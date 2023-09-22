@@ -747,9 +747,13 @@ class DCNet(nn.Module):
 #%%===========================================================================================
 class DCDRUNet(DCNet):
 # ===========================================================================================
-    r""" Denoised completion reconstruction network based on DRUNet wich concatenates a 
-        noise level map to the input
+    r""" Denoised completion reconstruction network with PnP DRUNet denoiser
     
+         Denoised completion reconstruction network based on the plug-and-play DRUNet denoiser 
+         which has been trained for a wide range of noise levels and concatenates a noise 
+         level map to the input. Thus, it allows the user to specify the noise level as an input.
+    
+         
     .. math:
         
     
@@ -769,8 +773,8 @@ class DCDRUNet(DCNet):
 
     
     Input / Output:
-        :attr:`input`: Ground-truth images with concatenated noise level map with 
-         shape :math:`(B,C+1,H,W)` 
+        :attr:`input`: Ground-truth images (it concatenated the noise level map in the denoise step internally) 
+         shape :math:`(B,C,H,W)` 
         
         :attr:`output`: Reconstructed images with shape :math:`(B,C,H,W)`
     

@@ -2,9 +2,9 @@ r"""
 07. PnP DC-DRUNet for split measurements
 ==========================
 .. _tuto_dcdrunet_split_measurements:
-This tutorial shows how to perform image reconstruction with plug-and-play DC-DRUNet 
+This tutorial shows how to perform image reconstruction with plug-and-play (PnP) DC-DRUNet 
 (data completion with pretrained DRUNet denoising network) for single-pixel imaging. 
-DC-DRUNet builds from the plug-n-play network DRUNet, which is a denoising network 
+DC-DRUNet builds from the PnP network DRUNet, which is a denoising network 
 that has been pretrained for a wide range of noise levels and admits the noise level 
 as an input. Thus, it requires no training while providing state-of-the-art postprocessing 
 performance! 
@@ -87,9 +87,10 @@ imagesc(x_plot[0,:,:], r'$x$ in [-1, 1]')
 # -----------------------------------------------------------------------------
 
 ############################################################################### 
-# We consider noisy split measurements for a Hadamard operator and a full 
-# covariance matrix to take into account the correlation between measurements 
-# (for more details, we refer to :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`).  
+# We consider noisy split measurements for a Hadamard operator and a 
+# “variance subsampling” strategy that preserves the coefficients with the 
+# largest variance, obtained from a previously estimated covariance matrix 
+# (for more details, refer to :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`).  
 
 ###############################################################################
 # First, we download the covariance matrix and load it.
@@ -110,13 +111,13 @@ dataId_list = [
         ]
 cov_name = './stat/Cov_64x64.npy'
 
-for dataId in dataId_list:
-    myfile = gc.getFile(dataId)
-    gc.downloadFile(dataId, data_folder + myfile['name'])
-
-print(f'Created {data_folder}') 
-
 try:
+    for dataId in dataId_list:
+        myfile = gc.getFile(dataId)
+        gc.downloadFile(dataId, data_folder + myfile['name'])
+
+    print(f'Created {data_folder}') 
+
     Cov  = np.load(cov_name)
     print(f"Cov matrix {cov_name} loaded")
 except:
@@ -167,9 +168,9 @@ imagesc(m_plot, r'Measurements $m$')
 # to denoise an image with any noise level by concatenating a noise level map to the input. 
 # The class :class:`spyrit.core.recon.DCDRUNet` builds from the class :class:`spyrit.core.recon.DCNet` 
 # introduced in the previous :ref:`DCNet tutorial <tuto_dcnet_split_measurements>`. 
-# The definition of the DRUNet network is given in :class:`spyrit.external.drunet.UNetRes` class.
-# It requires to download the pretrained weights of the DRUNet denoiser. 
-
+# The definition of the DRUNet network is given in the :class:`spyrit.external.drunet.UNetRes` class, 
+# provided in the submodule :mod:`spyrit.external.drunet`. 
+# In order to use the DRUNet network, we define it and then we download and load its pretrained weights. 
 
 ###############################################################################
 # We download the pretrained weights of the DRUNet denoiser, call the DRUNet network and 
@@ -210,7 +211,7 @@ print(sum(map(lambda x: x.numel(), denoi_drunet.parameters())) )
 ###############################################################################
 # We define the DCDRUNet network by providing the measurement, noise and preprocessing operators, 
 # the covariance matrix, the denoising network and the noise level :attr:`noise_level`, 
-# which is expected to be in [0, 50]. The larger the noise level, the higher the denoising.
+# which is expected to be in [0, 255]. The larger the noise level, the higher the denoising.
 # The noise level is not required as it can be set later on. 
 
 from spyrit.core.recon import DCDRUNet
@@ -224,14 +225,12 @@ dcdrunet = dcdrunet.to(device)
 ###############################################################################
 # We reconstruct the image from the measurement vector :math:`m`.
 
-# Uncomment to set a new noise level: The higher the noise, the higher the denoising
-
 with torch.no_grad():
     # reconstruct from raw measurements
     z_dcdrunet = dcdrunet.reconstruct(y.to(device))  
 
 ###############################################################################
-# We can also set another noise level and reconstruct another image.
+# We can set another noise level and reconstruct another image.
 
 from spyrit.misc.disp import add_colorbar, noaxis
 
@@ -266,8 +265,7 @@ add_colorbar(im2, 'bottom')
 
 ###############################################################################
 # Alternatively, we can reconstruct with DCNet and apply DRUNet in a second step, 
-# which is equivalent to DCDRUNet but it is more involved. DRUNet expects the image   
-# to be normalized in [0,1] and the noise level in [0,50].
+# which is equivalent to DCDRUNet but it is more involved. 
 
 from spyrit.core.recon import DCNet
 from spyrit.external.drunet import uint2single, single2tensor4
@@ -314,12 +312,12 @@ noaxis(axs[0,0])
 add_colorbar(im1, 'bottom')
 
 im2=axs[0,1].imshow(x_plot2[0,:,:], cmap='gray')
-axs[0,1].set_title('DCNet + I', fontsize=16)
+axs[0,1].set_title('DCNet (without denoising)', fontsize=16)
 noaxis(axs[0,1])
 add_colorbar(im2, 'bottom')
 
 im3=axs[1,0].imshow(x_plot3[0,:,:], cmap='gray')
-axs[1,0].set_title(f'1) DCNet+I. 2) DRUNet (n map={noise_level_3})', fontsize=16)
+axs[1,0].set_title(f'1) DCNet. 2) DRUNet (n map={noise_level_3})', fontsize=16)
 noaxis(axs[1,0])
 add_colorbar(im3, 'bottom')
 
@@ -331,7 +329,7 @@ add_colorbar(im4, 'bottom')
 plt.show()
 
 ###############################################################################
-# We see the reasults by DCNet + I (without denoising network), DCNet + DRUNet (with 
+# We see the results by DCNet (without denoising), DCNet + DRUNet (with 
 # PnP denoising network for noise level map equal to 7) and DCDRUNet (with noise level map equal to 7). 
 # Note that the last two results are equivalent, as expected.
 
