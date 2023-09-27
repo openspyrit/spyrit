@@ -271,15 +271,15 @@ from spyrit.core.recon import DCNet
 from spyrit.external.drunet import uint2single, single2tensor4
 
 # Define DCNet
-dcunet = DCNet(noise_op, prep_op, Cov) 
-dcunet = dcunet.to(device)
+dcnet = DCNet(noise_op, prep_op, Cov) 
+dcnet = dcnet.to(device)
 
 # Set the device for DRUNet
 denoi_drunet = denoi_drunet.to(device)
 
 # 1st step - Reconstruction
 with torch.no_grad():
-    z_dcnet = dcunet.reconstruct(y.to(device))  # reconstruct from raw measurements
+    z_dcnet = dcnet.reconstruct(y.to(device))  # reconstruct from raw measurements
 
 # 2nd step - Denoising
 # Convert to [0,1]
