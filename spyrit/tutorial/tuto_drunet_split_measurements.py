@@ -258,6 +258,38 @@ axs[1].set_title(f'DCDRUNet (n map={noise_level_2})', fontsize=16)
 noaxis(axs[1])
 add_colorbar(im2, 'bottom')
 
+# %%
+# DCNet with DRUNet denoising
+# -----------------------------------------------------------------------------
+
+###############################################################################
+# Alternatively, we can reconstruct with DCNet and apply DRUNet in a second step, 
+# which is equivalent to DCDRUNet but it is more involved. 
+if False:
+    from spyrit.core.recon import DCNet
+    from spyrit.external.drunet import uint2single, single2tensor4, DRUNetDen
+
+    # DRUnet denoising
+    denoi_drunet = DRUNetDen(noise_level=5, n_channels=1)
+
+    # Set the device for DRUNet
+    denoi_drunet = denoi_drunet.to(device)
+
+    # Define DCNet with DRUNet denoising
+    dcnet = DCNet(noise_op, prep_op, Cov, denoi=denoi_drunet) 
+    dcnet = dcnet.to(device)
+
+    # 1st step - Reconstruction
+    with torch.no_grad():
+        z_dcnet = dcnet.reconstruct(y.to(device))  # reconstruct from raw measurements
+
+    x_plot = z_dcnet.view(-1,h,h).cpu().numpy() 
+
+    f, axs = plt.subplots(2, 2, figsize=(10,10))
+    im1=axs[0,0].imshow(x_plot[0,:,:], cmap='gray')
+    axs[0,0].set_title('Ground-truth image', fontsize=16)
+    noaxis(axs[0,0])
+    add_colorbar(im1, 'bottom')
 
 # %%
 # DRUNet denoising
@@ -283,12 +315,13 @@ with torch.no_grad():
 
 # 2nd step - Denoising
 # Convert to [0,1]
-x_sample = 0.5*(z_dcnet[0,0,:,:] + 1).cpu().numpy()
+#x_sample = 0.5*(z_dcnet[0,0,:,:] + 1).cpu().numpy()
+x_sample = 0.5*(z_dcnet + 1).cpu()
 
 # Create noise-level map and concatenate to the image
 noise_level_3 = 7
-x_sample = uint2single(255*x_sample)
-x_sample = single2tensor4(x_sample[:,:,np.newaxis])
+#x_sample = uint2single(255*x_sample)
+#x_sample = single2tensor4(x_sample[:,:,np.newaxis])
 x_sample = torch.cat((x_sample, torch.FloatTensor([noise_level_3/255.]).repeat(1, 1, x_sample.shape[2], x_sample.shape[3])), dim=1)        
 x_sample = x_sample.to(device)
 
