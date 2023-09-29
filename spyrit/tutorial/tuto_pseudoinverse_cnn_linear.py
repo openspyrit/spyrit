@@ -17,7 +17,10 @@ which can be replaced by any matrix.
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# First, we load an image :math:`x` and normalized it to [-1,1], as in previous examples. 
+# Images :math:`x` for training expect values in [-1,1]. The images are normalized
+# using the :func:`transform_gray_norm` function.
+
+# sphinx_gallery_thumbnail_path = '../../spyrit/images/tuto/pinvnet_cnn.png'
 
 import os
 from spyrit.misc.statistics import transform_gray_norm
@@ -120,8 +123,6 @@ print(f'Shape of the preprocessed measurements: {m.shape}')
 # domain, we use the :func:`spyrit.misc.sampling.meas2img2` function
 
 # plot
-# sphinx_gallery_thumbnail_number = 3
-
 from spyrit.misc.sampling import meas2img
 
 m_plot = m.detach().numpy().squeeze()
@@ -155,7 +156,6 @@ x_rec = pinv_net.reconstruct(y)
 
 # %%
 # Removing artefacts with a CNN
-#
 # -----------------------------------------------------------------------------
 
 ###############################################################################
@@ -163,6 +163,12 @@ x_rec = pinv_net.reconstruct(y)
 # (last layer of PinvNet). We select a simple CNN using the 
 # :class:`spyrit.core.nnet.ConvNet` class, but this can be replaced by any 
 # neural network (eg. UNet from :class:`spyrit.core.nnet.Unet`).
+
+###############################################################################
+# .. image:: ../../../spyrit/images/tuto/pinvnet_cnn.png
+#    :width: 400
+#    :align: center
+#    :alt: Sketch of the PinvNet with CNN architecture
 
 from spyrit.misc.disp import imagesc
 from spyrit.core.nnet import ConvNet, Unet
@@ -253,8 +259,6 @@ add_colorbar(im3, 'bottom', size='20%')
 # We show the best result again (tutorial thumbnail purpose)
 
 # Plot
-# sphinx_gallery_thumbnail_number = 5
-
 imagesc(x_plot3, f'Pinv + CNN (trained {num_epochs} epochs', title_fontsize=20)
 
 plt.show()
