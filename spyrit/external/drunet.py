@@ -60,9 +60,9 @@ class UNetRes(nn.Module):
 
         return x
 
-class DRUNetDen(UNetRes):
+class DRUNet(UNetRes):
     def __init__(self, noise_level=5, n_channels=1, nc=[64, 128, 256, 512], nb=4, act_mode='R', downsample_mode='strideconv', upsample_mode='convtranspose'):
-        super(DRUNetDen, self).__init__(n_channels+1, n_channels, nc, nb, act_mode, downsample_mode, upsample_mode)
+        super(DRUNet, self).__init__(n_channels+1, n_channels, nc, nb, act_mode, downsample_mode, upsample_mode)
         self.register_buffer('noise_level', torch.FloatTensor([noise_level/255.]))
 
     def forward(self, x):
@@ -70,7 +70,7 @@ class DRUNetDen(UNetRes):
         x = self.concat_noise_map(x)
 
         # Pass input images through the network
-        x = super(DRUNetDen, self).forward(x)             
+        x = super(DRUNet, self).forward(x)             
         return x        
 
     def concat_noise_map(self, x):
