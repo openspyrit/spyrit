@@ -174,17 +174,30 @@ Ord_nai = Cov2Var(Cov_eye)
 # "Variance subsampling"
 Ord_var = Cov2Var(Cov)
 
+###############################################################################
+# To provide further insight on the subsampling strategies, we can plot an 
+# approximation of the  masks that are used to subsample the measurement matrices.
+
 # sphinx_gallery_thumbnail_number = 2
 
-# Display the order matrix
+# Mask for "naive subsampling"
+mask_nai = np.zeros((h,h))
+mask_nai[0:int(M/h),:] = 1
+
+# Mas for "variance subsampling"
+idx = np.argsort(Ord_var.ravel(), axis=None)[::-1]
+mask_var = np.zeros_like(Ord_var)
+mask_var.flat[idx[0:M]] = 1
+
+# Plot the masks
 f, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,5))
-im1=ax1.imshow(Ord_nai, vmin=0, vmax=1)
-ax1.set_title("Order matrix \n'naive subsampling'", fontsize=20)
+im1=ax1.imshow(mask_nai, vmin=0, vmax=1)
+ax1.set_title("Mask \n'naive subsampling'", fontsize=20)
 noaxis(ax1)
 add_colorbar(im1, 'bottom', size="20%")
 
-im2=ax2.imshow(Ord_var, vmin=0, vmax=500)
-ax2.set_title("Order matrix \n'variance subsampling'", fontsize=20)
+im2=ax2.imshow(mask_var, vmin=0, vmax=1)
+ax2.set_title("Mask \n'variance subsampling'", fontsize=20)
 noaxis(ax2)
 add_colorbar(im2, 'bottom', size="20%")
 

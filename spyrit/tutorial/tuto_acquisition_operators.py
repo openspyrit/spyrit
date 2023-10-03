@@ -32,6 +32,8 @@ import matplotlib.pyplot as plt
 # Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
 # using the :func:`transform_gray_norm` function.
 
+# sphinx_gallery_thumbnail_path = '../../spyrit/images/tuto/noise_op.png'
+
 from spyrit.misc.statistics import transform_gray_norm
 import torchvision
 import torch
@@ -247,8 +249,6 @@ m3 = prep_op(y3)
 
 ###############################################################################
 # We finally plot the preprocessed measurement vectors as images
-
-# sphinx_gallery_thumbnail_number = 5
 
 # plot
 m1 = m1.view(b,h,h).detach().numpy()
