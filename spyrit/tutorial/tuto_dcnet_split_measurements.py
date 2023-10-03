@@ -24,6 +24,8 @@ import matplotlib.pyplot as plt
 # Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
 # using the :func:`transform_gray_norm` function.
 
+# sphinx_gallery_thumbnail_path = '../../spyrit/images/tuto/dcnet.png'
+
 from spyrit.misc.statistics import transform_gray_norm
 import torchvision
 import torch
@@ -166,7 +168,14 @@ with torch.no_grad():
 #   iii) mapping them to the image domain, and 
 #   iv) denoising in the image-domain. 
 # Only the last step involves learnable parameters. 
-#
+
+###############################################################################
+# .. image:: ../../../spyrit/images/tuto/dcnet.png
+#    :width: 400
+#    :align: center
+#    :alt: Sketch of the DCNet architecture
+
+###############################################################################
 # For the denoiser, we compare the default unit matrix (no denoising) with the UNet denoiser 
 # with the :class:`spyrit.core.nnet.Unet` class. For the latter, we load the pretrained model 
 # weights. 
@@ -229,7 +238,6 @@ with torch.no_grad():
 # We plot all results 
 
 # plot reconstruction side by side
-# sphinx_gallery_thumbnail_number = 3
 x_plot = x.view(-1,h,h).cpu().numpy()    
 x_plot2 = z_invnet.view(-1,h,h).cpu().numpy() 
 x_plot3 = z_dcnet.view(-1,h,h).cpu().numpy() 

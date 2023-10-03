@@ -17,6 +17,8 @@ Note that this matrix can be replaced by any desired matrix.
 # Images :math:`x` for training expect values in [-1,1]. The images are normalized
 # using the :func:`transform_gray_norm` function.
 
+# sphinx_gallery_thumbnail_path = '../../spyrit/images/tuto/pinvnet.png'
+
 import os
 from spyrit.misc.statistics import transform_gray_norm
 import torchvision
@@ -90,7 +92,7 @@ Sampling_map[M_xy:,:] = 0
 imagesc(Sampling_map, 'low-frequency sampling map')
 
 ###############################################################################
-# After permutation of the full Hadamrd matrix, we keep only its first 
+# After permutation of the full Hadamard matrix, we keep only its first 
 # :attr:`M` rows
 
 from spyrit.misc.sampling import Permutation_Matrix
@@ -128,8 +130,6 @@ print(f'Shape of raw measurements: {y.shape}')
 # domain, we use the :func:`spyrit.misc.sampling.meas2img2` function
 
 # plot
-# sphinx_gallery_thumbnail_number = 3
-
 from spyrit.misc.sampling import meas2img
 
 y_plot = y.detach().numpy().squeeze()
@@ -191,6 +191,12 @@ imagesc(x_plot, 'Pseudoinverse reconstruction (no noise)', title_fontsize=20)
 # image by computing the pseudoinverse solution, which is fed to a neural 
 # networker denoiser. To compute the pseudoinverse solution only, the denoiser  
 # can be set to the identity operator 
+
+###############################################################################
+# .. image:: ../../../spyrit/images/tuto/pinvnet.png
+#    :width: 400
+#    :align: center
+#    :alt: Sketch of the PinvNet architecture
 
 from spyrit.core.recon import PinvNet
 pinv_net = PinvNet(noise, prep, denoi=torch.nn.Identity())
