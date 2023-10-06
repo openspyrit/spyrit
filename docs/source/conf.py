@@ -13,18 +13,21 @@
 import os
 import sys
 from sphinx_gallery.sorting import ExampleTitleSortKey
-sys.path.insert(0, os.path.abspath('../../spyrit'))
-sys.path.insert(0, os.path.abspath('../../'))
+
+sys.path.insert(0, os.path.abspath("../../spyrit"))
+sys.path.insert(0, os.path.abspath("../../"))
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'spyrit'
-copyright = '2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier'
-author = 'Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier'
+project = "spyrit"
+copyright = "2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier"
+author = (
+    "Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier"
+)
 
 # The full version, including alpha/beta/rc tags
-release = '2.1.0'
+release = "2.1.0"
 
 
 # -- General configuration ---------------------------------------------------
@@ -33,15 +36,16 @@ release = '2.1.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.intersphinx',
+    "sphinx.ext.intersphinx",
     #'sphinx.ext.autodoc',
-    'sphinx.ext.mathjax',
-    'sphinx.ext.todo',
+    "sphinx.ext.mathjax",
+    "sphinx.ext.todo",
     #'sphinx.ext.autosummary',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.viewcode',
-    'sphinx_gallery.gen_gallery',
-    'sphinx.ext.coverage']
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "sphinx_gallery.gen_gallery",
+    "sphinx.ext.coverage",
+]
 
 # Napoleon settings
 napoleon_google_docstring = False
@@ -55,10 +59,10 @@ napoleon_use_ivar = True
 napoleon_use_param = False
 napoleon_use_rtype = False
 
-todo_include_todos=True
+todo_include_todos = True
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -90,10 +94,10 @@ sphinx_gallery_conf = {
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'sphinx_rtd_theme'
+html_theme = "sphinx_rtd_theme"
 
 # on_rtd is whether we are on readthedocs.org
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+on_rtd = os.environ.get("READTHEDOCS", None) == "True"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -102,10 +106,12 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 html_static_path = []
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = "index"
 
-html_sidebars = { '**': ['globaltoc.html', 'relations.html', 'sourcelink.html', 'searchbox.html'] }
+html_sidebars = {
+    "**": ["globaltoc.html", "relations.html", "sourcelink.html", "searchbox.html"]
+}
 
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
 autodoc_mock_imports = "numpy matplotlib mpl_toolkits scipy torch torchvision Pillow opencv-python imutils PyWavelets pywt wget imageio".split()
-autodoc_member_order = 'bysource'
+autodoc_member_order = "bysource"
