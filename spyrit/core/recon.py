@@ -896,7 +896,7 @@ class DCDRUNet(DCNet):
 #%%===========================================================================================
 class PositiveParameters(nn.Module):
 # ===========================================================================================
-    def __init__(self, size, val_min=1e-6):
+    def __init__(self, size, val_min=1e-8):
         super(PositiveParameters, self).__init__()
         self.val_min = torch.tensor(val_min)
         self.params = nn.Parameter(torch.abs(val_min*torch.ones(size,1)), requires_grad=True)
@@ -907,7 +907,7 @@ class PositiveParameters(nn.Module):
 #%%===========================================================================================
 class PositiveMonoIncreaseParameters(PositiveParameters):
 # ===========================================================================================
-    def __init__(self, size, val_min=0.000001):
+    def __init__(self, size, val_min=1e-8):
         super().__init__(size, val_min)
     
     def forward(self):
@@ -923,7 +923,7 @@ class UPGD(PinvNet):
                  denoi=nn.Identity(),
                  num_iter = 6, 
                  lamb = 1e-5, 
-                 lamb_min = 1e-6, 
+                 lamb_min = 1e-10, 
                  split=False):
         super(UPGD, self).__init__(noise, prep, denoi)
         self.num_iter = num_iter
@@ -931,7 +931,9 @@ class UPGD(PinvNet):
         self.lamb_min = lamb_min
         # Set a trainable tensor for the regularization parameter with dimension num_iter
         # and constrained to be positive with clamp(min=0.0, max=None)        
-        self.lambs = PositiveMonoIncreaseParameters(num_iter, lamb_min) # shape lambs = [num_iter,1]
+        self.lambs = PositiveParameters(num_iter, lamb_min) # shape lambs = [num_iter,1]
+        #self.lambs = nn.Parameter(torch.abs(lamb_min*torch.ones(num_iter,1)), requires_grad=True)
+        #self.lambs = nn.Parameter(torch.abs(lamb*torch.ones(num_iter,1)), requires_grad=False)
         #self.noise = noise
         self.split = split
 
@@ -964,29 +966,40 @@ class UPGD(PinvNet):
         # x of shape [b*c, 2M]
         bc, _ = x.shape    
 
+        # Save measurements
+        y = x.clone() # [5, 1024]
+
         # First estimate: Pseudo inverse
         # Preprocessing in the measurement domain
         x = self.prep(x) # [5, 1024]
 
-        # Save measurements
+        # Save prep measurements
         m = x.clone() # [5, 1024]
 
-        # measurements to image domain processing
+        # Pinv
         x = self.pinv(x, meas_op)  # [5, 4096]         # shape x = [b*c,N]
+        x = super(UPGD, self).reconstruct(y)
+
+        # GD step
+        #x = self.lambs()[0]*adj_op(m)
         #x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)   # shape x = [b*c,1,h,w]
+        
+        # Denoising step
+        x = x.view(bc,1,meas_op.h, meas_op.w) # [5, 1, 64, 64]
+        x = self.denoi(x)
+        x = x.view(bc, meas_op.N) # [5, 4096]
 
         # Unroll network
         # Ensure step size is positive and monotonically decreasing and larger than self.lamb!
         lambs = self.lambs()
+        #lambs = self.lambs
         for n in range(self.num_iter):
-            # Projection onto the measurement space
-            proj = fwd_op(x) # [5, 1024]
 
             # Residual
-            res = proj - m # [5, 1024]
+            res = fwd_op(x) - m # [5, 1024]
 
             # Gradient step
-            x = x + lambs[n]*adj_op(res) # [5, 4096]
+            x = x - lambs[n]*adj_op(res) # [5, 4096]
 
             # Denoising step
             x = x.view(bc,1,meas_op.h, meas_op.w) # [5, 1, 64, 64]
