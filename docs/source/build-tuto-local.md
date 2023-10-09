@@ -13,7 +13,7 @@ python -m pip install --upgrade --no-cache-dir pip setuptools
 python -m pip install --upgrade --no-cache-dir pillow==5.4.1 mock==1.0.1 alabaster>=0.7,<0.8,!=0.7.5 commonmark==0.9.1 recommonmark==0.5.0 sphinx sphinx-rtd-theme readthedocs-sphinx-ext<2.3
 python -m pip install --exists-action=w --no-cache-dir -r requirements.txt
 cat docs/source/conf.py
-python -m sphinx -T -E -b html -d _build/doctrees -D language=en . $READTHEDOCS_OUTPUT/html 
+python -m sphinx -T -E -b html -d _build/doctrees -D language=en . $READTHEDOCS_OUTPUT/html
 ```
 
 # Windows using conda

@@ -5,13 +5,13 @@ r"""
 This tutorial shows how to simulate measurements using the :class:`spyrit.core`
 submodule, which is based on three classes:
 
-1. **Measurement operators** compute linear measurements :math:`y = Hx` from 
+1. **Measurement operators** compute linear measurements :math:`y = Hx` from
    images :math:`x`, where :math:`H` is a linear operator (matrix) and :math:`x`
    is a vectorized image (see :mod:`spyrit.core.meas`)
 
 2. **Noise operator** corrupts measurements :math:`y` with noise (see :mod:`spyrit.core.noise`)
 
-3. **Preprocessing operators** are typically used to process the noisy 
+3. **Preprocessing operators** are typically used to process the noisy
    measurements prior to reconstruction (see :mod:`spyrit.core.prep`)
 
 """

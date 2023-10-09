@@ -3,11 +3,11 @@ r"""
 ================================================
 
 .. _tuto_acquisition_split_measurements:
-This tutorial is a continuation of the :ref:`Acquisition operators tutorial <tuto_acquisition_operators>` 
-for single-pixel imaging, which showed how to simulate linear measurements using the 
-:class:`spyrit.core` submodule (based on three classes :class:`spyrit.core.meas`, 
-:class:`spyrit.core.noise`, and :class:`spyrit.core.prep`). 
-This tutorial extends the previous case: i) by introducing split measurements that can handle a Hadamard measurement matrix, 
+This tutorial is a continuation of the :ref:`Acquisition operators tutorial <tuto_acquisition_operators>`
+for single-pixel imaging, which showed how to simulate linear measurements using the
+:class:`spyrit.core` submodule (based on three classes :class:`spyrit.core.meas`,
+:class:`spyrit.core.noise`, and :class:`spyrit.core.prep`).
+This tutorial extends the previous case: i) by introducing split measurements that can handle a Hadamard measurement matrix,
 and ii) by discussing the choice of the subsampling pattern for accelerated acquisitions.
 """
 
