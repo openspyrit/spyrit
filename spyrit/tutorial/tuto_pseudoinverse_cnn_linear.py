@@ -1,14 +1,14 @@
 r"""
-03. Pseudoinverse solution + CNN denoising 
+03. Pseudoinverse solution + CNN denoising
 ==========================================
 .. _tuto_pseudoinverse_cnn_linear:
-This tutorial shows how to simulate measurements and perform image reconstruction 
-using PinvNet (pseudoinverse linear network) with CNN denoising as a last layer. 
-This tutorial is a continuation of the :ref:`Pseudoinverse solution tutorial <tuto_pseudoinverse_linear>` 
+This tutorial shows how to simulate measurements and perform image reconstruction
+using PinvNet (pseudoinverse linear network) with CNN denoising as a last layer.
+This tutorial is a continuation of the :ref:`Pseudoinverse solution tutorial <tuto_pseudoinverse_linear>`
 but uses a CNN denoiser instead of the identity operator in order to remove artefacts.
 
-The measurement operator is chosen as a Hadamard matrix with positive coefficients, 
-which can be replaced by any matrix. 
+The measurement operator is chosen as a Hadamard matrix with positive coefficients,
+which can be replaced by any matrix.
 """
 
 # %%

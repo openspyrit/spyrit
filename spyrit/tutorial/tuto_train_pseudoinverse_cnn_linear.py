@@ -1,19 +1,19 @@
 r"""
-04. Train pseudoinverse solution + CNN denoising 
+04. Train pseudoinverse solution + CNN denoising
 ================================================
 .. _tuto_train_pseudoinverse_cnn_linear:
-This tutorial shows how to train PinvNet with a CNN denoiser for 
-reconstruction of linear measurements (results shown in the 
-:ref:`previous tutorial <tuto_pseudoinverse_cnn_linear>`). 
-As an example, we use a small CNN, which can be replaced by any other network, 
-for example Unet. Training is performed on the STL-10 dataset. 
+This tutorial shows how to train PinvNet with a CNN denoiser for
+reconstruction of linear measurements (results shown in the
+:ref:`previous tutorial <tuto_pseudoinverse_cnn_linear>`).
+As an example, we use a small CNN, which can be replaced by any other network,
+for example Unet. Training is performed on the STL-10 dataset.
 
-You can use Tensorboard for Pytorch for experiment tracking and 
-for visualizing the training process: losses, network weights, 
+You can use Tensorboard for Pytorch for experiment tracking and
+for visualizing the training process: losses, network weights,
 and intermediate results (reconstructed images at different epochs).
 
-The linear measurement operator is chosen as the positive part of a Hadamard matrix, 
-but this matrix can be replaced by any desired matrix. 
+The linear measurement operator is chosen as the positive part of a Hadamard matrix,
+but this matrix can be replaced by any desired matrix.
 """
 
 # %%
