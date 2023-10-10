@@ -16,4 +16,3 @@ sphinx_gallery
 sphinx_rtd_theme
 girder-client
 gdown
-

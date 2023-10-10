@@ -5,7 +5,7 @@
 
 # SPyRiT
 SPyRiT is a [PyTorch](https://pytorch.org/)-based toolbox for deep image reconstruction. While SPyRiT was originally designed for single-pixel image reconstruction, it can solve any linear reconstruction problem.
-   
+
 # Installation
 The spyrit package is available for Linux, MacOs and Windows. We recommend to use a virtual environment.
 ## Linux and MacOs
@@ -69,7 +69,7 @@ When using SPyRiT in scientific publications, please cite the following paper:
 
 When using SPyRiT specifically for the denoised completion network, please cite the following paper:
 
-* A Lorente Mur, P Leclerc, F Peyrin, and N Ducros, "Single-pixel image reconstruction from experimental data using neural networks," Opt. Express 29, 17097-17110 (2021). https://doi.org/10.1364/OE.424228. 
+* A Lorente Mur, P Leclerc, F Peyrin, and N Ducros, "Single-pixel image reconstruction from experimental data using neural networks," Opt. Express 29, 17097-17110 (2021). https://doi.org/10.1364/OE.424228.
 
 # License
 This project is licensed under the LGPL-3.0 license - see the [LICENSE.md](LICENSE.md) file for details
