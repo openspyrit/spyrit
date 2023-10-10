@@ -12,7 +12,7 @@ def readme():
 
 setup(
     name="spyrit",
-    version="2.1.0",
+    version="2.2.0",
     description="Demo package",
     url="https://github.com/openspyrit/spyrit",
     long_description=readme(),
