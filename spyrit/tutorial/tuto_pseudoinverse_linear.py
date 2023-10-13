@@ -5,6 +5,8 @@ r"""
 This tutorial shows how to simulate measurements and perform image reconstruction.
 The measurement operator is chosen as a Hadamard matrix with positive coefficients.
 Note that this matrix can be replaced by any desired matrix.
+
+These tutorials must be runned from `spyrit/tutorial/` folder (they load image samples from `spyrit/images/`).
 """
 
 
