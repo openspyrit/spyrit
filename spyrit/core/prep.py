@@ -8,14 +8,8 @@ import math
 class DirectPoisson(nn.Module):
 #==============================================================================
     r"""
-    Preprocess the raw data acquired with a direct measurement operator assuming 
-    Poisson noise.  It also compensates for the affine transformation applied 
-    to the images to get positive intensities.
     
-    It computes :math:`m = \frac{2}{\alpha}y - H1` and the variance
-    :math:`\sigma^2 = 4\frac{y}{\alpha^{2}}`, where :math:`y = Hx` are obtained 
-    using a direct linear measurement operator (see :mod:`spyrit.core.Linear`),   
-    :math:`\alpha` is the image intensity, and 1 is the all-ones vector.
+    Input data should be dark substracted. Probably bugged/Use with caution.
     
     Args:
         :attr:`alpha`: maximun image intensity :math:`\alpha` (in counts)
@@ -66,34 +60,29 @@ class DirectPoisson(nn.Module):
             torch.Size([10, 400])
         """
         # normalize
-        H_ones = self.H_ones.expand(x.shape[0],self.M)
+        s = x.shape[:-1] + torch.Size([self.M])     # torch.Size([*,M])
+        H_ones = self.H_ones.expand(s)
         x = 2*x/self.alpha - H_ones
         return x
     
-    def sigma(self, x: torch.tensor) -> torch.tensor:
-        r""" Estimates the variance of the preprocessed measurements 
+    def forward_expe2(self, x: torch.tensor, 
+                            dummy,
+                            dim = -1) -> torch.tensor:
         
-        The variance is estimated as :math:`\frac{4}{\alpha^2} x`
+        # # estimate intensity x gain (in counts)
+        # mu = torch.sum(x, dim, keepdim=True)
         
-        Args:
-            :attr:`x`: batch of measurement vectors 
-            
-        Shape:
-            :attr:`x`: :math:`(B,M)` where :math:`B` is the batch dimension
-            
-            Output: :math:`(B, M)`
-            
-        Example:
-            >>> x = torch.rand([10,400], dtype=torch.float)
-            >>> v = prep_op.sigma(x)
-            >>> print(v.shape)
-            torch.Size([10, 400])
-            
-        """
-        x = 4*x/(self.alpha**2) # Cov is in [-1,1] so *4
-        return x  
+        # # All rows of an image have the same normalization
+        # alpha = torch.amax(mu, -2, keepdim=True)
+        
+        alpha = torch.tensor([11000], device=x.device)
+        
+        s = x.shape[:-1] + torch.Size([self.M])     # torch.Size([*,M])
+        H_ones = self.H_ones.expand(s)
+        x = 2*x/self.alpha - H_ones
+        return x, alpha 
     
-    def denormalize_expe(self, x, beta, h, w):
+    def denormalize_expe(self, x, beta):
         r""" 
         Denormalize images from the range [-1;1] to the range [0; :math:`\beta`]
         
@@ -128,14 +117,29 @@ class DirectPoisson(nn.Module):
             torch.Size([10, 1, 32, 32])
                         
         """
-        bc = x.shape[0]
-        
-        # Denormalization
-        beta = beta.view(bc,1,1,1)
-        beta = beta.expand(bc,1,h,w)
         x = (x+1)/2*beta
         
         return x
+
+    def set_expe(self, gain=1.0, mudark=0.0, sigdark=0.0, nbin=1.0):
+        r"""
+        Sets experimental parameters of the sensor
+        
+        Args:        
+            - :attr:`gain` (float): gain (in count/electron)
+            - :attr:`mudark` (float): average dark current (in counts)
+            - :attr:`sigdark` (float): standard deviation or dark current (in counts)
+            - :attr:`nbin` (float): number of raw bin in each spectral channel (if input x results from the sommation/binning of the raw data)
+        
+        Example:
+            >>> split_op.set_expe(gain=1.6)
+            >>> print(split_op.gain)
+            1.6
+        """
+        self.gain = gain
+        self.mudark = mudark
+        self.sigdark = sigdark
+        self.nbin = nbin
     
 #==============================================================================
 class SplitPoisson(nn.Module):
