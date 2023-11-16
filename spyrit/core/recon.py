@@ -896,19 +896,20 @@ class DCDRUNet(DCNet):
 #%%===========================================================================================
 class PositiveParameters(nn.Module):
 # ===========================================================================================
-    def __init__(self, size, val=1e-8):
+    def __init__(self, size, val_start=1e-5, requires_grad=True):
         super(PositiveParameters, self).__init__()
-        self.val_min = torch.tensor(val)
-        self.params = nn.Parameter(torch.abs(val*torch.ones(size,1)), requires_grad=True)
+        self.val_start = torch.tensor(val_start)
+        self.size = size
+        self.params = nn.Parameter(torch.abs(val_start*torch.ones(size,1)), requires_grad=requires_grad)
         
     def forward(self):
-        return torch.abs(self.params)
+        return  torch.abs(self.params)
 
 #%%===========================================================================================
 class PositiveMonoIncreaseParameters(PositiveParameters):
 # ===========================================================================================
-    def __init__(self, size, val_min=1e-8):
-        super().__init__(size, val_min)
+    def __init__(self, size, val_start=1e-5, requires_grad=True):
+        super().__init__(size, val_start,requires_grad=requires_grad)
     
     def forward(self):
         # cumsum in opposite order
@@ -919,16 +920,17 @@ class UPGD(nn.Module):
                  noise,
                  prep,
                  denoi=nn.Identity(),
-                 num_iter = 6,
+                 num_iter = 3,
                  lamb = 1e-5,
                  *args, 
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.num_iter = num_iter
         #self.lamb = lamb
-        self.lambs = PositiveParameters(num_iter, lamb) # shape lambs = [num_iter,1]
+        #self.lambs = PositiveParameters(num_iter, lamb) # shape lambs = [num_iter,1]
         #self.lambs = PositiveMonoIncreaseParameters(num_iter, lamb) # shape lambs = [num_iter,1]
-        #self.lambs = nn.Parameter(torch.abs(lamb*torch.ones(num_iter,1)), requires_grad=True)
+        #self.lambs = nn.Parameter(torch.abs(lamb*torch.ones(num_iter,1)), requires_grad=False)
+        self.lambs = nn.Parameter(torch.abs(torch.tensor([lamb/(i+1) for i in range(num_iter)])), requires_grad=False)
         self.acqu = noise
         self.prep = prep
         self.denoi = denoi
@@ -961,17 +963,20 @@ class UPGD(nn.Module):
         # Preprocessing
         m = self.prep(x)
 
-        # First solution: Pseudo inverse
+        # First solution: Pseudo inverse + denoising
         x = self.acqu.meas_op.pinv(m)  # shape x = [b*c,N]
+        x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)  
+        x = self.denoi(x)
+        x = x.view(bc,self.acqu.meas_op.h*self.acqu.meas_op.w)   
 
         # Loop over the number of iterations
         for n in range(self.num_iter):
             # Gradient step
             res = self.acqu.meas_op.H(x) - m
-            x = x - self.lambs()[n]*self.acqu.meas_op.H_adjoint(res)
-            x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)   # shape x = [b,1,h,w]
+            x = x - self.lambs[n]*self.acqu.meas_op.H_adjoint(res)
+            x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)   # shape x = [bc,h,w]
 
             # Denoising step
             x = self.denoi(x)
-            x = x.view(bc,self.acqu.meas_op.h*self.acqu.meas_op.w)   # shape x = [b,1,h,w]
+            x = x.view(bc,self.acqu.meas_op.h*self.acqu.meas_op.w)   # shape x = [bc,h*w]
         return x

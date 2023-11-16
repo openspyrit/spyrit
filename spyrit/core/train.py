@@ -155,6 +155,10 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, device, roo
 #            print('Epoch {}/{}'.format(epoch, num_epochs - 1))
 #            print('-' * 10)
 #
+        # if model UPGD, make self.lambs to learnable parameters
+        #if (epoch == 15) and (hasattr(model, 'lambs')):
+        #    model.lambs.requires_grad = True        
+
         # Each epoch has a training and validation phase
         for phase in ['train', 'val']:
             if phase == 'train':

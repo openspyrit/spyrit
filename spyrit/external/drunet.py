@@ -87,6 +87,7 @@ class DRUNet(UNetRes):
 
         b, c, h, w = x.shape
         x = 0.5*(x + 1)
+        #x = (x - x.min())/(x.max() - x.min() + 1e-8)
         x = torch.cat((x, self.noise_level.expand(b, 1, h, w)), dim=1)
         return x 
 

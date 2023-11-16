@@ -3,12 +3,16 @@ from typing import Any
 import torch
 import torchvision
 #from torchvision import datasets, transforms
+from torch.utils.data import Dataset
 from pathlib import Path
 #from spyrit.learning.model_Had_DCAN import *
 import time
 import spyrit.misc.walsh_hadamard as wh
 import numpy as np
 from scipy.stats import rankdata
+import os
+import random
+from PIL import Image
 
 def stat_walsh_ImageNet(stat_root = Path('./stats/'), 
                         data_root = Path('./data/ILSVRC2012_img_test_v10102019/'),
@@ -68,7 +72,7 @@ def stat_walsh_stl10(stat_root = Path('./stats/'),
     print(f'Computed in {time_elapsed} seconds')
     
 def data_loaders_ImageNet(train_root, val_root=None, img_size=64, 
-                          batch_size=512, seed=7, shuffle=False): 
+                          batch_size=512, seed=7, shuffle=False, download=True): 
     """ 
     Args:
         Both 'train_root' and 'val_root' need to have images in a subfolder
@@ -81,13 +85,7 @@ def data_loaders_ImageNet(train_root, val_root=None, img_size=64,
 
     torch.manual_seed(seed) # reproductibility of random crop
     #    
-    transform = torchvision.transforms.Compose(
-        [torchvision.transforms.functional.to_grayscale,
-         torchvision.transforms.RandomCrop(
-             size=(img_size, img_size), pad_if_needed=True, padding_mode='edge'),
-         torchvision.transforms.ToTensor(),
-         torchvision.transforms.Normalize([0.5], [0.5])
-        ])
+    transform = transform_gray_norm(img_size)   
     
     # train set
     trainset = torchvision.datasets.ImageFolder(root=train_root, transform=transform)
@@ -166,6 +164,59 @@ def data_loaders_stl10(data_root, img_size=64, batch_size=512, seed=7,
     dataloaders = {'train':trainloader, 'val':testloader}
     
     return dataloaders
+
+class ImageFolderDataSet(Dataset):
+    def __init__(self, root, transform=None, shuffle=False):
+        self.root = root
+        self.transform = transform
+        names = os.listdir(root)
+        if shuffle:
+            random.shuffle(names)
+        self.names = names
+    def __getitem__(self, index):
+        img_name = self.names[index]
+        img = Image.open(os.path.join(self.root, img_name))
+        #img = io.imread(os.path.join(self.root, img_name))
+        if self.transform:
+            img = self.transform(img)
+        # Return image and label (to be consistent with ImageFolder)
+        return img, 'none'
+    def __len__(self):
+        return len(self.root)
+    
+def data_loaders_img_folder(data_root, data_val_root=None, img_size=64, batch_size=512,  
+                       shuffle=False, seed=7): 
+    """ 
+    Args:
+        shuffle=True to shuffle train set only (test set not shuffled)
+        
+    We load images from directory. 
+    The output of torchvision datasets are PILImage images in the range [0, 1].
+    We transform them to Tensors in the range [-1, 1]. Also RGB images are 
+    converted into grayscale images.
+        
+    """
+    torch.manual_seed(seed) # reproductibility of random crop
+    transform = transform_gray_norm(img_size)   
+
+    trainset = ImageFolderDataSet(root=data_root, transform=transform, shuffle=shuffle)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
+                                              shuffle=shuffle)
+ 
+    if data_val_root is not None:
+        testset = ImageFolderDataSet(root=data_val_root, transform=transform, shuffle=shuffle)
+    else:
+        # Split trainset into train and val
+        train_size = int(0.8 * len(trainset))
+        val_size = len(trainset) - train_size
+        trainset, testset = torch.utils.data.random_split(trainset, [train_size, val_size])
+    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
+                                             shuffle=False)       
+    
+    dataloaders = {'train':trainloader, 'val':testloader}
+    
+    return dataloaders
+
 
 def stat_walsh(dataloader, device, root, n_loop=1):
     """ 
