@@ -165,24 +165,45 @@ def data_loaders_stl10(data_root, img_size=64, batch_size=512, seed=7,
     
     return dataloaders
 
+from pathlib import Path
+
+def get_image_files(folder):
+    """
+    Args:
+        folder=Path, path to folder containing images
+    
+    Returns:
+        image_files=list, list of Path objects
+    
+    Get all image names within subfolders using pathlib
+    """
+    image_files = []
+    for ext in ["*.png", "*.bmp", "*.jpg", "*.jpeg"]:
+        image_files.extend(Path(folder).glob(f"**/{ext}"))
+    return image_files
+
 class ImageFolderDataSet(Dataset):
+    """
+    Create a Dataset from a given folder, which can have subfolders 
+    or not and may contain also non-image files
+    """
     def __init__(self, root, transform=None, shuffle=False):
         self.root = root
         self.transform = transform
-        names = os.listdir(root)
+        filenames = get_image_files(root)    
         if shuffle:
-            random.shuffle(names)
-        self.names = names
+            random.shuffle(filenames)
+        self.filenames = filenames
     def __getitem__(self, index):
-        img_name = self.names[index]
-        img = Image.open(os.path.join(self.root, img_name))
+        img_name = self.filenames[index]
+        img = Image.open(img_name)
         #img = io.imread(os.path.join(self.root, img_name))
         if self.transform:
             img = self.transform(img)
         # Return image and label (to be consistent with ImageFolder)
         return img, 'none'
     def __len__(self):
-        return len(self.root)
+        return len(self.filenames)
     
 def data_loaders_img_folder(data_root, data_val_root=None, img_size=64, batch_size=512,  
                        shuffle=False, seed=7): 

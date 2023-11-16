@@ -99,10 +99,10 @@ url='https://pilot-warehouse.creatis.insa-lyon.fr/api/v1'
 # Download the covariance matrix and mean image
 data_folder = '../../stat2/'
 dataId_list = [
-        #'63935b584d15dd536f04849f', # for reconstruction (imageNet, 128)
-        #'63935a224d15dd536f048490',          
-        '63dd209f0386da2747641eae', 
-        '63d7f3de0386da2747641e1f'
+        '63935b584d15dd536f04849f', # for reconstruction (imageNet, 128)
+        '63935a224d15dd536f048490',          
+        #'63dd209f0386da2747641eae', 
+        #'63d7f3de0386da2747641e1f'
         ]
 cov_name = '../../stat2/Cov_8_128x128.npy'
 download_cov = True
@@ -258,10 +258,12 @@ if mode_dcnet:
         import gdown
 
         # Download weights
+        # Caanot laod non-light weights
         #url_dcnet = 'https://drive.google.com/file/d/1Os_Q3bzQtZqSEe9OB73hGiBFdWx50XXY/view?usp=drive_link'
+        #name_net = 'dc-net_unet_imagenet_rect_N0_10_N_128_M_4096_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07'
         name_net = 'dc-net_unet_imagenet_rect_N0_10_N_128_M_4096_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07_light'
         model_path = "../model2"    
-        dataId = '6410889f0386da274769778f'
+        dataId = '63863b934d15dd536f04832b'
         if os.path.exists(model_path) is False:
             os.mkdir(model_path)
             print(f'Created {model_path}')
