@@ -3,6 +3,7 @@ from typing import Any
 import torch
 import torchvision
 #from torchvision import datasets, transforms
+from torch.utils.data import Dataset
 from pathlib import Path
 #from spyrit.learning.model_Had_DCAN import *
 import time
@@ -120,6 +121,22 @@ class CenterCrop:
         else:
             return inputs
 
+class RandomCrop:
+    def __init__(self, img_size):
+        self.img_size = img_size
+        self.randomCrop = torchvision.transforms.RandomCrop(img_size)
+    def __call__(self, inputs, *args: Any, **kwds: Any):
+        # Resize if image too small
+        input_shape = inputs.size
+
+        if input_shape[0] < self.img_size:
+            inputs = torchvision.transforms.Resize((input_shape[1], self.img_size))(inputs)
+            input_shape = inputs.size
+        if input_shape[1] < self.img_size:
+            inputs = torchvision.transforms.Resize((self.img_size, input_shape[0]))(inputs)
+            input_shape = inputs.size
+        return self.randomCrop(inputs)
+
 def transform_gray_norm(img_size, crop_type = 'center'): 
     """ 
     Args:
@@ -133,7 +150,7 @@ def transform_gray_norm(img_size, crop_type = 'center'):
         transforms_resize = [torchvision.transforms.Resize(img_size), 
                             torchvision.transforms.CenterCrop(img_size)]
     elif crop_type=='random':
-        transforms_resize = [torchvision.transforms.RandomCrop(img_size)]                             
+        transforms_resize = [RandomCrop(img_size)]                             
 
     transform = torchvision.transforms.Compose(
         [torchvision.transforms.functional.to_grayscale,
@@ -186,17 +203,14 @@ def get_image_files(folder):
         image_files.extend(Path(folder).glob(f"**/{ext}"))
     return image_files
 
-class ImageFolderDataSet(torch.utils.data.Dataset):
+class ImageFolderDataSet(Dataset):
     """
     Create a Dataset from a given folder, which can have subfolders 
-    or not and may contain also non-image files. 
-    As there is not label, the label is set to 'none' to be consistent 
-    with ImageFolder.
+    or not and may contain also non-image files
     """
     def __init__(self, root, transform=None, shuffle=False):
         self.root = root
         self.transform = transform
-        self.shuffle = shuffle 
         filenames = get_image_files(root)    
         if shuffle:
             random.shuffle(filenames)
@@ -206,56 +220,14 @@ class ImageFolderDataSet(torch.utils.data.Dataset):
         img = Image.open(img_name)
         #img = io.imread(os.path.join(self.root, img_name))
         if self.transform:
-            sample = self.transform(img), 'none'
-        else:
-            sample = img, 'none'
-        return sample
+            img = self.transform(img)
+        # Return image and label (to be consistent with ImageFolder)
+        return img, 'none'
     def __len__(self):
         return len(self.filenames)
-
-class ImageFolderDataSetRepeat(torch.utils.data.Dataset):
-    """
-    Currently not working!
-    Create a Dataset from a given folder, which can have subfolders 
-    or not and may contain also non-image files. 
-    As there is not label, the label is set to 'none' to be consistent 
-    with ImageFolder.
-    """
-    def __init__(self, root, transform=None, shuffle=False, repeat_count=1):
-        self.root = root
-        self.transform = transform
-        self.shuffle = shuffle 
-        filenames = get_image_files(root)    
-        if shuffle:
-            random.shuffle(filenames)
-        self.filenames = filenames
-        self.repeat_count = repeat_count
-    def __getitem__(self, index):
-        img_name = self.filenames[index // self.repeat_count]
-        img = Image.open(img_name)
-        #img = io.imread(os.path.join(self.root, img_name))
-        if self.transform:
-            sample = [self.transform(img) for _ in range(self.repeat_count)], 'none'
-        else:
-            sample = img, 'none'
-        return sample
-    def __len__(self):
-        return len(self.filenames) * self.repeat_count
     
-def custom_batch_sampler(data_source, repeat_count, batch_size):
-    """ Custom batch sampler to yield single images from a dataset that 
-    return a list of images (e.g., ImageFolderDataSet)
-    """
-    num_data = len(data_source)
-    indices = list(range(num_data))
-    np.random.shuffle(indices)
-    batches = []
-    for i in range(0, num_data, batch_size // repeat_count):
-        batches.append(indices[i:i + batch_size // repeat_count] * repeat_count)
-    return batches
-
 def data_loaders_img_folder(data_root, data_val_root=None, img_size=64, batch_size=512,  
-                       shuffle=False, seed=7, repeat_count=1): 
+                       shuffle=False, seed=7): 
     """ 
     Args:
         shuffle=True to shuffle train set only (test set not shuffled)
@@ -263,22 +235,16 @@ def data_loaders_img_folder(data_root, data_val_root=None, img_size=64, batch_si
     We load images from directory. 
     The output of torchvision datasets are PILImage images in the range [0, 1].
     We transform them to Tensors in the range [-1, 1]. Also RGB images are 
-    converted into grayscale images. 
-    It allows to repeat the same transform multiple times to an image (for HR images 
-    with random crop).
+    converted into grayscale images.
         
     """
     torch.manual_seed(seed) # reproductibility of random crop
-    transform = transform_gray_norm(img_size, crop_type = 'random')                                
+    transform = transform_gray_norm(img_size, crop_type = 'random')   # random crop 
 
     trainset = ImageFolderDataSet(root=data_root, transform=transform, shuffle=shuffle)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=shuffle)
-    # With repeat_count
-    #trainset = ImageFolderDataSetRepeat(root=data_root, transform=transform, 
-    #                                    shuffle=shuffle, repeat_count=repeat_count)
-    #trainloader = torch.utils.data.DataLoader(trainset, 
-    #                                          batch_sampler=custom_batch_sampler(trainset, repeat_count, batch_size))
-
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
+                                              shuffle=shuffle)
+ 
     if data_val_root is not None:
         testset = ImageFolderDataSet(root=data_val_root, transform=transform, shuffle=shuffle)
     else:
@@ -286,8 +252,8 @@ def data_loaders_img_folder(data_root, data_val_root=None, img_size=64, batch_si
         train_size = int(0.8 * len(trainset))
         val_size = len(trainset) - train_size
         trainset, testset = torch.utils.data.random_split(trainset, [train_size, val_size])
-    
-    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False)       
+    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
+                                             shuffle=False)       
     
     dataloaders = {'train':trainloader, 'val':testloader}
     

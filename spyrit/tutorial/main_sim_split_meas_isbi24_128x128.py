@@ -27,15 +27,26 @@ img_name = imgs_dict[img_ind]['name']
 
 path_images = '../images'
 path_results = '../../../results'
-img_max = 1.2
+img_max = 1
 img_min = -1
 
-data_folder = '../../../stat/'
+# data_folder = '../../../stat/ILSVRC2012_v10102019'
+data_folder = '../../../stat/oe_paper/'
 cov_name = 'Cov_8_128x128.npy'   
-download_cov = True
+download_cov = False
 
-mode_pinvnet = False
+model_pinvnet_path = "../../../model"    
+model_dcnet_path = "../../../model/oe_paper"    
+
+mode_pinvnet = True
+download_pinvnet = False
+url_pinvnet = ''
+name_pinvnet = 'pinv-net_unet_imagenet_N0_10_m_hadam-split_N_128_M_4096_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
+
 mode_dcnet = True
+download_dcnet = False
+url_dcnet = ''
+name_dcnet = 'dc-net_unet_imagenet_rect_N0_10_N_128_M_4096_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07_light'
 
 import numpy as np
 import os
@@ -53,6 +64,11 @@ import matplotlib.pyplot as plt
 from spyrit.misc.statistics import transform_gray_norm
 import torchvision
 import torch
+
+# Random seed
+torch.manual_seed(0)
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 spyritPath = os.getcwd()
 imgs_path = os.path.join(spyritPath, path_images)
@@ -94,21 +110,20 @@ plt.savefig(os.path.join(res_path, f'{img_name}_gt_{str(h)}.png'), bbox_inches='
 
 ###############################################################################
 # First, we download the covariance matrix and load it.
-
-import girder_client
-
-# api Rest url of the warehouse
-url='https://pilot-warehouse.creatis.insa-lyon.fr/api/v1'
-
-# Download the covariance matrix and mean image
-dataId_list = [
-        '63935b584d15dd536f04849f', # for reconstruction (imageNet, 128)
-        '63935a224d15dd536f048490',          
-        #'63dd209f0386da2747641eae', 
-        #'63d7f3de0386da2747641e1f'
-        ]
-
 if download_cov:
+    import girder_client
+
+    # api Rest url of the warehouse
+    url='https://pilot-warehouse.creatis.insa-lyon.fr/api/v1'
+
+    # Download the covariance matrix and mean image
+    dataId_list = [
+            '63935b584d15dd536f04849f', # for reconstruction (imageNet, 128)
+            '63935a224d15dd536f048490',          
+            #'63dd209f0386da2747641eae', 
+            #'63d7f3de0386da2747641e1f'
+            ]
+
     # Generate the warehouse client
     gc = girder_client.GirderClient(apiUrl=url)
 
@@ -135,14 +150,10 @@ except:
 
 from spyrit.core.meas import HadamSplit   
 from spyrit.core.noise import Poisson
-from spyrit.misc.sampling import meas2img2
-from spyrit.misc.statistics import Cov2Var
 from spyrit.core.prep import SplitPoisson
 import math
 
 # Measurement and noise operators
-#Ord = Cov2Var(Cov)
-
 Ord = np.ones((h, h))
 n_sub = math.ceil(M**0.5)
 #n_sub = M
@@ -150,22 +161,47 @@ Ord[:,n_sub:] = 0
 Ord[n_sub:,:] = 0
 
 meas_op = HadamSplit(M, h, Ord)
-noise_op = Poisson(meas_op, alpha) 
-prep_op = SplitPoisson(alpha, meas_op) 
+noise_op = Poisson(meas_op, alpha) # could be replaced by anything here as we just need to recon
+prep_op  = SplitPoisson(alpha, meas_op)    
+
+"""
+from spyrit.core.nnet import Unet
+from spyrit.core.recon import DCNet
+denoi = Unet()
+model = DCNet(noise_op, prep_op, Cov, denoi)
+"""
 
 # Vectorize image
 x = x.view(b*c,h*w)  
 print(f'Shape of vectorized image: {x.shape}')
 
+# Init network  
+"""
+from spyrit.core.train import load_net
+model_file = os.path.join(model_dcnet_path, name_dcnet)
+load_net(model_file, model, device, strict = False)
+model.eval()
+#    model.prep.set_expe()
+model.to(device)
+
+y = noise_op(x.to(device))
+with torch.no_grad():
+    rec_sim_gpu = model.reconstruct(y.to(device))
+    rec_sim = rec_sim_gpu.cpu().detach().numpy().squeeze()
+
+fig , axs = plt.subplots(1,1)
+im = axs.imshow(rec_sim, cmap='gray')
+add_colorbar(im, 'bottom')
+"""
+
 # Measurements
 y = noise_op(x)     # a noisy measurement vector
-m = prep_op(y)      # preprocessed measurement vector
+#m = prep_op(y)      # preprocessed measurement vector
 
-m_plot = m.detach().numpy()
-m_plot = meas2img2(m_plot.T, Ord)
-imagesc(m_plot, r'Measurements $m$')
+#m_plot = m.detach().numpy()
+#m_plot = meas2img2(m_plot.T, Ord)
+#imagesc(m_plot, r'Measurements $m$')
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # %%
 # PinvNet network 
@@ -175,35 +211,30 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # We reconstruct with the pseudo inverse using :class:`spyrit.core.recon.PinvNet` class 
 # as in the previous tutorial. For this, we define the neural network and then perform the reconstruction.
 from spyrit.core.train import load_net, save_net
-from spyrit.core.recon import PinvNet
-from spyrit.core.nnet import Unet
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-pinvnet = PinvNet(noise_op, prep_op)
 
 if mode_pinvnet: 
-    denoi_unet = Unet()
+    from spyrit.core.recon import PinvNet
+    from spyrit.core.nnet import Unet
+
+    pinvnet = PinvNet(noise_op, prep_op)
+
+    denoi_unet_p = Unet()
 
     # Reconstruction with for Core module (linear net)
-    pinvnet_unet = PinvNet(noise_op, prep_op, denoi_unet)
+    pinvnet_unet = PinvNet(noise_op, prep_op, denoi_unet_p)
 
     # Load previously trained model
     try:
         import gdown
 
         # Download weights
-        url_net = ''
-        name_net = 'pinv-net_unet_stl10_N0_10_m_hadam-split_N_128_M_4096_epo_2_lr_0.001_sss_10_sdr_0.5_bs_128_reg_1e-07'
-        model_path = "../model"    
-        if os.path.exists(model_path) is False:
-            os.mkdir(model_path)
-            print(f'Created {model_path}')
-        model_file = os.path.join(model_path, name_net)
+        if os.path.exists(model_pinvnet_path) is False:
+            os.mkdir(model_pinvnet_path)
+            print(f'Created {model_pinvnet_path}')
+        model_file = os.path.join(model_pinvnet_path, name_pinvnet)
 
-        download_net = False
-        if download_net:
-            gdown.download(url_net, f'{model_file}.pth', quiet=False, fuzzy=True)
+        if download_pinvnet:
+            gdown.download(url_pinvnet, f'{model_file}.pth', quiet=False, fuzzy=True)
 
         # Load pretrained model
         load_net(model_file, pinvnet_unet, device, False)
@@ -211,29 +242,30 @@ if mode_pinvnet:
     except:
         print(f'Model {model_file} not found!')
 
-    pinvnet_unet = pinvnet_unet.to(device)
+    pinvnet_unet.eval()
+    pinvnet_unet.to(device)
 
     # Reconstruction
     with torch.no_grad():
         z_pinvnet_unet = pinvnet_unet.reconstruct(y.to(device))  # reconstruct from raw measurements
 
     # plot
-    x_plot = z_pinvnet_unet.view(-1,h,h).cpu().numpy() 
+    x_plot_pinvunet = z_pinvnet_unet.view(-1,h,h).cpu().numpy() 
     fig = plt.figure(figsize=(7,7))
-    plt.imshow(x_plot[0,:,:], cmap='gray', vmin=img_min, vmax=img_max)
+    plt.imshow(x_plot_pinvunet[0,:,:], cmap='gray', vmin=img_min, vmax=img_max)
     plt.axis('off')
     plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{str(int(alpha))}_pinvnet_unet_{str(h)}.png'), bbox_inches='tight', pad_inches=0)
 
-pinvnet = pinvnet.to(device)
-with torch.no_grad():
-    z_pinvnet = pinvnet.reconstruct(y.to(device))  # reconstruct from raw measurements
+    pinvnet.to(device)
+    with torch.no_grad():
+        z_pinvnet = pinvnet.reconstruct(y.to(device))  # reconstruct from raw measurements
 
-# plot
-x_plot = z_pinvnet.view(-1,h,h).cpu().numpy() 
-fig = plt.figure(figsize=(7,7))
-plt.imshow(x_plot[0,:,:], cmap='gray', vmin=img_min, vmax=img_max)
-plt.axis('off')
-plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{str(int(alpha))}_pinvnet.png'), bbox_inches='tight', pad_inches=0)
+    # plot
+    x_plot_pinv = z_pinvnet.view(-1,h,h).cpu().numpy() 
+    fig = plt.figure(figsize=(7,7))
+    plt.imshow(x_plot_pinv[0,:,:], cmap='gray', vmin=img_min, vmax=img_max)
+    plt.axis('off')
+    plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{str(int(alpha))}_pinvnet.png'), bbox_inches='tight', pad_inches=0)
 
 # %%
 # DCNET network 
@@ -243,19 +275,16 @@ plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{st
 # We compare the results with the DCNET + UNet network (see :ref:`DCNET tutorial <tuto_dcnet_split_measurements>`).
 
 # Pretrained DC UNet (UNet denoising)
-from spyrit.core.nnet import Unet
-from spyrit.core.recon import DCNet
-
-dcnet = DCNet(noise_op, prep_op, Cov)
-dcnet = dcnet.to(device)
-
 if mode_dcnet:
+    from spyrit.core.nnet import Unet
+    from spyrit.core.recon import DCNet
 
-    denoi_unet = Unet()
-    dcnet_unet = DCNet(noise_op, prep_op, Cov, denoi_unet)
-    dcnet_unet = dcnet_unet.to(device)
+    dcnet = DCNet(noise_op, prep_op, Cov)
+    dcnet = dcnet.to(device)
 
-    from spyrit.core.train import load_net, save_net
+    denoi_unet_d = Unet()
+    dcnet_unet = DCNet(noise_op, prep_op, Cov, denoi_unet_d)
+    #dcnet_unet = dcnet_unet.to(device)
 
     # Load previously trained model
     try:
@@ -265,40 +294,40 @@ if mode_dcnet:
         # Caanot laod non-light weights
         #url_dcnet = 'https://drive.google.com/file/d/1Os_Q3bzQtZqSEe9OB73hGiBFdWx50XXY/view?usp=drive_link'
         #name_net = 'dc-net_unet_imagenet_rect_N0_10_N_128_M_4096_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07'
-        name_net = 'dc-net_unet_imagenet_rect_N0_10_N_128_M_4096_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07_light'
-        model_path = "../model2"    
         dataId = '63863b934d15dd536f04832b'
-        if os.path.exists(model_path) is False:
-            os.mkdir(model_path)
-            print(f'Created {model_path}')
-        model_unet_path = os.path.join(model_path, name_net)
+        if os.path.exists(model_dcnet_path) is False:
+            os.mkdir(model_dcnet_path)
+            print(f'Created {model_dcnet_path}')
+        model_file = os.path.join(model_dcnet_path, name_dcnet)
 
-        download_net = True
-        if download_net:
+        if download_dcnet:
             #gdown.download(url_dcnet, f'{model_unet_path}.pth', quiet=False,fuzzy=True)
             # Generate the warehouse client
-            gc = girder_client.GirderClient(apiUrl=url)
+            gc = girder_client.GirderClient(apiUrl=url_dcnet)
             myfile = gc.getFile(dataId)
-            gc.downloadFile(dataId, os.path.join(model_path, myfile['name']))
+            gc.downloadFile(dataId, os.path.join(model_file, myfile['name']))
 
         # Load pretrained model
-        load_net(model_unet_path, dcnet_unet, device, False)
-        print(f'Model {model_unet_path} loaded.')
+        load_net(model_file, dcnet_unet, device, False)
+        print(f'Model {model_file} loaded.')
     except:
-        print(f'Model {model_unet_path} not found!')
+        print(f'Model {model_file} not found!')
         load_unet = False
 
     # Reconstruction
+    dcnet_unet.eval()
+    dcnet_unet.to(device)
+
     with torch.no_grad():
         z_dcnet_unet = dcnet_unet.reconstruct(y.to(device))  # reconstruct from raw measurements
 
     from spyrit.misc.disp import add_colorbar, noaxis
 
-    x_plot2 = z_dcnet_unet.view(-1,h,h).cpu().numpy() 
+    x_plot_dcunet = z_dcnet_unet.view(-1,h,h).cpu().numpy() 
     #x_plot5 = z_invnet_unet.view(-1,h,h).cpu().numpy() 
 
     fig = plt.figure(figsize=(7,7))
-    plt.imshow(x_plot2[0,:,:], cmap='gray', vmin=img_min, vmax=img_max)
+    plt.imshow(x_plot_dcunet[0,:,:], cmap='gray', vmin=img_min, vmax=img_max)
     plt.axis('off')
     plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{str(int(alpha))}_dcnet_unet.png'), bbox_inches='tight', pad_inches=0)
 
@@ -306,13 +335,13 @@ with torch.no_grad():
     z_dcnet = dcnet.reconstruct(y.to(device))  # reconstruct from raw measurements
 
     # plot
-    x_plot = z_dcnet.view(-1,h,h).cpu().numpy() 
+    x_plot_dcnet = z_dcnet.view(-1,h,h).cpu().numpy() 
     fig = plt.figure(figsize=(7,7))
-    plt.imshow(x_plot[0,:,:], cmap='gray', vmin=img_min, vmax=img_max)
+    plt.imshow(x_plot_dcnet[0,:,:], cmap='gray', vmin=img_min, vmax=img_max)
     plt.axis('off')
     plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{str(int(alpha))}_dcnet.png'), bbox_inches='tight', pad_inches=0)
 
-
+plt.show()
 # %%
 # PInvNet with DRUNet denoising
 # -----------------------------------------------------------------------------

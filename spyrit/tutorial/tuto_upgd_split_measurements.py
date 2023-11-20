@@ -156,60 +156,50 @@ imagesc(m_plot, r'Measurements $m$')
 # and then instantiate the UPGD network. Then, we download the pretrained weights  
 # and load them into the network.
 
-from spyrit.core.nnet import ConvNet
+from spyrit.core.nnet import Unet
 from spyrit.core.train import load_net, save_net
 from spyrit.core.recon import UPGD
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Denoising network
-denoi = ConvNet()
+denoi_unet = Unet()
 
-# UPGD for 2 iterations
-upgd_cnn_2it = UPGD(noise_op, prep_op, denoi, num_iter = 2, split=True)
-upgd_cnn_2it = upgd_cnn_2it.to(device)
-
-# UPGD for 6 iterations
-upgd_cnn_6it = UPGD(noise_op, prep_op, denoi, num_iter = 6, split=True)
-upgd_cnn_6it = upgd_cnn_6it.to(device)
+# UPGD for 3 iterations
+# Start with fix stepsizes [1e-5, 5e-6, 1e-6], then train them after 15 epochs
+upgd_cnn_3it = UPGD(noise_op, prep_op, denoi_unet, num_iter = 3)
+upgd_cnn_3it = upgd_cnn_3it.to(device)
 
 # Load previously trained models
 try:
-    import gdown
-    model_path = "./model"    
+    model_path = "../model"    
     if os.path.exists(model_path) is False:
         os.mkdir(model_path)
         print(f'Created {model_path}')
 
-    url_upgd_2it = 'https://drive.google.com/file/d/1SKvolg1ICXDeQJmPS7ejcGKfPWny5RpS/view?usp=drive_link'
-    name_net_2it = 'upgd_cnn_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07_uit_2_la_1e-05'
+    url_upgd_3it = 'https://drive.google.com/file/d/1YOWxrJtf7UyeR0KM76LpW2CwLN0nYntY/view?usp=drive_link'
+    name_net_3it = 'upgd_unet_stl10_N0_100_m_hadam-split_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07_uit_3_la_1e-05'
 
-    url_upgd_6it = 'https://drive.google.com/file/d/1Oyn6UZPlpzWyYzQYJ8ZhSooXC4zdREid/view?usp=drive_link'
-    name_net_6it = 'upgd_cnn_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07_uit_6_la_1e-05'
-
-    model_upgd_2it_path = os.path.join(model_path, name_net_2it)
-    model_upgd_6it_path = os.path.join(model_path, name_net_6it)
+    model_upgd_3it_path = os.path.join(model_path, name_net_3it)    
 
     # Download weights
-    gdown.download(url_upgd_2it, f'{model_upgd_2it_path}.pth', quiet=False,fuzzy=True)
-    gdown.download(url_upgd_6it, f'{model_upgd_6it_path}.pth', quiet=False,fuzzy=True)
-
-    """
-    model_upgd_path = './model/upgd_cnn_stl10_N0_100_N_64_M_1024_epo_2_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
-    """
+    download_model = True
+    if download_model:
+        import gdown
+        gdown.download(url_upgd_3it, f'{model_upgd_3it_path}.pth', quiet=False,fuzzy=True)
 
     # Load pretrained model
-    load_net(model_upgd_2it_path, upgd_cnn_2it, device=device, strict=False)
-    load_net(model_upgd_6it_path, upgd_cnn_6it, device=device, strict=False)
+    load_net(model_upgd_3it_path, upgd_cnn_3it, device=device, strict=False)    
+
+    # Print stepsizes
+    print(f'Stepsizes: {upgd_cnn_3it.lambs}')
 
 except:
     print(f'Model not found!')
 
 # Reconstruction
 with torch.no_grad():
-    z_upgd_2it = upgd_cnn_2it.reconstruct(y.to(device))  # reconstruct from raw measurements
-    z_upgd_6it = upgd_cnn_6it.reconstruct(y.to(device))  # reconstruct from raw measurements
-
+    z_upgd_3it = upgd_cnn_3it.reconstruct(y.to(device))  # reconstruct from raw measurements
 
 # %%
 # PinvNet network 
@@ -219,14 +209,43 @@ with torch.no_grad():
 # We reconstruct with the pseudo inverse using :class:`spyrit.core.recon.PinvNet` class 
 # as in the previous tutorial. For this, we define the neural network and then perform the reconstruction.
 from spyrit.core.recon import PinvNet
+from spyrit.core.nnet import ConvNet
+
+# Denoising network
+denoi_cnn = ConvNet()
 
 # Reconstruction with for Core module (linear net)
-pinvnet = PinvNet(noise_op, prep_op)
-pinvnet = pinvnet.to(device)
+pinvnet_cnn = PinvNet(noise_op, prep_op)
+pinvnet_cnn = pinvnet_cnn.to(device)
+
+# Load previously trained model
+if False: 
+    try:
+        # Download weights
+        url_pinvnet = 'https://drive.google.com/file/d/1IZYff1xQxJ3ckAnObqAWyOure6Bjkj4k/view?usp=sharing'
+        name_net = 'pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
+        model_path = "../model"    
+        if os.path.exists(model_path) is False:
+            os.mkdir(model_path)
+            print(f'Created {model_path}')
+        model_pinvnet_path = os.path.join(model_path, name_net)
+
+        download_model = True
+        if download_model:
+            import gdown
+            gdown.download(url_pinvnet, f'{model_pinvnet_path}.pth', quiet=False,fuzzy=True)
+
+        # Load pretrained model
+        load_net(model_pinvnet_path, pinvnet_cnn, device, False)
+        print(f'Model {model_pinvnet_path} loaded.')
+    except:
+        print(f'Model {model_pinvnet_path} not found!')
+        load_unet = False
 
 # Reconstruction
 with torch.no_grad():
-    z_invnet = pinvnet.reconstruct(y.to(device))  # reconstruct from raw measurements
+    z_invnet_unet = pinvnet_cnn.reconstruct(y.to(device))  # reconstruct from raw measurements
+
 
 # %%
 # DCNET network 
@@ -237,30 +256,34 @@ with torch.no_grad():
 
 # Pretrained DC UNet (UNet denoising)
 from spyrit.core.recon import DCNet
-from spyrit.core.nnet import Unet
-denoi = Unet()
-dcnet_unet = DCNet(noise_op, prep_op, Cov, denoi)
+
+# Denoising network
+denoi_unet_2 = Unet()
+
+dcnet_unet = DCNet(noise_op, prep_op, Cov, denoi_unet_2)
 dcnet_unet = dcnet_unet.to(device)
 
 # Load previously trained model
 try:
-    import gdown
-
     # Download weights
     url_dcnet = 'https://drive.google.com/file/d/15PRRZj5OxKpn1iJw78lGwUUBtTbFco1l/view?usp=drive_link'
     name_net = 'dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
-    model_path = "./model"    
+    model_path = "../model"    
     if os.path.exists(model_path) is False:
         os.mkdir(model_path)
         print(f'Created {model_path}')
     model_unet_path = os.path.join(model_path, name_net)
-    gdown.download(url_dcnet, f'{model_path}.pth', quiet=False,fuzzy=True)
+
+    download_model = True
+    if download_model:
+        import gdown
+        gdown.download(url_dcnet, f'{model_unet_path}.pth', quiet=False, fuzzy=True)
 
     # Load pretrained model
-    load_net(model_path, dcnet_unet, device, False)
-    print(f'Model {model_path} loaded.')
+    load_net(model_unet_path, dcnet_unet, device, False)
+    print(f'Model {model_unet_path} loaded.')
 except:
-    print(f'Model {model_path} not found!')
+    print(f'Model {model_unet_path} not found!')
     load_unet = False
 
 # Reconstruction
@@ -274,35 +297,29 @@ from spyrit.misc.disp import add_colorbar, noaxis
 
 x_plot = x.view(-1,h,h).cpu().numpy()    
 x_plot2 = z_dcnet_unet.view(-1,h,h).cpu().numpy() 
-x_plot3 = z_upgd_2it.view(-1,h,h).cpu().numpy() 
-x_plot4 = z_upgd_6it.view(-1,h,h).cpu().numpy() 
-x_plot5 = z_invnet.view(-1,h,h).cpu().numpy() 
+x_plot3 = z_upgd_3it.view(-1,h,h).cpu().numpy() 
+x_plot5 = z_invnet_unet.view(-1,h,h).cpu().numpy() 
 
 f, axs = plt.subplots(2, 3, figsize=(15,12))
-im1=axs[0,0].imshow(x_plot[0,:,:], cmap='gray')
+im1=axs[0,0].imshow(x_plot[0,:,:], cmap='gray', vmin=-1, vmax=1)
 axs[0,0].set_title('Ground-truth image', fontsize=16)
 noaxis(axs[0,0])
 add_colorbar(im1, 'bottom')
 
-im2=axs[0,1].imshow(x_plot2[0,:,:], cmap='gray')
+im2=axs[0,1].imshow(x_plot2[0,:,:], cmap='gray', vmin=-1, vmax=1)
 axs[0,1].set_title(f'DCNet (UNet)', fontsize=16)
 noaxis(axs[0,1])
 add_colorbar(im2, 'bottom')
 
-im5=axs[0,2].imshow(x_plot5[0,:,:], cmap='gray')
-axs[0,2].set_title(f'PinvNet + I', fontsize=16)
+im5=axs[0,2].imshow(x_plot5[0,:,:], cmap='gray', vmin=-1, vmax=1)
+axs[0,2].set_title(f'PinvNet (UNet)', fontsize=16)
 noaxis(axs[0,2])
 add_colorbar(im5, 'bottom')
 
-im3=axs[1,0].imshow(x_plot3[0,:,:], cmap='gray')
-axs[1,0].set_title(f'UPGD (CNN) \n num_iter=2', fontsize=16)
+im3=axs[1,0].imshow(x_plot3[0,:,:], cmap='gray', vmin=-1, vmax=1)
+axs[1,0].set_title(f'UPGD (UNet) \n num_iter=3', fontsize=16)
 noaxis(axs[1,0])
 add_colorbar(im3, 'bottom')
-
-im4=axs[1,1].imshow(x_plot4[0,:,:], cmap='gray')
-axs[1,1].set_title(f'UPGD (CNN) \n num_iter=6', fontsize=16)
-noaxis(axs[1,1])
-add_colorbar(im4, 'bottom')
 
 # im4=axs[1,2].imshow(x_plot6[0,:,:], cmap='gray')
 # axs[1,2].set_title(f'PinvNet (CNN)', fontsize=16)
