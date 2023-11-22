@@ -10,13 +10,13 @@ SPyRiT is a `PyTorch <https://pytorch.org/>`_-based package for deep image
 reconstruction. While it is primarily designed for single-pixel image
 reconstruction, it can solve other linear reconstruction problems.
 
-SPyRiT allows to simulate measurements and perform image reconstruction using 
-a full-network structure. It takes a normalized image as input and performs 
-data simulation and image reconstruction in a single forward pass or in separate steps. 
+SPyRiT allows to simulate measurements and perform image reconstruction using
+a full-network structure. It takes a normalized image as input and performs
+data simulation and image reconstruction in a single forward pass or in separate steps.
 A full-network generally comprises a measurement operator, a noise operator,
-a preprocessing operator, a reconstruction operator, and a learnable neural network. 
-All operators inherit from PyTorch `nn.Module` class, which allows to easily  
-combine them into a full-network. 
+a preprocessing operator, a reconstruction operator, and a learnable neural network.
+All operators inherit from PyTorch `nn.Module` class, which allows to easily
+combine them into a full-network.
 
 .. image:: fig/principle.png
    :width: 700
@@ -35,29 +35,29 @@ Advanced installation guidelines are available on `GitHub <https://github.com/op
 Package description
 ==================================
 
-Theory 
+Theory
 -----------------------------------
 
 **Single-pixel imaging** aims to recover an image :math:`x\in\Re^N` from a few noisy scalar products :math:`y\in\Re^M`, where :math:`M\ll N`. We model the acquisition as
 
       :math:`y = (\mathcal{N} \circ \mathcal{P})(x),`
 
-where :math:`\mathcal{P}` is a linear operator, :math:`\mathcal{N}` is a noise operator, and :math:`\circ` denotes the composition of operators. 
+where :math:`\mathcal{P}` is a linear operator, :math:`\mathcal{N}` is a noise operator, and :math:`\circ` denotes the composition of operators.
 
-Learning-based reconstruction approaches estimate the unknown image as :math:`x^* = \mathcal{I}_\theta(y)`, 
-where :math:`\mathcal{I}_\theta` represents the parameters that are learned during a training phase. 
-In the case of supervised learning, **the training phase** solves 
+Learning-based reconstruction approaches estimate the unknown image as :math:`x^* = \mathcal{I}_\theta(y)`,
+where :math:`\mathcal{I}_\theta` represents the parameters that are learned during a training phase.
+In the case of supervised learning, **the training phase** solves
 
       :math:`\min_{\theta}{\sum_i \mathcal{L}\left(x_i,\mathcal{I}_\theta(y_i)\right)},`
 
-where :math:`\mathcal{L}` is the training loss between the true image :math:`x` and 
+where :math:`\mathcal{L}` is the training loss between the true image :math:`x` and
 its estimation, and :math:`\{x_i,y_i\}_i` is a set of training pairs.
 
 **The reconstruction operator** :math:`\mathcal{I}_\theta` can be written as follows:
 
       :math:`\mathcal{I}_\theta = \mathcal{G}_\theta \circ \mathcal{R} \circ \mathcal{B},`
 
-where :math:`\mathcal{B}` is a preprocessing operator, :math:`\mathcal{R}` is a (standard) linear reconstruction operator, 
+where :math:`\mathcal{B}` is a preprocessing operator, :math:`\mathcal{R}` is a (standard) linear reconstruction operator,
 and :math:`\mathcal{G}_\theta` is a learned neural network.
 
 Introducing the **full network**, a forward pass can be written as follows:
@@ -68,11 +68,11 @@ The full network is trained by minimizing the following loss function:
 
       :math:`\min_{\theta}{\sum_i \mathcal{L}\left(x_i,\mathcal{F}_\theta(x_i)\right)}.`
 
-This pipeline allows to simulate noisy data on the fly, which provides data 
-augmentation while avoiding storage of the measurements. 
+This pipeline allows to simulate noisy data on the fly, which provides data
+augmentation while avoiding storage of the measurements.
 
 
-Package structure 
+Package structure
 -----------------------------------
 
 Its main functionalities are implemented in the :class:`spyrit.core` subpackage, which contains six submodules:
@@ -83,11 +83,11 @@ Its main functionalities are implemented in the :class:`spyrit.core` subpackage,
 
 2. **Noise operators (noise)** corrupt measurements :math:`y=(\mathcal{N}\circ\mathcal{P})(x)` with noise (see :mod:`spyrit.core.noise`).
 
-3. **Preprocessing operators (prep)** are used to process noisy measurements, :math:`m=\mathcal{B}(y)` , 
-   prior to reconstruction. They typically compensate for the image normalization previously performed (see :mod:`spyrit.core.prep`). 
+3. **Preprocessing operators (prep)** are used to process noisy measurements, :math:`m=\mathcal{B}(y)` ,
+   prior to reconstruction. They typically compensate for the image normalization previously performed (see :mod:`spyrit.core.prep`).
 
-4. **Reconstruction operators (recon)** comprise both standard linear reconstruction operators 
-   :math:`\mathcal{R}` and full network definitions :math:`\mathcal{F}_\theta`, 
+4. **Reconstruction operators (recon)** comprise both standard linear reconstruction operators
+   :math:`\mathcal{R}` and full network definitions :math:`\mathcal{F}_\theta`,
    which include both forward and reconstruction layers (see :mod:`spyrit.core.recon`).
 
 5. **Neural networks (nnet)** include well-known neural networks :math:`\mathcal{G_{\theta}}`, generally used as denoiser layers (see :mod:`spyrit.core.nnet`).
