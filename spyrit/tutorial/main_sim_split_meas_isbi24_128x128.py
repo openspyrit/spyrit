@@ -26,9 +26,13 @@ img_id = imgs_dict[img_ind]['id']
 img_name = imgs_dict[img_ind]['name']
 
 path_images = '../images'
-path_results = '../results'
+path_results = '../../../results'
 img_max = 1.2
 img_min = -1
+
+data_folder = '../../../stat/'
+cov_name = 'Cov_8_128x128.npy'   
+download_cov = True
 
 mode_pinvnet = False
 mode_dcnet = True
@@ -97,15 +101,13 @@ import girder_client
 url='https://pilot-warehouse.creatis.insa-lyon.fr/api/v1'
 
 # Download the covariance matrix and mean image
-data_folder = '../../stat2/'
 dataId_list = [
         '63935b584d15dd536f04849f', # for reconstruction (imageNet, 128)
         '63935a224d15dd536f048490',          
         #'63dd209f0386da2747641eae', 
         #'63d7f3de0386da2747641e1f'
         ]
-cov_name = '../../stat2/Cov_8_128x128.npy'
-download_cov = True
+
 if download_cov:
     # Generate the warehouse client
     gc = girder_client.GirderClient(apiUrl=url)
@@ -115,6 +117,8 @@ if download_cov:
         gc.downloadFile(dataId, data_folder + myfile['name'])
 
 print(f'Created {data_folder}') 
+
+cov_name = os.path.join(data_folder, cov_name)
 
 try:
     Cov  = np.load(cov_name)
