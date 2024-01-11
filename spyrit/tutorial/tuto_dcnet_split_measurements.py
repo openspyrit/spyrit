@@ -226,6 +226,7 @@ load_unet = True
 if os.path.exists(model_unet_path) is False:
     try:
         import gdown
+
         gdown.download(url_unet, f"{model_path}.pth", quiet=False, fuzzy=True)
     except:
         print(f"Model {model_unet_path} not found!")
