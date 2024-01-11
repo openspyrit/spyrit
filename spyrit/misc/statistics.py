@@ -10,6 +10,7 @@ from pathlib import Path
 import time
 import spyrit.misc.walsh_hadamard as wh
 import numpy as np
+from PIL import Image
 from scipy.stats import rankdata
 
 
@@ -625,7 +626,8 @@ def optim_had(dataloader, root):
     Cumulated_had = Cumulated_had / np.max(Cumulated_had) * 255
     np.save(root + "{}x{}".format(nx, ny) + ".npy", Cumulated_had)
     np.savetxt(root + "{}x{}".format(nx, ny) + ".txt", Cumulated_had)
-    cv2.imwrite(root + "{}x{}".format(nx, ny) + ".png", Cumulated_had)
+    im = Image.fromarray(Cumulated_had)
+    im.save(root + "{}x{}".format(nx, ny) + ".png")
     return Cumulated_had
 
 

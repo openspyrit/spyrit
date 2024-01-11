@@ -35,8 +35,6 @@ setup(
         "torch",
         "torchvision",
         "Pillow",
-        "opencv-python",
-        "imutils",
         "PyWavelets",
         "wget",
         "sympy",
