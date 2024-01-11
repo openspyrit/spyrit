@@ -13,9 +13,6 @@ import time
 from scipy import signal
 from scipy import misc
 from scipy import sparse
-from imutils.video import FPS
-import imutils
-import cv2
 import torch
 
 
@@ -305,6 +302,10 @@ def histogram(s):
 
 
 def vid2batch(root, img_dim, start_frame, end_frame):
+    from imutils.video import FPS
+    import imutils
+    import cv2
+
     stream = cv2.VideoCapture(root)
     fps = FPS().start()
     frame_nb = 0
@@ -326,6 +327,8 @@ def vid2batch(root, img_dim, start_frame, end_frame):
 
 
 def pre_process_video(video, crop_patch, kernel_size):
+    import cv2
+
     batch_size, seq_length, c, h, w = video.shape
     batched_frames = video.view(batch_size * seq_length * c, h, w)
     output_batch = torch.zeros(batched_frames.shape)

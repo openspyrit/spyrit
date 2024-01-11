@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+from PIL import Image
 import torchvision
 from torchvision import datasets, models, transforms
 import matplotlib.pyplot as plt
@@ -63,7 +64,8 @@ class Patterns(ABC):
             pat = self.P.weight[i, 0, :, :]
             pattern = pat.cpu().detach().numpy()
 
-            cv2.imwrite(root + "pat_{}x{}".format(i) + ".png", pattern)
+            im = Image.fromarray(pattern)
+            im.save(root + "pat_{}x{}".format(i) + ".png")
 
     @abstractmethod
     def set_desired_pattern(self, def_matrix):
