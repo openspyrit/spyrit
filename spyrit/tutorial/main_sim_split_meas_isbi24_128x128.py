@@ -9,19 +9,28 @@ apply several reconstruction networks availale in SPyRiT:
 - Unrolled proximal gradient descent (UPGD) network with UNet denoiser
 
 """
+
+import numpy as np
+import os
+from spyrit.misc.disp import imagesc
+import matplotlib.pyplot as plt
+
+from pytorch_msssim import ssim
+
+
 # Parameters
 h = 128            # image size hxh 
 
 # Measurement parameters
 M = 128*128 // 4      # Number of measurements (2048, 1/4 of the pixels)
-alpha = 10.0       # number of photons
+alpha = 50.0       # number of photons
 
 # Image index: brain:1, bird: 3, tv: 6
 imgs_dict = [{'name': 'brain', 'id': 1}, # 0
              {'name': 'bird', 'id': 3},  # 1
              {'name': 'tv', 'id': 6}]    # 2
 
-img_ind = 2         # Image index (modify to change the image) 
+img_ind = 0         # Image index (modify to change the image) 
 img_id = imgs_dict[img_ind]['id']
 img_name = imgs_dict[img_ind]['name']
 
@@ -30,11 +39,13 @@ path_results = '../../../results'
 img_max = 1
 img_min = -1
 
+# Covariance for subsampling 
 # data_folder = '../../../stat/ILSVRC2012_v10102019'
 data_folder = '../../../stat/oe_paper/'
 cov_name = 'Cov_8_128x128.npy'   
 download_cov = False
 
+# Select methods for reconstruction
 model_pinvnet_path = "../../../model"    
 model_dcnet_path = "../../../model/oe_paper"    
 
@@ -48,10 +59,49 @@ download_dcnet = False
 url_dcnet = ''
 name_dcnet = 'dc-net_unet_imagenet_rect_N0_10_N_128_M_4096_epo_30_lr_0.001_sss_10_sdr_0.5_bs_256_reg_1e-07_light'
 
-import numpy as np
-import os
-from spyrit.misc.disp import imagesc
-import matplotlib.pyplot as plt
+mode_pinvnet_drunet = True
+mode_pinvnet_drunet_den = False
+
+mode_upgd = False
+
+"""
+DRUNet noise    levels:
+Sample  N0      n
+Bird    10      40
+        50      17
+        2       90
+TV      10      45
+Brain   10      35
+        50      15
+        2       8
+"""
+
+
+# %%
+# Define metrics for evaluation
+# -----------------------------------------------------------------------------
+
+###############################################################################
+# Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
+
+import torchvision
+import torch
+
+# Random seed
+torch.manual_seed(0)
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+def compute_snr(x, x_ref):
+    return 10*np.log10(np.sum(x_ref**2)/np.sum((x-x_ref)**2))
+
+def compute_mse(x, x_ref):
+    return np.sum((x-x_ref)**2)/np.prod(x.shape)
+
+def compute_ssim(img1, img2):
+    img1 = torch.from_numpy(img1).unsqueeze(0).unsqueeze(0)
+    img2 = torch.from_numpy(img2).unsqueeze(0).unsqueeze(0)
+    return ssim(img1, img2)
 
 # %%
 # Load a batch of images
@@ -62,14 +112,6 @@ import matplotlib.pyplot as plt
 # using the :func:`transform_gray_norm` function.
 
 from spyrit.misc.statistics import transform_gray_norm
-import torchvision
-import torch
-
-# Random seed
-torch.manual_seed(0)
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 spyritPath = os.getcwd()
 imgs_path = os.path.join(spyritPath, path_images)
 res_path = os.path.join(spyritPath, path_results)
@@ -120,8 +162,6 @@ if download_cov:
     dataId_list = [
             '63935b584d15dd536f04849f', # for reconstruction (imageNet, 128)
             '63935a224d15dd536f048490',          
-            #'63dd209f0386da2747641eae', 
-            #'63d7f3de0386da2747641e1f'
             ]
 
     # Generate the warehouse client
@@ -164,35 +204,9 @@ meas_op = HadamSplit(M, h, Ord)
 noise_op = Poisson(meas_op, alpha) # could be replaced by anything here as we just need to recon
 prep_op  = SplitPoisson(alpha, meas_op)    
 
-"""
-from spyrit.core.nnet import Unet
-from spyrit.core.recon import DCNet
-denoi = Unet()
-model = DCNet(noise_op, prep_op, Cov, denoi)
-"""
-
 # Vectorize image
 x = x.view(b*c,h*w)  
 print(f'Shape of vectorized image: {x.shape}')
-
-# Init network  
-"""
-from spyrit.core.train import load_net
-model_file = os.path.join(model_dcnet_path, name_dcnet)
-load_net(model_file, model, device, strict = False)
-model.eval()
-#    model.prep.set_expe()
-model.to(device)
-
-y = noise_op(x.to(device))
-with torch.no_grad():
-    rec_sim_gpu = model.reconstruct(y.to(device))
-    rec_sim = rec_sim_gpu.cpu().detach().numpy().squeeze()
-
-fig , axs = plt.subplots(1,1)
-im = axs.imshow(rec_sim, cmap='gray')
-add_colorbar(im, 'bottom')
-"""
 
 # Measurements
 y = noise_op(x)     # a noisy measurement vector
@@ -284,7 +298,6 @@ if mode_dcnet:
 
     denoi_unet_d = Unet()
     dcnet_unet = DCNet(noise_op, prep_op, Cov, denoi_unet_d)
-    #dcnet_unet = dcnet_unet.to(device)
 
     # Load previously trained model
     try:
@@ -331,74 +344,75 @@ if mode_dcnet:
     plt.axis('off')
     plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{str(int(alpha))}_dcnet_unet.png'), bbox_inches='tight', pad_inches=0)
 
-with torch.no_grad():
-    z_dcnet = dcnet.reconstruct(y.to(device))  # reconstruct from raw measurements
+    with torch.no_grad():
+        z_dcnet = dcnet.reconstruct(y.to(device))  # reconstruct from raw measurements
 
-    # plot
-    x_plot_dcnet = z_dcnet.view(-1,h,h).cpu().numpy() 
-    fig = plt.figure(figsize=(7,7))
-    plt.imshow(x_plot_dcnet[0,:,:], cmap='gray', vmin=img_min, vmax=img_max)
-    plt.axis('off')
-    plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{str(int(alpha))}_dcnet.png'), bbox_inches='tight', pad_inches=0)
+        # plot
+        x_plot_dcnet = z_dcnet.view(-1,h,h).cpu().numpy() 
+        fig = plt.figure(figsize=(7,7))
+        plt.imshow(x_plot_dcnet[0,:,:], cmap='gray', vmin=img_min, vmax=img_max)
+        plt.axis('off')
+        plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{str(int(alpha))}_dcnet.png'), bbox_inches='tight', pad_inches=0)
 
-plt.show()
 # %%
 # PInvNet with DRUNet denoising
 # -----------------------------------------------------------------------------
 
 ###############################################################################
 
-from spyrit.external.drunet import DRUNet
+if mode_pinvnet_drunet:
+    from spyrit.external.drunet import DRUNet
 
-# DRUnet denoising
-# DRUNet(noise_level=5, n_channels=1, nc=[64, 128, 256, 512], nb=4, act_mode='R', downsample_mode='strideconv', upsample_mode='convtranspose')
-noise_level = 35
-denoi_drunet = DRUNet(noise_level=noise_level, n_channels=1)
+    # DRUnet denoising
+    # DRUNet(noise_level=5, n_channels=1, nc=[64, 128, 256, 512], nb=4, act_mode='R', downsample_mode='strideconv', upsample_mode='convtranspose')
+    noise_level = 35
+    denoi_drunet = DRUNet(noise_level=noise_level, n_channels=1)
 
-# Set the device for DRUNet
-denoi_drunet = denoi_drunet.to(device)
+    # Set the device for DRUNet
+    denoi_drunet = denoi_drunet.to(device)
 
-try:
-    import gdown
-    # Download pretrained weights
-    model_path = './model'
-    url_net = 'https://drive.google.com/file/d/1oSsLjPPn6lqtzraFZLZGmwP_5KbPfTES/view?usp=drive_link'
+    try:
+        import gdown
+        # Download pretrained weights
+        model_path = './model'
+        url_net = 'https://drive.google.com/file/d/1oSsLjPPn6lqtzraFZLZGmwP_5KbPfTES/view?usp=drive_link'
 
-    if os.path.exists(model_path) is False:
-        os.mkdir(model_path)
-        print(f'Created {model_path}')
+        if os.path.exists(model_path) is False:
+            os.mkdir(model_path)
+            print(f'Created {model_path}')
 
-    model_file = os.path.join(model_path, 'drunet_gray.pth')
+        model_file = os.path.join(model_path, 'drunet_gray.pth')
 
-    download_net = False
-    if download_net:
-        gdown.download(url_net, model_file, quiet=False,fuzzy=True)
+        download_net = False
+        if download_net:
+            gdown.download(url_net, model_file, quiet=False,fuzzy=True)
 
-    # Load pretrained weights
-    denoi_drunet.load_state_dict(torch.load(model_file), strict=False)       
-    print(f'Model {model_file} loaded.')
-except:
-    print(f'Model {model_file} not found!')
+        # Load pretrained weights
+        denoi_drunet.load_state_dict(torch.load(model_file), strict=False)       
+        print(f'Model {model_file} loaded.')
+    except:
+        print(f'Model {model_file} not found!')
 
-# Define DCNet with DRUNet denoising
-pinvnet_drunet = PinvNet(noise_op, prep_op, denoi=denoi_drunet) 
-pinvnet_drunet = pinvnet_drunet.to(device)
+    # Define DCNet with DRUNet denoising
+    pinvnet_drunet = PinvNet(noise_op, prep_op, denoi=denoi_drunet) 
+    pinvnet_drunet = pinvnet_drunet.to(device)
 
-# Set noise level
-noise_level = 10
-denoi_drunet.set_noise_level(noise_level)
+    # Set noise level
+    noise_level = 15
+    denoi_drunet.set_noise_level(noise_level)
 
-# Reconstruction
-with torch.no_grad():
-    z_pinvnet_drunet = pinvnet_drunet.reconstruct(y.to(device))  # reconstruct from raw measurements
+    # Reconstruction
+    with torch.no_grad():
+        z_pinvnet_drunet = pinvnet_drunet.reconstruct(y.to(device))  # reconstruct from raw measurements
 
-# plot
-x_plot = z_pinvnet_drunet.view(-1,h,h).cpu().numpy() 
-fig = plt.figure(figsize=(7,7))
-plt.imshow(x_plot[0,:,:], cmap='gray', vmin=0, vmax=1)
-plt.axis('off')
-#plt.colorbar()
-plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{str(int(alpha))}_pinvnet_drunet_n{noise_level}.png'), bbox_inches='tight', pad_inches=0)
+    # plot
+    x_plot = z_pinvnet_drunet.view(-1,h,h).cpu().numpy() 
+    fig = plt.figure(figsize=(7,7))
+    plt.imshow(x_plot[0,:,:], cmap='gray', vmin=0, vmax=1)
+    plt.axis('off')
+    #plt.colorbar()
+    plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{str(int(alpha))}_pinvnet_drunet_n{noise_level}.png'), bbox_inches='tight', pad_inches=0)
+
 
 plt.show()
 ######################++++++++++++++++++++#########################################################
@@ -406,43 +420,43 @@ plt.show()
 # %%
 # DRUNet denoising
 # -----------------------------------------------------------------------------
+if mode_pinvnet_drunet_den:
+    from spyrit.external.drunet import UNetRes as drunet
 
-from spyrit.external.drunet import UNetRes as drunet
+    # Define denoising network
+    n_channels = 1                   # 1 for grayscale image    
+    drunet_den = drunet(in_nc=n_channels+1, out_nc=n_channels)  
 
-# Define denoising network
-n_channels = 1                   # 1 for grayscale image    
-drunet_den = drunet(in_nc=n_channels+1, out_nc=n_channels)  
+    # Load pretrained model
+    try:       
+        model_path = './model'
+        model_file = os.path.join(model_path, 'drunet_gray.pth')
+        drunet_den.load_state_dict(torch.load(model_file), strict=True)       
+        print(f'Model {model_file} loaded.')
+    except:
+        print(f'Model {model_file} not found!')
+        load_drunet = False
 
-# Load pretrained model
-try:       
-    model_path = './model'
-    model_file = os.path.join(model_path, 'drunet_gray.pth')
-    drunet_den.load_state_dict(torch.load(model_file), strict=True)       
-    print(f'Model {model_file} loaded.')
-except:
-    print(f'Model {model_file} not found!')
-    load_drunet = False
+    # 2nd step - Denoising
+    # Convert to [0,1]
+    x_sample = 0.5*(z_pinvnet + 1).cpu()
 
-# 2nd step - Denoising
-# Convert to [0,1]
-x_sample = 0.5*(z_pinvnet + 1).cpu()
+    # Create noise-level map and concatenate to the image
+    noise_level = 45
+    x_sample = torch.cat((x_sample, torch.FloatTensor([noise_level/255.]).repeat(1, 1, x_sample.shape[2], x_sample.shape[3])), dim=1)        
+    x_sample = x_sample.to(device)
+    drunet_den = drunet_den.to(device)
 
-# Create noise-level map and concatenate to the image
-noise_level = 45
-x_sample = torch.cat((x_sample, torch.FloatTensor([noise_level/255.]).repeat(1, 1, x_sample.shape[2], x_sample.shape[3])), dim=1)        
-x_sample = x_sample.to(device)
-drunet_den = drunet_den.to(device)
+    with torch.no_grad():
+        z_pinvnet_den = drunet_den(x_sample)
 
-with torch.no_grad():
-    z_pinvnet_den = drunet_den(x_sample)
-
-# plot
-x_plot = z_pinvnet_den.view(-1,h,h).cpu().numpy() 
-fig = plt.figure(figsize=(7,7))
-plt.imshow(x_plot[0,:,:], cmap='gray', vmin=0, vmax=1)
-plt.axis('off')
-#plt.colorbar()
-plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{str(int(alpha))}_pinvnet_drunetden_n{noise_level}.png'), bbox_inches='tight', pad_inches=0)
+    # plot
+    x_plot = z_pinvnet_den.view(-1,h,h).cpu().numpy() 
+    fig = plt.figure(figsize=(7,7))
+    plt.imshow(x_plot[0,:,:], cmap='gray', vmin=0, vmax=1)
+    plt.axis('off')
+    #plt.colorbar()
+    plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{str(int(alpha))}_pinvnet_drunetden_n{noise_level}.png'), bbox_inches='tight', pad_inches=0)
 
 ###############################################################################
 
@@ -467,183 +481,87 @@ plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{st
 # and then instantiate the UPGD network. Then, we download the pretrained weights  
 # and load them into the network.
 
-from spyrit.core.nnet import ConvNet
-from spyrit.core.recon import UPGD
+if mode_upgd:
+    from spyrit.core.nnet import ConvNet
+    from spyrit.core.recon import UPGD
 
-# Denoising network
-denoi_cnn = ConvNet()
+    # Denoising network
+    denoi_cnn = ConvNet()
 
-# UPGD for 3 iterations
-# Start with fix stepsizes [1e-5, 5e-6, 1e-6], then train them after 15 epochs
-upgd_cnn_3it = UPGD(noise_op, prep_op, denoi_cnn, num_iter = 3)
-upgd_cnn_3it = upgd_cnn_3it.to(device)
+    # UPGD for 3 iterations
+    # Start with fix stepsizes [1e-5, 5e-6, 1e-6], then train them after 15 epochs
+    upgd_cnn_3it = UPGD(noise_op, prep_op, denoi_cnn, num_iter = 3)
+    upgd_cnn_3it = upgd_cnn_3it.to(device)
 
-# Load previously trained models
-try:
-    import gdown
-    model_path = "./model"    
-    if os.path.exists(model_path) is False:
-        os.mkdir(model_path)
-        print(f'Created {model_path}')
+    # Load previously trained models
+    try:
+        import gdown
+        model_path = "./model"    
+        if os.path.exists(model_path) is False:
+            os.mkdir(model_path)
+            print(f'Created {model_path}')
 
-    url_upgd_3it = 'https://drive.google.com/file/d/1nPAjSjIgBRjazDBCvEkK7NlcI9_-v6TZ/view?usp=drive_link'
-    name_net_3it = 'upgd_cnn_stl10_N0_100_m_hadam-split_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07_uit_3_la_1e-05'
+        url_upgd_3it = 'https://drive.google.com/file/d/1nPAjSjIgBRjazDBCvEkK7NlcI9_-v6TZ/view?usp=drive_link'
+        name_net_3it = 'upgd_cnn_stl10_N0_100_m_hadam-split_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07_uit_3_la_1e-05'
 
-    model_upgd_3it_path = os.path.join(model_path, name_net_3it)    
+        model_upgd_3it_path = os.path.join(model_path, name_net_3it)    
 
-    # Download weights
-    gdown.download(url_upgd_3it, f'{model_upgd_3it_path}.pth', quiet=False,fuzzy=True)
+        # Download weights
+        gdown.download(url_upgd_3it, f'{model_upgd_3it_path}.pth', quiet=False,fuzzy=True)
 
-    """
-    model_upgd_path = './model/upgd_cnn_stl10_N0_100_N_64_M_1024_epo_2_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
-    """
+        """
+        model_upgd_path = './model/upgd_cnn_stl10_N0_100_N_64_M_1024_epo_2_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07'
+        """
 
-    # Load pretrained model
-    load_net(model_upgd_3it_path, upgd_cnn_3it, device=device, strict=False)    
+        # Load pretrained model
+        load_net(model_upgd_3it_path, upgd_cnn_3it, device=device, strict=False)    
 
-    # Print stepsizes
-    print(f'Stepsizes: {upgd_cnn_3it.lambs}')
+        # Print stepsizes
+        print(f'Stepsizes: {upgd_cnn_3it.lambs}')
 
-except:
-    print(f'Model not found!')
+    except:
+        print(f'Model not found!')
 
-# Reconstruction
-with torch.no_grad():
-    z_upgd_3it = upgd_cnn_3it.reconstruct(y.to(device))  # reconstruct from raw measurements
+    # Reconstruction
+    with torch.no_grad():
+        z_upgd_3it = upgd_cnn_3it.reconstruct(y.to(device))  # reconstruct from raw measurements
 
-###############################################################################
-# We plot all results side by side.
+    ###############################################################################
+    # We plot all results side by side.
 
-from spyrit.misc.disp import add_colorbar, noaxis
+    from spyrit.misc.disp import add_colorbar, noaxis
 
-x_plot = x.view(-1,h,h).cpu().numpy()    
-x_plot2 = z_dcnet_unet.view(-1,h,h).cpu().numpy() 
-x_plot3 = z_upgd_3it.view(-1,h,h).cpu().numpy() 
-#x_plot5 = z_invnet_unet.view(-1,h,h).cpu().numpy() 
+    x_plot = x.view(-1,h,h).cpu().numpy()    
+    x_plot2 = z_dcnet_unet.view(-1,h,h).cpu().numpy() 
+    x_plot3 = z_upgd_3it.view(-1,h,h).cpu().numpy() 
+    #x_plot5 = z_invnet_unet.view(-1,h,h).cpu().numpy() 
 
-f, axs = plt.subplots(2, 3, figsize=(15,12))
-im1=axs[0,0].imshow(x_plot[0,:,:], cmap='gray')
-axs[0,0].set_title('Ground-truth image', fontsize=16)
-noaxis(axs[0,0])
-add_colorbar(im1, 'bottom')
+    f, axs = plt.subplots(2, 3, figsize=(15,12))
+    im1=axs[0,0].imshow(x_plot[0,:,:], cmap='gray')
+    axs[0,0].set_title('Ground-truth image', fontsize=16)
+    noaxis(axs[0,0])
+    add_colorbar(im1, 'bottom')
 
-im2=axs[0,1].imshow(x_plot2[0,:,:], cmap='gray')
-axs[0,1].set_title(f'DCNet (UNet)', fontsize=16)
-noaxis(axs[0,1])
-add_colorbar(im2, 'bottom')
+    im2=axs[0,1].imshow(x_plot2[0,:,:], cmap='gray')
+    axs[0,1].set_title(f'DCNet (UNet)', fontsize=16)
+    noaxis(axs[0,1])
+    add_colorbar(im2, 'bottom')
 
-#im5=axs[0,2].imshow(x_plot5[0,:,:], cmap='gray')
-#axs[0,2].set_title(f'PinvNet (UNet)', fontsize=16)
-#noaxis(axs[0,2])
-#add_colorbar(im5, 'bottom')
+    #im5=axs[0,2].imshow(x_plot5[0,:,:], cmap='gray')
+    #axs[0,2].set_title(f'PinvNet (UNet)', fontsize=16)
+    #noaxis(axs[0,2])
+    #add_colorbar(im5, 'bottom')
 
-im3=axs[1,0].imshow(x_plot3[0,:,:], cmap='gray')
-axs[1,0].set_title(f'UPGD (UNet) \n num_iter=3', fontsize=16)
-noaxis(axs[1,0])
-add_colorbar(im3, 'bottom')
+    im3=axs[1,0].imshow(x_plot3[0,:,:], cmap='gray')
+    axs[1,0].set_title(f'UPGD (UNet) \n num_iter=3', fontsize=16)
+    noaxis(axs[1,0])
+    add_colorbar(im3, 'bottom')
 
-# im4=axs[1,2].imshow(x_plot6[0,:,:], cmap='gray')
-# axs[1,2].set_title(f'PinvNet (CNN)', fontsize=16)
-# noaxis(axs[1,2])
-# add_colorbar(im4, 'bottom')
+    # im4=axs[1,2].imshow(x_plot6[0,:,:], cmap='gray')
+    # axs[1,2].set_title(f'PinvNet (CNN)', fontsize=16)
+    # noaxis(axs[1,2])
+    # add_colorbar(im4, 'bottom')
 
 ###############################################################################
 # UPGD with a small CNN is worse that UNet denoiser, as the latter has a denoiser with 
 # higher capacity. Increasing the capacity of the denoiser in UPGD should lead to better results.
-
-# %%
-# DCNet with DRUNet denoising
-# -----------------------------------------------------------------------------
-
-###############################################################################
-
-from spyrit.external.drunet import DRUNet
-
-# DRUnet denoising
-# DRUNet(noise_level=5, n_channels=1, nc=[64, 128, 256, 512], nb=4, act_mode='R', downsample_mode='strideconv', upsample_mode='convtranspose')
-noise_level = 15
-denoi_drunet = DRUNet(noise_level=noise_level, n_channels=1)
-
-# Set the device for DRUNet
-denoi_drunet = denoi_drunet.to(device)
-
-try:
-    import gdown
-    # Download pretrained weights
-    model_path = './model'
-    url_net = 'https://drive.google.com/file/d/1oSsLjPPn6lqtzraFZLZGmwP_5KbPfTES/view?usp=drive_link'
-
-    if os.path.exists(model_path) is False:
-        os.mkdir(model_path)
-        print(f'Created {model_path}')
-
-    model_file = os.path.join(model_path, 'drunet_gray.pth')
-    gdown.download(url_net, model_file, quiet=False,fuzzy=True)
-
-    # Load pretrained weights
-    denoi_drunet.load_state_dict(torch.load(model_file), strict=False)       
-    print(f'Model {model_file} loaded.')
-except:
-    print(f'Model {model_file} not found!')
-
-# Define DCNet with DRUNet denoising
-dcnet_drunet = DCNet(noise_op, prep_op, Cov, denoi_drunet)
-dcnet_drunet = dcnet_drunet.to(device)
-
-# Set noise level
-#noise_level = 10
-#pinvnet_drunet.set_noise_level(noise_level)
-
-# Reconstruction
-with torch.no_grad():
-    z_dcnet_drunet = dcnet_drunet.reconstruct(y.to(device))  # reconstruct from raw measurements
-
-# plot
-x_plot = z_dcnet_drunet.view(-1,h,h).cpu().numpy() 
-fig = plt.figure(figsize=(7,7))
-plt.imshow(x_plot[0,:,:], cmap='gray', vmin=0, vmax=1)
-plt.axis('off')
-#plt.colorbar()
-plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{str(int(alpha))}_dcnet_drunet_n{noise_level}.png'), bbox_inches='tight', pad_inches=0)
-
-# %%
-# DRUNet denoising
-# -----------------------------------------------------------------------------
-
-from spyrit.external.drunet import UNetRes as drunet
-
-# Define denoising network
-n_channels = 1                   # 1 for grayscale image    
-drunet_den = drunet(in_nc=n_channels+1, out_nc=n_channels)  
-
-# Load pretrained model
-try:       
-    model_path = './model'
-    model_file = os.path.join(model_path, 'drunet_gray.pth')
-    drunet_den.load_state_dict(torch.load(model_file), strict=True)       
-    print(f'Model {model_file} loaded.')
-except:
-    print(f'Model {model_file} not found!')
-    load_drunet = False
-
-# 2nd step - Denoising
-noise_level = 20
-x_sample = 0.5*(z_dcnet + 1).cpu()
-x_sample = torch.cat((x_sample, torch.FloatTensor([noise_level/255.]).repeat(1, 1, x_sample.shape[2], x_sample.shape[3])), dim=1)        
-x_sample = x_sample.to(device)
-drunet_den = drunet_den.to(device)
-
-with torch.no_grad():
-    z_pinvnet_den = drunet_den(x_sample)
-
-# plot
-x_plot = z_pinvnet_den.view(-1,h,h).cpu().numpy() 
-fig = plt.figure(figsize=(7,7))
-plt.imshow(x_plot[0,:,:], cmap='gray', vmin=0, vmax=1)
-plt.axis('off')
-#plt.colorbar()
-plt.savefig(os.path.join(res_path, f'{img_name}_split_rect_{str(h)}_{str(M)}_{str(int(alpha))}_pinvnet_drunetden_n{noise_level}.png'), bbox_inches='tight', pad_inches=0)
-
-###############################################################################
-
-###############################################################################
