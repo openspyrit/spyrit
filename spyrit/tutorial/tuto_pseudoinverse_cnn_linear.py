@@ -222,6 +222,7 @@ print(model_cnn_path)
 if os.path.exists(model_cnn_path) is False:
     try:
         import gdown
+
         gdown.download(url_cnn, f"{model_cnn_path}.pth", quiet=False, fuzzy=True)
     except:
         print(f"Model {model_cnn_path} not downloaded!")
@@ -229,7 +230,6 @@ if os.path.exists(model_cnn_path) is False:
 # Load model weights
 load_net(model_cnn_path, pinv_net_cnn, device, False)
 print(f"Model {model_cnn_path} loaded.")
-
 
 
 ###############################################################################
