@@ -189,43 +189,47 @@ pinv_net_cnn = pinv_net_cnn.to(device)
 # We download the pretrained weights and load them into the network.
 
 # Load pretrained model
-try:
-    import gdown
+model_path = "./model"
+num_epochs = 1
 
-    pretrained_model_num = 3
-    if pretrained_model_num == 1:
-        # 1 epoch
-        url_cnn = "https://drive.google.com/file/d/1iGjxOk06nlB5hSm3caIfx0vy2byQd-ZC/view?usp=drive_link"
-        name_cnn = "pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_1_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07"
-        num_epochs = 1
-    elif pretrained_model_num == 2:
-        # 5 epochs
-        url_cnn = "https://drive.google.com/file/d/1tzZg1lU3AxOi8-EVXFgnxdtqQCJPjQ9f/view?usp=drive_link"
-        name_cnn = (
-            "pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_5_lr_0.001_sss_10_sdr_0.5_bs_512"
-        )
-        num_epochs = 5
-    elif pretrained_model_num == 3:
-        # 30 epochs
-        url_cnn = "https://drive.google.com/file/d/1IZYff1xQxJ3ckAnObqAWyOure6Bjkj4k/view?usp=drive_link"
-        name_cnn = "pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07"
-        num_epochs = 30
+pretrained_model_num = 3
+if pretrained_model_num == 1:
+    # 1 epoch
+    url_cnn = "https://drive.google.com/file/d/1iGjxOk06nlB5hSm3caIfx0vy2byQd-ZC/view?usp=drive_link"
+    name_cnn = "pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_1_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth"
+    num_epochs = 1
+elif pretrained_model_num == 2:
+    # 5 epochs
+    url_cnn = "https://drive.google.com/file/d/1tzZg1lU3AxOi8-EVXFgnxdtqQCJPjQ9f/view?usp=drive_link"
+    name_cnn = (
+        "pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_5_lr_0.001_sss_10_sdr_0.5_bs_512.pth"
+    )
+    num_epochs = 5
+elif pretrained_model_num == 3:
+    # 30 epochs
+    url_cnn = "https://drive.google.com/file/d/1IZYff1xQxJ3ckAnObqAWyOure6Bjkj4k/view?usp=drive_link"
+    name_cnn = "pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth"
+    num_epochs = 30
 
-    # Create model folder
-    model_path = "./model"
-    if os.path.exists(model_path) is False:
-        os.mkdir(model_path)
-        print(f"Created {model_path}")
+# Create model folder
+if os.path.exists(model_path) is False:
+    os.mkdir(model_path)
+    print(f"Created {model_path}")
 
-    # Download model weights
-    model_cnn_path = os.path.join(model_path, name_cnn)
-    gdown.download(url_cnn, f"{model_cnn_path}.pth", quiet=False, fuzzy=True)
+# Download model weights
+model_cnn_path = os.path.join(model_path, name_cnn)
+print(model_cnn_path)
+if os.path.exists(model_cnn_path) is False:
+    try:
+        import gdown
+        gdown.download(url_cnn, f"{model_cnn_path}.pth", quiet=False, fuzzy=True)
+    except:
+        print(f"Model {model_cnn_path} not downloaded!")
 
-    # Load model weights
-    load_net(model_cnn_path, pinv_net_cnn, device, False)
-    print(f"Model {model_path} loaded.")
-except:
-    print(f"Model {model_path} not found!")
+# Load model weights
+load_net(model_cnn_path, pinv_net_cnn, device, False)
+print(f"Model {model_cnn_path} loaded.")
+
 
 
 ###############################################################################

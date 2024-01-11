@@ -11,7 +11,6 @@ import torch.optim as optim
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
-from torch.utils.tensorboard import SummaryWriter
 
 import os
 import matplotlib.pyplot as plt
@@ -77,6 +76,8 @@ def images_norm(images):
 
 def tb_writer_init(tb_path, samples=None):
     """Tensorboard log for torch"""
+    from torch.utils.tensorboard import SummaryWriter
+
     writer = SummaryWriter(tb_path)
 
     # Add model graph for visualization
