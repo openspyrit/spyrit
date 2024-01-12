@@ -211,27 +211,32 @@ dcnet_unet = DCNet(noise_op, prep_op, Cov, denoi)
 dcnet_unet = dcnet_unet.to(device)
 
 # Load previously trained model
-try:
-    import gdown
+# Download weights
+url_unet = "https://drive.google.com/file/d/15PRRZj5OxKpn1iJw78lGwUUBtTbFco1l/view?usp=drive_link"
+model_path = "./model"
+if os.path.exists(model_path) is False:
+    os.mkdir(model_path)
+    print(f"Created {model_path}")
+model_unet_path = os.path.join(
+    model_path,
+    "dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth",
+)
 
-    # Download weights
-    url_unet = "https://drive.google.com/file/d/15PRRZj5OxKpn1iJw78lGwUUBtTbFco1l/view?usp=drive_link"
-    model_path = "./model"
-    if os.path.exists(model_path) is False:
-        os.mkdir(model_path)
-        print(f"Created {model_path}")
-    model_unet_path = os.path.join(
-        model_path,
-        "dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07",
-    )
-    gdown.download(url_unet, f"{model_path}.pth", quiet=False, fuzzy=True)
+load_unet = True
+if os.path.exists(model_unet_path) is False:
+    try:
+        import gdown
 
+        gdown.download(url_unet, f"{model_path}.pth", quiet=False, fuzzy=True)
+    except:
+        print(f"Model {model_unet_path} not found!")
+        load_unet = False
+
+if load_unet:
     # Load pretrained model
     load_net(model_path, dcnet_unet, device, False)
     print(f"Model {model_path} loaded.")
-except:
-    print(f"Model {model_path} not found!")
-    load_unet = False
+
 
 # Reconstruction
 with torch.no_grad():
