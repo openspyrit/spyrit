@@ -13,7 +13,6 @@ import torchvision
 from torchvision import datasets, models, transforms
 import torch.nn.functional as F
 import imageio
-import cv2
 import matplotlib.pyplot as plt
 
 

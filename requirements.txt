@@ -15,4 +15,4 @@ tensorboard
 sphinx_gallery
 sphinx_rtd_theme
 girder-client
-gdown
+gdown==v4.6.3
