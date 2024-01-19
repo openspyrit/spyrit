@@ -762,15 +762,13 @@ class DCNet(nn.Module):
 # %%===========================================================================================
 class PositiveParameters(nn.Module):
     # ===========================================================================================
-    def __init__(self, size, val_min=1e-6):
+    def __init__(self, size, val, val_min=1e-8):
         super(PositiveParameters, self).__init__()
         self.val_min = torch.tensor(val_min)
-        self.params = nn.Parameter(
-            torch.abs(val_min * torch.ones(size, 1)), requires_grad=True
-        )
+        self.params = nn.Parameter(val * torch.ones(size, 1), requires_grad=True)
 
     def forward(self):
-        return torch.abs(self.params)
+        return torch.max(self.params, self.val_min)
 
 
 # %%===========================================================================================
@@ -785,29 +783,136 @@ class PositiveMonoIncreaseParameters(PositiveParameters):
 
 
 # %%===========================================================================================
-class UPGD(PinvNet):
+class UPGD(nn.Module):
     # ===========================================================================================
     def __init__(
         self,
         noise,
         prep,
         denoi=nn.Identity(),
-        num_iter=6,
+        num_iter=3,
         lamb=1e-5,
         lamb_min=1e-6,
         split=False,
     ):
-        super(UPGD, self).__init__(noise, prep, denoi)
+        super().__init__()
+        self.acqu = noise 
+        self.prep = prep
+        self.pinv = PseudoInverse()
+        self.denoi = denoi
+        #
         self.num_iter = num_iter
         self.lamb = lamb
         self.lamb_min = lamb_min
         # Set a trainable tensor for the regularization parameter with dimension num_iter
         # and constrained to be positive with clamp(min=0.0, max=None)
-        self.lambs = PositiveMonoIncreaseParameters(
-            num_iter, lamb_min
-        )  # shape lambs = [num_iter,1]
+        #self.lambs = nn.Parameter(torch.abs(lamb*torch.ones(num_iter,1)), requires_grad=False)
+        self.lambs = PositiveParameters(num_iter, lamb, lamb_min)
+        #self.lambs = PositiveMonoIncreaseParameters(
+        #    num_iter, lamb_min
+        #)  # shape lambs = [num_iter,1]
         # self.noise = noise
         self.split = split
+
+    def forward(self, x):
+        r""" Full pipeline of reconstrcution network
+            
+        Args:
+            :attr:`x`: ground-truth images
+        
+        Shape:
+            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
+            
+            :attr:`output`: reconstructed images with shape :math:`(B,C,H,W)`
+        
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H*H)
+            >>> recnet = PinvNet(noise, prep)
+            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+            >>> z = recnet(x)
+            >>> print(z.shape)
+            >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
+            torch.Size([10, 1, 64, 64])
+            tensor(5.8912e-06)
+        """
+        
+        b,c,_,_ = x.shape
+
+        # Acquisition
+        x = x.view(b*c,self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = self.acqu(x)                     # shape x = [b*c, 2*M]
+
+        # Reconstruction 
+        x = self.reconstruct(x)             # shape x = [bc, 1, h,w]
+        x = x.view(b,c,self.acqu.meas_op.h, self.acqu.meas_op.w)
+        
+        return x
+    
+    def acquire(self, x):
+        r""" Simulate data acquisition
+            
+        Args:
+            :attr:`x`: ground-truth images
+        
+        Shape:
+            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
+            
+            :attr:`output`: measurement vectors with shape :math:`(BC,2M)`
+        
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H*H)
+            >>> recnet = PinvNet(noise, prep)
+            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+            >>> z = recnet.acquire(x)
+            >>> print(z.shape)
+            torch.Size([10, 8192])
+        """
+        
+        b,c,_,_ = x.shape
+
+        # Acquisition
+        x = x.view(b*c,self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = self.acqu(x)                     # shape x = [b*c, 2*M]
+        
+        return x
+    
+    def meas2img(self, y):
+        """Return images from raw measurement vectors
+
+        Args:
+            :attr:`x`: raw measurement vectors
+        
+        Shape:
+            :attr:`x`: :math:`(BC,2M)`
+            
+            :attr:`output`: :math:`(BC,1,H,W)`
+        
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H**2)
+            >>> recnet = PinvNet(noise, prep) 
+            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
+            >>> z = recnet.reconstruct(x)
+            >>> print(z.shape)
+            torch.Size([10, 1, 64, 64])
+        """
+        m = self.prep(y)
+        m = torch.nn.functional.pad(m, (0, self.acqu.meas_op.N-self.acqu.meas_op.M))
+        z = m @ self.acqu.meas_op.Perm.weight.data.T
+        z = z.view(-1,1,self.acqu.meas_op.h, self.acqu.meas_op.w)
+        
+        return z
 
     def reconstruct(self, x):
         r"""Reconstruction step of a reconstruction network
@@ -826,25 +931,25 @@ class UPGD(PinvNet):
         """
 
         # Measurement operator
-        # if self.split:
+        #if self.split:
         #    meas = super().Acq.meas_op
         # else:
-        # meas = self.Acq.meas_op
-        meas = self.acqu.meas_op
+        # meas = self.Acq.meas_op        
 
         # x of shape [b*c, 2M]
         bc, _ = x.shape
 
-        # First estimate: Pseudo inverse
         # Preprocessing in the measurement domain
         x = self.prep(x)  # [5, 1024]
 
         # Save measurements
         m = x.clone()  # [5, 1024]
 
-        # measurements to image domain processing
+        # First estimate: Pseudo inverse
         x = self.pinv(x, self.acqu.meas_op)  # [5, 4096]         # shape x = [b*c,N]
-        # x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)   # shape x = [b*c,1,h,w]
+        x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
+        x = self.denoi(x)
+        x = x.view(bc,self.acqu.meas_op.h*self.acqu.meas_op.w)   
 
         # Unroll network
         # Ensure step size is positive and monotonically decreasing and larger than self.lamb!
@@ -860,9 +965,7 @@ class UPGD(PinvNet):
             x = x + lambs[n] * self.acqu.meas_op.H_adjoint(res)  # [5, 4096]
 
             # Denoising step
-            x = x.view(
-                bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
-            )  # [5, 1, 64, 64]
+            x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)  # [5, 1, 64, 64]
             x = self.denoi(x)
             x = x.view(bc, self.acqu.meas_op.N)  # [5, 4096]
         return x
