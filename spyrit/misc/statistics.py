@@ -2,7 +2,9 @@ from __future__ import print_function, division
 from typing import Any
 import torch
 import torchvision
+from torch.utils.data import Dataset
 
+import random
 # from torchvision import datasets, transforms
 from pathlib import Path
 
@@ -195,6 +197,77 @@ def data_loaders_stl10(
 
     dataloaders = {"train": trainloader, "val": testloader}
 
+    return dataloaders
+
+def get_image_files(folder):
+    """
+    Args:
+        folder=Path, path to folder containing images
+    
+    Returns:
+        image_files=list, list of Path objects
+    
+    Get all image names within subfolders using pathlib
+    """
+    image_files = []
+    for ext in ["*.png", "*.bmp", "*.jpg", "*.jpeg"]:
+        image_files.extend(Path(folder).glob(f"**/{ext}"))
+    return image_files
+
+class ImageFolderDataSet(Dataset):
+    """
+    Create a Dataset from a given folder, which can have subfolders 
+    or not and may contain also non-image files
+    """
+    def __init__(self, root, transform=None, shuffle=False):
+        self.root = root
+        self.transform = transform
+        filenames = get_image_files(root)    
+        if shuffle:
+            random.shuffle(filenames)
+        self.filenames = filenames
+    def __getitem__(self, index):
+        img_name = self.filenames[index]
+        img = Image.open(img_name)
+        #img = io.imread(os.path.join(self.root, img_name))
+        if self.transform:
+            img = self.transform(img)
+        # Return image and label (to be consistent with ImageFolder)
+        return img, 'none'
+    def __len__(self):
+        return len(self.filenames)
+    
+def data_loaders_img_folder(data_root, data_val_root=None, img_size=64, batch_size=512,  
+                       shuffle=False, seed=7): 
+    """ 
+    Args:
+        shuffle=True to shuffle train set only (test set not shuffled)
+        
+    We load images from directory. 
+    The output of torchvision datasets are PILImage images in the range [0, 1].
+    We transform them to Tensors in the range [-1, 1]. Also RGB images are 
+    converted into grayscale images.
+        
+    """
+    torch.manual_seed(seed) # reproductibility of random crop
+    transform = transform_gray_norm(img_size, crop_type = 'random')   # random crop 
+
+    trainset = ImageFolderDataSet(root=data_root, transform=transform, shuffle=shuffle)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
+                                              shuffle=shuffle)
+ 
+    if data_val_root is not None:
+        testset = ImageFolderDataSet(root=data_val_root, transform=transform, shuffle=shuffle)
+    else:
+        # Split trainset into train and val
+        train_size = int(0.8 * len(trainset))
+        val_size = len(trainset) - train_size
+        trainset, testset = torch.utils.data.random_split(trainset, [train_size, val_size])
+    testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
+                                             shuffle=False)       
+    
+    dataloaders = {'train':trainloader, 'val':testloader}
+    
     return dataloaders
 
 
