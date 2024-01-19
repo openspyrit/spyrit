@@ -154,7 +154,7 @@ def train_model(
     do_checkpoint=0,
     tb_path=False,
     tb_prof=False,
-    tb_freq=20,
+    tb_freq=1,
 ):
     """Trains the pytorch model"""
     count_trainable_param(model)
@@ -235,27 +235,7 @@ def train_model(
                             loss.item(),
                             time_left,
                         )
-                    )
-
-                if tb_path:
-                    if batch_i % tb_freq == 0:
-                        # Loss
-                        tb_writer_add_scalar(
-                            writer,
-                            name_metric=f"{phase}_loss",
-                            val_metric=loss.item() * inputs.size(0),
-                            step=epoch * dataset_sizes[phase] + batch_i,
-                        )
-
-                        # Prediction
-                        with torch.no_grad():
-                            samples_pred = model(samples)
-                            tb_writer_add_image(
-                                writer,
-                                name_metric="model_preds",
-                                images=samples_pred,
-                                step=epoch * dataset_sizes[phase] + batch_i,
-                            )
+                    )                
 
                 del outputs
 
@@ -276,6 +256,22 @@ def train_model(
         if do_checkpoint > 0:
             if epoch % do_checkpoint == 0:
                 checkpoint(root, epoch, model)
+        
+        # Tensorboard
+        if tb_path:                    
+            if batch_i % tb_freq == 0:
+                # Loss
+                tb_writer_add_scalar(writer, name_metric=f'{phase}_loss', val_metric=epoch_loss, step=epoch)
+                
+                # Prediction
+                with torch.no_grad():
+                    samples_pred = model(samples)
+                    tb_writer_add_image(writer, name_metric='model_preds', images=samples_pred, step=epoch)                    
+
+        # Tensorboard profiler
+        if tb_prof:
+            tb_profiler(tb_path, model,criterion, optimizer, dataloaders['train'], device, wait=1, warmup=1, active=3, repeat=2)
+
 
     time_elapsed = time.time() - since
     if disp:
@@ -285,21 +281,6 @@ def train_model(
             )
         )
         print("Best val Loss: {:4f}".format(best_loss))
-
-    # Tensorboard profiler
-    if tb_prof:
-        tb_profiler(
-            tb_path,
-            model,
-            criterion,
-            optimizer,
-            dataloaders["train"],
-            device,
-            wait=1,
-            warmup=1,
-            active=3,
-            repeat=2,
-        )
 
     # load best model weights
     model.load_state_dict(best_model_wts)
