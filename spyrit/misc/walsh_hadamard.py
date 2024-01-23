@@ -82,7 +82,7 @@ def gray_code_list(n):  # Generate the N grey code permutation matrix
 
 def bit_reverse_traverse(a):  # internet function to generate bit reverse
     n = a.shape[0]
-    assert not n & (n - 1)  # assert that n is a power of 2
+    assert not n & (n - 1),  "n must be a power of 2" # assert n is power of 2
 
     if n == 1:
         yield a[0]
@@ -648,12 +648,7 @@ def walsh2_matrix(n):
     """
     H = np.zeros((n**2, n**2))
     H1d = walsh_matrix(n)
-    for i in range(n**2):
-        image = np.zeros((n**2, 1))
-        image[i] = 1
-        image = np.reshape(image, (n, n))
-        hadamard = walsh2(image, H1d)
-        H[:, i] = np.reshape(hadamard, (1, n**2))
+    H = np.kron(H1d, H1d)
     return H
 
 
