@@ -70,7 +70,7 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # .. math::
 #       y \sim \texttt{Noise}(P\tilde{x}) = \texttt{Noise}\left(\frac{P(x+1)}{2}\right).
 #
-# The normalization is usefull when considering distributions such
+# The normalization is useful when considering distributions such
 # as the Poisson distribution that are defined on positive values.
 
 # %%

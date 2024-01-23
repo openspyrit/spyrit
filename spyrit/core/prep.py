@@ -44,7 +44,7 @@ class DirectPoisson(nn.Module):
         r"""
         Preprocess measurements to compensate for the affine image normalization
 
-        It computes :math:`\frac{1}{\alpha}x - H1`, where 1 represents the
+        It computes :math:`\frac{2}{\alpha}x - H1`, where H1 represents the
         all-ones vector.
 
         Args:
