@@ -121,7 +121,7 @@ print(f"Shape of the preprocessed measurements: {m.shape}")
 
 ###############################################################################
 # To display the subsampled measurement vector as an image in the transformed
-# domain, we use the :func:`spyrit.misc.sampling.meas2img2` function
+# domain, we use the :func:`spyrit.misc.sampling.meas2img` function
 
 # plot
 from spyrit.misc.sampling import meas2img
