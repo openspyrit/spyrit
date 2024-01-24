@@ -791,8 +791,8 @@ class UPGD(nn.Module):
         prep,
         denoi=nn.Identity(),
         num_iter=3,
-        lamb=1e-5,
-        lamb_min=1e-6,
+        lamb=1e-4,
+        lamb_min=1e-12,
         split=False,
     ):
         super().__init__()
@@ -804,15 +804,17 @@ class UPGD(nn.Module):
         self.num_iter = num_iter
         self.lamb = lamb
         self.lamb_min = lamb_min
+        self.gamma = 1/noise.meas_op.N
         # Set a trainable tensor for the regularization parameter with dimension num_iter
         # and constrained to be positive with clamp(min=0.0, max=None)
-        #self.lambs = nn.Parameter(torch.abs(lamb*torch.ones(num_iter,1)), requires_grad=False)
-        self.lambs = PositiveParameters(num_iter, lamb, lamb_min)
+        self.lambs = nn.Parameter(torch.abs(self.gamma*torch.ones(num_iter,1)), requires_grad=False)
+        #self.lambs = PositiveParameters(num_iter, lamb, lamb_min)
         #self.lambs = PositiveMonoIncreaseParameters(
         #    num_iter, lamb_min
         #)  # shape lambs = [num_iter,1]
         # self.noise = noise
         self.split = split
+        self.log_inner_fidelity = True
 
     def forward(self, x):
         r""" Full pipeline of reconstrcution network
@@ -914,6 +916,10 @@ class UPGD(nn.Module):
         
         return z
 
+    def data_fidelity(self, x, y):
+        proj = self.acqu.meas_op.forward_H(x)
+        return torch.linalg.norm(proj - y) ** 2
+
     def reconstruct(self, x):
         r"""Reconstruction step of a reconstruction network
 
@@ -950,10 +956,14 @@ class UPGD(nn.Module):
         x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
         x = self.denoi(x)
         x = x.view(bc,self.acqu.meas_op.h*self.acqu.meas_op.w)   
+        if  self.log_inner_fidelity:
+            with torch.no_grad():
+                data_fidelity0 = self.data_fidelity(x, m)
 
         # Unroll network
         # Ensure step size is positive and monotonically decreasing and larger than self.lamb!
-        lambs = self.lambs()
+        #lambs = self.lambs()
+        lambs = self.lambs
         for n in range(self.num_iter):
             # Projection onto the measurement space
             proj = self.acqu.meas_op.forward_H(x)  # [5, 1024]
@@ -962,10 +972,264 @@ class UPGD(nn.Module):
             res = proj - m  # [5, 1024]
 
             # Gradient step
-            x = x + lambs[n] * self.acqu.meas_op.H_adjoint(res)  # [5, 4096]
+            x = x - lambs[n] * self.acqu.meas_op.H_adjoint(res)  # [5, 4096]
 
-            # Denoising step
+            # Denoising step 
             x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)  # [5, 1, 64, 64]
             x = self.denoi(x)
             x = x.view(bc, self.acqu.meas_op.N)  # [5, 4096]
+        if  self.log_inner_fidelity:
+            with torch.no_grad():
+                data_fidelity = self.data_fidelity(x, m)
+                print(f"Data fidelity: {(data_fidelity0.cpu().numpy(), data_fidelity.cpu().detach().numpy())}. Alpha: {[lamb.cpu().detach().numpy()[0] for lamb in lambs]}")
         return x
+
+
+class LearnedPGD(nn.Module):
+    r""" Pseudo inverse reconstruction network
+    
+    .. math:
+        
+        
+    Args:
+        :attr:`noise`: Acquisition operator (see :class:`~spyrit.core.noise`) 
+        
+        :attr:`prep`: Preprocessing operator (see :class:`~spyrit.core.prep`)
+        
+        :attr:`denoi` (optional): Image denoising operator 
+        (see :class:`~spyrit.core.nnet`). 
+        Default :class:`~spyrit.core.nnet.Identity`
+    
+    Input / Output:
+        :attr:`input`: Ground-truth images with shape :math:`(B,C,H,W)` 
+        
+        :attr:`output`: Reconstructed images with shape :math:`(B,C,H,W)`
+    
+    Attributes:
+        :attr:`Acq`: Acquisition operator initialized as :attr:`noise`
+        
+        :attr:`prep`: Preprocessing operator initialized as :attr:`prep`
+        
+        :attr:`pinv`: Analytical reconstruction operator initialized as 
+        :class:`~spyrit.core.recon.PseudoInverse()`
+        
+        :attr:`Denoi`: Image denoising operator initialized as :attr:`denoi`
+
+    
+    Example:
+        >>> B, C, H, M = 10, 1, 64, 64**2
+        >>> Ord = np.ones((H,H))
+        >>> meas = HadamSplit(M, H, Ord)
+        >>> noise = NoNoise(meas)
+        >>> prep = SplitPoisson(1.0, M, H*H)
+        >>> recnet = PinvNet(noise, prep)
+        >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+        >>> z = recnet(x)
+        >>> print(z.shape)
+        >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
+        torch.Size([10, 1, 64, 64])
+        tensor(5.8912e-06)
+    """
+    def __init__(self, noise, prep, denoi, gamma=1., mu=1., iter_stop=1):
+        super().__init__()
+        self.mu = mu
+        self.gamma = 1/noise.meas_op.N
+        #self.norm_stop = norm_stop
+        self.iter_stop = iter_stop
+        # nn.module
+        self.acqu = noise 
+        self.prep = prep
+        self.denoi = denoi
+        self.log_inner_fidelity = False
+
+    def forward(self, x):
+        r""" Full pipeline of reconstrcution network
+            
+        Args:
+            :attr:`x`: ground-truth images
+        
+        Shape:
+            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
+            
+            :attr:`output`: reconstructed images with shape :math:`(B,C,H,W)`
+        
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H*H)
+            >>> recnet = PinvNet(noise, prep)
+            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+            >>> z = recnet(x)
+            >>> print(z.shape)
+            >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
+            torch.Size([10, 1, 64, 64])
+            tensor(5.8912e-06)
+        """
+        
+        b,c,_,_ = x.shape
+
+        # Acquisition
+        x = x.view(b*c,self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = self.acqu(x)                     # shape x = [b*c, 2*M]
+
+        # Reconstruction 
+        x = self.reconstruct(x)             # shape x = [bc, 1, h,w]
+        x = x.view(b,c,self.acqu.meas_op.h, self.acqu.meas_op.w)
+        
+        return x
+    
+    def acquire(self, x):
+        r""" Simulate data acquisition
+            
+        Args:
+            :attr:`x`: ground-truth images
+        
+        Shape:
+            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
+            
+            :attr:`output`: measurement vectors with shape :math:`(BC,2M)`
+        
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H*H)
+            >>> recnet = PinvNet(noise, prep)
+            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+            >>> z = recnet.acquire(x)
+            >>> print(z.shape)
+            torch.Size([10, 8192])
+        """
+        
+        b,c,_,_ = x.shape
+
+        # Acquisition
+        x = x.view(b*c,self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = self.acqu(x)                     # shape x = [b*c, 2*M]
+        
+        return x
+
+    def data_fidelity(self, x, y):
+        proj = self.acqu.meas_op.forward_H(x)
+        return torch.linalg.norm(proj - y) ** 2
+
+    def reconstruct(self, x):
+        r""" Reconstruction step of a reconstruction network
+            
+        Args:
+            :attr:`x`: raw measurement vectors
+        
+        Shape:
+            :attr:`x`: :math:`(BC,2M)`
+            
+            :attr:`output`: :math:`(BC,1,H,W)`
+        
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H**2)
+            >>> recnet = PinvNet(noise, prep) 
+            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
+            >>> z = recnet.reconstruct(x)
+            >>> print(z.shape)
+            torch.Size([10, 1, 64, 64])
+        """
+
+        # Measurement to image domain mapping
+        bc, _ = x.shape
+        
+        # Preprocessing in the measurement domain
+        m = self.prep(x) # shape x = [b*c, M]
+
+        # init solution and dual variable
+        x = self.acqu.meas_op.pinv(m) # shape x = [b*c,N]
+        
+        if self.log_inner_fidelity:
+            data_fidelity = []
+            with torch.no_grad():
+                data_fidelity.append(self.data_fidelity(x, m).cpu().numpy().tolist())
+
+        u = None
+
+        for i in range(self.iter_stop):
+            # gradient step (data fidelity)
+            res = self.acqu.meas_op.forward_H(x)-m
+            upd = self.gamma*self.acqu.meas_op.adjoint(res)
+            x = x - upd
+            x = x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
+
+            # proximal step (prior)
+            #x, u = self.denoi.module.forward_eval(x, x, l=self.mu*self.gamma, u=u)
+            #x = self.denoi(x, x, l=self.mu*self.gamma, u=u)
+            x = self.denoi(x)            
+            x = x.view(bc,self.acqu.meas_op.N)
+            if self.log_inner_fidelity:
+                with torch.no_grad():
+                    data_fidelity.append(self.data_fidelity(x, m).cpu().numpy().tolist())
+        if self.log_inner_fidelity:
+            print(f"Data fidelity: {(data_fidelity)}. Alpha: {self.gamma}")
+
+        return x
+    
+    def reconstruct_eval(self, x):
+        r""" Reconstruction step of a reconstruction network
+            
+        Args:
+            :attr:`x`: raw measurement vectors
+        
+        Shape:
+            :attr:`x`: :math:`(BC,2M)`
+            
+            :attr:`output`: :math:`(BC,1,H,W)`
+        
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H**2)
+            >>> recnet = PinvNet(noise, prep) 
+            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
+            >>> z = recnet.reconstruct(x)
+            >>> print(z.shape)
+            torch.Size([10, 1, 64, 64])
+        """
+        
+        with torch.no_grad():
+
+            # Measurement to image domain mapping
+            bc, _ = x.shape
+            
+            # Preprocessing in the measurement domain
+            m = self.prep(x) # shape x = [b*c, M]
+    
+            # init solution and dual variable
+            x = self.acqu.meas_op.pinv(m) # shape x = [b*c,N]
+            u = None
+    
+            for i in range(self.iter_stop):
+                x = x.view(bc,self.acqu.meas_op.N)
+                x_old = x.clone() # Do we needs detach here? https://discuss.pytorch.org/t/clone-and-detach-in-v0-4-0/16861/21
+    
+                # gradient step (data fidelity)
+                res = self.acqu.meas_op.forward_H(x)-m
+                x = x - self.gamma*self.acqu.meas_op.adjoint(res)
+    
+                # proximal step (prior)
+                #x, u = self.denoi.module.forward_eval(x, x, l=self.mu*self.gamma, u=u)
+                x, _ = self.denoi.module.forward_eval(x, x, l=self.mu*self.gamma, u=u)
+    
+                # # stopping criteria
+                x_old = x_old.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)
+                norm_it = torch.linalg.vector_norm(x-x_old)/torch.linalg.vector_norm(x)
+                
+                print(f'{i}: |x - x_old| / |x| = {norm_it}')
+                # if norm_it < self.norm_stop:
+                    # break
+
+            return x
