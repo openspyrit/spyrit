@@ -58,7 +58,7 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 
 ###############################################################################
 # We consider the case where the measurement matrix is the positive
-# component of a Hadamard matrix, which if often used in single-pixel imaging.
+# component of a Hadamard matrix, which is often used in single-pixel imaging.
 # First, we compute a full Hadamard matrix that computes the 2D transform of an
 # image of size :attr:`h` and takes its positive part.
 
@@ -129,7 +129,7 @@ print(f"Shape of raw measurements: {y.shape}")
 
 ###############################################################################
 # To display the subsampled measurement vector as an image in the transformed
-# domain, we use the :func:`spyrit.misc.sampling.meas2img2` function
+# domain, we use the :func:`spyrit.misc.sampling.meas2img` function
 
 # plot
 from spyrit.misc.sampling import meas2img
