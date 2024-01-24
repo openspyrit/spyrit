@@ -193,6 +193,10 @@ def train_model(
 
             # Iterate over data.
             for batch_i, (inputs, labels) in enumerate(dataloaders[phase]):
+                if False: # Debugging
+                    if batch_i >= 2:
+                        print('Exiting batch loop !!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                        break
                 inputs = inputs.to(device)
 
                 # zero the parameter gradients
@@ -264,9 +268,11 @@ def train_model(
                 tb_writer_add_scalar(writer, name_metric=f'{phase}_loss', val_metric=epoch_loss, step=epoch)
                 
                 # Prediction
+                model.log_inner_fidelity = True
                 with torch.no_grad():
                     samples_pred = model(samples)
-                    tb_writer_add_image(writer, name_metric='model_preds', images=samples_pred, step=epoch)                    
+                    tb_writer_add_image(writer, name_metric='model_preds', images=samples_pred, step=epoch)  
+                model.log_inner_fidelity = False                  
 
         # Tensorboard profiler
         if tb_prof:
