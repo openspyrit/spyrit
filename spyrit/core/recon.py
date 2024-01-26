@@ -1146,6 +1146,10 @@ class LearnedPGD(nn.Module):
         # Preprocessing in the measurement domain
         m = self.prep(x) # shape x = [b*c, M]
 
+        meas_variance = self.prep.sigma(x)
+        meas_variance = meas_variance.repeat(1, 4)
+        meas_variance = meas_variance.view(-1, 4096) 
+
         # init solution and dual variable
         x = self.acqu.meas_op.pinv(m) # shape x = [b*c,N]
         
@@ -1160,6 +1164,7 @@ class LearnedPGD(nn.Module):
             # gradient step (data fidelity)
             res = self.acqu.meas_op.forward_H(x)-m
             upd = self.gamma*self.acqu.meas_op.adjoint(res)
+            upd = upd/meas_variance
             x = x - upd
             x = x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
 
