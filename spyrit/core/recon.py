@@ -793,17 +793,16 @@ class UPGD(nn.Module):
         num_iter=3,
         lamb=1e-4,
         lamb_min=1e-12,
-        split=False,
     ):
         super().__init__()
         self.acqu = noise 
         self.prep = prep
-        self.pinv = PseudoInverse()
         self.denoi = denoi
         #
         self.num_iter = num_iter
         self.lamb = lamb
         self.lamb_min = lamb_min
+        #
         self.gamma = 1/noise.meas_op.N
         # Set a trainable tensor for the regularization parameter with dimension num_iter
         # and constrained to be positive with clamp(min=0.0, max=None)
@@ -813,8 +812,7 @@ class UPGD(nn.Module):
         #    num_iter, lamb_min
         #)  # shape lambs = [num_iter,1]
         # self.noise = noise
-        self.split = split
-        self.log_inner_fidelity = True
+        self.log_inner_fidelity = False
 
     def forward(self, x):
         r""" Full pipeline of reconstrcution network
@@ -946,19 +944,17 @@ class UPGD(nn.Module):
         bc, _ = x.shape
 
         # Preprocessing in the measurement domain
-        x = self.prep(x)  # [5, 1024]
-
-        # Save measurements
-        m = x.clone()  # [5, 1024]
+        m = self.prep(x)  # [5, 1024]
 
         # First estimate: Pseudo inverse
-        x = self.pinv(x, self.acqu.meas_op)  # [5, 4096]         # shape x = [b*c,N]
+        x = self.acqu.meas_op.pinv(m)
         x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
         x = self.denoi(x)
         x = x.view(bc,self.acqu.meas_op.h*self.acqu.meas_op.w)   
-        if  self.log_inner_fidelity:
+        if self.log_inner_fidelity:
+            data_fidelity = []
             with torch.no_grad():
-                data_fidelity0 = self.data_fidelity(x, m)
+                data_fidelity.append(self.data_fidelity(x, m).cpu().numpy().tolist())
 
         # Unroll network
         # Ensure step size is positive and monotonically decreasing and larger than self.lamb!
@@ -972,18 +968,20 @@ class UPGD(nn.Module):
             res = proj - m  # [5, 1024]
 
             # Gradient step
-            x = x - lambs[n] * self.acqu.meas_op.H_adjoint(res)  # [5, 4096]
+            #x = x - lambs[n] * self.acqu.meas_op.H_adjoint(res)  # [5, 4096]
+            x = x - lambs[n] * self.acqu.meas_op.adjoint(res)
 
             # Denoising step 
             x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)  # [5, 1, 64, 64]
             x = self.denoi(x)
             x = x.view(bc, self.acqu.meas_op.N)  # [5, 4096]
-        if  self.log_inner_fidelity:
-            with torch.no_grad():
-                data_fidelity = self.data_fidelity(x, m)
-                print(f"Data fidelity: {(data_fidelity0.cpu().numpy(), data_fidelity.cpu().detach().numpy())}. Alpha: {[lamb.cpu().detach().numpy()[0] for lamb in lambs]}")
-        return x
+            if self.log_inner_fidelity:
+                with torch.no_grad():
+                    data_fidelity.append(self.data_fidelity(x, m).cpu().numpy().tolist())
+        if self.log_inner_fidelity:
+            print(f"Data fidelity: {(data_fidelity)}. Alpha: {self.gamma}")
 
+        return x
 
 class LearnedPGD(nn.Module):
     r""" Pseudo inverse reconstruction network
