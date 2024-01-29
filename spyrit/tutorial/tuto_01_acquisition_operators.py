@@ -17,7 +17,6 @@ submodule, which is based on three classes:
 These tutorials must be runned from `spyrit/tutorial/` folder (they load image samples from `spyrit/images/`).
 """
 
-
 import numpy as np
 import os
 from spyrit.misc.disp import imagesc
