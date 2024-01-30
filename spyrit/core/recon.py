@@ -789,7 +789,7 @@ class UPGD(nn.Module):
         self,
         noise,
         prep,
-        denoi=nn.Identity(),
+        denoi=nn.Identity(), # if list: different denoising for each iteration
         num_iter=3,
         lamb=1e-4,
         lamb_min=1e-12,
@@ -805,10 +805,11 @@ class UPGD(nn.Module):
         #
         self.gamma = 1/noise.meas_op.N
         # Fix regularization parameter
-        #self.lambs = nn.Parameter(torch.abs(self.gamma*torch.ones(num_iter,1)), requires_grad=False)
+        self.lambs = nn.Parameter(torch.abs(self.gamma*torch.ones(num_iter,1)), requires_grad=False)
+        #
         # Define fix decreasing regularization parameters
-        lambs = [self.gamma*(0.5**n) for n in range(num_iter)]
-        self.lambs = nn.Parameter(torch.tensor(lambs), requires_grad=False)
+        #lambs = [self.gamma*(0.5**n) for n in range(num_iter)]
+        #self.lambs = nn.Parameter(torch.tensor(lambs), requires_grad=False)
         # ----
         #self.lambs = PositiveParameters(num_iter, lamb, lamb_min)
         #self.lambs = PositiveMonoIncreaseParameters(
@@ -952,7 +953,10 @@ class UPGD(nn.Module):
         # First estimate: Pseudo inverse
         x = self.acqu.meas_op.pinv(m)
         x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
-        x = self.denoi(x)
+        if isinstance(self.denoi, nn.ModuleList):
+            x = self.denoi[0](x)
+        else:
+            x = self.denoi(x)
         x = x.view(bc,self.acqu.meas_op.h*self.acqu.meas_op.w)   
         if self.log_inner_fidelity:
             data_fidelity = []
@@ -978,7 +982,10 @@ class UPGD(nn.Module):
 
             # Denoising step 
             x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)  # [5, 1, 64, 64]
-            x = self.denoi(x)
+            if isinstance(self.denoi, nn.ModuleList):
+                x = self.denoi[n+1](x)
+            else:
+                x = self.denoi(x)
             x = x.view(bc, self.acqu.meas_op.N)  # [5, 4096]
             if self.log_inner_fidelity:
                 with torch.no_grad():
