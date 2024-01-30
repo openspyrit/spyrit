@@ -30,7 +30,7 @@ def meas2img(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
 
     Args:
         meas : `np.ndarray` with shape :math:`(M,)`
-            Set of :math:`B` measurement vectors of lenth :math:`M \le N^2`.
+            Measurement vector of length :math:`M \le N^2`.
         Mat : `np.ndarray` with shape :math:`(N,N)`
             Sampling matrix, where high values indicate high significance.
 
@@ -45,7 +45,9 @@ def meas2img(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
 
 
 def meas2img2(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
-    """Return measurement image from multiple measurement vectors
+    """Return multiple measurement images from multiple measurement vectors. 
+    It is essentially the same as `meas2img`, but the `meas` argument is 
+    two-dimensional.
 
     Args:
         meas : `np.ndarray` with shape :math:`(M,B)`
