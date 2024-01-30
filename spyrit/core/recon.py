@@ -804,9 +804,12 @@ class UPGD(nn.Module):
         self.lamb_min = lamb_min
         #
         self.gamma = 1/noise.meas_op.N
-        # Set a trainable tensor for the regularization parameter with dimension num_iter
-        # and constrained to be positive with clamp(min=0.0, max=None)
-        self.lambs = nn.Parameter(torch.abs(self.gamma*torch.ones(num_iter,1)), requires_grad=False)
+        # Fix regularization parameter
+        #self.lambs = nn.Parameter(torch.abs(self.gamma*torch.ones(num_iter,1)), requires_grad=False)
+        # Define fix decreasing regularization parameters
+        lambs = [self.gamma*(0.5**n) for n in range(num_iter)]
+        self.lambs = nn.Parameter(torch.tensor(lambs), requires_grad=False)
+        # ----
         #self.lambs = PositiveParameters(num_iter, lamb, lamb_min)
         #self.lambs = PositiveMonoIncreaseParameters(
         #    num_iter, lamb_min
@@ -969,7 +972,9 @@ class UPGD(nn.Module):
 
             # Gradient step
             #x = x - lambs[n] * self.acqu.meas_op.H_adjoint(res)  # [5, 4096]
-            x = x - lambs[n] * self.acqu.meas_op.adjoint(res)
+            upd = -lambs[n] * self.acqu.meas_op.adjoint(res)
+            # upd = upd.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w) 
+            x = x + upd
 
             # Denoising step 
             x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)  # [5, 1, 64, 64]
