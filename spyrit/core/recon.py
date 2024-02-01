@@ -800,6 +800,8 @@ class UPGD(nn.Module):
         self.prep = prep
         self.denoi = denoi
         #
+        self.norm_var = norm_var
+        #
         self.num_iter = num_iter
         self.lamb = lamb
         self.lamb_min = lamb_min
