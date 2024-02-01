@@ -793,6 +793,7 @@ class UPGD(nn.Module):
         num_iter=3,
         lamb=1e-4,
         lamb_min=1e-12,
+        norm_var=True
     ):
         super().__init__()
         self.acqu = noise 
@@ -950,6 +951,11 @@ class UPGD(nn.Module):
         # Preprocessing in the measurement domain
         m = self.prep(x)  # [5, 1024]
 
+        if self.norm_var:
+            meas_variance = self.prep.sigma(x)
+            meas_variance = meas_variance.repeat(1, 4)
+            meas_variance = meas_variance.view(-1, 4096) 
+
         # First estimate: Pseudo inverse
         x = self.acqu.meas_op.pinv(m)
         x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
@@ -977,6 +983,8 @@ class UPGD(nn.Module):
             # Gradient step
             #x = x - lambs[n] * self.acqu.meas_op.H_adjoint(res)  # [5, 4096]
             upd = -lambs[n] * self.acqu.meas_op.adjoint(res)
+            if self.norm_var:
+                upd = upd / meas_variance
             # upd = upd.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w) 
             x = x + upd
 
