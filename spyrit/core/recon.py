@@ -1050,10 +1050,11 @@ class LearnedPGD(nn.Module):
         torch.Size([10, 1, 64, 64])
         tensor(5.8912e-06)
     """
-    def __init__(self, noise, prep, denoi, gamma=1., mu=1., iter_stop=1):
+    def __init__(self, noise, prep, denoi, gamma=1., mu=1., iter_stop=1, gamma_grad=False):
         super().__init__()
         self.mu = mu
-        self.gamma = 1/noise.meas_op.N
+        self.gamma = gamma
+        self.lambs = nn.Parameter((1/noise.meas_op.N)*torch.ones(iter_stop,1), requires_grad=gamma_grad)
         #self.norm_stop = norm_stop
         self.iter_stop = iter_stop
         # nn.module
@@ -1183,7 +1184,7 @@ class LearnedPGD(nn.Module):
         for i in range(self.iter_stop):
             # gradient step (data fidelity)
             res = self.acqu.meas_op.forward_H(x)-m
-            upd = self.gamma*self.acqu.meas_op.adjoint(res)
+            upd = self.lambs[i]*self.acqu.meas_op.adjoint(res)
             upd = upd/meas_variance
             x = x - upd
             x = x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
