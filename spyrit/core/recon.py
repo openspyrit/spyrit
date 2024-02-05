@@ -1169,7 +1169,7 @@ class LearnedPGD(nn.Module):
 
         meas_variance = self.prep.sigma(x)
         meas_variance = meas_variance.repeat(1, 4)
-        meas_variance = meas_variance.view(-1, 4096) 
+        #meas_variance = meas_variance.view(-1, 4096) 
 
         # init solution and dual variable
         x = self.acqu.meas_op.pinv(m) # shape x = [b*c,N]
