@@ -1050,12 +1050,12 @@ class LearnedPGD(nn.Module):
         torch.Size([10, 1, 64, 64])
         tensor(5.8912e-06)
     """
-    def __init__(self, noise, prep, denoi, gamma=1., mu=1., iter_stop=1, gamma_grad=False):
+    def __init__(self, noise, prep, denoi, iter_stop=1, gamma_grad=False):
         super().__init__()
-        self.mu = mu
-        self.gamma = gamma
-        self.lambs = nn.Parameter((1/noise.meas_op.N)*torch.ones(iter_stop,1), requires_grad=gamma_grad)
-        #self.norm_stop = norm_stop
+        if gamma_grad:
+            self.gamma = nn.Parameter(torch.tensor(1/noise.meas_op.N), requires_grad=gamma_grad)
+        else:
+            self.gamma = 1/noise.meas_op.N        
         self.iter_stop = iter_stop
         # nn.module
         self.acqu = noise 
@@ -1184,14 +1184,12 @@ class LearnedPGD(nn.Module):
         for i in range(self.iter_stop):
             # gradient step (data fidelity)
             res = self.acqu.meas_op.forward_H(x)-m
-            upd = self.lambs[i]*self.acqu.meas_op.adjoint(res)
+            upd = self.gamma*self.acqu.meas_op.adjoint(res)
             upd = upd/meas_variance
             x = x - upd
             x = x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
 
             # proximal step (prior)
-            #x, u = self.denoi.module.forward_eval(x, x, l=self.mu*self.gamma, u=u)
-            #x = self.denoi(x, x, l=self.mu*self.gamma, u=u)
             x = self.denoi(x)            
             x = x.view(bc,self.acqu.meas_op.N)
             if self.log_inner_fidelity:
