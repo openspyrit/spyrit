@@ -21,8 +21,9 @@ python -m sphinx -T -E -b html -d _build/doctrees -D language=en . $READTHEDOCS_
 conda create --name readthedoc
 conda activate readthedoc
 conda install pip
-pip install --upgrade --no-cache-dir pip setuptools
+python.exe -m pip install --upgrade --no-cache-dir pip setuptools
 pip install --upgrade --no-cache-dir pillow==10.0.0 mock==1.0.1 alabaster==0.7.13 commonmark==0.9.1 recommonmark==0.5.0 sphinx sphinx-rtd-theme readthedocs-sphinx-ext==2.2.2
+cd .\myenv\spyrit\ # replace myenv by the environment in which spyrit is installed
 pip install --exists-action=w --no-cache-dir -r requirements.txt
 cd .\docs\source\
 python -m sphinx -T -E -b html -d _build/doctrees -D language=en . html
