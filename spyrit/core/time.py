@@ -70,23 +70,17 @@ class DeformationField(nn.Module):
         Should the extrema (-1 and 1) be considered as referring to the center
         points of the input's corner pixels? Default: :attr:`False`.
     
-    **Example 1:** Rotating a 2x2 B&W image by 90 degrees counter-clockwise, 
-    using one frame and align_corners=False
-        >>> v = torch.tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]],
-                               [[-0.5, -0.5], [-0.5, 0.5]]]])
+    **Example 1:** Rotating a 2x2 B&W image by 90 degrees counter-clockwise, using one frame and align_corners=False
+        >>> v = torch.tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]]])
         >>> field = DeformationField(v, align_corners=False)
         >>> print(field.inverse_grid_frames) 
-        tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], 
-                 [[-0.5, -0.5], [-0.5, 0.5]]]])
+        tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]]])
         
-    **Example 2:** Rotating a 2x2 B&W image by 90 degrees clockwise, using one
-    frame and align_corners=True
-        >>> v = torch.tensor([[[[-1, 1], [-1, -1]],
-                               [[ 1, 1], [ 1, -1]]]])
+    **Example 2:** Rotating a 2x2 B&W image by 90 degrees clockwise, using one frame and align_corners=True
+        >>> v = torch.tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]]])
         >>> field = DeformationField(v, align_corners=True)
         >>> print(field.inverse_grid_frames) 
-        tensor([[[[-1, 1], [-1, -1]],
-                 [[ 1, 1], [ 1, -1]]])
+        tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]])
     """
     
     def __init__(

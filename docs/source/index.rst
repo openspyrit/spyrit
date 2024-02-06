@@ -98,12 +98,26 @@ The main functionalities of SPyRiT are implemented in the :class:`spyrit.core` s
 
 6. **Training (train)** provide the functionalities for training reconstruction networks (see :mod:`spyrit.core.train`).
 
-.. toctree::
-   :maxdepth: 5
-   :caption: Contents:
 
-   api/modules
+Subpackages
+-----------------------------------
+
+.. autosummary::
+   :toctree: _autosummary
+   :template: spyrit-module-template.rst
+   :recursive:
+   :caption: Subpackages
+
+   spyrit.core
+   spyrit.misc
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Tutorials
+
    gallery/index
+   
+
 
 .. Indices and tables
     ==================
