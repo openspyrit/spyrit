@@ -422,9 +422,8 @@ def stat_fwalsh_S_stl10(
     """Fast Walsh S-transform of X in "2D"
 
     Args:
-        :attr:`X` (torch.tensor):  input image with shape `(*, n, n)`. `n`**2
-                                    should be a power of two.
-
+        :attr:`X` (torch.tensor): input image with shape `(*, n, n)`. `n`**2
+        should be a power of two.
 
     Returns:
         torch.tensor: S-transformed signal with shape `(*, n, n)`
