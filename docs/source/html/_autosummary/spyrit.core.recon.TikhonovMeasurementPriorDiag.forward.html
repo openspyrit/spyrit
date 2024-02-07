@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.core.recon.TikhonovMeasurementPriorDiag.forward &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/sg_README.css?v=78231cbc" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="spyrit.core.recon.UPGD" href="spyrit.core.recon.UPGD.html" />
+    <link rel="prev" title="spyrit.core.recon.TikhonovMeasurementPriorDiag" href="spyrit.core.recon.TikhonovMeasurementPriorDiag.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="spyrit.core.html">spyrit.core</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.meas.html">spyrit.core.meas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.nnet.html">spyrit.core.nnet</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.noise.html">spyrit.core.noise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.prep.html">spyrit.core.prep</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="spyrit.core.recon.html">spyrit.core.recon</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.DCDRUNet.html">spyrit.core.recon.DCDRUNet</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.DCNet.html">spyrit.core.recon.DCNet</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.Denoise_layer.html">spyrit.core.recon.Denoise_layer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.PinvNet.html">spyrit.core.recon.PinvNet</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.PositiveMonoIncreaseParameters.html">spyrit.core.recon.PositiveMonoIncreaseParameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.PositiveParameters.html">spyrit.core.recon.PositiveParameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.PseudoInverse.html">spyrit.core.recon.PseudoInverse</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="spyrit.core.recon.TikhonovMeasurementPriorDiag.html">spyrit.core.recon.TikhonovMeasurementPriorDiag</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="spyrit.core.recon.TikhonovMeasurementPriorDiag.html#spyrit.core.recon.TikhonovMeasurementPriorDiag"><code class="docutils literal notranslate"><span class="pre">TikhonovMeasurementPriorDiag</span></code></a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">spyrit.core.recon.TikhonovMeasurementPriorDiag.forward</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.UPGD.html">spyrit.core.recon.UPGD</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.time.html">spyrit.core.time</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.train.html">spyrit.core.train</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="spyrit.core.html">spyrit.core</a></li>
+          <li class="breadcrumb-item"><a href="spyrit.core.recon.html">spyrit.core.recon</a></li>
+          <li class="breadcrumb-item"><a href="spyrit.core.recon.TikhonovMeasurementPriorDiag.html">spyrit.core.recon.TikhonovMeasurementPriorDiag</a></li>
+      <li class="breadcrumb-item active">spyrit.core.recon.TikhonovMeasurementPriorDiag.forward</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/spyrit.core.recon.TikhonovMeasurementPriorDiag.forward.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="spyrit-core-recon-tikhonovmeasurementpriordiag-forward">
+<h1>spyrit.core.recon.TikhonovMeasurementPriorDiag.forward<a class="headerlink" href="#spyrit-core-recon-tikhonovmeasurementpriordiag-forward" title="Link to this heading"></a></h1>
+<dl class="py method">
+<dt class="sig sig-object py" id="spyrit.core.recon.TikhonovMeasurementPriorDiag.forward">
+<span class="sig-prename descclassname"><span class="pre">TikhonovMeasurementPriorDiag.</span></span><span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">var</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meas_op</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="spyrit.core.meas.HadamSplit.html#spyrit.core.meas.HadamSplit" title="spyrit.core.meas.HadamSplit"><span class="pre">HadamSplit</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tensor</span></span></span><a class="reference internal" href="../_modules/spyrit/core/recon.html#TikhonovMeasurementPriorDiag.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spyrit.core.recon.TikhonovMeasurementPriorDiag.forward" title="Link to this definition"></a></dt>
+<dd><p>Computes the Tikhonov regularization with prior in the measurement domain.</p>
+<p>We approximate the solution as:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\hat{x} = x_0 + F^{-1} \begin{bmatrix} y_1 \\ y_2\end{bmatrix}\end{split}\]</div>
+<p>with <span class="math notranslate nohighlight">\(y_1 = D_1(D_1 + \Sigma_\alpha)^{-1} (y - GF x_0)\)</span> and
+<span class="math notranslate nohighlight">\(y_2 = \Sigma_1 \Sigma_{21}^{-1} y_1\)</span>, where
+<span class="math notranslate nohighlight">\(\Sigma = \begin{bmatrix} \Sigma_1 &amp; \Sigma_{21}^\top \\ \Sigma_{21} &amp; \Sigma_2\end{bmatrix}\)</span>
+and  <span class="math notranslate nohighlight">\(D_1 =\textrm{Diag}(\Sigma_1)\)</span>. Assuming the noise
+covariance <span class="math notranslate nohighlight">\(\Sigma_\alpha\)</span> is diagonal, the matrix inversion
+involded in the computation of <span class="math notranslate nohighlight">\(y_1\)</span> is straigtforward.</p>
+<p>This is an approximation to the exact solution</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\hat{x} &amp;= x_0 + F^{-1}\begin{bmatrix}\Sigma_1 \\ \Sigma_{21} \end{bmatrix}
+          [\Sigma_1 + \Sigma_\alpha]^{-1} (y - GF x_0)\end{split}\]</div>
+<p>See Lemma B.0.5 of the PhD dissertation of A. Lorente Mur (2021):
+<a class="reference external" href="https://theses.hal.science/tel-03670825v1/file/these.pdf">https://theses.hal.science/tel-03670825v1/file/these.pdf</a></p>
+<dl>
+<dt>Args:</dt><dd><ul class="simple">
+<li><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">x</span></code>: A batch of measurement vectors <span class="math notranslate nohighlight">\(y\)</span></p></li>
+<li><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">x_0</span></code>: A batch of prior images <span class="math notranslate nohighlight">\(x_0\)</span></p></li>
+<li><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">var</span></code>: A batch of measurement noise variances <span class="math notranslate nohighlight">\(\Sigma_\alpha\)</span></p></li>
+<li><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">meas_op</span></code>: A measurement operator that provides <span class="math notranslate nohighlight">\(GF\)</span> and <span class="math notranslate nohighlight">\(F^{-1}\)</span></p></li>
+</ul>
+</dd>
+<dt>Shape:</dt><dd><ul class="simple">
+<li><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">x</span></code>: <span class="math notranslate nohighlight">\((*, M)\)</span></p></li>
+<li><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">x_0</span></code>: <span class="math notranslate nohighlight">\((*, N)\)</span></p></li>
+<li><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">var</span></code> <span class="math notranslate nohighlight">\((*, M)\)</span></p></li>
+<li><p>Output: <span class="math notranslate nohighlight">\((*, N)\)</span></p></li>
+</ul>
+</dd>
+<dt>Example:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">B</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">M</span> <span class="o">=</span> <span class="mi">85</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">512</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">([</span><span class="n">H</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">H</span><span class="o">**</span><span class="mi">2</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">recon_op</span> <span class="o">=</span> <span class="n">TikhonovMeasurementPriorDiag</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span> <span class="n">M</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Ord</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">H</span><span class="p">,</span><span class="n">H</span><span class="p">))</span>
+<span class="go">&gt;&gt; meas = HadamSplit(M, H, Ord)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">([</span><span class="n">B</span><span class="p">,</span><span class="n">M</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x_0</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">B</span><span class="p">,</span> <span class="n">H</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">var</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">B</span><span class="p">,</span> <span class="n">M</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x</span> <span class="o">=</span> <span class="n">recon_op</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x_0</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">meas</span><span class="p">)</span>
+<span class="go">torch.Size([85, 1024])</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="spyrit.core.recon.TikhonovMeasurementPriorDiag.html" class="btn btn-neutral float-left" title="spyrit.core.recon.TikhonovMeasurementPriorDiag" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="spyrit.core.recon.UPGD.html" class="btn btn-neutral float-right" title="spyrit.core.recon.UPGD" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

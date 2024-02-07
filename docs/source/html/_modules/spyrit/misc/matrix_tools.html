@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.misc.matrix_tools &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/thumbnail.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">spyrit.misc.matrix_tools</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for spyrit.misc.matrix_tools</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1">#   This software is distributed under the terms</span>
+<span class="c1">#   of the GNU Lesser General  Public Licence (LGPL)</span>
+<span class="c1">#   See LICENSE.md for further details</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+
+<span class="c1">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Created on Wed Jan 15 16:37:27 2020</span>
+
+<span class="sd">@author: crombez</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">rankdata</span>
+
+
+<div class="viewcode-block" id="Permutation_Matrix">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.matrix_tools.Permutation_Matrix.html#spyrit.misc.matrix_tools.Permutation_Matrix">[docs]</a>
+<span class="k">def</span> <span class="nf">Permutation_Matrix</span><span class="p">(</span><span class="n">mat</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Returns permutation matrix from sampling map</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        mat: sampling map, where high value means high significance.</span>
+
+<span class="sd">    Shape:</span>
+<span class="sd">        - Input: (n,n)</span>
+<span class="sd">        - Output: (n*n, n*n)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">mat</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">Reorder</span> <span class="o">=</span> <span class="n">rankdata</span><span class="p">(</span><span class="o">-</span><span class="n">mat</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;ordinal&quot;</span><span class="p">)</span>
+    <span class="n">Columns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">))</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">))</span>
+    <span class="n">P</span><span class="p">[</span><span class="n">Reorder</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">Columns</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">P</span></div>
+
+
+
+<div class="viewcode-block" id="expend_vect">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.matrix_tools.expend_vect.html#spyrit.misc.matrix_tools.expend_vect">[docs]</a>
+<span class="k">def</span> <span class="nf">expend_vect</span><span class="p">(</span><span class="n">Vect</span><span class="p">,</span> <span class="n">N1</span><span class="p">,</span> <span class="n">N2</span><span class="p">):</span>  <span class="c1"># Expened a vectors of siez N1 to N2</span>
+    <span class="n">V_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">N2</span><span class="p">)</span>
+    <span class="n">S</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">N2</span> <span class="o">/</span> <span class="n">N1</span><span class="p">)</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">ad</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N1</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">S</span><span class="p">):</span>
+            <span class="n">V_out</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">j</span> <span class="o">+</span> <span class="n">ad</span><span class="p">]</span> <span class="o">=</span> <span class="n">Vect</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">ad</span> <span class="o">+=</span> <span class="n">S</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">V_out</span></div>
+
+
+
+<div class="viewcode-block" id="data_conv_hadamard">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.matrix_tools.data_conv_hadamard.html#spyrit.misc.matrix_tools.data_conv_hadamard">[docs]</a>
+<span class="k">def</span> <span class="nf">data_conv_hadamard</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">Data</span><span class="p">,</span> <span class="n">N</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+        <span class="n">H</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">H</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">Data</span>
+    <span class="k">return</span> <span class="n">H</span></div>
+
+
+
+<div class="viewcode-block" id="Sum_coll">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.matrix_tools.Sum_coll.html#spyrit.misc.matrix_tools.Sum_coll">[docs]</a>
+<span class="k">def</span> <span class="nf">Sum_coll</span><span class="p">(</span><span class="n">Mat</span><span class="p">,</span> <span class="n">N_lin</span><span class="p">,</span> <span class="n">N_coll</span><span class="p">):</span>  <span class="c1"># Return the sum of all the raw of the N1xN2 matrix</span>
+    <span class="n">Mturn</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">N_lin</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N_coll</span><span class="p">):</span>
+        <span class="n">Mturn</span> <span class="o">+=</span> <span class="n">Mat</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">Mturn</span></div>
+
+
+
+<div class="viewcode-block" id="compression_1D">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.matrix_tools.compression_1D.html#spyrit.misc.matrix_tools.compression_1D">[docs]</a>
+<span class="k">def</span> <span class="nf">compression_1D</span><span class="p">(</span>
+    <span class="n">H</span><span class="p">,</span> <span class="n">Nl</span><span class="p">,</span> <span class="n">Nc</span><span class="p">,</span> <span class="n">Nh</span>
+<span class="p">):</span>  <span class="c1"># Compress a Matrix of N1xN2xN3 into a matrix of N1xN3 by summing the raw</span>
+    <span class="n">H_1D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">Nl</span><span class="p">,</span> <span class="n">Nh</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">Nh</span><span class="p">):</span>
+        <span class="n">H_1D</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">Sum_coll</span><span class="p">(</span><span class="n">H</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">Nl</span><span class="p">,</span> <span class="n">Nc</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">H_1D</span></div>
+
+
+
+<div class="viewcode-block" id="normalize_mat_2D">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.matrix_tools.normalize_mat_2D.html#spyrit.misc.matrix_tools.normalize_mat_2D">[docs]</a>
+<span class="k">def</span> <span class="nf">normalize_mat_2D</span><span class="p">(</span><span class="n">Mat</span><span class="p">):</span>  <span class="c1"># Normalise a N1xN2 matrix by is maximum value</span>
+    <span class="n">Max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">Mat</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Mat</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">Max</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="normalize_by_median_mat_2D">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.matrix_tools.normalize_by_median_mat_2D.html#spyrit.misc.matrix_tools.normalize_by_median_mat_2D">[docs]</a>
+<span class="k">def</span> <span class="nf">normalize_by_median_mat_2D</span><span class="p">(</span><span class="n">Mat</span><span class="p">):</span>  <span class="c1"># Normalise a N1xN2 matrix by is median value</span>
+    <span class="n">Median</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">Mat</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Mat</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">Median</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="remove_offset_mat_2D">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.matrix_tools.remove_offset_mat_2D.html#spyrit.misc.matrix_tools.remove_offset_mat_2D">[docs]</a>
+<span class="k">def</span> <span class="nf">remove_offset_mat_2D</span><span class="p">(</span><span class="n">Mat</span><span class="p">):</span>  <span class="c1"># Substract the mean value of the matrix</span>
+    <span class="n">Mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">Mat</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Mat</span> <span class="o">-</span> <span class="n">Mean</span></div>
+
+
+
+<div class="viewcode-block" id="resize">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.matrix_tools.resize.html#spyrit.misc.matrix_tools.resize">[docs]</a>
+<span class="k">def</span> <span class="nf">resize</span><span class="p">(</span><span class="n">Mat</span><span class="p">,</span> <span class="n">Nl</span><span class="p">,</span> <span class="n">Nc</span><span class="p">,</span> <span class="n">Nh</span><span class="p">):</span>  <span class="c1"># Re-size a matrix of N1xN2 into N1xN3</span>
+    <span class="n">Mres</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">Nl</span><span class="p">,</span> <span class="n">Nc</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">Nl</span><span class="p">):</span>
+        <span class="n">Mres</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">expend_vect</span><span class="p">(</span><span class="n">Mat</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:],</span> <span class="n">Nh</span><span class="p">,</span> <span class="n">Nc</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Mres</span></div>
+
+
+
+<div class="viewcode-block" id="stack_depth_matrice">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.matrix_tools.stack_depth_matrice.html#spyrit.misc.matrix_tools.stack_depth_matrice">[docs]</a>
+<span class="k">def</span> <span class="nf">stack_depth_matrice</span><span class="p">(</span>
+    <span class="n">Mat</span><span class="p">,</span> <span class="n">Nl</span><span class="p">,</span> <span class="n">Nc</span><span class="p">,</span> <span class="n">Nd</span>
+<span class="p">):</span>  <span class="c1"># Stack a 3 by 3 matrix along its third dimensions</span>
+    <span class="n">M_out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">Nl</span><span class="p">,</span> <span class="n">Nc</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">Nd</span><span class="p">):</span>
+        <span class="n">M_out</span> <span class="o">+=</span> <span class="n">Mat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">M_out</span></div>
+
+
+
+<span class="c1"># fuction that need to be better difended</span>
+
+
+<div class="viewcode-block" id="smooth">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.matrix_tools.smooth.html#spyrit.misc.matrix_tools.smooth">[docs]</a>
+<span class="k">def</span> <span class="nf">smooth</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">box_pts</span><span class="p">):</span>  <span class="c1"># Smooth a vectors</span>
+    <span class="n">box</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">box_pts</span><span class="p">)</span> <span class="o">/</span> <span class="n">box_pts</span>
+    <span class="n">y_smooth</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">convolve</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">box</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;same&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">y_smooth</span></div>
+
+
+
+<div class="viewcode-block" id="reject_outliers">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.matrix_tools.reject_outliers.html#spyrit.misc.matrix_tools.reject_outliers">[docs]</a>
+<span class="k">def</span> <span class="nf">reject_outliers</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>  <span class="c1"># Remove</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">data</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">data</span><span class="p">))</span> <span class="o">&lt;</span> <span class="n">m</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">data</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="clean_out">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.matrix_tools.clean_out.html#spyrit.misc.matrix_tools.clean_out">[docs]</a>
+<span class="k">def</span> <span class="nf">clean_out</span><span class="p">(</span><span class="n">Data</span><span class="p">,</span> <span class="n">Nl</span><span class="p">,</span> <span class="n">Nc</span><span class="p">,</span> <span class="n">Nh</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+    <span class="n">Mout</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">Nl</span><span class="p">,</span> <span class="n">Nc</span><span class="p">,</span> <span class="n">Nh</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">Nh</span><span class="p">):</span>
+        <span class="n">Mout</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">reject_outliers</span><span class="p">(</span><span class="n">Data</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">],</span> <span class="n">m</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Data</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

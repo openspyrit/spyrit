@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPyRiT’s documentation &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/sg_README.css?v=78231cbc" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=20623aea"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="spyrit.core" href="_autosummary/spyrit.core.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">SPyRiT’s documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="spyrit-s-documentation">
+<h1>SPyRiT’s documentation<a class="headerlink" href="#spyrit-s-documentation" title="Link to this heading"></a></h1>
+<p>SPyRiT is a <a class="reference external" href="https://pytorch.org/">PyTorch</a>-based package for deep image
+reconstruction. While it is primarily designed for single-pixel image
+reconstruction, it can solve other linear reconstruction problems.</p>
+<p>SPyRiT allows to simulate measurements and perform image reconstruction using
+a full-network structure. It takes a normalized image as input and performs
+data simulation and image reconstruction in a single forward pass or in separate steps.
+A full-network generally comprises a measurement operator, a noise operator,
+a preprocessing operator, a reconstruction operator, and a learnable neural network.
+All operators inherit from PyTorch <cite>nn.Module</cite> class, which allows to easily
+combine them into a full-network.</p>
+<a class="reference internal image-reference" href="_images/principle.png"><img alt="_images/principle.png" class="align-center" src="_images/principle.png" style="width: 700px;" /></a>
+<p>The full network contains two main parts: a Physics Simulation part that
+simulates measurements <span class="math notranslate nohighlight">\(y\)</span> from images <span class="math notranslate nohighlight">\(x\)</span>, and a Reconstruction part
+that estimates the unknown image <span class="math notranslate nohighlight">\(x*\)</span> from measurements <span class="math notranslate nohighlight">\(y\)</span>.</p>
+<p>The Physics Simulation part is composed of a Measurement operator (<span class="math notranslate nohighlight">\(N\)</span>)
+and a Noise operator (<span class="math notranslate nohighlight">\(P\)</span>).</p>
+<p>The Reconstruction part is composed of a Preprocessing operator (<span class="math notranslate nohighlight">\(B\)</span>) that
+gives the preprocessed measurements <span class="math notranslate nohighlight">\(m\)</span> from the noisy measurements <span class="math notranslate nohighlight">\(y\)</span>,
+a Reconstruction operator (<span class="math notranslate nohighlight">\(R\)</span>) that estimates the unknown image <span class="math notranslate nohighlight">\(x*\)</span> from
+the preprocessed measurements <span class="math notranslate nohighlight">\(m\)</span>, and an optional Neural Network (<span class="math notranslate nohighlight">\(G_{\theta}\)</span>)
+that can be trained to improve the reconstruction quality.</p>
+</section>
+<section id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h1>
+<p>The spyrit package is available for Linux, MacOs and Windows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">spyrit</span>
+</pre></div>
+</div>
+<p>Advanced installation guidelines are available on <a class="reference external" href="https://github.com/openspyrit/spyrit">GitHub</a>.</p>
+</section>
+<section id="single-pixel-imaging">
+<h1>Single-pixel imaging<a class="headerlink" href="#single-pixel-imaging" title="Link to this heading"></a></h1>
+<section id="modelling-of-the-measurements">
+<h2>Modelling of the measurements<a class="headerlink" href="#modelling-of-the-measurements" title="Link to this heading"></a></h2>
+<p><strong>Single-pixel imaging</strong> aims to recover an image <span class="math notranslate nohighlight">\(x\in\Re^N\)</span> from a few noisy scalar products <span class="math notranslate nohighlight">\(y\in\Re^M\)</span>, where <span class="math notranslate nohighlight">\(M\ll N\)</span>. We model the acquisition as</p>
+<blockquote>
+<div><p><span class="math notranslate nohighlight">\(y = (\mathcal{N} \circ \mathcal{P})(x),\)</span></p>
+</div></blockquote>
+<p>where <span class="math notranslate nohighlight">\(\mathcal{P}\)</span> is a linear operator, <span class="math notranslate nohighlight">\(\mathcal{N}\)</span> is a noise operator, and <span class="math notranslate nohighlight">\(\circ\)</span> denotes the composition of operators.</p>
+</section>
+<section id="image-reconstruction">
+<h2>Image reconstruction<a class="headerlink" href="#image-reconstruction" title="Link to this heading"></a></h2>
+<p>Learning-based reconstruction approaches estimate the unknown image as <span class="math notranslate nohighlight">\(x^* = \mathcal{I}_\theta(y)\)</span>,
+where <span class="math notranslate nohighlight">\(\mathcal{I}_\theta\)</span> represents the parameters that are learned during a training phase.
+In the case of supervised learning, <strong>the training phase</strong> solves</p>
+<blockquote>
+<div><p><span class="math notranslate nohighlight">\(\min_{\theta}{\sum_i \mathcal{L}\left(x_i,\mathcal{I}_\theta(y_i)\right)},\)</span></p>
+</div></blockquote>
+<p>where <span class="math notranslate nohighlight">\(\mathcal{L}\)</span> is the training loss between the true image <span class="math notranslate nohighlight">\(x\)</span> and
+its estimation, and <span class="math notranslate nohighlight">\(\{x_i,y_i\}_i\)</span> is a set of training pairs.</p>
+<p>We consider the typical <strong>reconstruction operator</strong> <span class="math notranslate nohighlight">\(\mathcal{I}_\theta\)</span> that can be written as follows:</p>
+<blockquote>
+<div><p><span class="math notranslate nohighlight">\(\mathcal{I}_\theta = \mathcal{G}_\theta \circ \mathcal{R} \circ \mathcal{B},\)</span></p>
+</div></blockquote>
+<p>where <span class="math notranslate nohighlight">\(\mathcal{B}\)</span> is a preprocessing operator, <span class="math notranslate nohighlight">\(\mathcal{R}\)</span> is a (standard) linear reconstruction operator,
+and <span class="math notranslate nohighlight">\(\mathcal{G}_\theta\)</span> is a neural network that can be learnt during the training phase.
+Alternatively, <span class="math notranslate nohighlight">\(\mathcal{R}\)</span> can be simply “plugged”. In this case, its training is performed beforehand.</p>
+<p>Introducing the <strong>full network</strong>, a forward pass can be written as follows:</p>
+<blockquote>
+<div><p><span class="math notranslate nohighlight">\(F_{\theta}(x) = (\mathcal{G}_\theta \circ \mathcal{R} \circ \mathcal{B} \circ \mathcal{N} \circ \mathcal{P})(x).\)</span></p>
+</div></blockquote>
+<p>The full network can be trained using a database that contains images only:</p>
+<blockquote>
+<div><p><span class="math notranslate nohighlight">\(\min_{\theta}{\sum_i \mathcal{L}\left(x_i,\mathcal{F}_\theta(x_i)\right)}.\)</span></p>
+</div></blockquote>
+<p>This pipeline allows to simulate noisy data on the fly, which provides data
+augmentation while avoiding storage of the measurements.</p>
+</section>
+<section id="package-structure">
+<h2>Package structure<a class="headerlink" href="#package-structure" title="Link to this heading"></a></h2>
+<p>The main functionalities of SPyRiT are implemented in the <a class="reference internal" href="_autosummary/spyrit.core.html#module-spyrit.core" title="spyrit.core"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core</span></code></a> subpackage, which contains six submodules:</p>
+<ol class="arabic simple">
+<li><p><strong>Measurement operators (meas)</strong> compute linear measurements <span class="math notranslate nohighlight">\(\mathcal{P}x\)</span> from
+images <span class="math notranslate nohighlight">\(x\)</span>, where <span class="math notranslate nohighlight">\(\mathcal{P}\)</span> is a linear operator (matrix) and <span class="math notranslate nohighlight">\(x\)</span>
+is a vectorized image (see <a class="reference internal" href="_autosummary/spyrit.core.meas.html#module-spyrit.core.meas" title="spyrit.core.meas"><code class="xref py py-mod docutils literal notranslate"><span class="pre">spyrit.core.meas</span></code></a>).</p></li>
+<li><p><strong>Noise operators (noise)</strong> corrupt measurements <span class="math notranslate nohighlight">\(y=(\mathcal{N}\circ\mathcal{P})(x)\)</span> with noise (see <a class="reference internal" href="_autosummary/spyrit.core.noise.html#module-spyrit.core.noise" title="spyrit.core.noise"><code class="xref py py-mod docutils literal notranslate"><span class="pre">spyrit.core.noise</span></code></a>).</p></li>
+<li><p><strong>Preprocessing operators (prep)</strong> are used to process noisy measurements, <span class="math notranslate nohighlight">\(m=\mathcal{B}(y)\)</span> ,
+prior to reconstruction. They typically compensate for the image normalization previously performed (see <a class="reference internal" href="_autosummary/spyrit.core.prep.html#module-spyrit.core.prep" title="spyrit.core.prep"><code class="xref py py-mod docutils literal notranslate"><span class="pre">spyrit.core.prep</span></code></a>).</p></li>
+<li><p><strong>Reconstruction operators (recon)</strong> comprise both standard linear reconstruction operators
+<span class="math notranslate nohighlight">\(\mathcal{R}\)</span> and full network definitions <span class="math notranslate nohighlight">\(\mathcal{F}_\theta\)</span>,
+which include both forward and reconstruction layers (see <a class="reference internal" href="_autosummary/spyrit.core.recon.html#module-spyrit.core.recon" title="spyrit.core.recon"><code class="xref py py-mod docutils literal notranslate"><span class="pre">spyrit.core.recon</span></code></a>).</p></li>
+<li><p><strong>Neural networks (nnet)</strong> include well-known neural networks <span class="math notranslate nohighlight">\(\mathcal{G_{\theta}}\)</span>, generally used as denoiser layers (see <a class="reference internal" href="_autosummary/spyrit.core.nnet.html#module-spyrit.core.nnet" title="spyrit.core.nnet"><code class="xref py py-mod docutils literal notranslate"><span class="pre">spyrit.core.nnet</span></code></a>).</p></li>
+<li><p><strong>Training (train)</strong> provide the functionalities for training reconstruction networks (see <a class="reference internal" href="_autosummary/spyrit.core.train.html#module-spyrit.core.train" title="spyrit.core.train"><code class="xref py py-mod docutils literal notranslate"><span class="pre">spyrit.core.train</span></code></a>).</p></li>
+</ol>
+</section>
+<section id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Link to this heading"></a></h2>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_autosummary/spyrit.core.html#module-spyrit.core" title="spyrit.core"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spyrit.core</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_autosummary/spyrit.misc.html#module-spyrit.misc" title="spyrit.misc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">spyrit.misc</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="gallery/index.html">Tutorials</a></li>
+</ul>
+</div>
+</section>
+</section>
+<section id="cite-us">
+<h1>Cite us<a class="headerlink" href="#cite-us" title="Link to this heading"></a></h1>
+<p>When using SPyRiT in scientific publications, please cite the following paper:</p>
+<blockquote>
+<div><ul class="simple">
+<li><ol class="upperalpha simple" start="7">
+<li><p>Beneti-Martin, L Mahieu-Williame, T Baudier, N Ducros, “OpenSpyrit: an Ecosystem for Reproducible Single-Pixel Hyperspectral Imaging,” Optics Express, Vol. 31, No. 10, (2023). <a class="reference external" href="https://doi.org/10.1364/OE.483937">DOI</a>.</p></li>
+</ol>
+</li>
+</ul>
+</div></blockquote>
+<p>When using SPyRiT specifically for the denoised completion network, please cite the following paper:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>A Lorente Mur, P Leclerc, F Peyrin, and N Ducros, “Single-pixel image reconstruction from experimental data using neural networks,” Opt. Express 29, 17097-17110 (2021). <a class="reference external" href="https://doi.org/10.1364/OE.424228">DOI</a>.</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="join-the-project">
+<h1>Join the project<a class="headerlink" href="#join-the-project" title="Link to this heading"></a></h1>
+<p>Feel free to contact us by <cite>e-mail &lt;mailto:nicolas.ducros&#64;creatis.insa-lyon.fr&gt;</cite> for any question. Active developers are currently <a class="reference external" href="https://www.creatis.insa-lyon.fr/~ducros/WebPage/index.html">Nicolas Ducros</a>, Thomas Baudier, <a class="reference external" href="https://juanabascal78.wixsite.com/juan-abascal-webpage">Juan Abascal</a> and Romain Phan.  Direct contributions via pull requests (PRs) are welcome.</p>
+<p>The full list of contributors can be found <a class="reference external" href="https://github.com/openspyrit/spyrit/blob/master/README.md#contributors-alphabetical-order">here</a>.</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="_autosummary/spyrit.core.html" class="btn btn-neutral float-right" title="spyrit.core" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

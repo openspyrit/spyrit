@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>05. Acquisition operators (advanced) - Split measurements and subsampling &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/sg_README.css?v=78231cbc" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="06. DCNet solution for split measurements" href="tuto_06_dcnet_split_measurements.html" />
+    <link rel="prev" title="04. Train pseudoinverse solution + CNN denoising" href="tuto_04_train_pseudoinverse_cnn_linear.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="tuto_01_acquisition_operators.html">01. Acquisition operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_02_pseudoinverse_linear.html">02. Pseudoinverse solution from linear measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_03_pseudoinverse_cnn_linear.html">03. Pseudoinverse solution + CNN denoising</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_04_train_pseudoinverse_cnn_linear.html">04. Train pseudoinverse solution + CNN denoising</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">05. Acquisition operators (advanced) - Split measurements and subsampling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#load-a-batch-of-images">Load a batch of images</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-measurement-and-noise-operators">The measurement and noise operators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#split-measurement-operator-and-no-noise">Split measurement operator and no noise</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#subsampling">Subsampling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#measurement-and-noise-operators">Measurement and noise operators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-preprocessing-operator-measurements-for-split-measurements">The preprocessing operator measurements for split measurements</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#noiseless-measurements">Noiseless measurements</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pinvnet-network">PinvNet network</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_06_dcnet_split_measurements.html">06. DCNet solution for split measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_bonus_advanced_methods_colab.html">Bonus. Advanced methods - Colab</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Tutorials</a></li>
+      <li class="breadcrumb-item active">05. Acquisition operators (advanced) - Split measurements and subsampling</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/gallery/tuto_05_acquisition_split_measurements.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-gallery-tuto-05-acquisition-split-measurements-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code</p>
+</div>
+<section class="sphx-glr-example-title" id="acquisition-operators-advanced-split-measurements-and-subsampling">
+<span id="sphx-glr-gallery-tuto-05-acquisition-split-measurements-py"></span><h1>05. Acquisition operators (advanced) - Split measurements and subsampling<a class="headerlink" href="#acquisition-operators-advanced-split-measurements-and-subsampling" title="Link to this heading"></a></h1>
+<p id="tuto-acquisition-split-measurements">This tutorial is a continuation of the <a class="reference internal" href="tuto_01_acquisition_operators.html#tuto-acquisition-operators"><span class="std std-ref">Acquisition operators tutorial</span></a>
+for single-pixel imaging, which showed how to simulate linear measurements using the
+<a class="reference internal" href="../_autosummary/spyrit.core.html#module-spyrit.core" title="spyrit.core"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core</span></code></a> submodule (based on three classes <a class="reference internal" href="../_autosummary/spyrit.core.meas.html#module-spyrit.core.meas" title="spyrit.core.meas"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.meas</span></code></a>,
+<a class="reference internal" href="../_autosummary/spyrit.core.noise.html#module-spyrit.core.noise" title="spyrit.core.noise"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.noise</span></code></a>, and <a class="reference internal" href="../_autosummary/spyrit.core.prep.html#module-spyrit.core.prep" title="spyrit.core.prep"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.prep</span></code></a>).
+This tutorial extends the previous case: i) by introducing split measurements that can handle a Hadamard measurement matrix,
+and ii) by discussing the choice of the subsampling pattern for accelerated acquisitions.</p>
+<p>These tutorials load image samples from <cite>/images/</cite>.</p>
+<section id="load-a-batch-of-images">
+<h2>Load a batch of images<a class="headerlink" href="#load-a-batch-of-images" title="Link to this heading"></a></h2>
+<p>Images <span class="math notranslate nohighlight">\(x\)</span> for training neural networks expect values in [-1,1]. The images are normalized
+using the <code class="xref py py-func docutils literal notranslate"><span class="pre">transform_gray_norm()</span></code> function.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torchvision</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="kn">from</span> <span class="nn">spyrit.misc.disp</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.disp.imagesc.html#spyrit.misc.disp.imagesc" title="spyrit.misc.disp.imagesc" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">imagesc</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.misc.statistics</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.statistics.transform_gray_norm.html#spyrit.misc.statistics.transform_gray_norm" title="spyrit.misc.statistics.transform_gray_norm" class="sphx-glr-backref-module-spyrit-misc-statistics sphx-glr-backref-type-py-function"><span class="n">transform_gray_norm</span></a>
+
+
+<span class="n">h</span> <span class="o">=</span> <span class="mi">64</span>  <span class="c1"># image size hxh</span>
+<span class="n">i</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Image index (modify to change the image)</span>
+<span class="n">spyritPath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+<span class="n">imgs_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">spyritPath</span><span class="p">,</span> <span class="s2">&quot;images/&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># Create a transform for natural images to normalized grayscale image tensors</span>
+<span class="n">transform</span> <span class="o">=</span> <a href="../_autosummary/spyrit.misc.statistics.transform_gray_norm.html#spyrit.misc.statistics.transform_gray_norm" title="spyrit.misc.statistics.transform_gray_norm" class="sphx-glr-backref-module-spyrit-misc-statistics sphx-glr-backref-type-py-function"><span class="n">transform_gray_norm</span></a><span class="p">(</span><span class="n">img_size</span><span class="o">=</span><span class="n">h</span><span class="p">)</span>
+
+<span class="c1"># Create dataset and loader (expects class folder &#39;images/test/&#39;)</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">ImageFolder</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">imgs_path</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">)</span>
+<span class="n">dataloader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+
+<span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloader</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of input images: </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Select image</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span> <span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+<span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
+<span class="c1"># plot</span>
+<span class="n">x_plot</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<a href="../_autosummary/spyrit.misc.disp.imagesc.html#spyrit.misc.disp.imagesc" title="spyrit.misc.disp.imagesc" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">imagesc</span></a><span class="p">(</span><span class="n">x_plot</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="sa">r</span><span class="s2">&quot;$x$ in [-1, 1]&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="the-measurement-and-noise-operators">
+<h2>The measurement and noise operators<a class="headerlink" href="#the-measurement-and-noise-operators" title="Link to this heading"></a></h2>
+<p>Noise operators are defined in the <a class="reference internal" href="../_autosummary/spyrit.core.noise.html#module-spyrit.core.noise" title="spyrit.core.noise"><code class="xref py py-mod docutils literal notranslate"><span class="pre">noise</span></code></a> module. A noise
+operator computes the following three steps sequentially:</p>
+<ol class="arabic simple">
+<li><p>Normalization of the image <span class="math notranslate nohighlight">\(x\)</span> with values in [-1,1] to get an
+image <span class="math notranslate nohighlight">\(\tilde{x}=\frac{x+1}{2}\)</span> in [0,1], as it is required for measurement simulation</p></li>
+<li><p>Application of the measurement model, i.e., computation of <span class="math notranslate nohighlight">\(P\tilde{x}\)</span></p></li>
+<li><p>Application of the noise model</p></li>
+</ol>
+<div class="math notranslate nohighlight">
+\[y \sim \texttt{Noise}(P\tilde{x}) = \texttt{Noise}\left(\frac{P(x+1)}{2}\right).\]</div>
+<p>The normalization is useful when considering distributions such
+as the Poisson distribution that are defined on positive values.</p>
+</section>
+<section id="split-measurement-operator-and-no-noise">
+<h2>Split measurement operator and no noise<a class="headerlink" href="#split-measurement-operator-and-no-noise" title="Link to this heading"></a></h2>
+<span class="target" id="split-measurements"></span><div class="math notranslate nohighlight">
+\[\begin{split}y = P\tilde{x}= \begin{bmatrix} H_{+} \\ H_{-} \end{bmatrix} \tilde{x}.\end{split}\]</div>
+<p>Hadamard split measurement operator is defined in the <a class="reference internal" href="../_autosummary/spyrit.core.meas.HadamSplit.html#spyrit.core.meas.HadamSplit" title="spyrit.core.meas.HadamSplit"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.meas.HadamSplit</span></code></a> class.
+It computes linear measurements from incoming images, where <span class="math notranslate nohighlight">\(P\)</span> is a
+linear operator (matrix) with positive entries and <span class="math notranslate nohighlight">\(\tilde{x}\)</span> is a vectorized image.
+The class relies on a matrix <span class="math notranslate nohighlight">\(H\)</span> with
+shape <span class="math notranslate nohighlight">\((M,N)\)</span> where <span class="math notranslate nohighlight">\(N\)</span> represents the number of pixels in the
+image and <span class="math notranslate nohighlight">\(M \le N\)</span> the number of measurements. The matrix <span class="math notranslate nohighlight">\(P\)</span>
+is obtained by splitting the matrix <span class="math notranslate nohighlight">\(H\)</span> as <span class="math notranslate nohighlight">\(H = H_{+}-H_{-}\)</span> where
+<span class="math notranslate nohighlight">\(H_{+} = \max(0,H)\)</span> and <span class="math notranslate nohighlight">\(H_{-} = \max(0,-H)\)</span>.</p>
+</section>
+<section id="subsampling">
+<h2>Subsampling<a class="headerlink" href="#subsampling" title="Link to this heading"></a></h2>
+<p>We simulate an accelerated acquisition by subsampling the measurement matrix.
+We consider two subsampling strategies:</p>
+<ul class="simple">
+<li><p>“Naive subsampling” by retaining only the first <span class="math notranslate nohighlight">\(M\)</span> rows of the measurement matrix.</p></li>
+<li><p>“Variance subsampling” by retaining only the first <span class="math notranslate nohighlight">\(M\)</span> rows of a permuted measurement matrix
+where the first rows corresponds to the coefficients with largest variance and the last ones to
+the coefficients that are close to constant. The motivation is that almost constant coefficients are less informative than the others.
+This can be supported by principal component analysis, which states that preserving the components
+with largest variance leads to the best linear predictor.</p></li>
+</ul>
+<p>Subsampling is done by retaining only the first <span class="math notranslate nohighlight">\(M\)</span> rows of
+a permuted Hadamard matrix <span class="math notranslate nohighlight">\(\textrm{Perm} H\)</span>, where <span class="math notranslate nohighlight">\(\textrm{Perm}\)</span> is a
+permutation matrix with shape with shape <span class="math notranslate nohighlight">\((M,N)\)</span> and <span class="math notranslate nohighlight">\(H\)</span> is a
+“full” Hadamard matrix with shape <span class="math notranslate nohighlight">\((N,N)\)</span>
+(see Hadamard matrix in <a class="reference internal" href="tuto_02_pseudoinverse_linear.html#sphx-glr-gallery-tuto-02-pseudoinverse-linear-py"><span class="std std-ref">tutorial on pseudoinverse solution</span></a>).
+The permutation matrix <span class="math notranslate nohighlight">\(\textrm{Perm}\)</span> is obtained from the ordering matrix
+<span class="math notranslate nohighlight">\(\textrm{Ord}\)</span> with shape <span class="math notranslate nohighlight">\((h,h)\)</span>. This is all handled internally
+by the <a class="reference internal" href="../_autosummary/spyrit.core.meas.HadamSplit.html#spyrit.core.meas.HadamSplit" title="spyrit.core.meas.HadamSplit"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.meas.HadamSplit</span></code></a> class.</p>
+<p>First, we download the covariance matrix from our warehouse and load it. The covariance matrix
+has been computed from <a class="reference external" href="https://www.image-net.org/challenges/LSVRC/2012/">ImageNet 2012 dataset</a>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">girder_client</span>
+
+<span class="c1"># api Rest url of the warehouse</span>
+<span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://pilot-warehouse.creatis.insa-lyon.fr/api/v1&quot;</span>
+
+<span class="c1"># Generate the warehouse client</span>
+<span class="n">gc</span> <span class="o">=</span> <span class="n">girder_client</span><span class="o">.</span><span class="n">GirderClient</span><span class="p">(</span><span class="n">apiUrl</span><span class="o">=</span><span class="n">url</span><span class="p">)</span>
+
+<span class="c1"># Download the covariance matrix and mean image</span>
+<span class="n">data_folder</span> <span class="o">=</span> <span class="s2">&quot;./stat/&quot;</span>
+<span class="n">dataId_list</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;63935b624d15dd536f0484a5&quot;</span><span class="p">,</span>  <span class="c1"># for reconstruction (imageNet, 64)</span>
+    <span class="s2">&quot;63935a224d15dd536f048496&quot;</span><span class="p">,</span>  <span class="c1"># for reconstruction (imageNet, 64)</span>
+<span class="p">]</span>
+<span class="n">cov_name</span> <span class="o">=</span> <span class="s2">&quot;./stat/Cov_64x64.npy&quot;</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">dataId</span> <span class="ow">in</span> <span class="n">dataId_list</span><span class="p">:</span>
+        <span class="n">myfile</span> <span class="o">=</span> <span class="n">gc</span><span class="o">.</span><span class="n">getFile</span><span class="p">(</span><span class="n">dataId</span><span class="p">)</span>
+        <span class="n">gc</span><span class="o">.</span><span class="n">downloadFile</span><span class="p">(</span><span class="n">dataId</span><span class="p">,</span> <span class="n">data_folder</span> <span class="o">+</span> <span class="n">myfile</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">])</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created </span><span class="si">{</span><span class="n">data_folder</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Load covariance matrix for &quot;variance subsampling&quot;</span>
+    <span class="n">Cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">cov_name</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cov matrix </span><span class="si">{</span><span class="n">cov_name</span><span class="si">}</span><span class="s2"> loaded&quot;</span><span class="p">)</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="c1"># Set to the identity if not found for &quot;naive subsampling&quot;</span>
+    <span class="n">Cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">h</span> <span class="o">*</span> <span class="n">h</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cov matrix </span><span class="si">{</span><span class="n">cov_name</span><span class="si">}</span><span class="s2"> not found! Set to the identity&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We compute the order matrix <span class="math notranslate nohighlight">\(Ord\)</span> for the two sampling strategies,
+from the covariance matrix for the “variance subsampling”, and from the identity matrix
+for the “naive subsampling”. In the latter case,
+the order matrix is constant, as all coefficients are considered equally informative,
+and they are retained in the increasing ‘naive’ order.
+We also define the number of measurements <span class="math notranslate nohighlight">\(M\)</span> that will be used later.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.misc.statistics</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.statistics.Cov2Var.html#spyrit.misc.statistics.Cov2Var" title="spyrit.misc.statistics.Cov2Var" class="sphx-glr-backref-module-spyrit-misc-statistics sphx-glr-backref-type-py-function"><span class="n">Cov2Var</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.misc.disp</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">,</span> <a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a>
+
+<span class="c1"># number of measurements (here, 1/4 of the pixels)</span>
+<span class="n">M</span> <span class="o">=</span> <span class="mi">64</span> <span class="o">*</span> <span class="mi">64</span> <span class="o">//</span> <span class="mi">4</span>
+
+<span class="c1"># Compute the order matrix</span>
+<span class="c1"># &quot;Naive subsampling&quot;</span>
+<span class="n">Cov_eye</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">h</span> <span class="o">*</span> <span class="n">h</span><span class="p">)</span>
+<span class="n">Ord_nai</span> <span class="o">=</span> <a href="../_autosummary/spyrit.misc.statistics.Cov2Var.html#spyrit.misc.statistics.Cov2Var" title="spyrit.misc.statistics.Cov2Var" class="sphx-glr-backref-module-spyrit-misc-statistics sphx-glr-backref-type-py-function"><span class="n">Cov2Var</span></a><span class="p">(</span><span class="n">Cov_eye</span><span class="p">)</span>
+
+<span class="c1"># &quot;Variance subsampling&quot;</span>
+<span class="n">Ord_var</span> <span class="o">=</span> <a href="../_autosummary/spyrit.misc.statistics.Cov2Var.html#spyrit.misc.statistics.Cov2Var" title="spyrit.misc.statistics.Cov2Var" class="sphx-glr-backref-module-spyrit-misc-statistics sphx-glr-backref-type-py-function"><span class="n">Cov2Var</span></a><span class="p">(</span><span class="n">Cov</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To provide further insight on the subsampling strategies, we can plot an
+approximation of the  masks that are used to subsample the measurement matrices.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># sphinx_gallery_thumbnail_number = 2</span>
+
+<span class="c1"># Mask for &quot;naive subsampling&quot;</span>
+<span class="n">mask_nai</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">))</span>
+<span class="n">mask_nai</span><span class="p">[</span><span class="mi">0</span> <span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">M</span> <span class="o">/</span> <span class="n">h</span><span class="p">),</span> <span class="p">:]</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="c1"># Mas for &quot;variance subsampling&quot;</span>
+<span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">Ord_var</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span> <span class="n">axis</span><span class="o">=</span><span class="kc">None</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">mask_var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">Ord_var</span><span class="p">)</span>
+<span class="n">mask_var</span><span class="o">.</span><span class="n">flat</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">M</span><span class="p">]]</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="c1"># Plot the masks</span>
+<span class="n">f</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">im1</span> <span class="o">=</span> <span class="n">ax1</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">mask_nai</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Mask </span><span class="se">\n</span><span class="s2">&#39;naive subsampling&#39;&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">ax1</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im1</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;20%&quot;</span><span class="p">)</span>
+
+<span class="n">im2</span> <span class="o">=</span> <span class="n">ax2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">mask_var</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Mask </span><span class="se">\n</span><span class="s2">&#39;variance subsampling&#39;&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">ax2</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im2</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;20%&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Note that in this tutorial the covariance matrix is used only for chosing the subsampling strategy.
+Although the covariance matrix can be also exploited to improve the reconstruction,
+this will be considered in a future tutorial.</p>
+</div>
+</section>
+<section id="measurement-and-noise-operators">
+<h2>Measurement and noise operators<a class="headerlink" href="#measurement-and-noise-operators" title="Link to this heading"></a></h2>
+<p>We compute the measurement and noise operators and then
+simulate the measurement vector <span class="math notranslate nohighlight">\(y\)</span>.</p>
+<p>We consider Poisson noise, i.e., a noisy measurement vector given by</p>
+<div class="math notranslate nohighlight">
+\[y \sim \mathcal{P}(\alpha P \tilde{x}),\]</div>
+<p>where <span class="math notranslate nohighlight">\(\alpha\)</span> is a scalar value that represents the maximum image intensity
+(in photons). The larger <span class="math notranslate nohighlight">\(\alpha\)</span>, the higher the signal-to-noise ratio.</p>
+<p>We use the <a class="reference internal" href="../_autosummary/spyrit.core.noise.Poisson.html#spyrit.core.noise.Poisson" title="spyrit.core.noise.Poisson"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.noise.Poisson</span></code></a> class, set <span class="math notranslate nohighlight">\(\alpha\)</span>
+to 100 photons, and simulate a noisy measurement vector for the two sampling strategies.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.noise</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.noise.Poisson.html#spyrit.core.noise.Poisson" title="spyrit.core.noise.Poisson" class="sphx-glr-backref-module-spyrit-core-noise sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Poisson</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.core.meas</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.meas.HadamSplit.html#spyrit.core.meas.HadamSplit" title="spyrit.core.meas.HadamSplit" class="sphx-glr-backref-module-spyrit-core-meas sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">HadamSplit</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.core.noise</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.noise.Poisson.html#spyrit.core.noise.Poisson" title="spyrit.core.noise.Poisson" class="sphx-glr-backref-module-spyrit-core-noise sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Poisson</span></a>
+
+<span class="n">alpha</span> <span class="o">=</span> <span class="mf">100.0</span>  <span class="c1"># number of photons</span>
+
+<span class="c1"># &quot;Naive subsampling&quot;</span>
+<span class="c1"># Measurement and noise operators</span>
+<span class="n">meas_nai_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.meas.HadamSplit.html#spyrit.core.meas.HadamSplit" title="spyrit.core.meas.HadamSplit" class="sphx-glr-backref-module-spyrit-core-meas sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">HadamSplit</span></a><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">Ord_nai</span><span class="p">)</span>
+<span class="n">noise_nai_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.noise.Poisson.html#spyrit.core.noise.Poisson" title="spyrit.core.noise.Poisson" class="sphx-glr-backref-module-spyrit-core-noise sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Poisson</span></a><span class="p">(</span><span class="n">meas_nai_op</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+
+<span class="c1"># Measurement operator</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span> <span class="o">*</span> <span class="n">w</span><span class="p">)</span>  <span class="c1"># vectorized image</span>
+<span class="n">y_nai</span> <span class="o">=</span> <span class="n">noise_nai_op</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># a noisy measurement vector</span>
+
+<span class="c1"># &quot;Variance subsampling&quot;</span>
+<span class="n">meas_var_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.meas.HadamSplit.html#spyrit.core.meas.HadamSplit" title="spyrit.core.meas.HadamSplit" class="sphx-glr-backref-module-spyrit-core-meas sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">HadamSplit</span></a><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">Ord_var</span><span class="p">)</span>
+<span class="n">noise_var_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.noise.Poisson.html#spyrit.core.noise.Poisson" title="spyrit.core.noise.Poisson" class="sphx-glr-backref-module-spyrit-core-noise sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Poisson</span></a><span class="p">(</span><span class="n">meas_var_op</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+<span class="n">y_var</span> <span class="o">=</span> <span class="n">noise_var_op</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># a noisy measurement vector</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span> <span class="o">*</span> <span class="n">w</span><span class="p">)</span>  <span class="c1"># vectorized image</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of vectorized image: </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of simulated measurements y: </span><span class="si">{</span><span class="n">y_var</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="the-preprocessing-operator-measurements-for-split-measurements">
+<h2>The preprocessing operator measurements for split measurements<a class="headerlink" href="#the-preprocessing-operator-measurements-for-split-measurements" title="Link to this heading"></a></h2>
+<p>We compute the preprocessing operators for the three cases considered above,
+using the <a class="reference internal" href="../_autosummary/spyrit.core.prep.html#module-spyrit.core.prep" title="spyrit.core.prep"><code class="xref py py-mod docutils literal notranslate"><span class="pre">spyrit.core.prep</span></code></a> module. As previously introduced,
+a preprocessing operator applies to the noisy measurements in order to
+compensate for the scaling factors that appear in the measurement or noise operators:</p>
+<div class="math notranslate nohighlight">
+\[m = \texttt{Prep}(y),\]</div>
+<p>We consider the <a class="reference internal" href="../_autosummary/spyrit.core.prep.SplitPoisson.html#spyrit.core.prep.SplitPoisson" title="spyrit.core.prep.SplitPoisson"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.prep.SplitPoisson</span></code></a> class that intends
+to “undo” the <a class="reference internal" href="../_autosummary/spyrit.core.noise.Poisson.html#spyrit.core.noise.Poisson" title="spyrit.core.noise.Poisson"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.noise.Poisson</span></code></a> class, for split measurements, by compensating for</p>
+<ul class="simple">
+<li><p>the scaling that appears when computing Poisson-corrupted measurements</p></li>
+<li><p>the affine transformation to get images in [0,1] from images in [-1,1]</p></li>
+</ul>
+<p>For this, it computes</p>
+<div class="math notranslate nohighlight">
+\[m = \frac{2(y_+-y_-)}{\alpha} - P\mathbb{1},\]</div>
+<p>where <span class="math notranslate nohighlight">\(y_+=H_+\tilde{x}\)</span> and <span class="math notranslate nohighlight">\(y_-=H_-\tilde{x}\)</span>.
+This in handled internally by the <a class="reference internal" href="../_autosummary/spyrit.core.prep.SplitPoisson.html#spyrit.core.prep.SplitPoisson" title="spyrit.core.prep.SplitPoisson"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.prep.SplitPoisson</span></code></a> class.</p>
+<p>We compute the preprocessing operator and the measurements vectors for
+the two sampling strategies.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.prep</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.prep.SplitPoisson.html#spyrit.core.prep.SplitPoisson" title="spyrit.core.prep.SplitPoisson" class="sphx-glr-backref-module-spyrit-core-prep sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">SplitPoisson</span></a>
+
+<span class="c1"># &quot;Naive subsampling&quot;</span>
+<span class="c1">#</span>
+<span class="c1"># Preprocessing operator</span>
+<span class="n">prep_nai_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.prep.SplitPoisson.html#spyrit.core.prep.SplitPoisson" title="spyrit.core.prep.SplitPoisson" class="sphx-glr-backref-module-spyrit-core-prep sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">SplitPoisson</span></a><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">meas_nai_op</span><span class="p">)</span>
+
+<span class="c1"># Preprocessed measurements</span>
+<span class="n">m_nai</span> <span class="o">=</span> <span class="n">prep_nai_op</span><span class="p">(</span><span class="n">y_nai</span><span class="p">)</span>
+
+<span class="c1"># &quot;Variance subsampling&quot;</span>
+<span class="n">prep_var_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.prep.SplitPoisson.html#spyrit.core.prep.SplitPoisson" title="spyrit.core.prep.SplitPoisson" class="sphx-glr-backref-module-spyrit-core-prep sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">SplitPoisson</span></a><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">meas_var_op</span><span class="p">)</span>
+<span class="n">m_var</span> <span class="o">=</span> <span class="n">prep_var_op</span><span class="p">(</span><span class="n">y_var</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="noiseless-measurements">
+<h2>Noiseless measurements<a class="headerlink" href="#noiseless-measurements" title="Link to this heading"></a></h2>
+<p>We consider now noiseless measurements for the “naive subsampling” strategy.
+We compute the required operators and the noiseless measurement vector.
+For this we use the <a class="reference internal" href="../_autosummary/spyrit.core.noise.NoNoise.html#spyrit.core.noise.NoNoise" title="spyrit.core.noise.NoNoise"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.noise.NoNoise</span></code></a> class, which normalizes
+the input vector to get an image in [0,1], as explained in
+<a class="reference internal" href="tuto_01_acquisition_operators.html#tuto-acquisition-operators"><span class="std std-ref">acquisition operators tutorial</span></a>.
+For the preprocessing operator, we assign the number of photons equal to one.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.noise</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.noise.NoNoise.html#spyrit.core.noise.NoNoise" title="spyrit.core.noise.NoNoise" class="sphx-glr-backref-module-spyrit-core-noise sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">NoNoise</span></a>
+
+<span class="n">nonoise_nai_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.noise.NoNoise.html#spyrit.core.noise.NoNoise" title="spyrit.core.noise.NoNoise" class="sphx-glr-backref-module-spyrit-core-noise sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">NoNoise</span></a><span class="p">(</span><span class="n">meas_nai_op</span><span class="p">)</span>
+<span class="n">y_nai_nonoise</span> <span class="o">=</span> <span class="n">nonoise_nai_op</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># a noisy measurement vector</span>
+
+<span class="n">prep_nonoise_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.prep.SplitPoisson.html#spyrit.core.prep.SplitPoisson" title="spyrit.core.prep.SplitPoisson" class="sphx-glr-backref-module-spyrit-core-prep sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">SplitPoisson</span></a><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">meas_nai_op</span><span class="p">)</span>
+<span class="n">m_nai_nonoise</span> <span class="o">=</span> <span class="n">prep_nonoise_op</span><span class="p">(</span><span class="n">y_nai_nonoise</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can now plot the three measurement vectors</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.misc.sampling</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.sampling.meas2img2.html#spyrit.misc.sampling.meas2img2" title="spyrit.misc.sampling.meas2img2" class="sphx-glr-backref-module-spyrit-misc-sampling sphx-glr-backref-type-py-function"><span class="n">meas2img2</span></a>
+
+<span class="c1"># Plot the three measurement vectors</span>
+<span class="n">m_plot</span> <span class="o">=</span> <span class="n">m_nai_nonoise</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">m_plot</span> <span class="o">=</span> <a href="../_autosummary/spyrit.misc.sampling.meas2img2.html#spyrit.misc.sampling.meas2img2" title="spyrit.misc.sampling.meas2img2" class="sphx-glr-backref-module-spyrit-misc-sampling sphx-glr-backref-type-py-function"><span class="n">meas2img2</span></a><span class="p">(</span><span class="n">m_plot</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">Ord_nai</span><span class="p">)</span>
+<span class="n">m_plot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">moveaxis</span><span class="p">(</span><span class="n">m_plot</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="n">m_plot_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">m_plot</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span>
+<span class="n">m_plot_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">m_plot</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span>
+
+<span class="n">m_plot2</span> <span class="o">=</span> <span class="n">m_nai</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">m_plot2</span> <span class="o">=</span> <a href="../_autosummary/spyrit.misc.sampling.meas2img2.html#spyrit.misc.sampling.meas2img2" title="spyrit.misc.sampling.meas2img2" class="sphx-glr-backref-module-spyrit-misc-sampling sphx-glr-backref-type-py-function"><span class="n">meas2img2</span></a><span class="p">(</span><span class="n">m_plot2</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">Ord_nai</span><span class="p">)</span>
+<span class="n">m_plot2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">moveaxis</span><span class="p">(</span><span class="n">m_plot2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+<span class="n">m_plot3</span> <span class="o">=</span> <span class="n">m_var</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">m_plot3</span> <span class="o">=</span> <a href="../_autosummary/spyrit.misc.sampling.meas2img2.html#spyrit.misc.sampling.meas2img2" title="spyrit.misc.sampling.meas2img2" class="sphx-glr-backref-module-spyrit-misc-sampling sphx-glr-backref-type-py-function"><span class="n">meas2img2</span></a><span class="p">(</span><span class="n">m_plot3</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">Ord_var</span><span class="p">)</span>
+<span class="n">m_plot3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">moveaxis</span><span class="p">(</span><span class="n">m_plot3</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+<span class="n">f</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">,</span> <span class="n">ax3</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+<span class="n">im1</span> <span class="o">=</span> <span class="n">ax1</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">m_plot</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Noiseless measurements $m$ </span><span class="se">\n</span><span class="s2"> &#39;Naive&#39; subsampling&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">ax1</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im1</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;20%&quot;</span><span class="p">)</span>
+
+<span class="n">im2</span> <span class="o">=</span> <span class="n">ax2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">m_plot2</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">m_plot_min</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">m_plot_max</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Measurements $m$ </span><span class="se">\n</span><span class="s2"> &#39;Naive&#39; subsampling&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">ax2</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im2</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;20%&quot;</span><span class="p">)</span>
+
+<span class="n">im3</span> <span class="o">=</span> <span class="n">ax3</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">m_plot3</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">m_plot_min</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">m_plot_max</span><span class="p">)</span>
+<span class="n">ax3</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Measurements $m$ </span><span class="se">\n</span><span class="s2"> &#39;Variance&#39; subsampling&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">ax3</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im3</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;20%&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="pinvnet-network">
+<h2>PinvNet network<a class="headerlink" href="#pinvnet-network" title="Link to this heading"></a></h2>
+<p>We use the <a class="reference internal" href="../_autosummary/spyrit.core.recon.PinvNet.html#spyrit.core.recon.PinvNet" title="spyrit.core.recon.PinvNet"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.recon.PinvNet</span></code></a> class where
+the pseudo inverse reconstruction is performed by a neural network</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.recon</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.recon.PinvNet.html#spyrit.core.recon.PinvNet" title="spyrit.core.recon.PinvNet" class="sphx-glr-backref-module-spyrit-core-recon sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">PinvNet</span></a>
+
+<span class="c1"># PinvNet(meas_op, prep_op, denoi=torch.nn.Identity())</span>
+<span class="n">pinvnet_nai_nonoise</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.recon.PinvNet.html#spyrit.core.recon.PinvNet" title="spyrit.core.recon.PinvNet" class="sphx-glr-backref-module-spyrit-core-recon sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">PinvNet</span></a><span class="p">(</span><span class="n">nonoise_nai_op</span><span class="p">,</span> <span class="n">prep_nonoise_op</span><span class="p">)</span>
+<span class="n">pinvnet_nai</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.recon.PinvNet.html#spyrit.core.recon.PinvNet" title="spyrit.core.recon.PinvNet" class="sphx-glr-backref-module-spyrit-core-recon sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">PinvNet</span></a><span class="p">(</span><span class="n">noise_nai_op</span><span class="p">,</span> <span class="n">prep_nai_op</span><span class="p">)</span>
+<span class="n">pinvnet_var</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.recon.PinvNet.html#spyrit.core.recon.PinvNet" title="spyrit.core.recon.PinvNet" class="sphx-glr-backref-module-spyrit-core-recon sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">PinvNet</span></a><span class="p">(</span><span class="n">noise_var_op</span><span class="p">,</span> <span class="n">prep_var_op</span><span class="p">)</span>
+
+<span class="c1"># Reconstruction</span>
+<span class="n">z_nai_nonoise</span> <span class="o">=</span> <span class="n">pinvnet_nai_nonoise</span><span class="o">.</span><span class="n">reconstruct</span><span class="p">(</span><span class="n">y_nai_nonoise</span><span class="p">)</span>
+<span class="n">z_nai</span> <span class="o">=</span> <span class="n">pinvnet_nai</span><span class="o">.</span><span class="n">reconstruct</span><span class="p">(</span><span class="n">y_nai</span><span class="p">)</span>
+<span class="n">z_var</span> <span class="o">=</span> <span class="n">pinvnet_var</span><span class="o">.</span><span class="n">reconstruct</span><span class="p">(</span><span class="n">y_var</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can now plot the three reconstructed images</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.misc.disp</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">,</span> <a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a>
+
+<span class="c1"># Plot</span>
+<span class="n">x_plot</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">z_plot_nai_nonoise</span> <span class="o">=</span> <span class="n">z_nai_nonoise</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">z_plot_nai</span> <span class="o">=</span> <span class="n">z_nai</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">z_plot_var</span> <span class="o">=</span> <span class="n">z_var</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+<span class="n">f</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+<span class="n">im1</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">x_plot</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Ground-truth image&quot;</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im1</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<span class="n">im2</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">z_plot_nai_nonoise</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Reconstruction noiseless&quot;</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im2</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<span class="n">im3</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">z_plot_nai</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Reconstruction </span><span class="se">\n</span><span class="s2"> &#39;Naive&#39; subsampling&quot;</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im3</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<span class="n">im4</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">z_plot_var</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Reconstruction </span><span class="se">\n</span><span class="s2"> &#39;Variance&#39; subsampling&quot;</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im4</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Note that reconstructed images are pixelized when using the “naive subsampling”,
+while they are smoother and more similar to the ground-truth image when using the
+“variance subsampling”.</p>
+<p>Another way to further improve results is to include a nonlinear post-processing step,
+which we will consider in a future tutorial.</p>
+</div>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-gallery-tuto-05-acquisition-split-measurements-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/a65eba89b020516d9d05eaed4161f164/tuto_05_acquisition_split_measurements.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">tuto_05_acquisition_split_measurements.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/99e9363e9041c68cb4266e45379ad5d2/tuto_05_acquisition_split_measurements.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">tuto_05_acquisition_split_measurements.py</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="tuto_04_train_pseudoinverse_cnn_linear.html" class="btn btn-neutral float-left" title="04. Train pseudoinverse solution + CNN denoising" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="tuto_06_dcnet_split_measurements.html" class="btn btn-neutral float-right" title="06. DCNet solution for split measurements" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

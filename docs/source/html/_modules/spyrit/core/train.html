@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.core.train &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/thumbnail.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">spyrit.core.train</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for spyrit.core.train</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1">#   This software is distributed under the terms</span>
+<span class="c1">#   of the GNU Lesser General  Public Licence (LGPL)</span>
+<span class="c1">#   See LICENSE.md for further details</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span><span class="p">,</span> <span class="n">division</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">import</span> <span class="nn">torch.optim</span> <span class="k">as</span> <span class="nn">optim</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torchvision</span>
+<span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">datasets</span><span class="p">,</span> <span class="n">models</span><span class="p">,</span> <span class="n">transforms</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">statistics</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="c1">######################################################################</span>
+<span class="c1"># 1. Visualize a few images from the training set</span>
+<span class="c1"># ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</span>
+<span class="c1"># Let&#39;s visualize a few training images so as to understand the data</span>
+<span class="c1"># augmentations.</span>
+
+
+<div class="viewcode-block" id="imshow">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.imshow.html#spyrit.core.train.imshow">[docs]</a>
+<span class="k">def</span> <span class="nf">imshow</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; &quot;&quot;&quot;</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ion</span><span class="p">()</span>  <span class="c1"># interactive mode</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">img</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">+</span> <span class="mf">0.5</span>  <span class="c1"># unnormalize</span>
+    <span class="n">npimg</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">npimg</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">)))</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">pause</span><span class="p">(</span><span class="mf">0.0001</span><span class="p">)</span></div>
+
+
+
+<span class="c1">########################################################################</span>
+<span class="c1"># 2. Train the network</span>
+<span class="c1"># ^^^^^^^^^^^^^^^^^^^^</span>
+<span class="c1">#</span>
+<span class="c1"># We  loop over our data iterator, feed the inputs to the</span>
+<span class="c1"># network and optimize.</span>
+
+
+<div class="viewcode-block" id="count_trainable_param">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.count_trainable_param.html#spyrit.core.train.count_trainable_param">[docs]</a>
+<span class="k">def</span> <span class="nf">count_trainable_param</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+    <span class="n">n_param</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">requires_grad</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of trainable parameters: </span><span class="si">{</span><span class="n">n_param</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">n_param</span></div>
+
+
+
+<div class="viewcode-block" id="count_param">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.count_param.html#spyrit.core.train.count_param">[docs]</a>
+<span class="k">def</span> <span class="nf">count_param</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+    <span class="n">n_param</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total number of parameters: </span><span class="si">{</span><span class="n">n_param</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">n_param</span></div>
+
+
+
+<div class="viewcode-block" id="count_memory">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.count_memory.html#spyrit.core.train.count_memory">[docs]</a>
+<span class="k">def</span> <span class="nf">count_memory</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+    <span class="n">mem_params</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">nelement</span><span class="p">()</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">element_size</span><span class="p">()</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">()])</span>
+    <span class="n">mem_bufs</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">buf</span><span class="o">.</span><span class="n">nelement</span><span class="p">()</span> <span class="o">*</span> <span class="n">buf</span><span class="o">.</span><span class="n">element_size</span><span class="p">()</span> <span class="k">for</span> <span class="n">buf</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">buffers</span><span class="p">()])</span>
+    <span class="n">mem</span> <span class="o">=</span> <span class="n">mem_params</span> <span class="o">+</span> <span class="n">mem_bufs</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Memory requirement: </span><span class="si">{</span><span class="n">mem</span><span class="si">}</span><span class="s2"> bytes&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">mem</span></div>
+
+
+
+<div class="viewcode-block" id="images_norm">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.images_norm.html#spyrit.core.train.images_norm">[docs]</a>
+<span class="k">def</span> <span class="nf">images_norm</span><span class="p">(</span><span class="n">images</span><span class="p">):</span>
+    <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">images</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="tb_writer_init">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.tb_writer_init.html#spyrit.core.train.tb_writer_init">[docs]</a>
+<span class="k">def</span> <span class="nf">tb_writer_init</span><span class="p">(</span><span class="n">tb_path</span><span class="p">,</span> <span class="n">samples</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tensorboard log for torch&quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">torch.utils.tensorboard</span> <span class="kn">import</span> <span class="n">SummaryWriter</span>
+
+    <span class="n">writer</span> <span class="o">=</span> <span class="n">SummaryWriter</span><span class="p">(</span><span class="n">tb_path</span><span class="p">)</span>
+
+    <span class="c1"># Add model graph for visualization</span>
+    <span class="c1"># with torch.no_grad():</span>
+    <span class="c1">#    writer.add_graph(model, samples)</span>
+
+    <span class="c1"># Add sample image</span>
+    <span class="k">if</span> <span class="n">samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;samples&quot;</span><span class="p">)</span>
+        <span class="n">img_grid</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">make_grid</span><span class="p">(</span><span class="n">images_norm</span><span class="p">(</span><span class="n">samples</span><span class="p">))</span>
+        <span class="n">writer</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="s2">&quot;data_sample&quot;</span><span class="p">,</span> <span class="n">img_grid</span><span class="p">)</span>
+        <span class="n">writer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">writer</span></div>
+
+
+
+<div class="viewcode-block" id="tb_writer_add_scalar">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.tb_writer_add_scalar.html#spyrit.core.train.tb_writer_add_scalar">[docs]</a>
+<span class="k">def</span> <span class="nf">tb_writer_add_scalar</span><span class="p">(</span><span class="n">writer</span><span class="p">,</span> <span class="n">name_metric</span><span class="p">,</span> <span class="n">val_metric</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tensorboard writer: Add a scalar (loss)&quot;&quot;&quot;</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">add_scalar</span><span class="p">(</span><span class="n">name_metric</span><span class="p">,</span> <span class="n">val_metric</span><span class="p">,</span> <span class="n">step</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="tb_writer_add_image">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.tb_writer_add_image.html#spyrit.core.train.tb_writer_add_image">[docs]</a>
+<span class="k">def</span> <span class="nf">tb_writer_add_image</span><span class="p">(</span><span class="n">writer</span><span class="p">,</span> <span class="n">name_metric</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tensorboard writer: Add an image)&quot;&quot;&quot;</span>
+    <span class="c1"># Prediction</span>
+    <span class="n">img_grid</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">make_grid</span><span class="p">(</span><span class="n">images_norm</span><span class="p">(</span><span class="n">images</span><span class="p">))</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">add_image</span><span class="p">(</span><span class="n">name_metric</span><span class="p">,</span> <span class="n">img_grid</span><span class="p">,</span> <span class="n">global_step</span><span class="o">=</span><span class="n">step</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="tb_profiler">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.tb_profiler.html#spyrit.core.train.tb_profiler">[docs]</a>
+<span class="k">def</span> <span class="nf">tb_profiler</span><span class="p">(</span>
+    <span class="n">path_prof</span><span class="p">,</span>
+    <span class="n">model</span><span class="p">,</span>
+    <span class="n">criterion</span><span class="p">,</span>
+    <span class="n">optimizer</span><span class="p">,</span>
+    <span class="n">dataloader</span><span class="p">,</span>
+    <span class="n">device</span><span class="p">,</span>
+    <span class="n">wait</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">warmup</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">active</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">repeat</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tensorboard profiler: Profile code execution&quot;&quot;&quot;</span>
+    <span class="n">prof</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">profiler</span><span class="o">.</span><span class="n">profile</span><span class="p">(</span>
+        <span class="n">schedule</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">profiler</span><span class="o">.</span><span class="n">schedule</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">warmup</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">active</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">repeat</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span>
+        <span class="n">on_trace_ready</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">profiler</span><span class="o">.</span><span class="n">tensorboard_trace_handler</span><span class="p">(</span><span class="n">path_prof</span><span class="p">),</span>
+        <span class="n">record_shapes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">with_stack</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">prof</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">step</span><span class="p">,</span> <span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dataloader</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">step</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="n">wait</span> <span class="o">+</span> <span class="n">warmup</span> <span class="o">+</span> <span class="n">active</span><span class="p">)</span> <span class="o">*</span> <span class="n">repeat</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="n">criterion</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+        <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+        <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+
+        <span class="n">prof</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+    <span class="n">prof</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="train_model">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.train_model.html#spyrit.core.train.train_model">[docs]</a>
+<span class="k">def</span> <span class="nf">train_model</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">,</span>
+    <span class="n">criterion</span><span class="p">,</span>
+    <span class="n">optimizer</span><span class="p">,</span>
+    <span class="n">scheduler</span><span class="p">,</span>
+    <span class="n">dataloaders</span><span class="p">,</span>
+    <span class="n">device</span><span class="p">,</span>
+    <span class="n">root</span><span class="p">,</span>
+    <span class="n">num_epochs</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span>
+    <span class="n">disp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">do_checkpoint</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">tb_path</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">tb_prof</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">tb_freq</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Trains the pytorch model&quot;&quot;&quot;</span>
+    <span class="n">count_trainable_param</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+    <span class="n">count_param</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+    <span class="n">count_memory</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+    <span class="n">since</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">best_loss</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+    <span class="n">best_model_wts</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">())</span>
+
+    <span class="n">dataset_sizes</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">x</span><span class="p">])</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="s2">&quot;val&quot;</span><span class="p">]}</span>
+    <span class="n">train_info</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">train_info</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">train_info</span><span class="p">[</span><span class="s2">&quot;val&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Set tensorboard writer</span>
+    <span class="k">if</span> <span class="n">tb_path</span><span class="p">:</span>
+        <span class="n">samples</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="s2">&quot;val&quot;</span><span class="p">]))</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">samples</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">writer</span> <span class="o">=</span> <span class="n">tb_writer_init</span><span class="p">(</span><span class="n">tb_path</span><span class="p">,</span> <span class="n">samples</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_epochs</span><span class="p">):</span>
+        <span class="n">prev_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="c1">#        if disp :</span>
+        <span class="c1">#            print(&#39;Epoch {}/{}&#39;.format(epoch, num_epochs - 1))</span>
+        <span class="c1">#            print(&#39;-&#39; * 10)</span>
+        <span class="c1">#</span>
+        <span class="c1"># Each epoch has a training and validation phase</span>
+        <span class="k">for</span> <span class="n">phase</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="s2">&quot;val&quot;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;train&quot;</span><span class="p">:</span>
+                <span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>  <span class="c1"># Set model to training mode</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>  <span class="c1"># Set model to evaluate mode</span>
+
+            <span class="n">running_loss</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+            <span class="c1"># Iterate over data.</span>
+            <span class="k">for</span> <span class="n">batch_i</span><span class="p">,</span> <span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">phase</span><span class="p">]):</span>
+                <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+                <span class="c1"># zero the parameter gradients</span>
+                <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+
+                <span class="c1"># forward</span>
+                <span class="c1"># track history if only in train</span>
+                <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">set_grad_enabled</span><span class="p">(</span><span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;train&quot;</span><span class="p">):</span>
+                    <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+                    <span class="n">loss</span> <span class="o">=</span> <span class="n">criterion</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+                    <span class="c1"># backward + optimize only if in training phase</span>
+                    <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;train&quot;</span><span class="p">:</span>
+                        <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+                        <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+
+                <span class="c1"># statistics</span>
+                <span class="n">running_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">*</span> <span class="n">inputs</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+                    <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+
+                <span class="k">if</span> <span class="n">disp</span><span class="p">:</span>
+                    <span class="c1"># print(&#39;{} Loss: {:.4f} &#39;.format(phase, epoch_loss))</span>
+                    <span class="n">batches_done</span> <span class="o">=</span> <span class="n">epoch</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">phase</span><span class="p">])</span> <span class="o">+</span> <span class="n">batch_i</span>
+                    <span class="n">batches_left</span> <span class="o">=</span> <span class="n">num_epochs</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">phase</span><span class="p">])</span> <span class="o">-</span> <span class="n">batches_done</span>
+                    <span class="n">time_left</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span>
+                        <span class="n">seconds</span><span class="o">=</span><span class="n">batches_left</span> <span class="o">*</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">prev_time</span><span class="p">)</span>
+                    <span class="p">)</span>
+                    <span class="n">prev_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+                    <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+                        <span class="s2">&quot;</span><span class="se">\r</span><span class="s2">[</span><span class="si">%s</span><span class="s2">] [Epoch </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2">] [Batch </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2">] [Loss: </span><span class="si">%f</span><span class="s2">] ETA: </span><span class="si">%s</span><span class="s2"> &quot;</span>
+                        <span class="o">%</span> <span class="p">(</span>
+                            <span class="n">phase</span><span class="p">,</span>
+                            <span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                            <span class="n">num_epochs</span><span class="p">,</span>
+                            <span class="n">batch_i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                            <span class="nb">len</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">phase</span><span class="p">]),</span>
+                            <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span>
+                            <span class="n">time_left</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">tb_path</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">batch_i</span> <span class="o">%</span> <span class="n">tb_freq</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="c1"># Loss</span>
+                        <span class="n">tb_writer_add_scalar</span><span class="p">(</span>
+                            <span class="n">writer</span><span class="p">,</span>
+                            <span class="n">name_metric</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">phase</span><span class="si">}</span><span class="s2">_loss&quot;</span><span class="p">,</span>
+                            <span class="n">val_metric</span><span class="o">=</span><span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">*</span> <span class="n">inputs</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+                            <span class="n">step</span><span class="o">=</span><span class="n">epoch</span> <span class="o">*</span> <span class="n">dataset_sizes</span><span class="p">[</span><span class="n">phase</span><span class="p">]</span> <span class="o">+</span> <span class="n">batch_i</span><span class="p">,</span>
+                        <span class="p">)</span>
+
+                        <span class="c1"># Prediction</span>
+                        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+                            <span class="n">samples_pred</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span>
+                            <span class="n">tb_writer_add_image</span><span class="p">(</span>
+                                <span class="n">writer</span><span class="p">,</span>
+                                <span class="n">name_metric</span><span class="o">=</span><span class="s2">&quot;model_preds&quot;</span><span class="p">,</span>
+                                <span class="n">images</span><span class="o">=</span><span class="n">samples_pred</span><span class="p">,</span>
+                                <span class="n">step</span><span class="o">=</span><span class="n">epoch</span> <span class="o">*</span> <span class="n">dataset_sizes</span><span class="p">[</span><span class="n">phase</span><span class="p">]</span> <span class="o">+</span> <span class="n">batch_i</span><span class="p">,</span>
+                            <span class="p">)</span>
+
+                <span class="k">del</span> <span class="n">outputs</span>
+
+            <span class="n">epoch_loss</span> <span class="o">=</span> <span class="n">running_loss</span> <span class="o">/</span> <span class="n">dataset_sizes</span><span class="p">[</span><span class="n">phase</span><span class="p">]</span>
+            <span class="n">train_info</span><span class="p">[</span><span class="n">phase</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">epoch_loss</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;train&quot;</span><span class="p">:</span>
+                <span class="n">scheduler</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">disp</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> Loss: </span><span class="si">{:.4f}</span><span class="s2"> &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">phase</span><span class="p">,</span> <span class="n">epoch_loss</span><span class="p">))</span>
+            <span class="c1"># deep copy the model</span>
+            <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;val&quot;</span> <span class="ow">and</span> <span class="n">epoch_loss</span> <span class="o">&lt;</span> <span class="n">best_loss</span><span class="p">:</span>
+                <span class="n">best_loss</span> <span class="o">=</span> <span class="n">epoch_loss</span>
+                <span class="n">best_model_wts</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">())</span>
+
+        <span class="k">if</span> <span class="n">do_checkpoint</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">epoch</span> <span class="o">%</span> <span class="n">do_checkpoint</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">checkpoint</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">epoch</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+    <span class="n">time_elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">since</span>
+    <span class="k">if</span> <span class="n">disp</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;Training complete in </span><span class="si">{:.0f}</span><span class="s2">m </span><span class="si">{:.0f}</span><span class="s2">s&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">time_elapsed</span> <span class="o">//</span> <span class="mi">60</span><span class="p">,</span> <span class="n">time_elapsed</span> <span class="o">%</span> <span class="mi">60</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Best val Loss: </span><span class="si">{:4f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">best_loss</span><span class="p">))</span>
+
+    <span class="c1"># Tensorboard profiler</span>
+    <span class="k">if</span> <span class="n">tb_prof</span><span class="p">:</span>
+        <span class="n">tb_profiler</span><span class="p">(</span>
+            <span class="n">tb_path</span><span class="p">,</span>
+            <span class="n">model</span><span class="p">,</span>
+            <span class="n">criterion</span><span class="p">,</span>
+            <span class="n">optimizer</span><span class="p">,</span>
+            <span class="n">dataloaders</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">],</span>
+            <span class="n">device</span><span class="p">,</span>
+            <span class="n">wait</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">warmup</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">active</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+            <span class="n">repeat</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># load best model weights</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">best_model_wts</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">model</span><span class="p">,</span> <span class="n">train_info</span></div>
+
+
+
+<div class="viewcode-block" id="train_model_supervised">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.train_model_supervised.html#spyrit.core.train.train_model_supervised">[docs]</a>
+<span class="k">def</span> <span class="nf">train_model_supervised</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">,</span>
+    <span class="n">criterion</span><span class="p">,</span>
+    <span class="n">optimizer</span><span class="p">,</span>
+    <span class="n">scheduler</span><span class="p">,</span>
+    <span class="n">dataloaders</span><span class="p">,</span>
+    <span class="n">device</span><span class="p">,</span>
+    <span class="n">root</span><span class="p">,</span>
+    <span class="n">num_epochs</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span>
+    <span class="n">disp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">do_checkpoint</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Trains the pytorch model in a supervised way&quot;&quot;&quot;</span>
+    <span class="n">since</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">best_loss</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+    <span class="n">best_model_wts</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">())</span>
+
+    <span class="n">dataset_sizes</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">x</span><span class="p">])</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="s2">&quot;val&quot;</span><span class="p">]}</span>
+    <span class="n">train_info</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">train_info</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">train_info</span><span class="p">[</span><span class="s2">&quot;val&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_epochs</span><span class="p">):</span>
+        <span class="n">prev_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="c1">#        if disp :</span>
+        <span class="c1">#            print(&#39;Epoch {}/{}&#39;.format(epoch, num_epochs - 1))</span>
+        <span class="c1">#            print(&#39;-&#39; * 10)</span>
+        <span class="c1">#</span>
+        <span class="c1"># Each epoch has a training and validation phase</span>
+        <span class="k">for</span> <span class="n">phase</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">,</span> <span class="s2">&quot;val&quot;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;train&quot;</span><span class="p">:</span>
+                <span class="n">scheduler</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+                <span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>  <span class="c1"># Set model to training mode</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>  <span class="c1"># Set model to evaluate mode</span>
+
+            <span class="n">running_loss</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+            <span class="c1"># Iterate over data.</span>
+            <span class="k">for</span> <span class="n">batch_i</span><span class="p">,</span> <span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">phase</span><span class="p">]):</span>
+                <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+                <span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+                <span class="c1"># zero the parameter gradients</span>
+                <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+
+                <span class="c1"># forward</span>
+                <span class="c1"># track history if only in train</span>
+                <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">set_grad_enabled</span><span class="p">(</span><span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;train&quot;</span><span class="p">):</span>
+                    <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+                    <span class="n">loss</span> <span class="o">=</span> <span class="n">criterion</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+                    <span class="c1"># backward + optimize only if in training phase</span>
+                    <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;train&quot;</span><span class="p">:</span>
+                        <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+                        <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+
+                <span class="c1"># statistics</span>
+                <span class="n">running_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">*</span> <span class="n">inputs</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+                    <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+
+                <span class="k">if</span> <span class="n">disp</span><span class="p">:</span>
+                    <span class="c1"># print(&#39;{} Loss: {:.4f} &#39;.format(phase, epoch_loss))</span>
+                    <span class="n">batches_done</span> <span class="o">=</span> <span class="n">epoch</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">phase</span><span class="p">])</span> <span class="o">+</span> <span class="n">batch_i</span>
+                    <span class="n">batches_left</span> <span class="o">=</span> <span class="n">num_epochs</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">phase</span><span class="p">])</span> <span class="o">-</span> <span class="n">batches_done</span>
+                    <span class="n">time_left</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span>
+                        <span class="n">seconds</span><span class="o">=</span><span class="n">batches_left</span> <span class="o">*</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">prev_time</span><span class="p">)</span>
+                    <span class="p">)</span>
+                    <span class="n">prev_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+                    <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+                        <span class="s2">&quot;</span><span class="se">\r</span><span class="s2">[</span><span class="si">%s</span><span class="s2">] [Epoch </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2">] [Batch </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2">] [Loss: </span><span class="si">%f</span><span class="s2">] ETA: </span><span class="si">%s</span><span class="s2"> &quot;</span>
+                        <span class="o">%</span> <span class="p">(</span>
+                            <span class="n">phase</span><span class="p">,</span>
+                            <span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                            <span class="n">num_epochs</span><span class="p">,</span>
+                            <span class="n">batch_i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                            <span class="nb">len</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="n">phase</span><span class="p">]),</span>
+                            <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span>
+                            <span class="n">time_left</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+
+            <span class="n">epoch_loss</span> <span class="o">=</span> <span class="n">running_loss</span> <span class="o">/</span> <span class="n">dataset_sizes</span><span class="p">[</span><span class="n">phase</span><span class="p">]</span>
+            <span class="n">train_info</span><span class="p">[</span><span class="n">phase</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">epoch_loss</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">disp</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> Loss: </span><span class="si">{:.4f}</span><span class="s2"> &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">phase</span><span class="p">,</span> <span class="n">epoch_loss</span><span class="p">))</span>
+            <span class="c1"># deep copy the model</span>
+            <span class="k">if</span> <span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;val&quot;</span> <span class="ow">and</span> <span class="n">epoch_loss</span> <span class="o">&lt;</span> <span class="n">best_loss</span><span class="p">:</span>
+                <span class="n">best_loss</span> <span class="o">=</span> <span class="n">epoch_loss</span>
+                <span class="n">best_model_wts</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">())</span>
+
+        <span class="k">if</span> <span class="n">do_checkpoint</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">epoch</span> <span class="o">%</span> <span class="n">do_checkpoint</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">checkpoint</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">epoch</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+
+    <span class="n">time_elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">since</span>
+    <span class="k">if</span> <span class="n">disp</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;Training complete in </span><span class="si">{:.0f}</span><span class="s2">m </span><span class="si">{:.0f}</span><span class="s2">s&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">time_elapsed</span> <span class="o">//</span> <span class="mi">60</span><span class="p">,</span> <span class="n">time_elapsed</span> <span class="o">%</span> <span class="mi">60</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Best val Loss: </span><span class="si">{:4f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">best_loss</span><span class="p">))</span>
+
+    <span class="c1"># load best model weights</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">best_model_wts</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">model</span><span class="p">,</span> <span class="n">train_info</span></div>
+
+
+
+<div class="viewcode-block" id="Weight_Decay_Loss">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.Weight_Decay_Loss.html#spyrit.core.train.Weight_Decay_Loss">[docs]</a>
+<span class="k">class</span> <span class="nc">Weight_Decay_Loss</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loss</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Weight_Decay_Loss</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">loss</span>
+
+<div class="viewcode-block" id="Weight_Decay_Loss.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.Weight_Decay_Loss.forward.html#spyrit.core.train.Weight_Decay_Loss.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">net</span><span class="p">):</span>
+        <span class="n">mse</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mse</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="Train_par">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.Train_par.html#spyrit.core.train.Train_par">[docs]</a>
+<span class="k">class</span> <span class="nc">Train_par</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">learning_rate</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">reg</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">batch_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">=</span> <span class="n">learning_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">img_size</span> <span class="o">=</span> <span class="n">img_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reg</span> <span class="o">=</span> <span class="n">reg</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_loss</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">val_loss</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">minimum</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Train_par.set_loss">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.Train_par.set_loss.html#spyrit.core.train.Train_par.set_loss">[docs]</a>
+    <span class="k">def</span> <span class="nf">set_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train_info</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_loss</span> <span class="o">=</span> <span class="n">train_info</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">val_loss</span> <span class="o">=</span> <span class="n">train_info</span><span class="p">[</span><span class="s2">&quot;val&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">minimum</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">val_loss</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">string1</span> <span class="o">=</span> <span class="s2">&quot;Parameters:</span><span class="se">\n</span><span class="s2">Batch Size : </span><span class="se">\t</span><span class="s2"> </span><span class="si">{}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">Learning : </span><span class="se">\t</span><span class="s2"> </span><span class="si">{}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span>
+        <span class="p">)</span>
+        <span class="n">string2</span> <span class="o">=</span> <span class="s2">&quot;Image Size : </span><span class="se">\t</span><span class="s2"> </span><span class="si">{}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">Regularisation : </span><span class="se">\t</span><span class="s2"> </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">img_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reg</span>
+        <span class="p">)</span>
+        <span class="n">string</span> <span class="o">=</span> <span class="n">string1</span> <span class="o">+</span> <span class="n">string2</span>
+        <span class="k">return</span> <span class="n">string</span>
+
+<div class="viewcode-block" id="Train_par.get_loss">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.Train_par.get_loss.html#spyrit.core.train.Train_par.get_loss">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">train_info</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">train_info</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_loss</span>
+        <span class="n">train_info</span><span class="p">[</span><span class="s2">&quot;val&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">val_loss</span>
+        <span class="k">return</span> <span class="n">train_info</span></div>
+
+
+<div class="viewcode-block" id="Train_par.title">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.Train_par.title.html#spyrit.core.train.Train_par.title">[docs]</a>
+    <span class="k">def</span> <span class="nf">title</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">string1</span> <span class="o">=</span> <span class="s2">&quot;Batch_Size_</span><span class="si">{}</span><span class="s2">_Learning_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span>
+        <span class="p">)</span>
+        <span class="n">string2</span> <span class="o">=</span> <span class="s2">&quot;_size_</span><span class="si">{}</span><span class="s2">_Regularisation_</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">img_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reg</span><span class="p">)</span>
+        <span class="n">title</span> <span class="o">=</span> <span class="n">string1</span> <span class="o">+</span> <span class="n">string2</span>
+        <span class="k">return</span> <span class="n">title</span></div>
+
+
+<div class="viewcode-block" id="Train_par.plot">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.Train_par.plot.html#spyrit.core.train.Train_par.plot">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ion</span><span class="p">()</span>
+        <span class="n">string1</span> <span class="o">=</span> <span class="s2">&quot;Batch Size : </span><span class="se">\t</span><span class="s2"> </span><span class="si">{}</span><span class="s2"> \ Learning : </span><span class="se">\t</span><span class="s2"> </span><span class="si">{}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span>
+        <span class="p">)</span>
+        <span class="n">string2</span> <span class="o">=</span> <span class="s2">&quot;size : </span><span class="se">\t</span><span class="s2"> </span><span class="si">{}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">Regularisation : </span><span class="se">\t</span><span class="s2"> </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">img_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reg</span>
+        <span class="p">)</span>
+        <span class="n">title</span> <span class="o">=</span> <span class="n">string1</span> <span class="o">+</span> <span class="n">string2</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">suptitle</span> <span class="o">=</span> <span class="n">title</span>
+
+        <span class="n">Epochs</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_loss</span><span class="p">))]</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Epochs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_loss</span><span class="p">[</span><span class="n">start</span><span class="p">:],</span> <span class="s2">&quot;o-&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Train&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Epoch&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Loss&quot;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Epochs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">val_loss</span><span class="p">[</span><span class="n">start</span><span class="p">:],</span> <span class="s2">&quot;.-&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Validation&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Epoch&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Loss&quot;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Train_par.plot_log">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.Train_par.plot_log.html#spyrit.core.train.Train_par.plot_log">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ion</span><span class="p">()</span>
+        <span class="n">string1</span> <span class="o">=</span> <span class="s2">&quot; Learning : </span><span class="se">\t</span><span class="s2"> </span><span class="si">{}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">)</span>
+        <span class="n">string2</span> <span class="o">=</span> <span class="s2">&quot;size : </span><span class="se">\t</span><span class="s2"> </span><span class="si">{}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">Regularisation : </span><span class="se">\t</span><span class="s2"> </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">img_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reg</span>
+        <span class="p">)</span>
+        <span class="n">title</span> <span class="o">=</span> <span class="n">string1</span> <span class="o">+</span> <span class="n">string2</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">suptitle</span> <span class="o">=</span> <span class="n">title</span>
+
+        <span class="n">Epochs</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_loss</span><span class="p">))]</span>
+
+        <span class="n">train_loss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_loss</span><span class="p">)</span>
+        <span class="n">val_loss</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">val_loss</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Epochs</span><span class="p">,</span> <span class="n">train_loss</span><span class="p">[</span><span class="n">start</span><span class="p">:],</span> <span class="s2">&quot;o-&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Train&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Epoch&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Loss&quot;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Epochs</span><span class="p">,</span> <span class="n">val_loss</span><span class="p">[</span><span class="n">start</span><span class="p">:],</span> <span class="s2">&quot;.-&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Validation&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Epoch&quot;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Loss&quot;</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="multiplot">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.multiplot.html#spyrit.core.train.multiplot">[docs]</a>
+<span class="k">def</span> <span class="nf">multiplot</span><span class="p">(</span><span class="n">train_info1</span><span class="p">,</span> <span class="n">train_info2</span><span class="p">,</span> <span class="n">train_info3</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ion</span><span class="p">()</span>
+    <span class="n">string1</span> <span class="o">=</span> <span class="s2">&quot;Learning : </span><span class="se">\t</span><span class="s2"> </span><span class="si">{}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">train_info1</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">)</span>
+    <span class="n">string2</span> <span class="o">=</span> <span class="s2">&quot;size : </span><span class="se">\t</span><span class="s2"> </span><span class="si">{}</span><span class="s2"> </span><span class="se">\n</span><span class="s2">Regularisation : </span><span class="se">\t</span><span class="s2"> </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">train_info1</span><span class="o">.</span><span class="n">img_size</span><span class="p">,</span> <span class="n">train_info1</span><span class="o">.</span><span class="n">reg</span>
+    <span class="p">)</span>
+    <span class="n">title</span> <span class="o">=</span> <span class="n">string1</span> <span class="o">+</span> <span class="n">string2</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">suptitle</span> <span class="o">=</span> <span class="n">title</span>
+
+    <span class="n">Epochs</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_info1</span><span class="o">.</span><span class="n">train_loss</span><span class="p">))]</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Epochs</span><span class="p">,</span> <span class="n">train_info1</span><span class="o">.</span><span class="n">train_loss</span><span class="p">[</span><span class="n">start</span><span class="p">:],</span> <span class="s2">&quot;o-&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Epochs</span><span class="p">,</span> <span class="n">train_info2</span><span class="o">.</span><span class="n">train_loss</span><span class="p">[</span><span class="n">start</span><span class="p">:],</span> <span class="s2">&quot;o-&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Epochs</span><span class="p">,</span> <span class="n">train_info3</span><span class="o">.</span><span class="n">train_loss</span><span class="p">[</span><span class="n">start</span><span class="p">:],</span> <span class="s2">&quot;o-&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="s2">&quot;ConvNet&quot;</span><span class="p">,</span> <span class="s2">&quot;U_net&quot;</span><span class="p">,</span> <span class="s2">&quot;DC Model&quot;</span><span class="p">])</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Train&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Epoch&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Loss&quot;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Epochs</span><span class="p">,</span> <span class="n">train_info1</span><span class="o">.</span><span class="n">val_loss</span><span class="p">[</span><span class="n">start</span><span class="p">:],</span> <span class="s2">&quot;.-&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Epochs</span><span class="p">,</span> <span class="n">train_info2</span><span class="o">.</span><span class="n">val_loss</span><span class="p">[</span><span class="n">start</span><span class="p">:],</span> <span class="s2">&quot;.-&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">Epochs</span><span class="p">,</span> <span class="n">train_info3</span><span class="o">.</span><span class="n">val_loss</span><span class="p">[</span><span class="n">start</span><span class="p">:],</span> <span class="s2">&quot;.-&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">([</span><span class="s2">&quot;ConvNet&quot;</span><span class="p">,</span> <span class="s2">&quot;U_net&quot;</span><span class="p">,</span> <span class="s2">&quot;DC Model&quot;</span><span class="p">])</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Validation&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;Epoch&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;Loss&quot;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="read_param">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.read_param.html#spyrit.core.train.read_param">[docs]</a>
+<span class="k">def</span> <span class="nf">read_param</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">param_file</span><span class="p">:</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">param_file</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">params</span></div>
+
+
+
+<span class="c1">######################################################################</span>
+<span class="c1"># 3. Visualizing the model predictions</span>
+<span class="c1"># ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</span>
+<span class="c1">##</span>
+<span class="c1"># Function to Display reconstruction for a few images</span>
+
+
+<span class="c1">#</span>
+<div class="viewcode-block" id="boxplot">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.boxplot.html#spyrit.core.train.boxplot">[docs]</a>
+<span class="k">def</span> <span class="nf">boxplot</span><span class="p">(</span><span class="n">model1</span><span class="p">,</span> <span class="n">model2</span><span class="p">,</span> <span class="n">model3</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">dataloaders</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+    <span class="n">mse</span> <span class="o">=</span> <span class="p">[[],</span> <span class="p">[],</span> <span class="p">[]]</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="p">[</span><span class="n">model1</span><span class="p">,</span> <span class="n">model2</span><span class="p">,</span> <span class="n">model3</span><span class="p">]</span>
+    <span class="n">model1</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+    <span class="n">model2</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+    <span class="n">model3</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">batch_i</span><span class="p">,</span> <span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="s2">&quot;val&quot;</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+        <span class="n">phase</span> <span class="o">=</span> <span class="s2">&quot;eval&quot;</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">inputs1</span> <span class="o">=</span> <span class="n">model1</span><span class="o">.</span><span class="n">forward_acquire</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">set_grad_enabled</span><span class="p">(</span><span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;train&quot;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+                <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">forward_reconstruct</span><span class="p">(</span><span class="n">inputs1</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])):</span>
+                    <span class="n">Loss</span> <span class="o">=</span> <span class="n">criterion</span><span class="p">(</span><span class="n">inputs</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">outputs</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">model</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                    <span class="n">mse</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="p">[</span><span class="n">Loss</span><span class="o">.</span><span class="n">tolist</span><span class="p">()]</span>
+        <span class="c1"># torch.cuda.empty_cache()</span>
+    <span class="n">fig1</span><span class="p">,</span> <span class="n">ax1</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
+        <span class="s2">&quot;Reconstruction error (MSE)&quot;</span>
+        <span class="o">+</span> <span class="s2">&quot; with N0 =</span><span class="si">{}</span><span class="s2"> and M = </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">model1</span><span class="o">.</span><span class="n">N0</span><span class="p">,</span> <span class="n">model1</span><span class="o">.</span><span class="n">M</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">boxplot</span><span class="p">(</span>
+        <span class="n">mse</span><span class="p">,</span>
+        <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ConvNet&quot;</span><span class="p">,</span> <span class="s2">&quot;U-net&quot;</span><span class="p">,</span> <span class="s2">&quot;Data-consistent Model&quot;</span><span class="p">],</span>
+        <span class="n">showmeans</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">showfliers</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="boxplotconsist">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.boxplotconsist.html#spyrit.core.train.boxplotconsist">[docs]</a>
+<span class="k">def</span> <span class="nf">boxplotconsist</span><span class="p">(</span><span class="n">model1</span><span class="p">,</span> <span class="n">model2</span><span class="p">,</span> <span class="n">model3</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">dataloaders</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
+    <span class="n">mse</span> <span class="o">=</span> <span class="p">[[],</span> <span class="p">[],</span> <span class="p">[]]</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="p">[</span><span class="n">model1</span><span class="p">,</span> <span class="n">model2</span><span class="p">,</span> <span class="n">model3</span><span class="p">]</span>
+    <span class="n">model1</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+    <span class="n">model2</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+    <span class="n">model3</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">batch_i</span><span class="p">,</span> <span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="s2">&quot;val&quot;</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+        <span class="n">phase</span> <span class="o">=</span> <span class="s2">&quot;eval&quot;</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">inputs1</span> <span class="o">=</span> <span class="n">model1</span><span class="o">.</span><span class="n">forward_acquire</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">set_grad_enabled</span><span class="p">(</span><span class="n">phase</span> <span class="o">==</span> <span class="s2">&quot;train&quot;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+                <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">forward_reconstruct</span><span class="p">(</span><span class="n">inputs1</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+                <span class="n">reconmeasurements</span> <span class="o">=</span> <span class="n">model1</span><span class="o">.</span><span class="n">Pconv</span><span class="p">(</span><span class="n">outputs</span><span class="p">)</span>
+                <span class="n">measurements</span> <span class="o">=</span> <span class="n">model1</span><span class="o">.</span><span class="n">Pconv</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+                <span class="c1"># print(measurements.shape)</span>
+                <span class="c1"># print(reconmeasurements.shape)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;1=&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">measurements</span><span class="p">)))</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">measurements</span><span class="p">)))</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">reconmeasurements</span><span class="p">)))</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">reconmeasurements</span><span class="p">)))</span>
+                <span class="c1"># normeasurements = measurements/torch.sqrt(measurements)</span>
+                <span class="c1"># normreconmeasurements = reconmeasurements/torch.sqrt(measurements)</span>
+                <span class="c1"># print(torch.max(torch.sqrt(normeasurements)))</span>
+                <span class="c1"># print(normreconmeasurements.shape)</span>
+                <span class="c1"># print(normreconmeasurements)</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])):</span>
+                    <span class="n">Loss</span> <span class="o">=</span> <span class="n">criterion</span><span class="p">(</span>
+                        <span class="n">measurements</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:],</span>
+                        <span class="n">reconmeasurements</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:],</span>
+                        <span class="n">model</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                    <span class="p">)</span>
+                    <span class="n">mse</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="p">[</span><span class="n">Loss</span><span class="o">.</span><span class="n">tolist</span><span class="p">()]</span>
+        <span class="c1"># torch.cuda.empty_cache()</span>
+        <span class="c1"># torch.cuda.empty_cache()</span>
+    <span class="c1"># mse=torch.tensor((1/M),device=device)*mse</span>
+    <span class="c1"># mse1=[[],[],[]]</span>
+    <span class="c1"># for i in range(3):</span>
+    <span class="c1">#     mse1[i] = [j for j in mse[i] if j&lt;1000]</span>
+    <span class="c1">#     print(len(mse1[i]))</span>
+    <span class="n">fig1</span><span class="p">,</span> <span class="n">ax1</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
+        <span class="s2">&quot;Reconstruction error over measures (MSE)&quot;</span>
+        <span class="o">+</span> <span class="s2">&quot; with N0 =</span><span class="si">{}</span><span class="s2"> and M = </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">model1</span><span class="o">.</span><span class="n">N0</span><span class="p">,</span> <span class="n">model1</span><span class="o">.</span><span class="n">M</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">ax1</span><span class="o">.</span><span class="n">boxplot</span><span class="p">(</span>
+        <span class="n">mse</span><span class="p">,</span>
+        <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ConvNet&quot;</span><span class="p">,</span> <span class="s2">&quot;U-net&quot;</span><span class="p">,</span> <span class="s2">&quot;Data-consistent Model&quot;</span><span class="p">],</span>
+        <span class="n">showmeans</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">showfliers</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="visualize_model">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.visualize_model.html#spyrit.core.train.visualize_model">[docs]</a>
+<span class="k">def</span> <span class="nf">visualize_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dataloaders</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">suptitle</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">colormap</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">gray</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Takes 8 images from the dataloader and shows side by side the input image and the</span>
+<span class="sd">    reconstructed image</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ion</span><span class="p">()</span>  <span class="c1"># interactive mode</span>
+    <span class="n">inputs</span><span class="p">,</span> <span class="n">classes</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]))</span>
+    <span class="k">while</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">8</span><span class="p">:</span>
+        <span class="n">next_input</span><span class="p">,</span> <span class="n">classes</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]))</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">inputs</span><span class="p">,</span> <span class="n">next_input</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+
+    <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+    <span class="n">outputs</span> <span class="o">=</span> <span class="n">outputs</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">axarr</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">))</span>
+    <span class="c1">#    plt.suptitle(suptitle, fontsize = 16)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+            <span class="n">im1</span> <span class="o">=</span> <span class="n">axarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">inputs</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">j</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="n">colormap</span><span class="p">)</span>
+            <span class="n">axarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Ground Truth&quot;</span><span class="p">)</span>
+            <span class="n">im2</span> <span class="o">=</span> <span class="n">axarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">outputs</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">j</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="n">colormap</span><span class="p">)</span>
+            <span class="n">axarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Reconstructed&quot;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="mf">0.08</span><span class="p">,</span> <span class="n">wspace</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="compare_model">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.compare_model.html#spyrit.core.train.compare_model">[docs]</a>
+<span class="k">def</span> <span class="nf">compare_model</span><span class="p">(</span>
+    <span class="n">model1</span><span class="p">,</span> <span class="n">model2</span><span class="p">,</span> <span class="n">model3</span><span class="p">,</span> <span class="n">dataloaders</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">suptitle</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">colormap</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">gray</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compare three models</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ion</span><span class="p">()</span>  <span class="c1"># interactive mode</span>
+    <span class="n">inputs</span><span class="p">,</span> <span class="n">classes</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]))</span>
+    <span class="k">while</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="n">next_input</span><span class="p">,</span> <span class="n">classes</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]))</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">inputs</span><span class="p">,</span> <span class="n">next_input</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[:</span><span class="mi">4</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">model1</span> <span class="o">=</span> <span class="n">model1</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">model2</span> <span class="o">=</span> <span class="n">model2</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">model3</span> <span class="o">=</span> <span class="n">model3</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+        <span class="n">outputs1</span> <span class="o">=</span> <span class="n">model1</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="n">outputs2</span> <span class="o">=</span> <span class="n">model2</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="n">outputs3</span> <span class="o">=</span> <span class="n">model3</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+
+    <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+    <span class="n">outputs1</span> <span class="o">=</span> <span class="n">outputs1</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+    <span class="n">outputs3</span> <span class="o">=</span> <span class="n">outputs3</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+    <span class="n">outputs2</span> <span class="o">=</span> <span class="n">outputs2</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">axarr</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">))</span>
+    <span class="c1">#    plt.suptitle(suptitle, fontsize = 16)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">im1</span> <span class="o">=</span> <span class="n">axarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">inputs</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="n">colormap</span><span class="p">)</span>
+        <span class="n">axarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Ground Truth&quot;</span><span class="p">)</span>
+        <span class="n">im2</span> <span class="o">=</span> <span class="n">axarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">outputs1</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="n">colormap</span><span class="p">)</span>
+        <span class="n">axarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Reconstructed with ConvNet&quot;</span><span class="p">)</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">im1</span> <span class="o">=</span> <span class="n">axarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">outputs2</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="n">colormap</span><span class="p">)</span>
+        <span class="n">axarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Reconstructed with Unet&quot;</span><span class="p">)</span>
+        <span class="n">im2</span> <span class="o">=</span> <span class="n">axarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">outputs3</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="n">colormap</span><span class="p">)</span>
+        <span class="n">axarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Reconstructed with DC model&quot;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="mf">0.08</span><span class="p">,</span> <span class="n">wspace</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="visualize_conv_layers">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.visualize_conv_layers.html#spyrit.core.train.visualize_conv_layers">[docs]</a>
+<span class="k">def</span> <span class="nf">visualize_conv_layers</span><span class="p">(</span><span class="n">conv_layer</span><span class="p">,</span> <span class="n">suptitle</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">colormap</span><span class="o">=</span><span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">gray</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Displays the 8 first filters of the convolution layer conv_layer&quot;&quot;&quot;</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">conv_layer</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span>
+    <span class="n">conv_filters</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">conv_filters</span> <span class="o">=</span> <span class="n">conv_filters</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ion</span><span class="p">()</span>
+    <span class="p">(</span><span class="n">nb_filters</span><span class="p">,</span> <span class="n">entry_channels</span><span class="p">,</span> <span class="n">s_x</span><span class="p">,</span> <span class="n">s_y</span><span class="p">)</span> <span class="o">=</span> <span class="n">conv_filters</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">axarr</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+    <span class="c1"># plt.suptitle(suptitle, fontsize=16);</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">nb_pat</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="n">j</span>
+            <span class="k">if</span> <span class="n">nb_filters</span> <span class="o">&gt;</span> <span class="n">nb_pat</span><span class="p">:</span>
+                <span class="n">Img</span> <span class="o">=</span> <span class="n">conv_filters</span><span class="p">[</span><span class="n">nb_pat</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">Img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">s_x</span><span class="p">,</span> <span class="n">s_y</span><span class="p">))</span>
+            <span class="n">im</span> <span class="o">=</span> <span class="n">axarr</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">Img</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">colormap</span><span class="p">)</span>
+            <span class="n">cax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">axes</span><span class="p">([</span><span class="mf">0.02</span> <span class="o">+</span> <span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.225</span><span class="p">,</span> <span class="mf">0.6</span> <span class="o">-</span> <span class="n">i</span> <span class="o">*</span> <span class="mf">0.43</span><span class="p">,</span> <span class="mf">0.005</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">])</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cax</span><span class="o">=</span><span class="n">cax</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="mf">0.08</span><span class="p">,</span> <span class="n">wspace</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+
+
+<span class="c1">######################################################################</span>
+<span class="c1"># 4. Saving and loading the model so that it can later be utilized</span>
+<span class="c1"># ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</span>
+<span class="c1">#</span>
+<div class="viewcode-block" id="checkpoint">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.checkpoint.html#spyrit.core.train.checkpoint">[docs]</a>
+<span class="k">def</span> <span class="nf">checkpoint</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">epoch</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Saves the dictionaries of a given pytorch model for</span>
+<span class="sd">    the right epoch</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">model_out_path</span> <span class="o">=</span> <span class="s2">&quot;model_epoch_</span><span class="si">{}</span><span class="s2">.pth&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">epoch</span><span class="p">)</span>
+    <span class="n">model_out_path</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="n">model_out_path</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span> <span class="n">model_out_path</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Checkpoint saved to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">model_out_path</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="save_net">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.save_net.html#spyrit.core.train.save_net">[docs]</a>
+<span class="k">def</span> <span class="nf">save_net</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Saves dictionaries of a given pytorch model in the place defined by</span>
+<span class="sd">    title</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">model_out_path</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">.pth&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">model_out_path</span><span class="p">)</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span> <span class="n">model_out_path</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Model Saved&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_net">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.load_net.html#spyrit.core.train.load_net">[docs]</a>
+<span class="k">def</span> <span class="nf">load_net</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Loads net defined by title&quot;&quot;&quot;</span>
+    <span class="n">model_out_path</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">.pth&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">device</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_out_path</span><span class="p">),</span> <span class="n">strict</span><span class="o">=</span><span class="n">strict</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_out_path</span><span class="p">,</span> <span class="n">map_location</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">device</span><span class="p">)),</span>
+                <span class="n">strict</span><span class="o">=</span><span class="n">strict</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Model Loaded: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">title</span><span class="p">))</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">model_out_path</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Model no loaded at </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">model_out_path</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Model not found at </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">model_out_path</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="rename_model_attributes">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.rename_model_attributes.html#spyrit.core.train.rename_model_attributes">[docs]</a>
+<span class="k">def</span> <span class="nf">rename_model_attributes</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">old_name</span><span class="p">,</span> <span class="n">new_name</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Rename the name of the attributes of a saved model (nn.module)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    source : str</span>
+<span class="sd">        Path to the saved model.</span>
+<span class="sd">    old_name : str</span>
+<span class="sd">        source pattern for the attributes of the model to be renamed.</span>
+<span class="sd">    new_name : str</span>
+<span class="sd">        destination pattern for the attributes of the model to be renamed.</span>
+<span class="sd">    target : str, optional</span>
+<span class="sd">        Path to model with remaned attributes. The default is source.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    None.</span>
+
+<span class="sd">    Example</span>
+<span class="sd">    -------</span>
+<span class="sd">        Rename the key `Denoi.layer.0.weight` and `Denoi.layer.0.weight` as</span>
+<span class="sd">        `denoi.layer.0.weight` and `Denoi.layer.0.weight` and save the</span>
+<span class="sd">        resulting model as `target.pth`</span>
+<span class="sd">    &gt;&gt;&gt; rename_model_attributes(&#39;model.pth&#39;, &#39;Denoi.&#39;, &#39;denoi.&#39;, &#39;target.pth&#39;)</span>
+
+<span class="sd">    Adapted from</span>
+<span class="sd">    https://gist.github.com/the-bass/0bf8aaa302f9ba0d26798b11e4dd73e3</span>
+
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">target</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">source</span>
+
+    <span class="n">state_dict</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+    <span class="n">new_state_dict</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">state_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">new_key</span> <span class="o">=</span> <span class="n">attr_transformation</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">old_name</span><span class="p">,</span> <span class="n">new_name</span><span class="p">)</span>
+        <span class="n">new_state_dict</span><span class="p">[</span><span class="n">new_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new_key</span><span class="si">}</span><span class="s2"> &quot;</span><span class="p">)</span>
+
+    <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">new_state_dict</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="remove_model_attributes">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.remove_model_attributes.html#spyrit.core.train.remove_model_attributes">[docs]</a>
+<span class="k">def</span> <span class="nf">remove_model_attributes</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">old_name</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Remove some attributes of a saved model (nn.module)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    source : str</span>
+<span class="sd">        Path to the saved model.</span>
+<span class="sd">    old_name : str</span>
+<span class="sd">        source pattern for the attributes of the model to be removed.</span>
+<span class="sd">    target : str, optional</span>
+<span class="sd">        Path to model with remaned attributes. The default is source.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    None.</span>
+
+<span class="sd">    Example</span>
+<span class="sd">    -------</span>
+<span class="sd">        Remove the attribute `Denoi` of the model saved as `source`. The</span>
+<span class="sd">        resulting model is saved as `target.pth`</span>
+<span class="sd">    &gt;&gt;&gt; rename_model_attributes(&#39;model.pth&#39;, &#39;Denoi.&#39;, &#39;target.pth&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">target</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">source</span>
+
+    <span class="n">state_dict</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+    <span class="n">new_state_dict</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">state_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">attr_removal</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">old_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> has been removed&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">new_state_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">new_state_dict</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="attr_transformation">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.attr_transformation.html#spyrit.core.train.attr_transformation">[docs]</a>
+<span class="k">def</span> <span class="nf">attr_transformation</span><span class="p">(</span><span class="n">old_key</span><span class="p">,</span> <span class="n">old_name</span><span class="p">,</span> <span class="n">new_name</span><span class="p">):</span>
+    <span class="n">new_key</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">old_name</span><span class="p">,</span> <span class="n">new_name</span><span class="p">,</span> <span class="n">old_key</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">new_key</span></div>
+
+
+
+<div class="viewcode-block" id="attr_removal">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.train.attr_removal.html#spyrit.core.train.attr_removal">[docs]</a>
+<span class="k">def</span> <span class="nf">attr_removal</span><span class="p">(</span><span class="n">old_key</span><span class="p">,</span> <span class="n">old_name</span><span class="p">):</span>
+    <span class="n">new_key</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">old_name</span><span class="p">,</span> <span class="n">old_key</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">new_key</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

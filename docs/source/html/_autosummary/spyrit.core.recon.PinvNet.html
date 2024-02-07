@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.core.recon.PinvNet &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/sg_README.css?v=78231cbc" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="spyrit.core.recon.PinvNet.acquire" href="spyrit.core.recon.PinvNet.acquire.html" />
+    <link rel="prev" title="spyrit.core.recon.Denoise_layer.tikho" href="spyrit.core.recon.Denoise_layer.tikho.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="spyrit.core.html">spyrit.core</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.meas.html">spyrit.core.meas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.nnet.html">spyrit.core.nnet</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.noise.html">spyrit.core.noise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.prep.html">spyrit.core.prep</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="spyrit.core.recon.html">spyrit.core.recon</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.DCDRUNet.html">spyrit.core.recon.DCDRUNet</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.DCNet.html">spyrit.core.recon.DCNet</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.Denoise_layer.html">spyrit.core.recon.Denoise_layer</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">spyrit.core.recon.PinvNet</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#spyrit.core.recon.PinvNet"><code class="docutils literal notranslate"><span class="pre">PinvNet</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="spyrit.core.recon.PinvNet.acquire.html">spyrit.core.recon.PinvNet.acquire</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spyrit.core.recon.PinvNet.forward.html">spyrit.core.recon.PinvNet.forward</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spyrit.core.recon.PinvNet.meas2img.html">spyrit.core.recon.PinvNet.meas2img</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spyrit.core.recon.PinvNet.reconstruct.html">spyrit.core.recon.PinvNet.reconstruct</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spyrit.core.recon.PinvNet.reconstruct_expe.html">spyrit.core.recon.PinvNet.reconstruct_expe</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spyrit.core.recon.PinvNet.reconstruct_pinv.html">spyrit.core.recon.PinvNet.reconstruct_pinv</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.PositiveMonoIncreaseParameters.html">spyrit.core.recon.PositiveMonoIncreaseParameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.PositiveParameters.html">spyrit.core.recon.PositiveParameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.PseudoInverse.html">spyrit.core.recon.PseudoInverse</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.TikhonovMeasurementPriorDiag.html">spyrit.core.recon.TikhonovMeasurementPriorDiag</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.recon.UPGD.html">spyrit.core.recon.UPGD</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.time.html">spyrit.core.time</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.train.html">spyrit.core.train</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="spyrit.core.html">spyrit.core</a></li>
+          <li class="breadcrumb-item"><a href="spyrit.core.recon.html">spyrit.core.recon</a></li>
+      <li class="breadcrumb-item active">spyrit.core.recon.PinvNet</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/spyrit.core.recon.PinvNet.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="spyrit-core-recon-pinvnet">
+<h1>spyrit.core.recon.PinvNet<a class="headerlink" href="#spyrit-core-recon-pinvnet" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="spyrit.core.recon.PinvNet">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">spyrit.core.recon.</span></span><span class="sig-name descname"><span class="pre">PinvNet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">noise</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prep</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">denoi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Identity()</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/spyrit/core/recon.html#PinvNet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spyrit.core.recon.PinvNet" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Pseudo inverse reconstruction network</p>
+<dl>
+<dt>Args:</dt><dd><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">noise</span></code>: Acquisition operator (see <a class="reference internal" href="spyrit.core.noise.html#module-spyrit.core.noise" title="spyrit.core.noise"><code class="xref py py-class docutils literal notranslate"><span class="pre">noise</span></code></a>)</p>
+<p><code class="xref py py-attr docutils literal notranslate"><span class="pre">prep</span></code>: Preprocessing operator (see <a class="reference internal" href="spyrit.core.prep.html#module-spyrit.core.prep" title="spyrit.core.prep"><code class="xref py py-class docutils literal notranslate"><span class="pre">prep</span></code></a>)</p>
+<p><code class="xref py py-attr docutils literal notranslate"><span class="pre">denoi</span></code> (optional): Image denoising operator
+(see <a class="reference internal" href="spyrit.core.nnet.html#module-spyrit.core.nnet" title="spyrit.core.nnet"><code class="xref py py-class docutils literal notranslate"><span class="pre">nnet</span></code></a>).
+Default <a class="reference internal" href="spyrit.core.nnet.Identity.html#spyrit.core.nnet.Identity" title="spyrit.core.nnet.Identity"><code class="xref py py-class docutils literal notranslate"><span class="pre">Identity</span></code></a></p>
+</dd>
+<dt>Input / Output:</dt><dd><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">input</span></code>: Ground-truth images with shape <span class="math notranslate nohighlight">\((B,C,H,W)\)</span>
+corresponding to the batch size, number of channels, height, and width.</p>
+<p><code class="xref py py-attr docutils literal notranslate"><span class="pre">output</span></code>: Reconstructed images with shape <span class="math notranslate nohighlight">\((B,C,H,W)\)</span>
+corresponding to the batch size, number of channels, height, and width.</p>
+</dd>
+<dt>Attributes:</dt><dd><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">Acq</span></code>: Acquisition operator initialized as <code class="xref py py-attr docutils literal notranslate"><span class="pre">noise</span></code></p>
+<p><code class="xref py py-attr docutils literal notranslate"><span class="pre">prep</span></code>: Preprocessing operator initialized as <code class="xref py py-attr docutils literal notranslate"><span class="pre">prep</span></code></p>
+<p><code class="xref py py-attr docutils literal notranslate"><span class="pre">pinv</span></code>: Analytical reconstruction operator initialized as
+<a class="reference internal" href="spyrit.core.recon.PseudoInverse.html#spyrit.core.recon.PseudoInverse" title="spyrit.core.recon.PseudoInverse"><code class="xref py py-class docutils literal notranslate"><span class="pre">PseudoInverse()</span></code></a></p>
+<p><code class="xref py py-attr docutils literal notranslate"><span class="pre">Denoi</span></code>: Image denoising operator initialized as <code class="xref py py-attr docutils literal notranslate"><span class="pre">denoi</span></code></p>
+</dd>
+<dt>Example:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">B</span><span class="p">,</span> <span class="n">C</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">M</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="o">**</span><span class="mi">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Ord</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">H</span><span class="p">,</span><span class="n">H</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">meas</span> <span class="o">=</span> <span class="n">HadamSplit</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">Ord</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">noise</span> <span class="o">=</span> <span class="n">NoNoise</span><span class="p">(</span><span class="n">meas</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">prep</span> <span class="o">=</span> <span class="n">SplitPoisson</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">H</span><span class="o">*</span><span class="n">H</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">recnet</span> <span class="o">=</span> <span class="n">PinvNet</span><span class="p">(</span><span class="n">noise</span><span class="p">,</span> <span class="n">prep</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">B</span><span class="p">,</span><span class="n">C</span><span class="p">,</span><span class="n">H</span><span class="p">,</span><span class="n">H</span><span class="p">)</span><span class="o">.</span><span class="n">uniform_</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">z</span> <span class="o">=</span> <span class="n">recnet</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">z</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">z</span><span class="p">)</span><span class="o">/</span><span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+<span class="go">torch.Size([10, 1, 64, 64])</span>
+<span class="go">tensor(5.8912e-06)</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="spyrit.core.recon.PinvNet.acquire.html#spyrit.core.recon.PinvNet.acquire" title="spyrit.core.recon.PinvNet.acquire"><code class="xref py py-obj docutils literal notranslate"><span class="pre">acquire</span></code></a>(x)</p></td>
+<td><p>Simulates data acquisition</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="spyrit.core.recon.PinvNet.forward.html#spyrit.core.recon.PinvNet.forward" title="spyrit.core.recon.PinvNet.forward"><code class="xref py py-obj docutils literal notranslate"><span class="pre">forward</span></code></a>(x)</p></td>
+<td><p>Full pipeline of reconstrcution network</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="spyrit.core.recon.PinvNet.meas2img.html#spyrit.core.recon.PinvNet.meas2img" title="spyrit.core.recon.PinvNet.meas2img"><code class="xref py py-obj docutils literal notranslate"><span class="pre">meas2img</span></code></a>(y)</p></td>
+<td><p>Returns images from raw measurement vectors</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="spyrit.core.recon.PinvNet.reconstruct.html#spyrit.core.recon.PinvNet.reconstruct" title="spyrit.core.recon.PinvNet.reconstruct"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reconstruct</span></code></a>(x)</p></td>
+<td><p>Preprocesses, reconstructs, and denoises raw measurement vectors.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="spyrit.core.recon.PinvNet.reconstruct_expe.html#spyrit.core.recon.PinvNet.reconstruct_expe" title="spyrit.core.recon.PinvNet.reconstruct_expe"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reconstruct_expe</span></code></a>(x)</p></td>
+<td><p>Reconstruction step of a reconstruction network</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="spyrit.core.recon.PinvNet.reconstruct_pinv.html#spyrit.core.recon.PinvNet.reconstruct_pinv" title="spyrit.core.recon.PinvNet.reconstruct_pinv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reconstruct_pinv</span></code></a>(x)</p></td>
+<td><p>Preprocesses and reconstructs raw measurement vectors.</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="spyrit.core.recon.Denoise_layer.tikho.html" class="btn btn-neutral float-left" title="spyrit.core.recon.Denoise_layer.tikho" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="spyrit.core.recon.PinvNet.acquire.html" class="btn btn-neutral float-right" title="spyrit.core.recon.PinvNet.acquire" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

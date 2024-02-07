@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.misc.statistics.stat_fwalsh_S_stl10 &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/sg_README.css?v=78231cbc" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="spyrit.misc.statistics.stat_mean_coef_from_model" href="spyrit.misc.statistics.stat_mean_coef_from_model.html" />
+    <link rel="prev" title="spyrit.misc.statistics.stat_fwalsh_S" href="spyrit.misc.statistics.stat_fwalsh_S.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="spyrit.misc.html">spyrit.misc</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.data_visualisation.html">spyrit.misc.data_visualisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.disp.html">spyrit.misc.disp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.examples.html">spyrit.misc.examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.load_data.html">spyrit.misc.load_data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.matrix_tools.html">spyrit.misc.matrix_tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.metrics.html">spyrit.misc.metrics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.pattern_choice.html">spyrit.misc.pattern_choice</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.sampling.html">spyrit.misc.sampling</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="spyrit.misc.statistics.html">spyrit.misc.statistics</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.Cov2Var.html">spyrit.misc.statistics.Cov2Var</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.cov_walsh.html">spyrit.misc.statistics.cov_walsh</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.data_loaders_ImageNet.html">spyrit.misc.statistics.data_loaders_ImageNet</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.data_loaders_stl10.html">spyrit.misc.statistics.data_loaders_stl10</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.img2mask.html">spyrit.misc.statistics.img2mask</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.mea_abs_model.html">spyrit.misc.statistics.mea_abs_model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.mean_walsh.html">spyrit.misc.statistics.mean_walsh</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.optim_had.html">spyrit.misc.statistics.optim_had</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.stat_fwalsh_S.html">spyrit.misc.statistics.stat_fwalsh_S</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">spyrit.misc.statistics.stat_fwalsh_S_stl10</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#spyrit.misc.statistics.stat_fwalsh_S_stl10"><code class="docutils literal notranslate"><span class="pre">stat_fwalsh_S_stl10()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.stat_mean_coef_from_model.html">spyrit.misc.statistics.stat_mean_coef_from_model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.stat_model.html">spyrit.misc.statistics.stat_model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.stat_walsh.html">spyrit.misc.statistics.stat_walsh</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.stat_walsh_ImageNet.html">spyrit.misc.statistics.stat_walsh_ImageNet</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.stat_walsh_stl10.html">spyrit.misc.statistics.stat_walsh_stl10</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.transform_gray_norm.html">spyrit.misc.statistics.transform_gray_norm</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.statistics.CenterCrop.html">spyrit.misc.statistics.CenterCrop</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.walsh_hadamard.html">spyrit.misc.walsh_hadamard</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="spyrit.misc.html">spyrit.misc</a></li>
+          <li class="breadcrumb-item"><a href="spyrit.misc.statistics.html">spyrit.misc.statistics</a></li>
+      <li class="breadcrumb-item active">spyrit.misc.statistics.stat_fwalsh_S_stl10</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/spyrit.misc.statistics.stat_fwalsh_S_stl10.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="spyrit-misc-statistics-stat-fwalsh-s-stl10">
+<h1>spyrit.misc.statistics.stat_fwalsh_S_stl10<a class="headerlink" href="#spyrit-misc-statistics-stat-fwalsh-s-stl10" title="Link to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="spyrit.misc.statistics.stat_fwalsh_S_stl10">
+<span class="sig-prename descclassname"><span class="pre">spyrit.misc.statistics.</span></span><span class="sig-name descname"><span class="pre">stat_fwalsh_S_stl10</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stat_root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">WindowsPath('stats')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">WindowsPath('data')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/spyrit/misc/statistics.html#stat_fwalsh_S_stl10"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spyrit.misc.statistics.stat_fwalsh_S_stl10" title="Link to this definition"></a></dt>
+<dd><p>Fast Walsh S-transform of X in “2D”</p>
+<dl>
+<dt>Args:</dt><dd><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">X</span></code> (torch.tensor): input image with shape <cite>(*, n, n)</cite>. <a href="#id1"><span class="problematic" id="id2">`</span></a>n`**2
+should be a power of two.</p>
+</dd>
+<dt>Returns:</dt><dd><p>torch.tensor: S-transformed signal with shape <cite>(*, n, n)</cite></p>
+</dd>
+<dt>Examples:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">spyrit.misc.statistics</span> <span class="k">as</span> <span class="nn">st</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">st</span><span class="o">.</span><span class="n">stat_fwalsh_S_stl10</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="spyrit.misc.statistics.stat_fwalsh_S.html" class="btn btn-neutral float-left" title="spyrit.misc.statistics.stat_fwalsh_S" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="spyrit.misc.statistics.stat_mean_coef_from_model.html" class="btn btn-neutral float-right" title="spyrit.misc.statistics.stat_mean_coef_from_model" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.core.time &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/thumbnail.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">spyrit.core.time</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for spyrit.core.time</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Stores deformation fields and warps images.</span>
+
+<span class="sd">Contains :class:`DeformationField` and :class:`AffineDeformationField`, a</span>
+<span class="sd">subclass of the former. These classes are used to warp images according to</span>
+<span class="sd">a deformation field that is stored as as class attribute. They can be fed</span>
+<span class="sd">an image (called &quot;*original image*&quot;) and will return the warped image</span>
+<span class="sd">(&quot;*deformed image*&quot;).</span>
+
+<span class="sd">The function that maps the pixels of the *original image* to the pixels of</span>
+<span class="sd">the *deformed image* is called the &quot;*deformation field*&quot; and is noted</span>
+<span class="sd">:math:`u`. The function that maps the pixels of the *deformed image* to the</span>
+<span class="sd">pixels of the *original image* is called the &quot;*inverse deformation field*&quot; and</span>
+<span class="sd">is noted :math:`v`. The *deformation field* and the *inverse deformation field*</span>
+<span class="sd">are related by the equation :math:`u = v^{-1}`.</span>
+
+<span class="sd">Here, the two classes use and store the *inverse deformation field* :math:`v`</span>
+<span class="sd">as a class attribute.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">operator</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="DeformationField">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.time.DeformationField.html#spyrit.core.time.DeformationField">[docs]</a>
+<span class="k">class</span> <span class="nc">DeformationField</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Stores a discrete deformation field as a :math:`(b,Nx,Ny,2)` tensor.</span>
+
+<span class="sd">    Warps a single image according to an *inverse deformation field* :math:`v`,</span>
+<span class="sd">    i.e. the field that maps the pixels of the deformed image to the pixels of</span>
+<span class="sd">    the original image.</span>
+
+<span class="sd">    It is constructed from a tensor of shape :math:`(n\_frames,Nx,Ny,2)`, where</span>
+<span class="sd">    :math:`n\_frames` is the number of frames in the animation, :math:`Nx` and</span>
+<span class="sd">    :math:`Ny` are the number of pixels along the x-axis and y-axis respectively.</span>
+<span class="sd">    The last dimension contains the x and y coordinates of the original image</span>
+<span class="sd">    pixel that is displayed in the warped image, at the position corresponding</span>
+<span class="sd">    to the indices in the dimension :math:`(Nx,Ny)` of the tensor.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        The coordinates are given in the range [-1;1]. When referring to a</span>
+<span class="sd">        pixel, its position is the position of its center.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        The position [-1;-1] corresponds to the top-left corner of the top-left</span>
+<span class="sd">        pixel if :attr:`align_corners` is set to :attr:`False` (default), and</span>
+<span class="sd">        to the center of the top-left pixel if :attr:`align_corners` is set to</span>
+<span class="sd">        :attr:`True`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`inverse_grid_frames` (torch.tensor, optional):</span>
+<span class="sd">        *Inverse deformation field* :math:`v` of shape :math:`(n\_frames,Nx,Ny,2)`.</span>
+<span class="sd">        Default: :attr:`None`.</span>
+
+<span class="sd">        :attr:`align_corners` (bool, optional):</span>
+<span class="sd">        Option passed to `torch.nn.functional.grid_sample`.</span>
+<span class="sd">        Geometrically, we consider the pixels of the input as squares</span>
+<span class="sd">        rather than points. If set to :attr:`True`, the extrema (-1 and 1)</span>
+<span class="sd">        are considered as referring to the center points of the input&#39;s</span>
+<span class="sd">        corner pixels. If set to :attr:`False`, they are instead considered</span>
+<span class="sd">        as referring to the corner points of the input&#39;s corner pixels,</span>
+<span class="sd">        making the sampling more resolution agnostic. Default: :attr:`False`.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        :attr:`self.inverse_grid_frames` (torch.tensor):</span>
+<span class="sd">        *Inverse deformation field* :math:`v` of shape :math:`(n\_frames,Nx,Ny,2)`.</span>
+<span class="sd">        If set manually, the dtype should be :attr:`torch.float32`. Default: :attr:`None`.</span>
+
+<span class="sd">        :attr:`self.align_corners` (bool):</span>
+<span class="sd">        Should the extrema (-1 and 1) be considered as referring to the center</span>
+<span class="sd">        points of the input&#39;s corner pixels? Default: :attr:`False`.</span>
+
+<span class="sd">    **Example 1:** Rotating a 2x2 B&amp;W image by 90 degrees counter-clockwise, using one frame and align_corners=False</span>
+<span class="sd">        &gt;&gt;&gt; v = torch.tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]]])</span>
+<span class="sd">        &gt;&gt;&gt; field = DeformationField(v, align_corners=False)</span>
+<span class="sd">        &gt;&gt;&gt; print(field.inverse_grid_frames)</span>
+<span class="sd">        tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]]])</span>
+
+<span class="sd">    **Example 2:** Rotating a 2x2 B&amp;W image by 90 degrees clockwise, using one frame and align_corners=True</span>
+<span class="sd">        &gt;&gt;&gt; v = torch.tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]]])</span>
+<span class="sd">        &gt;&gt;&gt; field = DeformationField(v, align_corners=True)</span>
+<span class="sd">        &gt;&gt;&gt; print(field.inverse_grid_frames)</span>
+<span class="sd">        tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inverse_grid_frames</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">align_corners</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">inverse_grid_frames</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inverse_grid_frames</span> <span class="o">=</span> <span class="n">inverse_grid_frames</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inverse_grid_frames</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">align_corners</span> <span class="o">=</span> <span class="n">align_corners</span>
+
+<div class="viewcode-block" id="DeformationField.warp">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.time.DeformationField.warp.html#spyrit.core.time.DeformationField.warp">[docs]</a>
+    <span class="k">def</span> <span class="nf">warp</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">,</span> <span class="n">n0</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">n1</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;bilinear&quot;</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Warps a given image with the stored *inverse deformation field* :math:`v`.</span>
+
+<span class="sd">        Deforms the image according to the *inverse deformation field* :math:`v`</span>
+<span class="sd">        contained in the attribute :attr:`inverse_grid_frames`, sliced between</span>
+<span class="sd">        the frames :math:`n0` (included) and :math:`n1` (excluded).</span>
+
+<span class="sd">            .. note::</span>
+<span class="sd">                If :math:`n0 &lt; n1`, :attr:`inverse_grid_frames` is sliced</span>
+<span class="sd">                as follows: ``inv_grid_frames[n0:n1, :, :, :]``</span>
+
+<span class="sd">            .. note::</span>
+<span class="sd">                If :math:`n0 &gt; n1`, :attr:`inverse_grid_frames` is sliced</span>
+<span class="sd">                &quot;backwards&quot;. The first frame of the warped animation corresponds to</span>
+<span class="sd">                the index :math:`n0`, and the last frame corresponds to the index</span>
+<span class="sd">                :math:`n1+1`. This behavior is identical to slicing a list with a</span>
+<span class="sd">                step of -1.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`img` (torch.tensor):</span>
+<span class="sd">            The image to deform of shape :math:`(c,Nx,Ny)`, where :math:`c`</span>
+<span class="sd">            is the number of channels, and :math:`Nx` and :math:`Ny` are the</span>
+<span class="sd">            number of pixels along the x-axis and y-axis respectively. The</span>
+<span class="sd">            number of channels is usually 1 (grayscale) or 3 (color), if not a</span>
+<span class="sd">            warning is raised. If the image has not 3 dimensions, an error is</span>
+<span class="sd">            raised.</span>
+
+<span class="sd">            :attr:`n0` (int):</span>
+<span class="sd">            The index of the first frame to use in the *inverse deformation</span>
+<span class="sd">            field*.</span>
+
+<span class="sd">            :attr:`n1` (int):</span>
+<span class="sd">            The index of the first frame to exclude in the *inverse deformation</span>
+<span class="sd">            field*.</span>
+
+<span class="sd">            :attr:`mode` (str, optional):</span>
+<span class="sd">            The interpolation mode to use. It is directly passed to the</span>
+<span class="sd">            function `torch.nn.functional.grid_sample`. It must be one of the</span>
+<span class="sd">            following: &#39;nearest&#39;, &#39;bilinear&#39;, &#39;bicubic&#39;. Defaults to &#39;bilinear&#39;.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            :attr:`output` (torch.tensor):</span>
+<span class="sd">            The deformed batch of images of shape :math:`(|n1-n0|,c,Nx,Ny)`,</span>
+<span class="sd">            where each image is deformed according to the *inverse deformation</span>
+<span class="sd">            field* :math:`v` contained in the attribute :attr:`inverse_grid_frames`.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            - :attr:`img`: :math:`(c,Nx,Ny)`, where c is the number of channels,</span>
+<span class="sd">                Nx and Ny are the number of pixels along the x-axis and y-axis</span>
+<span class="sd">                respectively.</span>
+<span class="sd">            - :attr:`output`: :math:`(|n1-n0|,c,Nx,Ny)`</span>
+
+<span class="sd">        Example 1: Rotating a 2x2 B&amp;W image by 90 degrees counter-clockwise, using one</span>
+<span class="sd">        frame and align_corners=True</span>
+
+<span class="sd">        &gt;&gt;&gt; v = torch.tensor([[[[ 1., -1.], [ 1., 1.]],</span>
+<span class="sd">                               [[-1., -1.], [-1., 1.]]]])</span>
+<span class="sd">        &gt;&gt;&gt; field = DeformationField(v, align_corners=True)</span>
+<span class="sd">        &gt;&gt;&gt; image = torch.tensor([[[0. , 0.3],</span>
+<span class="sd">                                   [0.7, 1. ]]])</span>
+<span class="sd">        &gt;&gt;&gt; deformed_image = field.warp(image, 0, 1)</span>
+<span class="sd">        &gt;&gt;&gt; print(deformed_image)</span>
+<span class="sd">        tensor([[[[0.3000, 1.0000],</span>
+<span class="sd">                  [0.0000, 0.7000]]]])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># check that the image has the correct number of dimensions</span>
+        <span class="n">img_size</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">img_size</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">img_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="s2">&quot;The first dimension of the image should be the number of&quot;</span>
+                    <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;channels (1 or 3), found: </span><span class="si">{</span><span class="n">img_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">.&quot;</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Image has incorrect number of dimensions: </span><span class="si">{</span><span class="n">img_size</span><span class="si">}</span><span class="s2"> (must have 3).&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># check that the deformation field and the image are on the same device</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inverse_grid_frames</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inverse_grid_frames</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="c1"># get the right slice of the inverse deformation field v</span>
+        <span class="k">if</span> <span class="n">n1</span> <span class="o">&lt;</span> <span class="n">n0</span><span class="p">:</span>
+            <span class="n">sel_inv_grid_frames</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">inverse_grid_frames</span><span class="p">[</span><span class="n">n1</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:</span> <span class="n">n0</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sel_inv_grid_frames</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inverse_grid_frames</span><span class="p">[</span><span class="n">n0</span><span class="p">:</span><span class="n">n1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+
+        <span class="n">nb_frames</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">n1</span> <span class="o">-</span> <span class="n">n0</span><span class="p">)</span>
+        <span class="n">img_frames</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">nb_frames</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">warped</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">grid_sample</span><span class="p">(</span>
+            <span class="n">img_frames</span><span class="p">,</span>
+            <span class="n">sel_inv_grid_frames</span><span class="p">,</span>
+            <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span>
+            <span class="n">padding_mode</span><span class="o">=</span><span class="s2">&quot;zeros&quot;</span><span class="p">,</span>
+            <span class="n">align_corners</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">align_corners</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">warped</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;DeformationField(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">inverse_grid_frames</span><span class="si">=}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">align_corners</span><span class="si">=}</span><span class="s2">)&quot;</span>
+        <span class="k">return</span> <span class="n">s</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="AffineDeformationField">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.time.AffineDeformationField.html#spyrit.core.time.AffineDeformationField">[docs]</a>
+<span class="k">class</span> <span class="nc">AffineDeformationField</span><span class="p">(</span><span class="n">DeformationField</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Stores an affine deformation field as a function of time.</span>
+
+<span class="sd">    Warps a single image according to an *inverse affine deformation field*</span>
+<span class="sd">    :math:`v`, i.e. the field that maps the pixels of the *deformed image* to</span>
+<span class="sd">    the pixels of the *original image*.</span>
+
+<span class="sd">    It is constructed from a function of one parameter (time) that returns a</span>
+<span class="sd">    tensor of shape :math:`(3,3)` representing a 2D affine homogeneous transformation</span>
+<span class="sd">    matrix. The homogeneous transformation matrix corresponds to the *inverse</span>
+<span class="sd">    deformation field* :math:`v`, i.e. the field that maps the pixels of the</span>
+<span class="sd">    *deformed image* to the pixels of the *original image*.</span>
+
+<span class="sd">    To warp an image, the affine transformation matrix is evaluated at each</span>
+<span class="sd">    time corresponding to the frames of the animation. The *inverse deformation</span>
+<span class="sd">    field* :math:`v` is then computed from the inverse of the affine</span>
+<span class="sd">    transformation matrix, and the image is warped according to the *inverse</span>
+<span class="sd">    deformation field* :math:`v`.</span>
+
+<span class="sd">    Contrary to :class:`DeformationField`, this class can warp images of</span>
+<span class="sd">    variable sizes, as the *inverse deformation field* :math:`v` is computed from the</span>
+<span class="sd">    affine transformation matrix at the desired spatial resolution.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        The coordinates are given in the range [-1;1]. When referring to a</span>
+<span class="sd">        pixel, its position is the position of its center.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        The position [-1;-1] corresponds to the top-left corner of the top-left</span>
+<span class="sd">        pixel if :attr:`align_corners` is set to :attr:`False` (default), and</span>
+<span class="sd">        to the center of the top-left pixel if :attr:`align_corners` is set to</span>
+<span class="sd">        :attr:`True`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`inverse_field_matrix` (torch.tensor):</span>
+<span class="sd">        Function of one parameter (time) that returns a tensor of shape</span>
+<span class="sd">        :math:`(3,3)` representing a 2D affine homogeneous transformation</span>
+<span class="sd">        matrix. That matrix is the *inverse deformation field* :math:`v`, i.e.</span>
+<span class="sd">        the field that maps the pixels of the *deformed image* to the pixels of</span>
+<span class="sd">        the *original image*.</span>
+
+<span class="sd">        :attr:`align_corners` (bool, optional):</span>
+<span class="sd">        Geometrically, we consider the pixels of the input as squares rather</span>
+<span class="sd">        than points. If set to :attr:`True`, the extrema (-1 and 1) are</span>
+<span class="sd">        considered as referring to the center points of the input&#39;s corner</span>
+<span class="sd">        pixels. If set to :attr:`False`, they are instead considered as</span>
+<span class="sd">        referring to the corner points of the input&#39;s corner pixels, making</span>
+<span class="sd">        the sampling more resolution agnostic. Default: :attr:`False`.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        :attr:`self.inverse_field_matrix` (torch.tensor):</span>
+<span class="sd">        Function of one parameter (time) that returns a tensor of shape</span>
+<span class="sd">        :math:`(3,3)` representing a 2D affine homogeneous transformation</span>
+<span class="sd">        matrix.</span>
+
+<span class="sd">        :attr:`self.align_corners` (bool):</span>
+<span class="sd">        Should the extrema (-1 and 1) be considered as referring to the center</span>
+<span class="sd">        points of the input&#39;s corner pixels? Default: :attr:`False`.</span>
+
+<span class="sd">        :attr:`self.inverse_grid_frames` (torch.tensor):</span>
+<span class="sd">        Inverse grid frames that are computed from :attr:`self.inverse_field_matrix`</span>
+<span class="sd">        upon calling the method :meth:`save_inv_grid_frames`. If set manually,</span>
+<span class="sd">        the dtype should be :attr:`torch.float32`. Default: :attr:`None`.</span>
+
+<span class="sd">    Example 1: Progressive zooming **in**</span>
+<span class="sd">        &gt;&gt;&gt; def v(t):</span>
+<span class="sd">        ...     return torch.tensor([[1-t/10, 0, 0], [0, 1-t/10, 0], [0, 0, 1]])</span>
+<span class="sd">        &gt;&gt;&gt; field = AffineDeformationField(v, align_corners=False)</span>
+
+<span class="sd">    Example 2: Rotation of an image **counter-clockwise**, at a frequency of 1Hz</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; def s(t):</span>
+<span class="sd">        ...     return np.sin(2*np.pi*t)</span>
+<span class="sd">        &gt;&gt;&gt; def c(t):</span>
+<span class="sd">        ...     return np.cos(2*np.pi*t)</span>
+<span class="sd">        &gt;&gt;&gt; def v(t):</span>
+<span class="sd">        ...     return torch.tensor([[c(t), s(t), 0], [-s(t), c(t), 0], [0, 0, 1]])</span>
+<span class="sd">        &gt;&gt;&gt; field = AffineDeformationField(v, align_corners=False)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inverse_field_matrix</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">,</span> <span class="n">align_corners</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">align_corners</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inverse_field_matrix</span> <span class="o">=</span> <span class="n">inverse_field_matrix</span>
+
+<div class="viewcode-block" id="AffineDeformationField.get_inv_mat_frames">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.time.AffineDeformationField.get_inv_mat_frames.html#spyrit.core.time.AffineDeformationField.get_inv_mat_frames">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_inv_mat_frames</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">t0</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">t1</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">n_frames</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a batch of affine transformation matrices of shape :math:`(n\_frames,3,3)`.</span>
+
+<span class="sd">        Returns a batch of affine transformation matrices corresponding to the</span>
+<span class="sd">        *inverse deformation field* :math:`v`, evaluated at the times defined</span>
+<span class="sd">        by the parameters :math:`t0`, :math:`t1` and :math:`n\_frames`.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            The time vector is created using the function `numpy.linspace` with</span>
+<span class="sd">            the parameters :math:`t0`, :math:`t1` and :math:`n\_frames` (</span>
+<span class="sd">            ``time_vector = np.linspace(t0, t1, n_frames)``). If :math:`t0 &gt; t1`,</span>
+<span class="sd">            the time vector is created in reverse order, giving a &quot;backwards&quot;</span>
+<span class="sd">            animation.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`t0` (float):</span>
+<span class="sd">            The first time at which to evaluate the function that gives the</span>
+<span class="sd">            affine transformation matrix.</span>
+
+<span class="sd">            :attr:`t1` (float, optional):</span>
+<span class="sd">            The last time at which to evaluate the function. If :attr:`None`,</span>
+<span class="sd">            the function is evaluated at the time :attr:`t0`. Default: :attr:`None`.</span>
+
+<span class="sd">            :attr:`n_frames` (int, optional):</span>
+<span class="sd">            The number of frames in the animation. Default: 1.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            :attr:`inv_mat_frames` (torch.tensor):</span>
+<span class="sd">            A batch of affine transformation matrices of shape :math:`(n\_frames,3,3)`,</span>
+<span class="sd">            with dtype :attr:`torch.float32`.</span>
+
+<span class="sd">        Example 1: Evaluate the affine transformation matrix between t0=0 and t1 = 10, with 11 frames</span>
+<span class="sd">            &gt;&gt;&gt; def v(t):</span>
+<span class="sd">            ...     return torch.tensor([[1-t/10, 0, 0], [0, 1-t/10, 0], [0, 0, 1]])</span>
+<span class="sd">            &gt;&gt;&gt; field = AffineDeformationField(v, align_corners=False)</span>
+<span class="sd">            &gt;&gt;&gt; inv_mat_frames = field.get_inv_mat_frames(0, 10, 11)</span>
+<span class="sd">            &gt;&gt;&gt; print(inv_mat_frames.size())</span>
+<span class="sd">            torch.Size([11, 3, 3])</span>
+
+<span class="sd">        Example 2: Evaluate the affine transformation matrix at t0=4.5, with 1 frame</span>
+<span class="sd">            &gt;&gt;&gt; def v(t):</span>
+<span class="sd">            ...     return torch.tensor([[1-t/10, 0, 0], [0, 1-t/10, 0], [0, 0, 1]])</span>
+<span class="sd">            &gt;&gt;&gt; field = AffineDeformationField(v, align_corners=False)</span>
+<span class="sd">            &gt;&gt;&gt; inv_mat_frames = field.get_inv_mat_frames(4.5)</span>
+<span class="sd">            &gt;&gt;&gt; print(inv_mat_frames.size())</span>
+<span class="sd">            torch.Size([1, 3, 3])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">t1</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">inverse_field_matrix</span><span class="p">(</span><span class="n">t0</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">n_frames</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">n_frames</span><span class="p">)</span>
+        <span class="n">time_vector</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t1</span><span class="p">,</span> <span class="n">n_frames</span><span class="p">)</span>
+        <span class="n">inv_mat_frames</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_frames</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">time_vector</span><span class="p">):</span>
+            <span class="n">inv_mat_frames</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inverse_field_matrix</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">inv_mat_frames</span></div>
+
+
+<div class="viewcode-block" id="AffineDeformationField.save_inv_grid_frames">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.time.AffineDeformationField.save_inv_grid_frames.html#spyrit.core.time.AffineDeformationField.save_inv_grid_frames">[docs]</a>
+    <span class="k">def</span> <span class="nf">save_inv_grid_frames</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">inv_mat_frames</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Saves as a class attribute the inverse deformation field :math:`v`.</span>
+
+<span class="sd">        Saves as a class attribute in :attr:`self.inverse_grid_frames` the</span>
+<span class="sd">        *inverse deformation field* :math:`v` computed from the inverse of the affine</span>
+<span class="sd">        transformation matrices, evaluated at multiple times.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            The name of the attribute (:attr:`inverse_grid_frames`) is the</span>
+<span class="sd">            same as the attribute of the parent class :class:`DeformationField`.</span>
+<span class="sd">            This allows both classes to use the same method to warp images.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`inv_mat_frames` (torch.tensor):</span>
+<span class="sd">            shape :math:`(n\_frames,3,3)`</span>
+<span class="sd">            Batch of inverse affine transformation matrices.</span>
+
+<span class="sd">            :attr:`size` (torch.Size):</span>
+<span class="sd">            shape :math:`(n\_frames,c,Nx,Ny)`</span>
+<span class="sd">            Target output image size. It is a 4-tuple of integers, where</span>
+<span class="sd">            :math:`n\_frames` is the number of frames in the animation,</span>
+<span class="sd">            :math:`c` is the number of channels, and :math:`Nx` and :math:`Ny`</span>
+<span class="sd">            are the number of pixels along the x-axis and y-axis respectively.</span>
+<span class="sd">            The number of channels is usually 1 (grayscale) or 3 (color).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            :attr:`self.inverse_grid_frames`:</span>
+<span class="sd">            :attr:`self.inverse_grid_frames` has the following</span>
+<span class="sd">            shape: :math:`(n\_frames,Nx,Ny,2)`.</span>
+
+<span class="sd">        Example: Save the *inverse deformation field* from a rotation matrix, for a RGB 128x128 image</span>
+<span class="sd">            &gt;&gt;&gt; def s(t):</span>
+<span class="sd">            ...     return np.sin(2*np.pi*t)</span>
+<span class="sd">            &gt;&gt;&gt; def c(t):</span>
+<span class="sd">            ...     return np.cos(2*np.pi*t)</span>
+<span class="sd">            &gt;&gt;&gt; def v(t):</span>
+<span class="sd">            ...     return torch.tensor([[c(t), -s(t), 0], [s(t), c(t), 0], [0, 0, 1]])</span>
+<span class="sd">            &gt;&gt;&gt; field = AffineDeformationField(v, align_corners=False)</span>
+<span class="sd">            &gt;&gt;&gt; inv_mat_frames = field.get_inv_mat_frames(0, 10, 101)</span>
+<span class="sd">            &gt;&gt;&gt; field.save_inv_grid_frames(inv_mat_frames, [101, 3, 128, 128])</span>
+<span class="sd">            &gt;&gt;&gt; print(field.inverse_grid_frames.size())</span>
+<span class="sd">            torch.Size([101, 128, 128, 2])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># affine_grid needs the first two rows</span>
+        <span class="n">theta</span> <span class="o">=</span> <span class="n">inv_mat_frames</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+        <span class="n">inv_grid_frames</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">affine_grid</span><span class="p">(</span>
+            <span class="n">theta</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">align_corners</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">align_corners</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inverse_grid_frames</span> <span class="o">=</span> <span class="n">inv_grid_frames</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">inverse_grid_frames</span></div>
+
+
+<div class="viewcode-block" id="AffineDeformationField.warp">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.time.AffineDeformationField.warp.html#spyrit.core.time.AffineDeformationField.warp">[docs]</a>
+    <span class="k">def</span> <span class="nf">warp</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">img</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">,</span>  <span class="c1"># single image (1|3, Nx, Ny)</span>
+        <span class="n">t0</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">t1</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">n_frames</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;bilinear&quot;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Warps an image according to the time interpolation parameters.</span>
+
+<span class="sd">        Similarly to the method :meth:`DeformationField.warp` from the parent</span>
+<span class="sd">        class, it warps a single image according to the *inverse</span>
+<span class="sd">        deformation field* :math:`v` contained in the attribute</span>
+<span class="sd">        :attr:`inverse_grid_frames`, between the times :math:`t0` and</span>
+<span class="sd">        :math:`t1`. The number of frames in the animation is given by either</span>
+<span class="sd">        :math:`n\_frames`, or :math:`fps` if :math:`n\_frames` is :attr:`None`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`img` (torch.tensor):</span>
+<span class="sd">            Image to deform of shape :math:`(c,Nx,Ny)`, where :math:`c` is the</span>
+<span class="sd">            number of channels, and :math:`Nx` and</span>
+<span class="sd">            :math:`Ny` are the number of pixels along the x-axis and y-axis</span>
+<span class="sd">            respectively. The number of channels is usually 1 (grayscale) or</span>
+<span class="sd">            3 (color), if not a warning is raised.</span>
+
+<span class="sd">            :attr:`t0` (float):</span>
+<span class="sd">            Start time of the animation.</span>
+
+<span class="sd">            :attr:`t1` (float):</span>
+<span class="sd">            End time of the animation. If :attr:`None`,</span>
+<span class="sd">            a single frame is warped.</span>
+
+<span class="sd">            :attr:`n_frames` (int):</span>
+<span class="sd">            Number of frames in the animation. If :attr:`None`,</span>
+<span class="sd">            :attr:`fps` is used to compute the number of frames.</span>
+
+<span class="sd">            :attr:`fps` (float):</span>
+<span class="sd">            Number of frames per second. If :attr:`None`, :attr:`n_frames`</span>
+<span class="sd">            is used, or a single frame is warped.</span>
+
+<span class="sd">            :attr:`mode` (str, optional):</span>
+<span class="sd">            The interpolation mode to use. It is</span>
+<span class="sd">            directly passed to the function `torch.nn.functional.grid_sample`.</span>
+<span class="sd">            It must be one of the following: &#39;nearest&#39;, &#39;bilinear&#39;,</span>
+<span class="sd">            &#39;bicubic&#39;. Defaults to &#39;bilinear&#39;.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            :attr:`output` (torch.tensor):</span>
+<span class="sd">            The deformed batch of images of</span>
+<span class="sd">            shape :math:`(n\_frames,c,Nx,Ny)`, where each image is</span>
+<span class="sd">            deformed according to the *inverse deformation field* :math:`v`</span>
+<span class="sd">            contained in the attribute :attr:`inverse_grid_frames`.</span>
+
+<span class="sd">        Example 1: Rotate a single image by 90° counter-clockwise</span>
+<span class="sd">            &gt;&gt;&gt; def v(t):</span>
+<span class="sd">            ...     return torch.tensor([[0, -1, 0], [1, 0, 0], [0, 0, 1]])</span>
+<span class="sd">            &gt;&gt;&gt; field = AffineDeformationField(v, align_corners=False)</span>
+<span class="sd">            &gt;&gt;&gt; image = torch.tensor([[[0. , 0.3],</span>
+<span class="sd">                                       [0.7, 1. ]]])</span>
+<span class="sd">            &gt;&gt;&gt; deformed_image = field.warp(image, 0)</span>
+<span class="sd">            &gt;&gt;&gt; print(deformed_image)</span>
+<span class="sd">            tensor([[[[0.3000, 1.0000],</span>
+<span class="sd">                      [0.0000, 0.7000]]]])</span>
+
+<span class="sd">        Example 2: Animate an image between t0=0 and t1=1, with 5 frames, with counter-clockwise rotation</span>
+<span class="sd">            &gt;&gt;&gt; def s(t):</span>
+<span class="sd">            ...     return np.sin(2*np.pi*t)</span>
+<span class="sd">            &gt;&gt;&gt; def c(t):</span>
+<span class="sd">            ...     return np.cos(2*np.pi*t)</span>
+<span class="sd">            &gt;&gt;&gt; def v(t):</span>
+<span class="sd">            ...     return torch.tensor([[c(t), -s(t), 0], [s(t), c(t), 0], [0, 0, 1]])</span>
+<span class="sd">            &gt;&gt;&gt; field = AffineDeformationField(v, align_corners=False)</span>
+<span class="sd">            &gt;&gt;&gt; image = torch.tensor([[[0. , 0.3],</span>
+<span class="sd">                                       [0.7, 1. ]]])</span>
+<span class="sd">            &gt;&gt;&gt; deformed_image = field.warp(image, 0, 1, 5)</span>
+<span class="sd">            &gt;&gt;&gt; print(deformed_image)</span>
+<span class="sd">            tensor([[[[0.0000, 0.3000],</span>
+<span class="sd">                      [0.7000, 1.0000]]],</span>
+
+<span class="sd">                    [[[0.3000, 1.0000],</span>
+<span class="sd">                      [0.0000, 0.7000]]],</span>
+
+<span class="sd">                    [[[1.0000, 0.7000],</span>
+<span class="sd">                      [0.3000, 0.0000]]],</span>
+
+<span class="sd">                    [[[0.7000, 0.0000],</span>
+<span class="sd">                      [1.0000, 0.3000]]],</span>
+
+<span class="sd">                    [[[0.0000, 0.3000],</span>
+<span class="sd">                      [0.7000, 1.0000]]]])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">t0</span><span class="p">,</span> <span class="n">t1</span><span class="p">,</span> <span class="n">n_frames</span> <span class="o">=</span> <span class="n">format_params</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t1</span><span class="p">,</span> <span class="n">n_frames</span><span class="p">,</span> <span class="n">fps</span><span class="p">)</span>
+        <span class="n">inv_mat_frames</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_inv_mat_frames</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t1</span><span class="p">,</span> <span class="n">n_frames</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_inv_grid_frames</span><span class="p">(</span><span class="n">inv_mat_frames</span><span class="p">,</span> <span class="p">[</span><span class="n">n_frames</span><span class="p">,</span> <span class="o">*</span><span class="n">img</span><span class="o">.</span><span class="n">size</span><span class="p">()])</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">warp</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">n_frames</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;AffineDeformationField(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">inverse_field_matrix</span><span class="o">.</span><span class="vm">__name__</span><span class="si">=}</span><span class="s2">, &quot;</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">align_corners</span><span class="si">=}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">inverse_grid_frames</span><span class="si">=}</span><span class="s2">)&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">s</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># FUNCTIONS</span>
+<span class="c1"># =============================================================================</span>
+
+
+<div class="viewcode-block" id="format_params">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.time.format_params.html#spyrit.core.time.format_params">[docs]</a>
+<span class="k">def</span> <span class="nf">format_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t0</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">t1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">n_frames</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the corrected parameters :attr:`t0`, :attr:`t1` and :attr:`n_frames`</span>
+
+<span class="sd">    Returns the parameters :attr:`t0`, :attr:`t1` and :attr:`n_frames` in a</span>
+<span class="sd">    format that can be used to animate an image in multiple frames or warp</span>
+<span class="sd">    an image in a single frame.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        The parameters :attr:`n_frames` and :attr:`fps` are mutually</span>
+<span class="sd">        exclusive. If both are given, :attr:`n_frames` is used. If both are</span>
+<span class="sd">        :attr:`None`, a single frame is warped.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        If :attr:`fps` is given and :attr:`n_frames` is :attr:`None`, the</span>
+<span class="sd">        end time :attr:`t1` is truncated to the closest lowest multiple of</span>
+<span class="sd">        :math:`1/\text{fps}`. The number of frames is then computed as</span>
+<span class="sd">        usual between :attr:`t0` and the truncated :attr:`t1`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`t0` (float):</span>
+<span class="sd">        Start time of the animation.</span>
+
+<span class="sd">        :attr:`t1` (float):</span>
+<span class="sd">        End time of the animation. If :attr:`None`, a single frame is warped.</span>
+
+<span class="sd">        :attr:`n_frames` (int):</span>
+<span class="sd">        Number of frames in the animation. If :attr:`None`, a single frame</span>
+<span class="sd">        is warped.</span>
+
+<span class="sd">        :attr:`fps` (float):</span>
+<span class="sd">        Number of frames per second. If :attr:`None`, a single frame is warped.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        :attr:`(t0, t1, n_frames)` (tuple):</span>
+<span class="sd">        Where :attr:`t0` (float) and :attr:`t1` (float) are the start and</span>
+<span class="sd">        end time of the animation respectively, and :attr:`n_frames` (int)</span>
+<span class="sd">        is the number of frames in the animation.</span>
+
+<span class="sd">    The output follows this pattern::</span>
+
+<span class="sd">        Is :attr:`t1` :attr:`None`?</span>
+<span class="sd">        ├── Yes</span>
+<span class="sd">        │    └── Are :attr:`n_frames` and :attr:`fps` :attr:`None`?</span>
+<span class="sd">        │         ├── Yes ──&gt; :attr:`(t0, t0, 1)`: a single frame is warped.</span>
+<span class="sd">        │         └── No ──&gt; :attr:`ValueError` (conflicting parameters).</span>
+<span class="sd">        └── No</span>
+<span class="sd">            └── Is :attr:`n_frames` :attr:`None`?</span>
+<span class="sd">                ├── Yes</span>
+<span class="sd">                │    └── Is :attr:`fps` :attr:`None`?</span>
+<span class="sd">                │         ├── Yes ──&gt; :attr:`ValueError` (conflicting parameters).</span>
+<span class="sd">                │         └── No ─┬─ :attr:`n_frames = int(np.floor(1 + (t1-t0) * fps))`</span>
+<span class="sd">                │                 └──&gt; :attr:`(t0, t0 + (n_frames-1) / fps, n_frames)`</span>
+<span class="sd">                └── No ──&gt; :attr:`(t0, t1, n_frames)`</span>
+
+<span class="sd">    Example 1: Warp a single image at t0=0, with 1 frame</span>
+<span class="sd">        &gt;&gt;&gt; field = AffineDeformationField(None, align_corners=False)</span>
+<span class="sd">        &gt;&gt;&gt; field.format_params(0)</span>
+<span class="sd">        (0, 0, 1)</span>
+
+<span class="sd">    Example 2: Warp a single image between t0=0 and t1=1, with 11 frames</span>
+<span class="sd">        &gt;&gt;&gt; field = AffineDeformationField(None, align_corners=False)</span>
+<span class="sd">        &gt;&gt;&gt; field.format_params(0, 1, 11)</span>
+<span class="sd">        (0, 1, 11)</span>
+
+<span class="sd">    Example 3: Warp a single image between t0=0 and t1=1 at 24 fps</span>
+<span class="sd">        &gt;&gt;&gt; field = AffineDeformationField(None, align_corners=False)</span>
+<span class="sd">        &gt;&gt;&gt; field.format_params(0, 1, None, 24)</span>
+<span class="sd">        (0, 1, 25)</span>
+
+<span class="sd">    Example 4: Provide n_frames and fps</span>
+<span class="sd">        &gt;&gt;&gt; field = AffineDeformationField(None, align_corners=False)</span>
+<span class="sd">        &gt;&gt;&gt; field.format_params(0, 1, 11, 24)</span>
+<span class="sd">        (0, 1, 11)</span>
+
+<span class="sd">    Example 5: Provide conflicting parameters</span>
+<span class="sd">        &gt;&gt;&gt; field = AffineDeformationField(None, align_corners=False)</span>
+<span class="sd">        &gt;&gt;&gt; field.format_params(0, 1, None, None)</span>
+<span class="sd">        ValueError: Unable to animate multiple frames: t1 (1) was given, but fps and n_frames were not given.</span>
+
+<span class="sd">    Example 6: Provide conflicting parameters</span>
+<span class="sd">        &gt;&gt;&gt; field = AffineDeformationField(None, align_corners=False)</span>
+<span class="sd">        &gt;&gt;&gt; field.format_params(0, None, 11, 24)</span>
+<span class="sd">        ValueError: Unable to animate multiple frames: t1 was not given, but n_frames (11) or fps (24) or were given.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">t1</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">fps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">n_frames</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># no animation</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Unable to animate multiple frames: t1 was not given, &quot;</span>
+                <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;but n_frames (</span><span class="si">{</span><span class="n">n_frames</span><span class="si">}</span><span class="s2">) or fps (</span><span class="si">{</span><span class="n">fps</span><span class="si">}</span><span class="s2">) were given.&quot;</span>
+            <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># if fps and n_frames are given, use n_frames</span>
+        <span class="k">if</span> <span class="n">n_frames</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">fps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Unable to warp one image: t1 (</span><span class="si">{</span><span class="n">t1</span><span class="si">}</span><span class="s2">) was given, &quot;</span>
+                    <span class="o">+</span> <span class="s2">&quot;but fps and n_frames were not given.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># t1 is truncated to the closest lowest multiple of 1/fps</span>
+                <span class="n">n_frames</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="n">t1</span> <span class="o">-</span> <span class="n">t0</span><span class="p">)</span> <span class="o">*</span> <span class="n">fps</span><span class="p">))</span>
+                <span class="k">return</span> <span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t0</span> <span class="o">+</span> <span class="p">(</span><span class="n">n_frames</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">fps</span><span class="p">,</span> <span class="n">n_frames</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t1</span><span class="p">,</span> <span class="n">n_frames</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
