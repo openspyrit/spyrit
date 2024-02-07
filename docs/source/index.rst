@@ -116,7 +116,7 @@ Subpackages
    :caption: Tutorials
 
    gallery/index
-   
+
 
 
 .. Indices and tables
