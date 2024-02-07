@@ -70,10 +70,13 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 ###############################################################################
 # Noise operators are defined in the :mod:`~spyrit.core.noise` module. A noise
 # operator computes the following three steps sequentially:
-#   1. Normalization of the image :math:`x` with values in [-1,1] to get an
-#      image :math:`\tilde{x}=\frac{x+1}{2}` in [0,1], as it is required for measurement simulation
-#   2. Application of the measurement model, i.e., computation of :math:`H\tilde{x}`
-#   3. Application of the noise model
+#
+# 1. Normalization of the image :math:`x` with values in [-1,1] to get an image
+#   :math:`\tilde{x}=\frac{x+1}{2}` in [0,1], as it is required for measurement simulation
+#
+# 2. Application of the measurement model, i.e., computation of :math:`H\tilde{x}`
+#
+# 3. Application of the noise model
 #
 # .. math::
 #       y \sim \texttt{Noise}(H\tilde{x}) = \texttt{Noise}\left(\frac{H(x+1)}{2}\right),
@@ -216,9 +219,11 @@ noaxis(axs)
 
 ###############################################################################
 # We consider the :class:`spyrit.core.prep.DirectPoisson` class that intends
-# to "undo" the :class:`spyrit.core.noise.Poisson` class by compensating for
-#   * the scaling that appears when computing Poisson-corrupted measurements
-#   * the affine transformation to get images in [0,1] from images in [-1,1]
+# to "undo" the :class:`spyrit.core.noise.Poisson` class by compensating for:
+#
+# * the scaling that appears when computing Poisson-corrupted measurements
+#
+# * the affine transformation to get images in [0,1] from images in [-1,1]
 #
 # For this, it computes
 #

@@ -163,10 +163,15 @@ with torch.no_grad():
 ###############################################################################
 # We can improve PinvNet results by using the *denoised* completion network DCNet with the
 # :class:`spyrit.core.recon.DCNet` class. It has four sequential steps:
-#   i) denoising of the acquired measurements,
-#   ii) estimation of the missing measurements from the denoised ones,
-#   iii) mapping them to the image domain, and
-#   iv) denoising in the image-domain.
+#
+# i) denoising of the acquired measurements,
+#
+# ii) estimation of the missing measurements from the denoised ones,
+#
+# iii) mapping them to the image domain, and
+#
+# iv) denoising in the image-domain.
+#
 # Only the last step involves learnable parameters.
 
 ###############################################################################

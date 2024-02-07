@@ -195,9 +195,9 @@ class Denoise_layer(nn.Module):
 
     .. math::
         y = \sigma_\text{prior}^2/(\sigma^2_\text{prior} + \sigma^2_\text{meas}) x,
-    where :math:`\sigma^2_\text{prior}` is the variance prior and
-    :math:`\sigma^2_\text{meas}` is the variance of the measurement,
-    x is the input vector and y is the output vector.
+        where :math:`\sigma^2_\text{prior}` is the variance prior and
+        :math:`\sigma^2_\text{meas}` is the variance of the measurement,
+        x is the input vector and y is the output vector.
 
     Args:
         :attr:`M`: size of incoming vector
