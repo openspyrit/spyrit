@@ -2,6 +2,7 @@ r"""
 01. Acquisition operators
 ==========================
 .. _tuto_acquisition_operators:
+
 This tutorial shows how to simulate measurements using the :class:`spyrit.core`
 submodule, which is based on three classes:
 
@@ -72,7 +73,7 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # operator computes the following three steps sequentially:
 #
 # 1. Normalization of the image :math:`x` with values in [-1,1] to get an image
-#   :math:`\tilde{x}=\frac{x+1}{2}` in [0,1], as it is required for measurement simulation
+# :math:`\tilde{x}=\frac{x+1}{2}` in [0,1], as it is required for measurement simulation
 #
 # 2. Application of the measurement model, i.e., computation of :math:`H\tilde{x}`
 #
