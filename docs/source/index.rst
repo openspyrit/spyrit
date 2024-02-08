@@ -114,7 +114,6 @@ Subpackages
    :maxdepth: 2
    :caption: Tutorials
 
-   api/modules
    gallery/index
 
 .. Indices and tables
