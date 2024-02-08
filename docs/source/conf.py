@@ -59,6 +59,7 @@ napoleon_use_ivar = True
 napoleon_use_param = False
 napoleon_use_rtype = False
 
+autosummary_generate = True
 todo_include_todos = True
 
 # Add any paths that contain templates here, relative to this directory.
