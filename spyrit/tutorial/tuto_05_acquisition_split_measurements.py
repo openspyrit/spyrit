@@ -1,8 +1,9 @@
 r"""
 05. Acquisition operators (advanced) - Split measurements and subsampling
-================================================
+=========================================================================
 
 .. _tuto_acquisition_split_measurements:
+
 This tutorial is a continuation of the :ref:`Acquisition operators tutorial <tuto_acquisition_operators>`
 for single-pixel imaging, which showed how to simulate linear measurements using the
 :class:`spyrit.core` submodule (based on three classes :class:`spyrit.core.meas`,
@@ -116,14 +117,14 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # a permuted Hadamard matrix :math:`\textrm{Perm} H`, where :math:`\textrm{Perm}` is a
 # permutation matrix with shape with shape :math:`(M,N)` and :math:`H` is a
 # "full" Hadamard matrix with shape :math:`(N,N)`
-# (see Hadamard matrix in :ref:`tutorial on pseudoinverse solution <tuto_pseudoinverse_linear>`).
+# (see Hadamard matrix in :ref:`tutorial on pseudoinverse solution <sphx_glr_gallery_tuto_02_pseudoinverse_linear.py>`).
 # The permutation matrix :math:`\textrm{Perm}` is obtained from the ordering matrix
 # :math:`\textrm{Ord}` with shape :math:`(h,h)`. This is all handled internally
 # by the :class:`spyrit.core.meas.HadamSplit` class.
 
 ###############################################################################
 # First, we download the covariance matrix from our warehouse and load it. The covariance matrix
-# has been computed from :ref:`ImageNet 2012 dataset <https://www.image-net.org/challenges/LSVRC/2012/>`.
+# has been computed from `ImageNet 2012 dataset <https://www.image-net.org/challenges/LSVRC/2012/>`_.
 
 import girder_client
 

@@ -2,6 +2,7 @@ r"""
 02. Pseudoinverse solution from linear measurements
 ===================================================
 .. _tuto_pseudoinverse_linear:
+
 This tutorial shows how to simulate measurements and perform image reconstruction.
 The measurement operator is chosen as a Hadamard matrix with positive coefficients.
 Note that this matrix can be replaced by any desired matrix.
@@ -70,6 +71,7 @@ F = np.where(F > 0, F, 0)
 
 ###############################################################################
 # .. _low_frequency:
+#
 # Next, we subsample the rows of the measurement matrix to simulate an
 # accelerated acquisition. For this, we use the
 # :func:`spyrit.misc.sampling.Permutation_Matrix` function
@@ -143,11 +145,11 @@ imagesc(y_plot, "Raw measurements (no noise)")
 
 ###############################################################################
 # We now compute and plot the preprocessed measurements corresponding to an
-# image in [-1,1]. For details in the preprocessing, see :ref:`tuto_acquisition_operators`.
+# image in [-1,1]. For details in the preprocessing, see :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_acquisition_operators.py>`.
 #
 # .. note::
 #
-#       Using :class:`spyrit.core.prep.DirectPoisson` with :math:`\alpha` = 1
+#       Using :class:`spyrit.core.prep.DirectPoisson` with :math:`\alpha = 1`
 #       allows to compensate for the image normalisation achieved by
 #       :class:`spyrit.core.noise.NoNoise`.
 
@@ -249,7 +251,7 @@ imagesc(x_plot, "One more pseudoinverse reconstruction (no noise)")
 ###############################################################################
 # Here, we consider the :class:`spyrit.core.noise.Poisson` class
 # together with a :class:`spyrit.core.prep.DirectPoisson`
-# preprocessing operator (see :ref:`tuto_acquisition_operators`).
+# preprocessing operator (see :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_acquisition_operators.py>`).
 
 alpha = 10  # maximum number of photons in the image
 
