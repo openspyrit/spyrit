@@ -37,7 +37,7 @@ release = "2.1.0"
 # ones.
 extensions = [
     "sphinx.ext.intersphinx",
-    'sphinx.ext.autodoc', #
+    #'sphinx.ext.autodoc', #
     "sphinx.ext.mathjax",
     "sphinx.ext.todo",
     'sphinx.ext.autosummary', #
