@@ -102,7 +102,7 @@ The main functionalities of SPyRiT are implemented in the :class:`spyrit.core` s
 Subpackages
 -----------------------------------
 
-.. autosummary: :
+.. autosummary::
    :toctree: _autosummary
    :template: spyrit-module-template.rst
    :recursive:
