@@ -46,14 +46,14 @@ release = "2.1.0"
 # ones.
 extensions = [
     "sphinx.ext.intersphinx",
-    #'sphinx.ext.autodoc', #
+    'sphinx.ext.autodoc',
     "sphinx.ext.mathjax",
     "sphinx.ext.todo",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx_gallery.gen_gallery",
-    "sphinx.ext.coverage",
+    "sphinx.ext.coverage"
 ]
 
 # Napoleon settings
