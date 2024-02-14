@@ -16,7 +16,7 @@ submodule, which is based on three classes:
 
 These tutorials must be runned from `spyrit/tutorial/` folder (they load image samples from `spyrit/images/`).
 """
-
+#%%
 
 import numpy as np
 import os
@@ -45,10 +45,10 @@ imgs_path = os.path.join(spyritPath, "../images")
 
 
 # Create a transform for natural images to normalized grayscale image tensors
-transform = transform_gray_norm(img_size=h)
+transform_gn = transform_gray_norm(img_size=h)
 
 # Create dataset and loader (expects class folder 'images/test/')
-dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
+dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform_gn)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=7)
 
 x, _ = next(iter(dataloader))
