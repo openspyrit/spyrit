@@ -13,7 +13,7 @@
 import os
 import sys
 from sphinx_gallery.sorting import ExampleTitleSortKey
-
+# paths relative to _docs_ directory
 sys.path.insert(0, os.path.abspath("../../spyrit"))
 sys.path.insert(0, os.path.abspath("../../"))
 
@@ -40,7 +40,7 @@ extensions = [
     #'sphinx.ext.autodoc', #
     "sphinx.ext.mathjax",
     "sphinx.ext.todo",
-    'sphinx.ext.autosummary', #
+    #'sphinx.ext.autosummary', #
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx_gallery.gen_gallery",
