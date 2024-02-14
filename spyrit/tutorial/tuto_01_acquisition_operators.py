@@ -45,10 +45,10 @@ imgs_path = os.path.join(spyritPath, "../images")
 
 
 # Create a transform for natural images to normalized grayscale image tensors
-transform_gn = transform_gray_norm(img_size=h)
+transform = transform_gray_norm(img_size=h)
 
 # Create dataset and loader (expects class folder 'images/test/')
-dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform_gn)
+dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=7)
 
 x, _ = next(iter(dataloader))

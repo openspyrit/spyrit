@@ -17,7 +17,16 @@ from sphinx_gallery.sorting import ExampleTitleSortKey
 sys.path.insert(0, os.path.abspath("../../spyrit"))
 sys.path.insert(0, os.path.abspath("../../"))
 
-
+# Print active Python modules with their versions
+print("#################################################")
+print("Active Python modules:")
+for module in sys.modules:
+    try:
+        module_version = sys.modules[module].__version__
+    except AttributeError:
+        module_version = "Unknown"
+    print("- %s (version: %s)" % (module, module_version))
+print("#################################################")
 # -- Project information -----------------------------------------------------
 
 project = "spyrit"
