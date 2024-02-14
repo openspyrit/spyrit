@@ -23,9 +23,9 @@ print("Active Python modules:")
 for module in sys.modules:
     try:
         module_version = sys.modules[module].__version__
+        print("- %s (version: %s)" % (module, module_version))
     except AttributeError:
-        module_version = "Unknown"
-    print("- %s (version: %s)" % (module, module_version))
+        pass
 print("#################################################")
 # -- Project information -----------------------------------------------------
 
