@@ -22,6 +22,8 @@ import numpy as np
 import os
 from spyrit.misc.disp import imagesc
 import matplotlib.pyplot as plt
+import pathlib
+import spyrit
 
 
 # %%
@@ -40,15 +42,15 @@ import torch
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
-spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "../images")
+spyritPath = pathlib.Path(spyrit.__file__) # os.getcwd()
+imgs_path = spyritPath.parent / "images/test" #os.path.join(spyritPath, "../images")
 print(f"Path to images: {imgs_path}")
 
 # Create a transform for natural images to normalized grayscale image tensors
 transform = transform_gray_norm(img_size=h)
 
 # Create dataset and loader (expects class folder 'images/test/')
-dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
+dataset = torchvision.datasets.ImageFolder(root=str(imgs_path), transform=transform)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=7)
 
 x, _ = next(iter(dataloader))
