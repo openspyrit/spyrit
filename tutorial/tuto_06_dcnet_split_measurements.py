@@ -9,6 +9,7 @@ and without a trainable image denoiser. In the previous tutorial
 we showed how to handle split measurements for a Hadamard operator
 and how to perform a pseudo-inverse reconstruction with PinvNet.
 
+These tutorials load image samples from `/images/`.
 """
 
 import numpy as np
@@ -34,7 +35,7 @@ import torch
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "../images")
+imgs_path = os.path.join(spyritPath, "/images/test/")
 
 
 # Create a transform for natural images to normalized grayscale image tensors
@@ -176,7 +177,7 @@ with torch.no_grad():
 # Only the last step involves learnable parameters.
 
 ###############################################################################
-# .. image:: ../../../spyrit/images/tuto/dcnet.png
+# .. image:: /../../../../tutorial/images/tuto/dcnet.png
 #    :width: 400
 #    :align: center
 #    :alt: Sketch of the DCNet architecture

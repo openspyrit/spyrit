@@ -7,7 +7,7 @@ This tutorial shows how to simulate measurements and perform image reconstructio
 The measurement operator is chosen as a Hadamard matrix with positive coefficients.
 Note that this matrix can be replaced by any desired matrix.
 
-These tutorials must be runned from `spyrit/tutorial/` folder (they load image samples from `spyrit/images/`).
+These tutorials load image samples from `/images/`.
 """
 
 
@@ -19,7 +19,7 @@ These tutorials must be runned from `spyrit/tutorial/` folder (they load image s
 # Images :math:`x` for training expect values in [-1,1]. The images are normalized
 # using the :func:`transform_gray_norm` function.
 
-# sphinx_gallery_thumbnail_path = '../../spyrit/images/tuto/pinvnet.png'
+# sphinx_gallery_thumbnail_path = 'images/tuto/pinvnet.png'
 
 import os
 from spyrit.misc.statistics import transform_gray_norm
@@ -30,7 +30,7 @@ from spyrit.misc.disp import imagesc
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "../images")
+imgs_path = os.path.join(spyritPath, "/images/test/")
 
 
 # Create a transform for natural images to normalized grayscale image tensors
@@ -198,7 +198,7 @@ imagesc(x_plot, "Pseudoinverse reconstruction (no noise)", title_fontsize=20)
 # can be set to the identity operator
 
 ###############################################################################
-# .. image:: ../../../spyrit/images/tuto/pinvnet.png
+# .. image:: /../../../../tutorial/images/tuto/pinvnet.png
 #    :width: 400
 #    :align: center
 #    :alt: Sketch of the PinvNet architecture

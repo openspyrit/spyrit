@@ -15,6 +15,8 @@ and intermediate results (reconstructed images at different epochs).
 
 The linear measurement operator is chosen as the positive part of a Hadamard matrix,
 but this matrix can be replaced by any desired matrix.
+
+These tutorials load image samples from `/images/`.
 """
 
 # %%
@@ -33,7 +35,7 @@ from spyrit.misc.disp import imagesc
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "../images")
+imgs_path = os.path.join(spyritPath, "/images/test/")
 
 
 # Create a transform for natural images to normalized grayscale image tensors
