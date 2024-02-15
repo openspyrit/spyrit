@@ -2,6 +2,7 @@ r"""
 01. Acquisition operators
 ==========================
 .. _tuto_acquisition_operators:
+
 This tutorial shows how to simulate measurements using the :class:`spyrit.core`
 submodule, which is based on three classes:
 
@@ -22,8 +23,6 @@ import numpy as np
 import os
 from spyrit.misc.disp import imagesc
 import matplotlib.pyplot as plt
-import pathlib
-import spyrit
 
 
 # %%
@@ -44,11 +43,10 @@ h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
 imgs_path = os.path.join(spyritPath, "../images")
-print(f"Path to images: {imgs_path}")
+
 
 # Create a transform for natural images to normalized grayscale image tensors
 transform = transform_gray_norm(img_size=h)
-# tf = torchvision.transforms.Compose([torchvision.transforms.Resize((h, h)), torchvision.transforms.ToTensor()])
 
 # Create dataset and loader (expects class folder 'images/test/')
 dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
@@ -73,10 +71,13 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 ###############################################################################
 # Noise operators are defined in the :mod:`~spyrit.core.noise` module. A noise
 # operator computes the following three steps sequentially:
-#   1. Normalization of the image :math:`x` with values in [-1,1] to get an
-#      image :math:`\tilde{x}=\frac{x+1}{2}` in [0,1], as it is required for measurement simulation
-#   2. Application of the measurement model, i.e., computation of :math:`H\tilde{x}`
-#   3. Application of the noise model
+#
+# 1. Normalization of the image :math:`x` with values in [-1,1] to get an image
+# :math:`\tilde{x}=\frac{x+1}{2}` in [0,1], as it is required for measurement simulation
+#
+# 2. Application of the measurement model, i.e., computation of :math:`H\tilde{x}`
+#
+# 3. Application of the noise model
 #
 # .. math::
 #       y \sim \texttt{Noise}(H\tilde{x}) = \texttt{Noise}\left(\frac{H(x+1)}{2}\right),
@@ -219,9 +220,11 @@ noaxis(axs)
 
 ###############################################################################
 # We consider the :class:`spyrit.core.prep.DirectPoisson` class that intends
-# to "undo" the :class:`spyrit.core.noise.Poisson` class by compensating for
-#   * the scaling that appears when computing Poisson-corrupted measurements
-#   * the affine transformation to get images in [0,1] from images in [-1,1]
+# to "undo" the :class:`spyrit.core.noise.Poisson` class by compensating for:
+#
+# * the scaling that appears when computing Poisson-corrupted measurements
+#
+# * the affine transformation to get images in [0,1] from images in [-1,1]
 #
 # For this, it computes
 #

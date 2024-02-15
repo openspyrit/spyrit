@@ -1,8 +1,9 @@
 r"""
 05. Acquisition operators (advanced) - Split measurements and subsampling
-================================================
+=========================================================================
 
 .. _tuto_acquisition_split_measurements:
+
 This tutorial is a continuation of the :ref:`Acquisition operators tutorial <tuto_acquisition_operators>`
 for single-pixel imaging, which showed how to simulate linear measurements using the
 :class:`spyrit.core` submodule (based on three classes :class:`spyrit.core.meas`,
@@ -62,10 +63,13 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 ###############################################################################
 # Noise operators are defined in the :mod:`~spyrit.core.noise` module. A noise
 # operator computes the following three steps sequentially:
-#   1. Normalization of the image :math:`x` with values in [-1,1] to get an
-#      image :math:`\tilde{x}=\frac{x+1}{2}` in [0,1], as it is required for measurement simulation
-#   2. Application of the measurement model, i.e., computation of :math:`P\tilde{x}`
-#   3. Application of the noise model
+#
+# 1. Normalization of the image :math:`x` with values in [-1,1] to get an
+#    image :math:`\tilde{x}=\frac{x+1}{2}` in [0,1], as it is required for measurement simulation
+#
+# 2. Application of the measurement model, i.e., computation of :math:`P\tilde{x}`
+#
+# 3. Application of the noise model
 #
 # .. math::
 #       y \sim \texttt{Noise}(P\tilde{x}) = \texttt{Noise}\left(\frac{P(x+1)}{2}\right).
@@ -99,26 +103,28 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 ###############################################################################
 # We simulate an accelerated acquisition by subsampling the measurement matrix.
 # We consider two subsampling strategies:
-#   * "Naive subsampling" by retaining only the first :math:`M` rows of the measurement matrix.
-#   * "Variance subsampling" by retaining only the first :math:`M` rows of a permuted measurement matrix
-#     where the first rows corresponds to the coefficients with largest variance and the last ones to
-#     the coefficients that are close to constant. The motivation is that almost constant coefficients are less informative than the others.
-#     This can be supported by principal component analysis, which states that preserving the components
-#     with largest variance leads to the best linear predictor.
+#
+# * "Naive subsampling" by retaining only the first :math:`M` rows of the measurement matrix.
+#
+# * "Variance subsampling" by retaining only the first :math:`M` rows of a permuted measurement matrix
+#   where the first rows corresponds to the coefficients with largest variance and the last ones to
+#   the coefficients that are close to constant. The motivation is that almost constant coefficients are less informative than the others.
+#   This can be supported by principal component analysis, which states that preserving the components
+#   with largest variance leads to the best linear predictor.
 
 ###############################################################################
 # Subsampling is done by retaining only the first :math:`M` rows of
 # a permuted Hadamard matrix :math:`\textrm{Perm} H`, where :math:`\textrm{Perm}` is a
 # permutation matrix with shape with shape :math:`(M,N)` and :math:`H` is a
 # "full" Hadamard matrix with shape :math:`(N,N)`
-# (see Hadamard matrix in :ref:`tutorial on pseudoinverse solution <tuto_pseudoinverse_linear>`).
+# (see Hadamard matrix in :ref:`tutorial on pseudoinverse solution <sphx_glr_gallery_tuto_02_pseudoinverse_linear.py>`).
 # The permutation matrix :math:`\textrm{Perm}` is obtained from the ordering matrix
 # :math:`\textrm{Ord}` with shape :math:`(h,h)`. This is all handled internally
 # by the :class:`spyrit.core.meas.HadamSplit` class.
 
 ###############################################################################
 # First, we download the covariance matrix from our warehouse and load it. The covariance matrix
-# has been computed from :ref:`ImageNet 2012 dataset <https://www.image-net.org/challenges/LSVRC/2012/>`.
+# has been computed from `ImageNet 2012 dataset <https://www.image-net.org/challenges/LSVRC/2012/>`_.
 
 import girder_client
 
@@ -269,8 +275,10 @@ print(f"Shape of simulated measurements y: {y_var.shape}")
 ###############################################################################
 # We consider the :class:`spyrit.core.prep.SplitPoisson` class that intends
 # to "undo" the :class:`spyrit.core.noise.Poisson` class, for split measurements, by compensating for
-#   * the scaling that appears when computing Poisson-corrupted measurements
-#   * the affine transformation to get images in [0,1] from images in [-1,1]
+#
+# * the scaling that appears when computing Poisson-corrupted measurements
+#
+# * the affine transformation to get images in [0,1] from images in [-1,1]
 #
 # For this, it computes
 #

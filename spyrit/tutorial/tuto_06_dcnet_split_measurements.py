@@ -2,6 +2,7 @@ r"""
 06. DCNet solution for split measurements
 =========================================
 .. _tuto_dcnet_split_measurements:
+
 This tutorial shows how to perform image reconstruction using DCNet (data completion network) with
 and without a trainable image denoiser. In the previous tutorial
 :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`
@@ -163,10 +164,15 @@ with torch.no_grad():
 ###############################################################################
 # We can improve PinvNet results by using the *denoised* completion network DCNet with the
 # :class:`spyrit.core.recon.DCNet` class. It has four sequential steps:
-#   i) denoising of the acquired measurements,
-#   ii) estimation of the missing measurements from the denoised ones,
-#   iii) mapping them to the image domain, and
-#   iv) denoising in the image-domain.
+#
+# i) denoising of the acquired measurements,
+#
+# ii) estimation of the missing measurements from the denoised ones,
+#
+# iii) mapping them to the image domain, and
+#
+# iv) denoising in the image-domain.
+#
 # Only the last step involves learnable parameters.
 
 ###############################################################################
