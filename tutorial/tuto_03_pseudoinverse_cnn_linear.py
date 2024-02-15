@@ -33,7 +33,7 @@ from spyrit.misc.disp import imagesc
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "/images/test/")
+imgs_path = os.path.join(spyritPath, "images/")
 
 # Create a transform for natural images to normalized grayscale image tensors
 transform = transform_gray_norm(img_size=h)
