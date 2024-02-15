@@ -49,7 +49,7 @@ extensions = [
     'sphinx.ext.autodoc',
     "sphinx.ext.mathjax",
     "sphinx.ext.todo",
-    "sphinx.ext.autosummary",
+    #"sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx_gallery.gen_gallery",
@@ -68,7 +68,7 @@ napoleon_use_ivar = True
 napoleon_use_param = False
 napoleon_use_rtype = False
 
-autosummary_generate = True
+# autosummary_generate = True
 todo_include_todos = True
 
 # Add any paths that contain templates here, relative to this directory.
@@ -125,3 +125,14 @@ html_sidebars = {
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
 autodoc_mock_imports = "numpy matplotlib mpl_toolkits scipy torch torchvision Pillow opencv-python imutils PyWavelets pywt wget imageio".split()
 autodoc_member_order = "bysource"
+
+# Skip the following members when documenting (tutorials)
+# https://stackoverflow.com/questions/3757500/connect-sphinx-autodoc-skip-member-to-my-function
+def autodoc_skip_member(app, what, name, obj, skip, options):
+    exclude_prefix = "tuto_"
+    if name.beginswith(exclude_prefix):
+        return True
+    return None
+
+def setup(app):
+    app.connect("autodoc-skip-member", autodoc_skip_member)
