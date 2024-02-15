@@ -15,7 +15,7 @@ submodule, which is based on three classes:
 3. **Preprocessing operators** are typically used to process the noisy
    measurements prior to reconstruction (see :mod:`spyrit.core.prep`)
 
-These tutorials must be runned from `spyrit/tutorial/` folder (they load image samples from `spyrit/images/`).
+These tutorials load image samples from `/images/`.
 """
 
 
@@ -33,8 +33,6 @@ import matplotlib.pyplot as plt
 # Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
 # using the :func:`transform_gray_norm` function.
 
-# sphinx_gallery_thumbnail_path = '../../spyrit/images/tuto/noise_op.png'
-
 from spyrit.misc.statistics import transform_gray_norm
 import torchvision
 import torch
@@ -42,7 +40,7 @@ import torch
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "../images")
+imgs_path = os.path.join(spyritPath, "/images/test/")
 
 
 # Create a transform for natural images to normalized grayscale image tensors

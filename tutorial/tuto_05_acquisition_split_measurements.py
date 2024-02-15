@@ -10,6 +10,8 @@ for single-pixel imaging, which showed how to simulate linear measurements using
 :class:`spyrit.core.noise`, and :class:`spyrit.core.prep`).
 This tutorial extends the previous case: i) by introducing split measurements that can handle a Hadamard measurement matrix,
 and ii) by discussing the choice of the subsampling pattern for accelerated acquisitions.
+
+These tutorials load image samples from `/images/`.
 """
 
 import numpy as np
@@ -33,7 +35,7 @@ import torch
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "../images")
+imgs_path = os.path.join(spyritPath, "/images/test/")
 
 
 # Create a transform for natural images to normalized grayscale image tensors

@@ -39,7 +39,7 @@ extensions = [
     'sphinx.ext.autodoc',
     "sphinx.ext.mathjax",
     "sphinx.ext.todo",
-    #"sphinx.ext.autosummary",
+    "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx_gallery.gen_gallery",
@@ -58,7 +58,7 @@ napoleon_use_ivar = True
 napoleon_use_param = False
 napoleon_use_rtype = False
 
-#autosummary_generate = True
+autosummary_generate = True
 todo_include_todos = True
 
 # Add any paths that contain templates here, relative to this directory.
@@ -72,7 +72,7 @@ exclude_patterns = []
 sphinx_gallery_conf = {
     # path to your examples scripts
     "examples_dirs": [
-        "../../spyrit/tutorial",
+        "../../tutorial",
     ],
     # path where to save gallery generated examples
     "gallery_dirs": ["gallery"],

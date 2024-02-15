@@ -10,6 +10,8 @@ but uses a CNN denoiser instead of the identity operator in order to remove arte
 
 The measurement operator is chosen as a Hadamard matrix with positive coefficients,
 which can be replaced by any matrix.
+
+These tutorials load image samples from `/images/`.
 """
 
 # %%
@@ -31,7 +33,7 @@ from spyrit.misc.disp import imagesc
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "../images")
+imgs_path = os.path.join(spyritPath, "/images/test/")
 
 # Create a transform for natural images to normalized grayscale image tensors
 transform = transform_gray_norm(img_size=h)
@@ -168,7 +170,7 @@ x_rec = pinv_net.reconstruct(y)
 # neural network (eg. UNet from :class:`spyrit.core.nnet.Unet`).
 
 ###############################################################################
-# .. image:: ../../../spyrit/images/tuto/pinvnet_cnn.png
+# .. image:: /../../../../tutorial/images/tuto/pinvnet_cnn.png
 #    :width: 400
 #    :align: center
 #    :alt: Sketch of the PinvNet with CNN architecture
