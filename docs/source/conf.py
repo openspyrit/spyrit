@@ -128,11 +128,11 @@ autodoc_member_order = "bysource"
 
 # Skip the following members when documenting (tutorials)
 # https://stackoverflow.com/questions/3757500/connect-sphinx-autodoc-skip-member-to-my-function
-def autodoc_skip_member(app, what, name, obj, skip, options):
-    exclude_prefix = "tuto_"
-    if name.startswith(exclude_prefix):
-        return True
-    return None
+# def autodoc_skip_member(app, what, name, obj, skip, options):
+#     exclude_prefix = "tuto_"
+#     if name.startswith(exclude_prefix):
+#         return True
+#     return None
 
-def setup(app):
-    app.connect("autodoc-skip-member", autodoc_skip_member)
+# def setup(app):
+#     app.connect("autodoc-skip-member", autodoc_skip_member)
