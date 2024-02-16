@@ -9,15 +9,15 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#%%
+
 import os
 import sys
 from sphinx_gallery.sorting import ExampleTitleSortKey
+
 # paths relative to this file
 sys.path.insert(0, os.path.abspath("../.."))
 
 # -- Project information -----------------------------------------------------
-#%%
 project = "spyrit"
 copyright = "2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier"
 author = (
@@ -26,7 +26,6 @@ author = (
 
 # The full version, including alpha/beta/rc tags
 release = "2.1.0"
-
 
 # -- General configuration ---------------------------------------------------
 
@@ -111,18 +110,3 @@ master_doc = "index"
 html_sidebars = {
     "**": ["globaltoc.html", "relations.html", "sourcelink.html", "searchbox.html"]
 }
-
-# http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
-# autodoc_mock_imports = "numpy matplotlib mpl_toolkits scipy torch torchvision Pillow opencv-python imutils PyWavelets pywt wget imageio".split()
-
-
-# Skip the following members when documenting (tutorials)
-# https://stackoverflow.com/questions/3757500/connect-sphinx-autodoc-skip-member-to-my-function
-# def autodoc_skip_member(app, what, name, obj, skip, options):
-#     exclude_prefix = "tuto_"
-#     if name.startswith(exclude_prefix):
-#         return True
-#     return None
-
-# def setup(app):
-#     app.connect("autodoc-skip-member", autodoc_skip_member)
