@@ -12,7 +12,7 @@
 #%%
 import os
 import sys
-# from sphinx_gallery.sorting import ExampleTitleSortKey
+from sphinx_gallery.sorting import ExampleTitleSortKey
 # paths relative to _docs_ directory
 print('\n')
 print("#"*80)
