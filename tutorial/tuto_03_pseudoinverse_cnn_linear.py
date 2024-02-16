@@ -22,8 +22,6 @@ These tutorials load image samples from `/images/`.
 # Images :math:`x` for training expect values in [-1,1]. The images are normalized
 # using the :func:`transform_gray_norm` function.
 
-# sphinx_gallery_thumbnail_path = '../../spyrit/images/tuto/pinvnet_cnn.png'
-
 import os
 
 import torch
