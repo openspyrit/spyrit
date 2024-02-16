@@ -13,19 +13,8 @@
 import os
 import sys
 from sphinx_gallery.sorting import ExampleTitleSortKey
-# paths relative to _docs_ directory
-print('\n')
-print("#"*80)
-print("Current path:", os.path.abspath("."))
-print("Trying :", os.path.abspath("../.."))
-# print("looking for:", os.path.abspath("../../../spyrit"))
-print("#"*80)
-print('\n')
+# paths relative to this file
 sys.path.insert(0, os.path.abspath("../.."))
-# sys.path.insert(0, os.path.abspath("../../spyrit"))
-
-# sys.path.insert(0, os.path.abspath("../../spyrit/misc"))
-# sys.path.insert(0, os.path.abspath("../../"))
 
 # -- Project information -----------------------------------------------------
 #%%
@@ -68,6 +57,7 @@ napoleon_use_ivar = True
 napoleon_use_param = False
 napoleon_use_rtype = False
 
+autodoc_member_order = "bysource"
 autosummary_generate = True
 todo_include_todos = True
 
@@ -77,7 +67,7 @@ templates_path = ["_templates"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["tuto_"]
+exclude_patterns = []
 
 sphinx_gallery_conf = {
     # path to your examples scripts
@@ -124,7 +114,7 @@ html_sidebars = {
 
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
 # autodoc_mock_imports = "numpy matplotlib mpl_toolkits scipy torch torchvision Pillow opencv-python imutils PyWavelets pywt wget imageio".split()
-autodoc_member_order = "bysource"
+
 
 # Skip the following members when documenting (tutorials)
 # https://stackoverflow.com/questions/3757500/connect-sphinx-autodoc-skip-member-to-my-function
