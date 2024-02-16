@@ -17,11 +17,11 @@ from sphinx_gallery.sorting import ExampleTitleSortKey
 print('\n')
 print("#"*80)
 print("Current path:", os.path.abspath("."))
-print("Trying :", os.path.abspath("../spyrit"))
+print("Trying :", os.path.abspath("../.."))
 # print("looking for:", os.path.abspath("../../../spyrit"))
 print("#"*80)
 print('\n')
-sys.path.insert(0, os.path.abspath("../spyrit"))
+sys.path.insert(0, os.path.abspath("../.."))
 # sys.path.insert(0, os.path.abspath("../../spyrit"))
 
 # sys.path.insert(0, os.path.abspath("../../spyrit/misc"))
