@@ -9,7 +9,6 @@ Note that this matrix can be replaced by any desired matrix.
 These tutorials must be runned from `spyrit/tutorial/` folder (they load image samples from `spyrit/images/`).
 """
 
-
 # %%
 # Load a batch of images
 # -----------------------------------------------------------------------------
