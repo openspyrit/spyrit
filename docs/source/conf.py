@@ -9,24 +9,26 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-
+#%%
 import os
 import sys
-from sphinx_gallery.sorting import ExampleTitleSortKey
+# from sphinx_gallery.sorting import ExampleTitleSortKey
 # paths relative to _docs_ directory
 print('\n')
 print("#"*80)
-print("looking for:", os.path.abspath("../../../spyrit"))
+print("Current path:", os.path.abspath("."))
+print("Trying :", os.path.abspath("../../spyrit"))
+# print("looking for:", os.path.abspath("../../../spyrit"))
 print("#"*80)
 print('\n')
-sys.path.insert(0, os.path.abspath("../../../spyrit"))
+# sys.path.insert(0, os.path.abspath("../../../spyrit"))
 sys.path.insert(0, os.path.abspath("../../spyrit"))
 
 # sys.path.insert(0, os.path.abspath("../../spyrit/misc"))
 # sys.path.insert(0, os.path.abspath("../../"))
 
 # -- Project information -----------------------------------------------------
-
+#%%
 project = "spyrit"
 copyright = "2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier"
 author = (
