@@ -1151,7 +1151,8 @@ class LearnedPGD(nn.Module):
         H = self.acqu.meas_op.get_H()
         if self.wls:
             H = H/torch.sqrt(self.meas_variance)
-        s = torch.linalg.svdvals((1/self.acqu.meas_op.N)*torch.mm(H.t(), H))
+        #s = torch.linalg.svdvals(torch.mm(H.t(), H))
+        s = torch.linalg.svdvals(H)**2
         return s
 
     def stepsize_gd(self):
@@ -1166,7 +1167,7 @@ class LearnedPGD(nn.Module):
         return torch.linalg.norm(res) ** 2
 
     def mse(self, x, x_gt):
-        return (1/self.acqu.meas_op.N)*torch.linalg.norm(x - x_gt) ** 2
+        return torch.linalg.norm(x - x_gt) 
 
     def reconstruct(self, x):
         r""" Reconstruction step of a reconstruction network
