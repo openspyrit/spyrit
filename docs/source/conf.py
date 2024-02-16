@@ -14,8 +14,16 @@ import os
 import sys
 from sphinx_gallery.sorting import ExampleTitleSortKey
 # paths relative to _docs_ directory
+print('\n')
+print("#"*80)
+print("looking for:", os.path.abspath("../../../spyrit"))
+print("#"*80)
+print('\n')
+sys.path.insert(0, os.path.abspath("../../../spyrit"))
 sys.path.insert(0, os.path.abspath("../../spyrit"))
-sys.path.insert(0, os.path.abspath("../../"))
+
+# sys.path.insert(0, os.path.abspath("../../spyrit/misc"))
+# sys.path.insert(0, os.path.abspath("../../"))
 
 # -- Project information -----------------------------------------------------
 
