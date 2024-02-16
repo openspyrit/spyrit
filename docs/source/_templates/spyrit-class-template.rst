@@ -5,6 +5,7 @@
 .. autoclass:: {{ objname }}
    :members:
    :show-inheritance:
+   :exclude-members: PyTorch
 
    {% block methods %}
    {% if methods %}
