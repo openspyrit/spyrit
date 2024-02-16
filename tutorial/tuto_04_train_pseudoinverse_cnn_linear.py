@@ -27,10 +27,14 @@ These tutorials load image samples from `/images/`.
 # First, we load an image :math:`x` and normalized it to [-1,1], as in previous examples.
 
 import os
-from spyrit.misc.statistics import transform_gray_norm
-import torchvision
+
 import torch
+import torchvision
+import numpy as np
+import matplotlib.pyplot as plt
+
 from spyrit.misc.disp import imagesc
+from spyrit.misc.statistics import transform_gray_norm
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
@@ -100,10 +104,8 @@ if mode_run:
 # Then, we simulate an accelerated acquisition by keeping only the first
 # :attr:`M` low-frequency coefficients (see :ref:`low frequency sampling <low_frequency>`).
 
-from spyrit.misc.walsh_hadamard import walsh2_matrix
-import numpy as np
 import math
-from spyrit.misc.disp import imagesc
+from spyrit.misc.walsh_hadamard import walsh2_matrix
 from spyrit.misc.sampling import Permutation_Matrix
 
 und = 4  # undersampling factor
@@ -151,7 +153,6 @@ prep = DirectPoisson(N0, meas_op)  # "Undo" the NoNoise operator
 # Then, we define the PinvNet network by passing the noise and preprocessing operators
 # and the denoiser.
 
-import torch
 from spyrit.core.nnet import ConvNet
 from spyrit.core.recon import PinvNet
 
@@ -333,7 +334,6 @@ else:
 
 # Plot
 # sphinx_gallery_thumbnail_number = 2
-import matplotlib.pyplot as plt
 
 fig = plt.figure()
 plt.plot(train_info["train"], label="train")

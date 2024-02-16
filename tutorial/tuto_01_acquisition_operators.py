@@ -19,10 +19,6 @@ These tutorials load image samples from `/images/`.
 """
 
 
-import numpy as np
-import os
-from spyrit.misc.disp import imagesc
-import matplotlib.pyplot as plt
 
 
 # %%
@@ -33,9 +29,15 @@ import matplotlib.pyplot as plt
 # Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
 # using the :func:`transform_gray_norm` function.
 
-from spyrit.misc.statistics import transform_gray_norm
-import torchvision
+import os
+
 import torch
+import torchvision
+import numpy as np
+import matplotlib.pyplot as plt
+
+from spyrit.misc.disp import imagesc
+from spyrit.misc.statistics import transform_gray_norm
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
@@ -286,4 +288,6 @@ noaxis(axs)
 # We show again one of the preprocessed measurement vectors (tutorial thumbnail purpose)
 
 # Plot
+# Choose this plot to be the thumbnail
+# sphinx_gallery_thumbnail_number = 5
 imagesc(m2[0, :, :], "100 photons", title_fontsize=20)

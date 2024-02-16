@@ -25,10 +25,14 @@ These tutorials load image samples from `/images/`.
 # sphinx_gallery_thumbnail_path = '../../spyrit/images/tuto/pinvnet_cnn.png'
 
 import os
-from spyrit.misc.statistics import transform_gray_norm
-import torchvision
+
 import torch
+import torchvision
+import numpy as np
+import matplotlib.pyplot as plt
+
 from spyrit.misc.disp import imagesc
+from spyrit.misc.statistics import transform_gray_norm
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
@@ -65,7 +69,6 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # the first :attr:`M` low-frequency coefficients
 # (see :ref:`Positive Hadamard matrix <hadamard_positive>` for full explantion).
 
-import numpy as np
 import math
 from spyrit.misc.sampling import Permutation_Matrix
 from spyrit.misc.walsh_hadamard import walsh2_matrix
@@ -175,7 +178,6 @@ x_rec = pinv_net.reconstruct(y)
 #    :align: center
 #    :alt: Sketch of the PinvNet with CNN architecture
 
-from spyrit.misc.disp import imagesc
 from spyrit.core.nnet import ConvNet, Unet
 from spyrit.core.train import load_net
 
@@ -247,7 +249,6 @@ x_plot = x.squeeze().cpu().numpy()
 x_plot2 = x_rec.squeeze().cpu().numpy()
 x_plot3 = x_rec_cnn.squeeze().cpu().numpy()
 
-import matplotlib.pyplot as plt
 from spyrit.misc.disp import add_colorbar, noaxis
 
 f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
@@ -270,6 +271,8 @@ add_colorbar(im3, "bottom", size="20%")
 # We show the best result again (tutorial thumbnail purpose)
 
 # Plot
+# We choose this plot for the thumbnail
+# sphinx_gallery_thumbnail_number = 5
 imagesc(x_plot3, f"Pinv + CNN (trained {num_epochs} epochs", title_fontsize=20)
 
 plt.show()

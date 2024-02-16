@@ -22,10 +22,13 @@ These tutorials load image samples from `/images/`.
 # sphinx_gallery_thumbnail_path = 'images/tuto/pinvnet.png'
 
 import os
-from spyrit.misc.statistics import transform_gray_norm
-import torchvision
+
 import torch
+import torchvision
+import numpy as np
+
 from spyrit.misc.disp import imagesc
+from spyrit.misc.statistics import transform_gray_norm
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
@@ -64,7 +67,6 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # image of size :attr:`h` and takes its positive part.
 
 from spyrit.misc.walsh_hadamard import walsh2_matrix
-import numpy as np
 
 F = walsh2_matrix(h)
 F = np.where(F > 0, F, 0)
@@ -184,6 +186,8 @@ recon_op = PseudoInverse()
 x_rec = recon_op(y, meas_op)
 
 # plot
+# Choose this plot to be the thumbnail
+# sphinx_gallery_thumbnail_number = 5
 x_plot = x_rec.squeeze().view(h, h).cpu().numpy()
 imagesc(x_plot, "Pseudoinverse reconstruction (no noise)", title_fontsize=20)
 
