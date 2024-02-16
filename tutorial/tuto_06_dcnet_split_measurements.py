@@ -12,11 +12,6 @@ and how to perform a pseudo-inverse reconstruction with PinvNet.
 These tutorials load image samples from `/images/`.
 """
 
-import numpy as np
-import os
-from spyrit.misc.disp import imagesc
-import matplotlib.pyplot as plt
-
 
 # %%
 # Load a batch of images
@@ -28,9 +23,15 @@ import matplotlib.pyplot as plt
 
 # sphinx_gallery_thumbnail_path = '../../spyrit/images/tuto/dcnet.png'
 
-from spyrit.misc.statistics import transform_gray_norm
-import torchvision
+import os
+
 import torch
+import torchvision
+import numpy as np
+import matplotlib.pyplot as plt
+
+from spyrit.misc.disp import imagesc
+from spyrit.misc.statistics import transform_gray_norm
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
@@ -254,6 +255,8 @@ with torch.no_grad():
 ###############################################################################
 # We plot all results
 
+# We choose this plot as thumbnail
+# sphinx_gallery_thumbnail_number = 3
 # plot reconstruction side by side
 x_plot = x.view(-1, h, h).cpu().numpy()
 x_plot2 = z_invnet.view(-1, h, h).cpu().numpy()
