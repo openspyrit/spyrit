@@ -21,7 +21,7 @@ print("Trying :", os.path.abspath("../../spyrit"))
 # print("looking for:", os.path.abspath("../../../spyrit"))
 print("#"*80)
 print('\n')
-sys.path.insert(0, os.path.abspath("../../../spyrit/spyrit"))
+sys.path.insert(0, os.path.abspath("../../spyrit"))
 # sys.path.insert(0, os.path.abspath("../../spyrit"))
 
 # sys.path.insert(0, os.path.abspath("../../spyrit/misc"))
