@@ -247,3 +247,14 @@ class Identity(nn.Module):  # Can be useful for ablation study
 
     def forward(self, x):
         return x
+
+# ===========================================================================================
+class ProjectToZero(nn.Module):
+    # ===========================================================================================
+    def __init__(self):
+        super(ProjectToZero, self).__init__()
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        # x in [-1,1]
+        return self.relu(x+1) - 1
