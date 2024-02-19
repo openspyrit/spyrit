@@ -18,9 +18,6 @@ submodule, which is based on three classes:
 These tutorials load image samples from `/images/`.
 """
 
-
-
-
 # %%
 # Load a batch of images
 # -----------------------------------------------------------------------------

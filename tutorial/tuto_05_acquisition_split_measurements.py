@@ -14,7 +14,6 @@ and ii) by discussing the choice of the subsampling pattern for accelerated acqu
 These tutorials load image samples from `/images/`.
 """
 
-
 # %%
 # Load a batch of images
 # -----------------------------------------------------------------------------

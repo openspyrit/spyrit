@@ -12,7 +12,6 @@ and how to perform a pseudo-inverse reconstruction with PinvNet.
 These tutorials load image samples from `/images/`.
 """
 
-
 # %%
 # Load a batch of images
 # -----------------------------------------------------------------------------

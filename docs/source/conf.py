@@ -34,14 +34,14 @@ release = "2.1.0"
 # ones.
 extensions = [
     "sphinx.ext.intersphinx",
-    'sphinx.ext.autodoc',
+    "sphinx.ext.autodoc",
     "sphinx.ext.mathjax",
     "sphinx.ext.todo",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx_gallery.gen_gallery",
-    "sphinx.ext.coverage"
+    "sphinx.ext.coverage",
 ]
 
 # Napoleon settings
@@ -116,15 +116,20 @@ html_sidebars = {
 # autodoc_mock_imports = "numpy matplotlib mpl_toolkits scipy torch torchvision Pillow opencv-python imutils PyWavelets pywt wget imageio".split()
 
 
-# exclude all torch.nn.Module members from the documentation 
+# exclude all torch.nn.Module members from the documentation
 # except forward and __init__ methods
 import torch
+
+
 def skip_member_handler(app, what, name, obj, skip, options):
-    if name in ["forward",]:
+    if name in [
+        "forward",
+    ]:
         return False
     if name in dir(torch.nn.Module):
         return True
     return None
+
 
 def setup(app):
     app.connect("autodoc-skip-member", skip_member_handler)
