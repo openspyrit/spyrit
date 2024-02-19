@@ -14,12 +14,10 @@ import os
 import sys
 from sphinx_gallery.sorting import ExampleTitleSortKey
 
-sys.path.insert(0, os.path.abspath("../../spyrit"))
-sys.path.insert(0, os.path.abspath("../../"))
-
+# paths relative to this file
+sys.path.insert(0, os.path.abspath("../.."))
 
 # -- Project information -----------------------------------------------------
-
 project = "spyrit"
 copyright = "2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier"
 author = (
@@ -29,7 +27,6 @@ author = (
 # The full version, including alpha/beta/rc tags
 release = "2.1.0"
 
-
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -37,10 +34,10 @@ release = "2.1.0"
 # ones.
 extensions = [
     "sphinx.ext.intersphinx",
-    "sphinx.ext.autodoc",  #
+    "sphinx.ext.autodoc",
     "sphinx.ext.mathjax",
     "sphinx.ext.todo",
-    "sphinx.ext.autosummary",  #
+    "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx_gallery.gen_gallery",
@@ -59,6 +56,8 @@ napoleon_use_ivar = True
 napoleon_use_param = False
 napoleon_use_rtype = False
 
+autodoc_member_order = "bysource"
+autosummary_generate = True
 todo_include_todos = True
 
 # Add any paths that contain templates here, relative to this directory.
@@ -72,7 +71,7 @@ exclude_patterns = []
 sphinx_gallery_conf = {
     # path to your examples scripts
     "examples_dirs": [
-        "../../spyrit/tutorial",
+        "../../tutorial",
     ],
     # path where to save gallery generated examples
     "gallery_dirs": ["gallery"],
@@ -113,5 +112,24 @@ html_sidebars = {
 }
 
 # http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
-autodoc_mock_imports = "numpy matplotlib mpl_toolkits scipy torch torchvision Pillow opencv-python imutils PyWavelets pywt wget imageio".split()
-autodoc_member_order = "bysource"
+# autodoc_mock_imports incompatible with autosummary somehow
+# autodoc_mock_imports = "numpy matplotlib mpl_toolkits scipy torch torchvision Pillow opencv-python imutils PyWavelets pywt wget imageio".split()
+
+
+# exclude all torch.nn.Module members from the documentation
+# except forward and __init__ methods
+import torch
+
+
+def skip_member_handler(app, what, name, obj, skip, options):
+    if name in [
+        "forward",
+    ]:
+        return False
+    if name in dir(torch.nn.Module):
+        return True
+    return None
+
+
+def setup(app):
+    app.connect("autodoc-skip-member", skip_member_handler)

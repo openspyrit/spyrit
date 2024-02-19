@@ -2,11 +2,12 @@ r"""
 02. Pseudoinverse solution from linear measurements
 ===================================================
 .. _tuto_pseudoinverse_linear:
+
 This tutorial shows how to simulate measurements and perform image reconstruction.
 The measurement operator is chosen as a Hadamard matrix with positive coefficients.
 Note that this matrix can be replaced by any desired matrix.
 
-These tutorials must be runned from `spyrit/tutorial/` folder (they load image samples from `spyrit/images/`).
+These tutorials load image samples from `/images/`.
 """
 
 # %%
@@ -17,18 +18,19 @@ These tutorials must be runned from `spyrit/tutorial/` folder (they load image s
 # Images :math:`x` for training expect values in [-1,1]. The images are normalized
 # using the :func:`transform_gray_norm` function.
 
-# sphinx_gallery_thumbnail_path = '../../spyrit/images/tuto/pinvnet.png'
-
 import os
-from spyrit.misc.statistics import transform_gray_norm
-import torchvision
+
 import torch
+import torchvision
+import numpy as np
+
 from spyrit.misc.disp import imagesc
+from spyrit.misc.statistics import transform_gray_norm
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "../images")
+imgs_path = os.path.join(spyritPath, "images/")
 
 
 # Create a transform for natural images to normalized grayscale image tensors
@@ -62,13 +64,13 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # image of size :attr:`h` and takes its positive part.
 
 from spyrit.misc.walsh_hadamard import walsh2_matrix
-import numpy as np
 
 F = walsh2_matrix(h)
 F = np.where(F > 0, F, 0)
 
 ###############################################################################
 # .. _low_frequency:
+#
 # Next, we subsample the rows of the measurement matrix to simulate an
 # accelerated acquisition. For this, we use the
 # :func:`spyrit.misc.sampling.Permutation_Matrix` function
@@ -142,11 +144,11 @@ imagesc(y_plot, "Raw measurements (no noise)")
 
 ###############################################################################
 # We now compute and plot the preprocessed measurements corresponding to an
-# image in [-1,1]. For details in the preprocessing, see :ref:`tuto_acquisition_operators`.
+# image in [-1,1]. For details in the preprocessing, see :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_acquisition_operators.py>`.
 #
 # .. note::
 #
-#       Using :class:`spyrit.core.prep.DirectPoisson` with :math:`\alpha` = 1
+#       Using :class:`spyrit.core.prep.DirectPoisson` with :math:`\alpha = 1`
 #       allows to compensate for the image normalisation achieved by
 #       :class:`spyrit.core.noise.NoNoise`.
 
@@ -181,6 +183,8 @@ recon_op = PseudoInverse()
 x_rec = recon_op(y, meas_op)
 
 # plot
+# Choose this plot to be the thumbnail
+# sphinx_gallery_thumbnail_number = 5
 x_plot = x_rec.squeeze().view(h, h).cpu().numpy()
 imagesc(x_plot, "Pseudoinverse reconstruction (no noise)", title_fontsize=20)
 
@@ -195,7 +199,7 @@ imagesc(x_plot, "Pseudoinverse reconstruction (no noise)", title_fontsize=20)
 # can be set to the identity operator
 
 ###############################################################################
-# .. image:: ../../../spyrit/images/tuto/pinvnet.png
+# .. image:: /spyrit/docs/source/fig/pinvnet.png
 #    :width: 400
 #    :align: center
 #    :alt: Sketch of the PinvNet architecture
@@ -248,7 +252,7 @@ imagesc(x_plot, "One more pseudoinverse reconstruction (no noise)")
 ###############################################################################
 # Here, we consider the :class:`spyrit.core.noise.Poisson` class
 # together with a :class:`spyrit.core.prep.DirectPoisson`
-# preprocessing operator (see :ref:`tuto_acquisition_operators`).
+# preprocessing operator (see :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_acquisition_operators.py>`).
 
 alpha = 10  # maximum number of photons in the image
 

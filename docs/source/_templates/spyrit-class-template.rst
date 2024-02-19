@@ -3,19 +3,19 @@
 .. currentmodule:: {{ module }}
 
 .. autoclass:: {{ objname }}
-   :members:
    :show-inheritance:
-   :inherited-members:
 
    {% block methods %}
-   .. automethod:: __init__
-
    {% if methods %}
    .. rubric:: {{ _('Methods') }}
 
    .. autosummary::
+      :toctree:
+      :template: spyrit-method-template.rst
    {% for item in methods %}
+   {%- if item is in members %}
       ~{{ name }}.{{ item }}
+   {%- endif %}
    {%- endfor %}
    {% endif %}
    {% endblock %}
@@ -25,8 +25,11 @@
    .. rubric:: {{ _('Attributes') }}
 
    .. autosummary::
+      :toctree:
    {% for item in attributes %}
+   {%- if item != "training" %}
       ~{{ name }}.{{ item }}
+   {%- endif %}
    {%- endfor %}
    {% endif %}
    {% endblock %}

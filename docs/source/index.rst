@@ -98,7 +98,6 @@ The main functionalities of SPyRiT are implemented in the :class:`spyrit.core` s
 
 6. **Training (train)** provide the functionalities for training reconstruction networks (see :mod:`spyrit.core.train`).
 
-
 Subpackages
 -----------------------------------
 
@@ -116,8 +115,6 @@ Subpackages
    :caption: Tutorials
 
    gallery/index
-
-
 
 .. Indices and tables
     ==================

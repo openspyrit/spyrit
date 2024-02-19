@@ -2,6 +2,7 @@ r"""
 01. Acquisition operators
 ==========================
 .. _tuto_acquisition_operators:
+
 This tutorial shows how to simulate measurements using the :class:`spyrit.core`
 submodule, which is based on three classes:
 
@@ -14,14 +15,8 @@ submodule, which is based on three classes:
 3. **Preprocessing operators** are typically used to process the noisy
    measurements prior to reconstruction (see :mod:`spyrit.core.prep`)
 
-These tutorials must be runned from `spyrit/tutorial/` folder (they load image samples from `spyrit/images/`).
+These tutorials load image samples from `/images/`.
 """
-
-import numpy as np
-import os
-from spyrit.misc.disp import imagesc
-import matplotlib.pyplot as plt
-
 
 # %%
 # Load a batch of images
@@ -31,16 +26,20 @@ import matplotlib.pyplot as plt
 # Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
 # using the :func:`transform_gray_norm` function.
 
-# sphinx_gallery_thumbnail_path = '../../spyrit/images/tuto/noise_op.png'
+import os
 
-from spyrit.misc.statistics import transform_gray_norm
-import torchvision
 import torch
+import torchvision
+import numpy as np
+import matplotlib.pyplot as plt
+
+from spyrit.misc.disp import imagesc
+from spyrit.misc.statistics import transform_gray_norm
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "../images")
+imgs_path = os.path.join(spyritPath, "images/")
 
 
 # Create a transform for natural images to normalized grayscale image tensors
@@ -69,10 +68,13 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 ###############################################################################
 # Noise operators are defined in the :mod:`~spyrit.core.noise` module. A noise
 # operator computes the following three steps sequentially:
-#   1. Normalization of the image :math:`x` with values in [-1,1] to get an
-#      image :math:`\tilde{x}=\frac{x+1}{2}` in [0,1], as it is required for measurement simulation
-#   2. Application of the measurement model, i.e., computation of :math:`H\tilde{x}`
-#   3. Application of the noise model
+#
+# 1. Normalization of the image :math:`x` with values in [-1,1] to get an image
+# :math:`\tilde{x}=\frac{x+1}{2}` in [0,1], as it is required for measurement simulation
+#
+# 2. Application of the measurement model, i.e., computation of :math:`H\tilde{x}`
+#
+# 3. Application of the noise model
 #
 # .. math::
 #       y \sim \texttt{Noise}(H\tilde{x}) = \texttt{Noise}\left(\frac{H(x+1)}{2}\right),
@@ -215,9 +217,11 @@ noaxis(axs)
 
 ###############################################################################
 # We consider the :class:`spyrit.core.prep.DirectPoisson` class that intends
-# to "undo" the :class:`spyrit.core.noise.Poisson` class by compensating for
-#   * the scaling that appears when computing Poisson-corrupted measurements
-#   * the affine transformation to get images in [0,1] from images in [-1,1]
+# to "undo" the :class:`spyrit.core.noise.Poisson` class by compensating for:
+#
+# * the scaling that appears when computing Poisson-corrupted measurements
+#
+# * the affine transformation to get images in [0,1] from images in [-1,1]
 #
 # For this, it computes
 #
@@ -281,4 +285,6 @@ noaxis(axs)
 # We show again one of the preprocessed measurement vectors (tutorial thumbnail purpose)
 
 # Plot
+# Choose this plot to be the thumbnail
+# sphinx_gallery_thumbnail_number = 5
 imagesc(m2[0, :, :], "100 photons", title_fontsize=20)
