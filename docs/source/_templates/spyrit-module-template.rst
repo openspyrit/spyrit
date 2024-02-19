@@ -1,6 +1,7 @@
 {{ fullname | escape | underline}}
 
 .. automodule:: {{ fullname }}
+   :show-inheritance:
 
    {% block attributes %}
    {% if attributes %}

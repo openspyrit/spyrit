@@ -2,6 +2,7 @@ r"""
 03. Pseudoinverse solution + CNN denoising
 ==========================================
 .. _tuto_pseudoinverse_cnn_linear:
+
 This tutorial shows how to simulate measurements and perform image reconstruction
 using PinvNet (pseudoinverse linear network) with CNN denoising as a last layer.
 This tutorial is a continuation of the :ref:`Pseudoinverse solution tutorial <tuto_pseudoinverse_linear>`
@@ -9,6 +10,8 @@ but uses a CNN denoiser instead of the identity operator in order to remove arte
 
 The measurement operator is chosen as a Hadamard matrix with positive coefficients,
 which can be replaced by any matrix.
+
+These tutorials load image samples from `/images/`.
 """
 
 # %%
@@ -19,18 +22,20 @@ which can be replaced by any matrix.
 # Images :math:`x` for training expect values in [-1,1]. The images are normalized
 # using the :func:`transform_gray_norm` function.
 
-# sphinx_gallery_thumbnail_path = '../../spyrit/images/tuto/pinvnet_cnn.png'
-
 import os
-from spyrit.misc.statistics import transform_gray_norm
-import torchvision
+
 import torch
+import torchvision
+import numpy as np
+import matplotlib.pyplot as plt
+
 from spyrit.misc.disp import imagesc
+from spyrit.misc.statistics import transform_gray_norm
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "../images")
+imgs_path = os.path.join(spyritPath, "images/")
 
 # Create a transform for natural images to normalized grayscale image tensors
 transform = transform_gray_norm(img_size=h)
@@ -62,7 +67,6 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # the first :attr:`M` low-frequency coefficients
 # (see :ref:`Positive Hadamard matrix <hadamard_positive>` for full explantion).
 
-import numpy as np
 import math
 from spyrit.misc.sampling import Permutation_Matrix
 from spyrit.misc.walsh_hadamard import walsh2_matrix
@@ -167,12 +171,11 @@ x_rec = pinv_net.reconstruct(y)
 # neural network (eg. UNet from :class:`spyrit.core.nnet.Unet`).
 
 ###############################################################################
-# .. image:: ../../../spyrit/images/tuto/pinvnet_cnn.png
+# .. image:: /spyrit/docs/source/fig/pinvnet_cnn.png
 #    :width: 400
 #    :align: center
 #    :alt: Sketch of the PinvNet with CNN architecture
 
-from spyrit.misc.disp import imagesc
 from spyrit.core.nnet import ConvNet, Unet
 from spyrit.core.train import load_net
 
@@ -244,7 +247,6 @@ x_plot = x.squeeze().cpu().numpy()
 x_plot2 = x_rec.squeeze().cpu().numpy()
 x_plot3 = x_rec_cnn.squeeze().cpu().numpy()
 
-import matplotlib.pyplot as plt
 from spyrit.misc.disp import add_colorbar, noaxis
 
 f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
@@ -267,6 +269,8 @@ add_colorbar(im3, "bottom", size="20%")
 # We show the best result again (tutorial thumbnail purpose)
 
 # Plot
+# We choose this plot for the thumbnail
+# sphinx_gallery_thumbnail_number = 5
 imagesc(x_plot3, f"Pinv + CNN (trained {num_epochs} epochs", title_fontsize=20)
 
 plt.show()

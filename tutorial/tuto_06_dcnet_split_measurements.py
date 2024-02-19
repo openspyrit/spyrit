@@ -2,19 +2,15 @@ r"""
 06. DCNet solution for split measurements
 =========================================
 .. _tuto_dcnet_split_measurements:
+
 This tutorial shows how to perform image reconstruction using DCNet (data completion network) with
 and without a trainable image denoiser. In the previous tutorial
 :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`
 we showed how to handle split measurements for a Hadamard operator
 and how to perform a pseudo-inverse reconstruction with PinvNet.
 
+These tutorials load image samples from `/images/`.
 """
-
-import numpy as np
-import os
-from spyrit.misc.disp import imagesc
-import matplotlib.pyplot as plt
-
 
 # %%
 # Load a batch of images
@@ -24,16 +20,20 @@ import matplotlib.pyplot as plt
 # Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
 # using the :func:`transform_gray_norm` function.
 
-# sphinx_gallery_thumbnail_path = '../../spyrit/images/tuto/dcnet.png'
+import os
 
-from spyrit.misc.statistics import transform_gray_norm
-import torchvision
 import torch
+import torchvision
+import numpy as np
+import matplotlib.pyplot as plt
+
+from spyrit.misc.disp import imagesc
+from spyrit.misc.statistics import transform_gray_norm
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "../images")
+imgs_path = os.path.join(spyritPath, "images/")
 
 
 # Create a transform for natural images to normalized grayscale image tensors
@@ -163,14 +163,19 @@ with torch.no_grad():
 ###############################################################################
 # We can improve PinvNet results by using the *denoised* completion network DCNet with the
 # :class:`spyrit.core.recon.DCNet` class. It has four sequential steps:
-#   i) denoising of the acquired measurements,
-#   ii) estimation of the missing measurements from the denoised ones,
-#   iii) mapping them to the image domain, and
-#   iv) denoising in the image-domain.
+#
+# i) denoising of the acquired measurements,
+#
+# ii) estimation of the missing measurements from the denoised ones,
+#
+# iii) mapping them to the image domain, and
+#
+# iv) denoising in the image-domain.
+#
 # Only the last step involves learnable parameters.
 
 ###############################################################################
-# .. image:: ../../../spyrit/images/tuto/dcnet.png
+# .. image:: /spyrit/docs/source/fig/dcnet.png
 #    :width: 400
 #    :align: center
 #    :alt: Sketch of the DCNet architecture
@@ -247,6 +252,8 @@ with torch.no_grad():
 ###############################################################################
 # We plot all results
 
+# We choose this plot as thumbnail
+# sphinx_gallery_thumbnail_number = 3
 # plot reconstruction side by side
 x_plot = x.view(-1, h, h).cpu().numpy()
 x_plot2 = z_invnet.view(-1, h, h).cpu().numpy()

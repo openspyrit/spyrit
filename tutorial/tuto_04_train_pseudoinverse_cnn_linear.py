@@ -2,6 +2,7 @@ r"""
 04. Train pseudoinverse solution + CNN denoising
 ================================================
 .. _tuto_train_pseudoinverse_cnn_linear:
+
 This tutorial shows how to train PinvNet with a CNN denoiser for
 reconstruction of linear measurements (results shown in the
 :ref:`previous tutorial <tuto_pseudoinverse_cnn_linear>`).
@@ -14,6 +15,8 @@ and intermediate results (reconstructed images at different epochs).
 
 The linear measurement operator is chosen as the positive part of a Hadamard matrix,
 but this matrix can be replaced by any desired matrix.
+
+These tutorials load image samples from `/images/`.
 """
 
 # %%
@@ -24,15 +27,19 @@ but this matrix can be replaced by any desired matrix.
 # First, we load an image :math:`x` and normalized it to [-1,1], as in previous examples.
 
 import os
-from spyrit.misc.statistics import transform_gray_norm
-import torchvision
+
 import torch
+import torchvision
+import numpy as np
+import matplotlib.pyplot as plt
+
 from spyrit.misc.disp import imagesc
+from spyrit.misc.statistics import transform_gray_norm
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "../images")
+imgs_path = os.path.join(spyritPath, "images/")
 
 
 # Create a transform for natural images to normalized grayscale image tensors
@@ -97,10 +104,8 @@ if mode_run:
 # Then, we simulate an accelerated acquisition by keeping only the first
 # :attr:`M` low-frequency coefficients (see :ref:`low frequency sampling <low_frequency>`).
 
-from spyrit.misc.walsh_hadamard import walsh2_matrix
-import numpy as np
 import math
-from spyrit.misc.disp import imagesc
+from spyrit.misc.walsh_hadamard import walsh2_matrix
 from spyrit.misc.sampling import Permutation_Matrix
 
 und = 4  # undersampling factor
@@ -148,7 +153,6 @@ prep = DirectPoisson(N0, meas_op)  # "Undo" the NoNoise operator
 # Then, we define the PinvNet network by passing the noise and preprocessing operators
 # and the denoiser.
 
-import torch
 from spyrit.core.nnet import ConvNet
 from spyrit.core.recon import PinvNet
 
@@ -330,7 +334,6 @@ else:
 
 # Plot
 # sphinx_gallery_thumbnail_number = 2
-import matplotlib.pyplot as plt
 
 fig = plt.figure()
 plt.plot(train_info["train"], label="train")
