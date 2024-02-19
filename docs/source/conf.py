@@ -56,14 +56,6 @@ napoleon_use_ivar = True
 napoleon_use_param = False
 napoleon_use_rtype = False
 
-# autodoc_default_options = {
-#     "members": True,
-#     "inherited-members": True,
-#     "show-inheritance": True,
-#     "member-order": "bysource",
-#     "exclude-members": ["add_module","bfloat16"]
-# }
-
 autodoc_member_order = "bysource"
 autosummary_generate = True
 todo_include_todos = True
@@ -128,7 +120,7 @@ html_sidebars = {
 # except forward and __init__ methods
 import torch
 def skip_member_handler(app, what, name, obj, skip, options):
-    if name in ["forward", "__init__"]:
+    if name in ["forward",]:
         return False
     if name in dir(torch.nn.Module):
         return True
