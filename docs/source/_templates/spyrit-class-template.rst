@@ -3,8 +3,6 @@
 .. currentmodule:: {{ module }}
 
 .. autoclass:: {{ objname }}
-   :members:
-   :inherited-members: 
    :show-inheritance:
 
    {% block methods %}
@@ -15,7 +13,9 @@
       :toctree:
       :template: spyrit-method-template.rst
    {% for item in methods %}
+   {%- if item is in members %}
       ~{{ name }}.{{ item }}
+   {%- endif %}
    {%- endfor %}
    {% endif %}
    {% endblock %}
