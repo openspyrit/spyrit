@@ -200,7 +200,7 @@ imagesc(x_plot, "Pseudoinverse reconstruction (no noise)", title_fontsize=20)
 # can be set to the identity operator
 
 ###############################################################################
-# .. image:: /../../../../tutorial/images/tuto/pinvnet.png
+# .. image:: images/tuto/pinvnet.png
 #    :width: 400
 #    :align: center
 #    :alt: Sketch of the PinvNet architecture
