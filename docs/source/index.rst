@@ -112,10 +112,9 @@ Subpackages
 
 .. toctree::
    :maxdepth: 2
-   :caption: Tutorials:
+   :caption: Tutorials
 
    gallery/index
-.. api/modules
 
 .. Indices and tables
     ==================

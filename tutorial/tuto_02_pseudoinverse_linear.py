@@ -10,7 +10,6 @@ Note that this matrix can be replaced by any desired matrix.
 These tutorials load image samples from `/images/`.
 """
 
-
 # %%
 # Load a batch of images
 # -----------------------------------------------------------------------------
