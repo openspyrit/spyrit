@@ -56,6 +56,14 @@ napoleon_use_ivar = True
 napoleon_use_param = False
 napoleon_use_rtype = False
 
+# autodoc_default_options = {
+#     "members": True,
+#     "inherited-members": True,
+#     "show-inheritance": True,
+#     "member-order": "bysource",
+#     "exclude-members": ["add_module","bfloat16"]
+# }
+
 autodoc_member_order = "bysource"
 autosummary_generate = True
 todo_include_todos = True
@@ -110,3 +118,21 @@ master_doc = "index"
 html_sidebars = {
     "**": ["globaltoc.html", "relations.html", "sourcelink.html", "searchbox.html"]
 }
+
+# http://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autodoc_mock_imports
+# autodoc_mock_imports incompatible with autosummary somehow
+# autodoc_mock_imports = "numpy matplotlib mpl_toolkits scipy torch torchvision Pillow opencv-python imutils PyWavelets pywt wget imageio".split()
+
+
+# exclude all torch.nn.Module members from the documentation 
+# except forward and __init__ methods
+import torch
+def skip_member_handler(app, what, name, obj, skip, options):
+    if name in ["forward", "__init__"]:
+        return False
+    if name in dir(torch.nn.Module):
+        return True
+    return None
+
+def setup(app):
+    app.connect("autodoc-skip-member", skip_member_handler)
