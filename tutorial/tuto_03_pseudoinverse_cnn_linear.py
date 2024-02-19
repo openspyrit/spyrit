@@ -171,7 +171,7 @@ x_rec = pinv_net.reconstruct(y)
 # neural network (eg. UNet from :class:`spyrit.core.nnet.Unet`).
 
 ###############################################################################
-# .. image:: images/tuto/pinvnet_cnn.png
+# .. image:: ../images/tuto/pinvnet_cnn.png
 #    :width: 400
 #    :align: center
 #    :alt: Sketch of the PinvNet with CNN architecture
