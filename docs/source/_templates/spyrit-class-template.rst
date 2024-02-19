@@ -4,19 +4,8 @@
 
 .. autoclass:: {{ objname }}
    :members:
+   :inherited-members:
    :show-inheritance:
-   :exclude-members: PyTorch
-
-   {% block methods %}
-   {% if methods %}
-   .. rubric:: {{ _('Methods') }}
-
-   .. autosummary::
-   {% for item in methods %}
-      ~{{ name }}.{{ item }}
-   {%- endfor %}
-   {% endif %}
-   {% endblock %}
 
    {% block attributes %}
    {% if attributes %}
@@ -25,6 +14,21 @@
    .. autosummary::
    {% for item in attributes %}
       ~{{ name }}.{{ item }}
+   {%- endfor %}
+   {% endif %}
+   {% endblock %}
+
+   {% block methods %}
+   {% if methods %}
+   .. rubric:: {{ _('Methods') }}
+
+   .. autosummary::
+      :toctree:
+      :template: spyrit-method-template.rst
+   {% for item in methods %}
+   {%- if item not in inherited_members %}
+      ~{{ name }}.{{ item }}
+   {%- endif %}
    {%- endfor %}
    {% endif %}
    {% endblock %}
