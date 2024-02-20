@@ -44,8 +44,6 @@ extensions = [
     "sphinx.ext.coverage",
 ]
 
-autosummary_generate = True
-
 # Napoleon settings
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
