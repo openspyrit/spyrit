@@ -125,12 +125,8 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         self.comp.weight.requires_grad = False
 
     def forward(
-        self,
-        x: torch.tensor,
-        x_0: torch.tensor,
-        var: torch.tensor,
-        meas_op: HadamSplit
-        ) -> torch.tensor:
+        self, x: torch.tensor, x_0: torch.tensor, var: torch.tensor, meas_op: HadamSplit
+    ) -> torch.tensor:
         r"""
         Computes the Tikhonov regularization with prior in the measurement domain.
 
@@ -209,10 +205,10 @@ class Denoise_layer(nn.Module):
 
     Attributes:
         :attr:`weight`:
-        The learnable standard deviation prior :math:`\sigma_\text{prior}` of 
+        The learnable standard deviation prior :math:`\sigma_\text{prior}` of
         shape :math:`(M, 1)`. The values are initialized from
         :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`, where :math:`k = 1/M`.
-        
+
         :attr:`in_features`:
         The number of input features equal to :math:`M`.
 
@@ -233,7 +229,7 @@ class Denoise_layer(nn.Module):
     def reset_parameters(self):
         r"""
         Resets the standard deviation prior :math:`\sigma_\text{prior}`.
-        
+
         The values are initialized from :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`,
         where :math:`k = 1/M`. They are stored in the :attr:`weight` attribute.
         """
@@ -242,7 +238,7 @@ class Denoise_layer(nn.Module):
     def forward(self, inputs: torch.tensor) -> torch.tensor:
         r"""
         Applies a transformation to the incoming data: :math:`y = A^2/(A^2+x)`.
-        
+
         :math:`x` is the input tensor (see :attr:`inputs`) and :math:`A` is the
         standard deviation prior (see :attr:`self.weight`).
 
@@ -253,9 +249,9 @@ class Denoise_layer(nn.Module):
         Returns:
             torch.tensor: The transformed data :math:`y` of shape
             :math:`(N, in\_features)`
-        
+
         Shape:
-        
+
         """
         return self.tikho(inputs, self.weight)
 
@@ -270,18 +266,18 @@ class Denoise_layer(nn.Module):
 
         :math:`x` is the input tensor (see :attr:`inputs`) and :math:`A` is the
         standard deviation prior (see :attr:`weight`).
-        
+
         Args:
             :attr:`inputs` (torch.tensor): input tensor :math:`x` of shape
             :math:`(N, *, in\_features)`
-            
+
             :attr:`weight` (torch.tensor): standard deviation prior :math:`A` of
             shape :math:`(in\_features)`
-        
+
         Returns:
             torch.tensor: The transformed data :math:`y` of shape
             :math:`(N, in\_features)`
-        
+
         Shape:
             - :attr:`inputs`: :math:`(N, *, in\_features)` where `*` means any number of
               additional dimensions - Variance of measurements
@@ -319,7 +315,7 @@ class PinvNet(nn.Module):
         :attr:`input`: Ground-truth images with shape :math:`(B,C,H,W)`
         corresponding to the batch size, number of channels, height, and width.
 
-        :attr:`output`: Reconstructed images with shape :math:`(B,C,H,W)` 
+        :attr:`output`: Reconstructed images with shape :math:`(B,C,H,W)`
         corresponding to the batch size, number of channels, height, and width.
 
     Attributes:
