@@ -1075,7 +1075,10 @@ class LearnedPGD(nn.Module):
         self.wls = wls
         self.step_estimation = step_estimation
         # Ground truth available -> compute MSE
-        self.x_gt = nn.Parameter(torch.tensor(gt.reshape(gt.shape[0],-1)), requires_grad=False)
+        if gt is not None:
+            self.x_gt = nn.Parameter(torch.tensor(gt.reshape(gt.shape[0],-1)), requires_grad=False)
+        else:
+            self.x_gt = None
 
     def forward(self, x):
         r""" Full pipeline of reconstrcution network
@@ -1213,7 +1216,7 @@ class LearnedPGD(nn.Module):
 
         # init solution and dual variable
         x = self.acqu.meas_op.pinv(m) # shape x = [b*c,N]
-        #x = torch.zeros_like(x)
+        x = torch.zeros_like(x)
         
         if self.log_inner_fidelity:
             data_fidelity = []
@@ -1312,3 +1315,4 @@ class LearnedPGD(nn.Module):
                     # break
 
             return x
+        
