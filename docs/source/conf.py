@@ -116,20 +116,18 @@ html_sidebars = {
 # autodoc_mock_imports = "numpy matplotlib mpl_toolkits scipy torch torchvision Pillow opencv-python imutils PyWavelets pywt wget imageio".split()
 
 
-# exclude all torch.nn.Module members from the documentation
-# except forward and __init__ methods
+# exclude all torch.nn.Module members (except forward method) from the docs:
 import torch
 
-
 def skip_member_handler(app, what, name, obj, skip, options):
-    if name in [
-        "forward",
-    ]:
-        return False
+    always_document = [     # complete this list if needed by adding methods
+        "forward",          # you *always* want to see documented
+    ]
+    if name in always_document:                  
+        return None
     if name in dir(torch.nn.Module):
         return True
     return None
-
 
 def setup(app):
     app.connect("autodoc-skip-member", skip_member_handler)
