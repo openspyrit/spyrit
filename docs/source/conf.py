@@ -119,15 +119,17 @@ html_sidebars = {
 # exclude all torch.nn.Module members (except forward method) from the docs:
 import torch
 
+
 def skip_member_handler(app, what, name, obj, skip, options):
-    always_document = [     # complete this list if needed by adding methods
-        "forward",          # you *always* want to see documented
+    always_document = [  # complete this list if needed by adding methods
+        "forward",  # you *always* want to see documented
     ]
-    if name in always_document:                  
+    if name in always_document:
         return None
     if name in dir(torch.nn.Module):
         return True
     return None
+
 
 def setup(app):
     app.connect("autodoc-skip-member", skip_member_handler)
