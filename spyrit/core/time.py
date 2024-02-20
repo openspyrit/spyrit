@@ -59,6 +59,7 @@ class DeformationField(nn.Module):
         Default: :attr:`None`.
 
         :attr:`align_corners` (bool, optional):
+        Option passed to `torch.nn.functional.grid_sample`. 
         Geometrically, we consider the pixels of the input as squares
         rather than points. If set to :attr:`True`, the extrema (-1 and 1)
         are considered as referring to the center points of the input's
@@ -98,7 +99,6 @@ class DeformationField(nn.Module):
             self.inverse_grid_frames = inverse_grid_frames.float()
         else:
             self.inverse_grid_frames = None
-        #: Option passed to `torch.nn.functional.grid_sample`.
         self.align_corners = align_corners 
 
     def warp(
