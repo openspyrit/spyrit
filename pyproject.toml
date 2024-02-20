@@ -1,6 +1,47 @@
 [build-system]
 requires = [
-    "setuptools>=42",
+    "setuptools>=67",
     "wheel",
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md"]}
+
+[tool.setuptools.packages]
+find = {}  # Scanning implicit namespaces is active by default
+
+[project]
+name = "spyrit"
+version = "2.2.0"
+dynamic = ["readme"]
+authors = [{name = "Nicolas Ducros", email = "Nicolas.Ducros@insa-lyon.fr"}]
+description = "Toolbox for deep image reconstruction"
+license = {file = "LICENSE.md"}
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+        "numpy",
+        "matplotlib",
+        "scipy",
+        "torch",
+        "torchvision",
+        "Pillow",
+        "PyWavelets",
+        "wget",
+        "sympy",
+        "imageio",
+        "astropy",
+]
+requires-python = ">=3.6"
