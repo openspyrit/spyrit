@@ -19,17 +19,3 @@
    {%- endfor %}
    {% endif %}
    {% endblock %}
-
-   {% block attributes %}
-   {% if attributes %}
-   .. rubric:: {{ _('Attributes') }}
-
-   .. autosummary::
-      :toctree:
-   {% for item in attributes %}
-   {%- if item != "training" %}
-      ~{{ name }}.{{ item }}
-   {%- endif %}
-   {%- endfor %}
-   {% endif %}
-   {% endblock %}
