@@ -16,7 +16,7 @@ class DynamicLinear(nn.Module):
     
     Computes linear measurements :math:`y` from incoming images: :math:`y = Hx`,
     where :math:`H` is a linear operator (matrix) and :math:`x` is a
-    batch of vectorized images representing a motion picture. 
+    batch of vectorized images representing a motion picture.
 
     The class is constructed from a matrix :math:`H` of shape :math:`(M, N)`,
     where :math:`N` represents the number of pixels in the image and
@@ -61,12 +61,12 @@ class DynamicLinear(nn.Module):
     
     def __init__(self, H: torch.tensor):
         super().__init__()
-        
+
         # nn.Parameter are sent to the device when using .to(device),
         # convert to float 32 for memory efficiency
         H = H.type(torch.FloatTensor)
         self.H = nn.Parameter(H, requires_grad=False)
-        
+
         self.M = H.shape[0]
         self.N = H.shape[1]
         self.h = int(self.N**0.5)
@@ -81,7 +81,7 @@ class DynamicLinear(nn.Module):
         
         Shape:
             Output: :math:`(M, N)`
-        
+
         Example:
             >>> H1 = np.random.random([400, 1600])
             >>> meas_op = Linear(H1)
@@ -94,11 +94,11 @@ class DynamicLinear(nn.Module):
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
         Simulates the measurement of a motion picture.
-        
+
         The output :math:`y` is computed as :math:`y = Hx`, where :math:`H` is
         the measurement matrix and :math:`x` is a batch of vectorized (flattened)
         images.
-        
+
         .. warning::
             There must be **exactly** as many images as there are measurements
             in the linear operator used to initialize the class, i.e.
@@ -106,7 +106,7 @@ class DynamicLinear(nn.Module):
         
         Args:
             :math:`x`: Batch of vectorized (flattened) images.
-        
+
         Shape:
             :math:`x`: :math:`(*, M, N)`, where * denotes the batch size and
             :math:`(M, N)` is the shape of the measurement matrix :math:`H`.
@@ -114,7 +114,7 @@ class DynamicLinear(nn.Module):
             the number of pixels in the image.
             
             :math:`output`: :math:`(*, M)`
-        
+
         Example:
             >>> x = torch.rand([10, 400, 1600])
             >>> H = np.random.random([400, 1600])
@@ -220,7 +220,7 @@ class DynamicLinearSplit(DynamicLinear):
         P = torch.cat([H_pos, H_neg], 1).view(2 * self.M, self.N)
         P = P.type(torch.FloatTensor)   # cast to float 32
         self.P = nn.Parameter(P, requires_grad=False)
-    
+
     def get_P(self) -> torch.tensor:
         r"""Returns the attribute measurement matrix :math:`P`.
         
@@ -236,15 +236,15 @@ class DynamicLinearSplit(DynamicLinear):
             torch.Size([800, 1600])
         """
         return self.P.data
-    
+
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
         Simulates the measurement of a motion picture using :math:`P`.
-        
+
         The output :math:`y` is computed as :math:`y = Px`, where :math:`P` is
         the measurement matrix and :math:`x` is a batch of vectorized (flattened)
         images.
-        
+
         :math:`P` contains only positive values and is obtained by
         splitting a given measurement matrix :math:`H` such that
         :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`, where
@@ -272,7 +272,7 @@ class DynamicLinearSplit(DynamicLinear):
             and :math:`N` is the number of pixels in the image. 
             
             :math:`output`: :math:`(*, 2M)`
-        
+
         Example:
             >>> x = torch.rand([10, 800, 1600])
             >>> H = np.random.random([400, 1600])
@@ -295,7 +295,7 @@ class DynamicLinearSplit(DynamicLinear):
     def forward_H(self, x: torch.tensor) -> torch.tensor:
         r"""
         Simulates the measurement of a motion picture using :math:`H`.
-        
+
         The output :math:`y` is computed as :math:`y = Hx`, where :math:`H` is
         the measurement matrix and :math:`x` is a batch of vectorized (flattened)
         images. The positive and negative components of the measurement matrix
@@ -322,7 +322,7 @@ class DynamicLinearSplit(DynamicLinear):
             image. 
             
             :math:`output`: :math:`(*, M)`
-        
+
         Example:
             >>> x = torch.rand([10, 400, 1600])
             >>> H = np.random.random([400, 1600])
@@ -343,7 +343,7 @@ class DynamicHadamSplit(DynamicLinearSplit):
     r"""
     Simulates the measurement of a moving object using the positive and
     negative components of a Hadamard matrix.
-    
+
     Computes linear measurements from incoming images: :math:`y = Px`,
     where :math:`P` is a linear operator (matrix) with positive entries and
     :math:`x` is a batch of vectorized images representing a motion picture.
@@ -690,7 +690,7 @@ class LinearSplit(Linear, DynamicLinearSplit):
     r"""
     Simulates the measurement of a still image using the computed positive and
     negative components of the measurement matrix.
-    
+
     Computes linear measurements from incoming images: :math:`y = Px`,
     where :math:`P` is a linear operator (matrix) and :math:`x` is a
     vectorized image or batch of vectorized images.
@@ -825,14 +825,14 @@ class LinearSplit(Linear, DynamicLinearSplit):
         # call Linear.forward() method
         return super(LinearSplit, self).forward(x)
 
-        
+
 # =============================================================================
 class HadamSplit(LinearSplit, DynamicHadamSplit):
     # =========================================================================
     r"""
     Simulates the measurement of a still image using the positive and
     negative components of a Hadamard matrix.
-    
+
     Computes linear measurements from incoming images: :math:`y = Px`,
     where :math:`P` is a linear operator (matrix) with positive entries and
     :math:`x` is a vectorized image or a batch of images.
@@ -894,7 +894,7 @@ class HadamSplit(LinearSplit, DynamicHadamSplit):
     
     .. note::
         The matrix H has shape :math:`(M,N)` with :math:`N = h^2`.
-    
+
     .. note::
         :math:`H = H_{+} - H_{-}`
 
