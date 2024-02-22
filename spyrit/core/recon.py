@@ -1208,15 +1208,22 @@ class LearnedPGD(nn.Module):
             #self.meas_variance = 1/m
 
             # Normalize the stepsize to compensate normalization by the variance
-            self.gamma = self.gamma*torch.mean(self.meas_variance)
+            #self.gamma = self.gamma*torch.mean(self.meas_variance)
+            self.gamma = self.gamma*torch.min(self.meas_variance)
 
         # Compute the stepsize from the singular values (convexity analysis)
         if self.step_estimation:
             self.stepsize_gd()
 
-        # init solution and dual variable
-        x = self.acqu.meas_op.pinv(m) # shape x = [b*c,N]
-        x = torch.zeros_like(x)
+        # If pinv method is defined
+        if hasattr(self.acqu.meas_op, 'pinv'):
+            x = self.acqu.meas_op.pinv(m)
+
+            # proximal step (prior)
+            x = self.denoi(x)      
+        else: 
+            # zero init
+            x = torch.zeros_like(x)
         
         if self.log_inner_fidelity:
             data_fidelity = []
@@ -1315,4 +1322,3 @@ class LearnedPGD(nn.Module):
                     # break
 
             return x
-        
