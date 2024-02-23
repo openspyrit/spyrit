@@ -96,7 +96,7 @@ def Permutation_Matrix(Mat: np.ndarray) -> np.ndarray:
             N-by-N sampling matrix, where high values indicate high significance.
 
     Returns:
-        P (np.ndarray): N*N-by-N*N permutation matrix (boolean)
+        P (np.ndarray): N^2-by-N^2 permutation matrix (boolean)
     """
     (nx, ny) = Mat.shape
     Reorder = rankdata(-Mat, method="ordinal")
