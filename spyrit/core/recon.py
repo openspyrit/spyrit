@@ -443,7 +443,7 @@ class PinvNet(nn.Module):
         return z.view(-1, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
     def reconstruct(self, x):
-        r"""Reconstruction step of a reconstruction network
+        r"""Preprocesses, reconstructs, and denoises raw measurement vectors.
 
         Args:
             :attr:`x`: raw measurement vectors
@@ -465,23 +465,11 @@ class PinvNet(nn.Module):
             >>> print(z.shape)
             torch.Size([10, 1, 64, 64])
         """
-        # Measurement to image domain mapping
-        bc, _ = x.shape
-
-        # Preprocessing in the measurement domain
-        x = self.prep(x)  # shape x = [b*c, M]
-
-        # measurements to image-domain processing
-        x = self.pinv(x, self.acqu.meas_op)  # shape x = [b*c,N]
-
-        # Image-domain denoising
-        x = x.view(
-            bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
-        )  # shape x = [b*c,1,h,w]
-        return self.denoi(x)
+        # Denoise image-domain
+        return self.denoi(self.reconstruct_pinv(x))
 
     def reconstruct_pinv(self, x):
-        r"""Reconstruction step of a reconstruction network
+        r"""Preprocesses and reconstructs raw measurement vectors.
 
         Args:
             :attr:`x`: raw measurement vectors
