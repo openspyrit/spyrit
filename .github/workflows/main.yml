@@ -23,11 +23,11 @@ jobs:
 
     steps:
     - name: Checkout github repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Checkout submodules
       run: git submodule update --init --recursive
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         architecture: 'x64'
@@ -41,9 +41,9 @@ jobs:
           rm -r dist
           mv wheelhouse dist
     - name: Upload wheels
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v4
       with:
-        name: dist
+        name: dist-${{ matrix.os }}-${{ matrix.python-version }}
         path: dist/
 
   test_install:
@@ -56,11 +56,11 @@ jobs:
 
     steps:
     - name: Checkout github repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Checkout submodules
       run: git submodule update --init --recursive
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         architecture: 'x64'
@@ -86,17 +86,18 @@ jobs:
 
     steps:
     - name: Checkout github repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Checkout submodules
       run: git submodule update --init --recursive
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         architecture: 'x64'
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v4
       with:
-        name: dist
+        pattern: dist-*
+        merge-multiple: true
         path: dist/
     - name: Run tests on Mac and Linux
       if: matrix.os != 'windows-latest'
@@ -105,11 +106,6 @@ jobs:
           pip install spyrit-*.whl
           cd ..
           python spyrit/test/run_tests.py
-    - name: Upload wheels
-      uses: actions/upload-artifact@v1
-      with:
-        name: dist
-        path: dist/
     - name: Run the tests on Windows
       if: matrix.os == 'windows-latest'
       run: |
@@ -125,12 +121,13 @@ jobs:
     needs: [build_wheel, test_wheel, test_install]
     steps:
     - name: Checkout github repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Checkout submodules
       run: git submodule update --init --recursive
-    - uses: actions/download-artifact@v1
+    - uses: actions/download-artifact@v4
       with:
-        name: dist
+        pattern: dist-*
+        merge-multiple: true
         path: dist/
     - name: Publish to PyPI
       if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')
