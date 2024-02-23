@@ -1153,8 +1153,10 @@ class LearnedPGD(nn.Module):
     def singular_values(self):
         H = self.acqu.meas_op.get_H()
         if self.wls:
-            H = H/torch.sqrt(self.meas_variance)
-        #s = torch.linalg.svdvals(torch.mm(H.t(), H))
+            std_mat = 1/torch.sqrt(self.meas_variance)
+            std_mat = torch.diag(std_mat.view(-1))
+            H = torch.matmul(std_mat, H)
+        #s = torch.linalg.svdvals(torch.matmul(H.t(), H))
         s = torch.linalg.svdvals(H)**2
         return s
 
@@ -1208,8 +1210,8 @@ class LearnedPGD(nn.Module):
             #self.meas_variance = 1/m
 
             # Normalize the stepsize to compensate normalization by the variance
-            #self.gamma = self.gamma*torch.mean(self.meas_variance)
-            self.gamma = self.gamma*torch.min(self.meas_variance)
+            self.gamma = self.gamma*torch.mean(self.meas_variance)
+            #self.gamma = self.gamma*torch.min(self.meas_variance)
 
         # Compute the stepsize from the singular values (convexity analysis)
         if self.step_estimation:
