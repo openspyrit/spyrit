@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import torch
-from spyrit.core.meas import Linear, LinearSplit, HadamSplit #, LinearRowSplit
+from spyrit.core.meas import Linear, LinearSplit, HadamSplit  # , LinearRowSplit
 from test_helpers import assert_test
 
 
