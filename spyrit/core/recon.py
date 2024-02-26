@@ -439,7 +439,7 @@ class PinvNet(nn.Module):
         """
         m = self.prep(y)
         m = torch.nn.functional.pad(m, (0, self.acqu.meas_op.N - self.acqu.meas_op.M))
-        z = m @ self.acqu.meas_op.Perm.weight.data.T
+        z = m @ self.acqu.meas_op.get_Perm().T
         return z.view(-1, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
     def reconstruct(self, x):
@@ -597,7 +597,7 @@ class DCNet(nn.Module):
         super().__init__()
         self.Acq = noise
         self.prep = prep
-        Perm = noise.meas_op.Perm.weight.data.cpu().numpy().T
+        Perm = noise.meas_op.get_Perm().cpu().numpy().T
         sigma_perm = Perm @ sigma @ Perm.T
         self.tikho = TikhonovMeasurementPriorDiag(sigma_perm, noise.meas_op.M)
         self.denoi = denoi
