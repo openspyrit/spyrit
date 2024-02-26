@@ -116,9 +116,7 @@ class PseudoInverseStore2(nn.Module):
 
     """
 
-    def __init__(
-        self, meas_op: LinearSplit, reg: float = 1e-15, learn: bool = False
-    ):
+    def __init__(self, meas_op: LinearSplit, reg: float = 1e-15, learn: bool = False):
         H = meas_op.get_H()
         M, N = H.shape
         H_pinv = np.linalg.pinv(H, rcond=reg)
