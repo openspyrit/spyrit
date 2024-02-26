@@ -94,17 +94,16 @@ def test_core_prep():
     assert_test(y.shape, torch.Size([10, 1, 32, 32]), "Wrong matrix size")
 
     # %% Test SplitRowPoisson
-    from spyrit.core.meas import LinearRowSplit
+    from spyrit.core.meas import LinearSplit
     from spyrit.core.prep import SplitRowPoisson
 
     # constructor
     split_op = SplitRowPoisson(2.0, 24, 64)
 
-    # forward with LinearRowSplit
+    # forward with LinearSplit
     x = torch.rand([10, 48, 64], dtype=torch.float)
-    H_pos = np.random.random([24, 64])
-    H_neg = np.random.random([24, 64])
-    meas_op = LinearRowSplit(H_pos, H_neg)
+    H = np.random.random([24, 64])
+    meas_op = LinearSplit(H)
 
     # forward
     m = split_op(x, meas_op)

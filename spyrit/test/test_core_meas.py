@@ -109,31 +109,31 @@ def test_core_meas():
     assert_test(x.shape, torch.Size([85, 1024]), "Wrong inverse size")
 
     # %% Test LinearRowSplit
-    from spyrit.core.meas import LinearRowSplit
+    # from spyrit.core.meas import LinearRowSplit
 
-    # constructor
-    H_pos = np.random.rand(24, 64)
-    H_neg = np.random.rand(24, 64)
-    meas_op = LinearRowSplit(H_pos, H_neg)
+    # # constructor
+    # H_pos = np.random.rand(24, 64)
+    # H_neg = np.random.rand(24, 64)
+    # meas_op = LinearRowSplit(H_pos, H_neg)
 
-    # forward
-    x = torch.rand([10, 64, 92], dtype=torch.float)
-    y = meas_op(x)
-    print(y.shape)
-    assert_test(y.shape, torch.Size([10, 48, 92]), "Wrong forward size")
+    # # forward
+    # x = torch.rand([10, 64, 92], dtype=torch.float)
+    # y = meas_op(x)
+    # print(y.shape)
+    # assert_test(y.shape, torch.Size([10, 48, 92]), "Wrong forward size")
 
-    # forward_H
-    x = torch.rand([10, 64, 92], dtype=torch.float)
-    y = meas_op(x)
-    print(y.shape)
-    assert_test(y.shape, torch.Size([10, 48, 92]), "Wrong forward size")
+    # # forward_H
+    # x = torch.rand([10, 64, 92], dtype=torch.float)
+    # y = meas_op(x)
+    # print(y.shape)
+    # assert_test(y.shape, torch.Size([10, 48, 92]), "Wrong forward size")
 
-    # get_H
-    H = meas_op.get_H()
-    print(H.shape)
-    assert_test(H.shape, torch.Size([24, 64]), "Wrong measurement matrix size")
+    # # get_H
+    # H = meas_op.get_H()
+    # print(H.shape)
+    # assert_test(H.shape, torch.Size([24, 64]), "Wrong measurement matrix size")
 
-    return True
+    # return True
 
 
 if __name__ == "__main__":
