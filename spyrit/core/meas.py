@@ -774,7 +774,6 @@ class LinearSplit(Linear, DynamicLinearSplit):
     """
 
     def __init__(self, H: np.ndarray, pinv=None, reg: float = 1e-15):
-        print("initializing LinearSplit")
         # initialize from DynamicLinearSplit __init__
         super(Linear, self).__init__(H)
         if pinv is not None:
@@ -928,7 +927,6 @@ class HadamSplit(LinearSplit, DynamicHadamSplit):
     """
 
     def __init__(self, M: int, h: int, Ord: np.ndarray):
-        print("initializing HadamSplit")
         # initialize from DynamicHadamSplit (the MRO is not trivial here)
         super(Linear, self).__init__(M, h, Ord)
         self.set_H_pinv(pinv=1 / self.N * self.get_H_T())
