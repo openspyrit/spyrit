@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from spyrit.core.meas import Linear, LinearSplit, LinearRowSplit, HadamSplit
+from spyrit.core.meas import Linear, LinearSplit, HadamSplit  # , LinearRowSplit
 from typing import Union, Tuple
 import math
 
@@ -182,7 +182,9 @@ class SplitPoisson(nn.Module):
         self.odd_index = range(1, 2 * self.M, 2)
         self.max = nn.MaxPool1d(self.N)
 
-        self.register_buffer("H_ones", meas_op.H(torch.ones((1, self.N))))
+        self.register_buffer(
+            "H_ones", torch.matmul(torch.ones(1, self.N), meas_op.get_H_T())
+        )
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
@@ -448,71 +450,74 @@ class SplitPoisson(nn.Module):
 
 
 # ==============================================================================
-class SplitRowPoisson(nn.Module):
-    # ==============================================================================
-    r"""
-    Preprocess raw data acquired with a split measurement operator
+# class SplitRowPoisson(nn.Module):
+#     # ==============================================================================
+#     r"""
+#     Preprocess raw data acquired with a split measurement operator
 
-    It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha}` and the variance
-    :math:`\sigma^2 = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where
-    :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using
-    a split measurement operator such as :class:`spyrit.core.LinearRowSplit`.
+#     It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha}` and the variance
+#     :math:`\sigma^2 = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where
+#     :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using
+#     a split measurement operator such as :class:`spyrit.core.LinearSplit`.
 
-    Args:
-        - :math:`\alpha` (float): maximun image intensity (in counts)
-        - :math:`M` (int): number of measurements
-        - :math:`h` (int): number of rows in the image, i.e., image height
+#     Args:
+#         - :math:`\alpha` (float): maximun image intensity (in counts)
+#         - :math:`M` (int): number of measurements
+#         - :math:`h` (int): number of rows in the image, i.e., image height
 
-    Example:
-        >>> split_op = SplitRawPoisson(2.0, 24, 64)
+#     Example:
+#         >>> split_op = SplitRawPoisson(2.0, 24, 64)
 
-    """
+#     """
 
-    def __init__(self, alpha: float, M: int, h: int):
-        super().__init__()
-        self.alpha = alpha
-        self.M = M
-        self.h = h
+#     def __init__(self, alpha: float, M: int, h: int):
+#         super().__init__()
+#         self.alpha = alpha
+#         self.M = M
+#         self.h = h
 
-        self.even_index = range(0, 2 * M, 2)
-        self.odd_index = range(1, 2 * M, 2)
-        # self.max = nn.MaxPool1d(h)
+#         self.even_index = range(0, 2 * M, 2)
+#         self.odd_index = range(1, 2 * M, 2)
+#         # self.max = nn.MaxPool1d(h)
 
-    def forward(
-        self,
-        x: torch.tensor,
-        meas_op: LinearRowSplit,
-    ) -> torch.tensor:
-        """
-        Args:
-            x: batch of images that are Hadamard transformed across rows
-            meas_op: measurement operator
+#     def forward(
+#         self,
+#         x: torch.tensor,
+#         meas_op: LinearSplit,
+#     ) -> torch.tensor:
+#         """
+#         Args:
+#             x: batch of images that are Hadamard transformed across rows
+#             meas_op: measurement operator
 
-        Shape:
-            x: :math:`(b*c, 2M, w)` with :math:`b` the batch size, :math:`c` the
-            number of channels, :math:`2M` is twice the number of patterns (as
-            it includes both positive and negative components), and :math:`w`
-            is the image width.
+#         Shape:
+#             x: :math:`(b*c, 2M, w)` with :math:`b` the batch size, :math:`c` the
+#             number of channels, :math:`2M` is twice the number of patterns (as
+#             it includes both positive and negative components), and :math:`w`
+#             is the image width.
 
-            meas_op: The number of measurement `meas_op.M` should match `M`,
-            while the length of the measurements :math:`meas_op.N` should match
-            image height :math:`h`.
+#             meas_op: The number of measurement `meas_op.M` should match `M`,
+#             while the length of the measurements :math:`meas_op.N` should match
+#             image height :math:`h`.
 
-            Output: :math:`(b*c,M)`
+#             Output: :math:`(b*c,M)`
 
-        Example:
-            >>> x = torch.rand([10,48,64], dtype=torch.float)
-            >>> H_pos = np.random.random([24,64])
-            >>> H_neg = np.random.random([24,64])
-            >>> meas_op = LinearRowSplit(H_pos, H_neg)
-            >>> m = split_op(x, meas_op)
-            >>> print(m.shape)
-            torch.Size([10, 24, 64])
+#         Example:
+#             >>> x = torch.rand([10,48,64], dtype=torch.float)
+#             >>> H_pos = np.random.random([24,64])
+#             >>> H_neg = np.random.random([24,64])
+#             >>> meas_op = LinearSplit(H_pos, H_neg)
+#             >>> m = split_op(x, meas_op)
+#             >>> print(m.shape)
+#             torch.Size([10, 24, 64])
 
-        """
-        # unsplit
-        x = x[:, self.even_index] - x[:, self.odd_index]
-        # normalize
-        e = torch.ones([x.shape[0], meas_op.N, self.h], device=x.device)
-        x = 2 * x / self.alpha - meas_op.forward_H(e)
-        return x
+#         """
+#         # unsplit
+#         x = x[:, self.even_index] - x[:, self.odd_index]
+#         # normalize
+#         e = torch.ones([x.shape[0], meas_op.N, self.h], device=x.device)
+#         print("shape of e:", e.shape)
+#         print("shape of x:", x.shape)
+#         print("shape of fwd:", meas_op.forward_H(e).shape)
+#         x = 2 * x / self.alpha - meas_op.forward_H(e)
+#         return x

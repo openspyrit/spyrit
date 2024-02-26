@@ -85,7 +85,7 @@ class PseudoInverseStore2(nn.Module):
     Args:
         :attr:`meas_op`: Measurement operator that defines :math:`H`. Any class
         that implements a :meth:`get_H` method can be used, e.g.,
-        :class:`~spyrit.core.forwop.LinearRowSplit`.
+        :class:`~spyrit.core.forwop.LinearSplit`.
 
         :attr:`reg` (optional): Regularization parameter (cutoff for small
         singular values, see :mod:`numpy.linal.pinv`).
@@ -102,9 +102,8 @@ class PseudoInverseStore2(nn.Module):
         matrix is stored and therefore learnable
 
     Example 1:
-        >>> H_pos = np.random.rand(24,64)
-        >>> H_neg = np.random.rand(24,64)
-        >>> meas_op = LinearRowSplit(H_pos,H_neg)
+        >>> H = np.random.rand(24,64)
+        >>> meas_op = LinearSplit(H)
         >>> recon_op = PseudoInverseStore2(meas_op)
 
     Example 2:
@@ -112,16 +111,12 @@ class PseudoInverseStore2(nn.Module):
         >>> N = 64
         >>> B = 1
         >>> H = walsh_matrix(N)
-        >>> H_pos = np.where(H>0,H,0)[:M,:]
-        >>> H_neg = np.where(H<0,-H,0)[:M,:]
-        >>> meas_op = LinearRowSplit(H_pos,H_neg)
+        >>> meas_op = LinearSplit(H)
         >>> recon_op = PseudoInverseStore2(meas_op)
 
     """
 
-    def __init__(
-        self, meas_op: LinearRowSplit, reg: float = 1e-15, learn: bool = False
-    ):
+    def __init__(self, meas_op: LinearSplit, reg: float = 1e-15, learn: bool = False):
         H = meas_op.get_H()
         M, N = H.shape
         H_pinv = np.linalg.pinv(H, rcond=reg)
@@ -143,9 +138,8 @@ class PseudoInverseStore2(nn.Module):
             - :attr:`output`: :math:`(*, N)`
 
         Example 1:
-            >>> H_pos = np.random.rand(24,64)
-            >>> H_neg = np.random.rand(24,64)
-            >>> meas_op = LinearRowSplit(H_pos,H_neg)
+            >>> H = np.random.rand(24,64)
+            >>> meas_op = LinearSplit(H)
             >>> recon_op = PseudoInverseStore2(meas_op)
             >>> x = torch.rand([10,24,92], dtype=torch.float)
             >>> y = recon_op(x)
@@ -157,11 +151,9 @@ class PseudoInverseStore2(nn.Module):
             >>> N = 64
             >>> B = 1
             >>> H = walsh_matrix(N)
-            >>> H_pos = np.where(H>0,H,0)[:M,:]
-            >>> H_neg = np.where(H<0,-H,0)[:M,:]
-            >>> meas_op = LinearRowSplit(H_pos,H_neg)
+            >>> meas_op = LinearSplit(H)
             >>> noise_op = NoNoise(meas_op)
-            >>> split_op = SplitRowPoisson(1.0, M, 92)
+            >>> split_op = SplitRowPoisson(1.0, M, 92) # splitrowpoisson has been removed !!
             >>> recon_op = PseudoInverseStore2(meas_op)
             >>> x = torch.FloatTensor(B,N,92).uniform_(-1, 1)
             >>> y = noise_op(x)

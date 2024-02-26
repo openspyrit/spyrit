@@ -19,10 +19,8 @@ sys.path.insert(0, os.path.abspath("../.."))
 
 # -- Project information -----------------------------------------------------
 project = "spyrit"
-copyright = "2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier"
-author = (
-    "Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier"
-)
+copyright = "2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan"
+author = "Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan"
 
 # The full version, including alpha/beta/rc tags
 release = "2.1.0"
@@ -116,16 +114,16 @@ html_sidebars = {
 # autodoc_mock_imports = "numpy matplotlib mpl_toolkits scipy torch torchvision Pillow opencv-python imutils PyWavelets pywt wget imageio".split()
 
 
-# exclude all torch.nn.Module members from the documentation
-# except forward and __init__ methods
+# exclude all torch.nn.Module members (except forward method) from the docs:
 import torch
 
 
 def skip_member_handler(app, what, name, obj, skip, options):
-    if name in [
-        "forward",
-    ]:
-        return False
+    always_document = [  # complete this list if needed by adding methods
+        "forward",  # you *always* want to see documented
+    ]
+    if name in always_document:
+        return None
     if name in dir(torch.nn.Module):
         return True
     return None

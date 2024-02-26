@@ -135,6 +135,6 @@ When using SPyRiT specifically for the denoised completion network, please cite 
 
 Join the project
 ==================================
-Feel free to contact us by `e-mail <mailto:nicolas.ducros@creatis.insa-lyon.fr>` for any question. Active developers are currently `Nicolas Ducros <https://www.creatis.insa-lyon.fr/~ducros/WebPage/index.html>`_, Thomas Baudier  and `Juan Abascal <https://juanabascal78.wixsite.com/juan-abascal-webpage>`_.  Direct contributions via pull requests (PRs) are welcome.
+Feel free to contact us by `e-mail <mailto:nicolas.ducros@creatis.insa-lyon.fr>` for any question. Active developers are currently `Nicolas Ducros <https://www.creatis.insa-lyon.fr/~ducros/WebPage/index.html>`_, Thomas Baudier, `Juan Abascal <https://juanabascal78.wixsite.com/juan-abascal-webpage>`_ and Romain Phan.  Direct contributions via pull requests (PRs) are welcome.
 
 The full list of contributors can be found `here <https://github.com/openspyrit/spyrit/blob/master/README.md#contributors-alphabetical-order>`_.
