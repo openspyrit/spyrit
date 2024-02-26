@@ -68,7 +68,7 @@ class DynamicLinear(nn.Module):
             H = torch.from_numpy(H)
             warnings.warn(
                 "Using a numpy array is deprecated. Please use a torch tensor instead.",
-                DeprecationWarning
+                DeprecationWarning,
             )
         H = H.type(torch.float32)
         # nn.Parameter are sent to the device when using .to(device),
@@ -220,7 +220,7 @@ class DynamicLinearSplit(DynamicLinear):
             H = torch.from_numpy(H)
             warnings.warn(
                 "Using a numpy array is deprecated. Please use a torch tensor instead.",
-                DeprecationWarning
+                DeprecationWarning,
             )
         H = H.type(torch.float32)
 
