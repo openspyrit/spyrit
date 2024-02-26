@@ -456,7 +456,7 @@ class SplitRowPoisson(nn.Module):
     It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha}` and the variance
     :math:`\sigma^2 = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where
     :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using
-    a split measurement operator such as :class:`spyrit.core.LinearRowSplit`.
+    a split measurement operator such as :class:`spyrit.core.LinearSplit`.
 
     Args:
         - :math:`\alpha` (float): maximun image intensity (in counts)
@@ -481,7 +481,7 @@ class SplitRowPoisson(nn.Module):
     def forward(
         self,
         x: torch.tensor,
-        meas_op: LinearRowSplit,
+        meas_op: LinearSplit,
     ) -> torch.tensor:
         """
         Args:
@@ -504,7 +504,7 @@ class SplitRowPoisson(nn.Module):
             >>> x = torch.rand([10,48,64], dtype=torch.float)
             >>> H_pos = np.random.random([24,64])
             >>> H_neg = np.random.random([24,64])
-            >>> meas_op = LinearRowSplit(H_pos, H_neg)
+            >>> meas_op = LinearSplit(H_pos, H_neg)
             >>> m = split_op(x, meas_op)
             >>> print(m.shape)
             torch.Size([10, 24, 64])
