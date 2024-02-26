@@ -439,11 +439,11 @@ class PinvNet(nn.Module):
         """
         m = self.prep(y)
         m = torch.nn.functional.pad(m, (0, self.acqu.meas_op.N - self.acqu.meas_op.M))
-        z = m @ self.acqu.meas_op.Perm.weight.data.T
+        z = m @ self.acqu.meas_op.get_Perm().T
         return z.view(-1, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
     def reconstruct(self, x):
-        r"""Reconstruction step of a reconstruction network
+        r"""Preprocesses, reconstructs, and denoises raw measurement vectors.
 
         Args:
             :attr:`x`: raw measurement vectors
@@ -465,23 +465,11 @@ class PinvNet(nn.Module):
             >>> print(z.shape)
             torch.Size([10, 1, 64, 64])
         """
-        # Measurement to image domain mapping
-        bc, _ = x.shape
-
-        # Preprocessing in the measurement domain
-        x = self.prep(x)  # shape x = [b*c, M]
-
-        # measurements to image-domain processing
-        x = self.pinv(x, self.acqu.meas_op)  # shape x = [b*c,N]
-
-        # Image-domain denoising
-        x = x.view(
-            bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
-        )  # shape x = [b*c,1,h,w]
-        return self.denoi(x)
+        # Denoise image-domain
+        return self.denoi(self.reconstruct_pinv(x))
 
     def reconstruct_pinv(self, x):
-        r"""Reconstruction step of a reconstruction network
+        r"""Preprocesses and reconstructs raw measurement vectors.
 
         Args:
             :attr:`x`: raw measurement vectors
@@ -609,7 +597,7 @@ class DCNet(nn.Module):
         super().__init__()
         self.Acq = noise
         self.prep = prep
-        Perm = noise.meas_op.Perm.weight.data.cpu().numpy().T
+        Perm = noise.meas_op.get_Perm().cpu().numpy().T
         sigma_perm = Perm @ sigma @ Perm.T
         self.tikho = TikhonovMeasurementPriorDiag(sigma_perm, noise.meas_op.M)
         self.denoi = denoi
