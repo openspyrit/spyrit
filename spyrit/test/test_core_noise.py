@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import torch
-from spyrit.core.meas import Linear, LinearSplit, LinearRowSplit, HadamSplit
+from spyrit.core.meas import Linear, LinearSplit, HadamSplit #, LinearRowSplit
 from test_helpers import assert_test
 
 
@@ -67,9 +67,8 @@ def test_core_noise():
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
     # EXAMPLE 3
-    H_pos = np.random.rand(24, 64)
-    H_neg = np.random.rand(24, 64)
-    meas_op = LinearRowSplit(H_pos, H_neg)
+    H = np.random.rand(24, 64)
+    meas_op = LinearSplit(H)
     noise_op = Poisson(meas_op, 50.0)
 
     x = torch.FloatTensor(10, 64, 92).uniform_(-1, 1)
@@ -117,9 +116,8 @@ def test_core_noise():
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
     # EXAMPLE 3
-    H_pos = np.random.rand(24, 64)
-    H_neg = np.random.rand(24, 64)
-    meas_op = LinearRowSplit(H_pos, H_neg)
+    H = np.random.rand(24, 64)
+    meas_op = LinearSplit(H)
     noise_op = PoissonApproxGauss(meas_op, 50.0)
 
     x = torch.FloatTensor(10, 64, 92).uniform_(-1, 1)
