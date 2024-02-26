@@ -101,7 +101,7 @@ def test_core_prep():
     split_op = SplitRowPoisson(2.0, 24, 64)
 
     # forward with LinearSplit
-    x = torch.rand([10, 48, 64], dtype=torch.float)
+    x = torch.rand([10, 48], dtype=torch.float)
     H = np.random.random([24, 64])
     meas_op = LinearSplit(H)
 
