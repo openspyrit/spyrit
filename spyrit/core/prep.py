@@ -38,9 +38,7 @@ class DirectPoisson(nn.Module):
         self.M = meas_op.M
 
         self.max = nn.MaxPool1d(self.N)
-        self.register_buffer(
-            "H_ones", torch.matmul(torch.ones(1, self.N), meas_op.get_H_T())
-        )
+        self.register_buffer("H_ones", meas_op(torch.ones((1, self.N))))
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
