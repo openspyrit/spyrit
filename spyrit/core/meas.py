@@ -65,9 +65,12 @@ class DynamicLinear(nn.Module):
         # convert H from numpy to torch tensor if needed
         # convert to float 32 for memory efficiency
         if isinstance(H, np.ndarray):
-            H = torch.from_numpy(H, dtype=torch.float32)
-        else:
-            H = H.type(torch.float32)
+            H = torch.from_numpy(H)
+            warnings.warn(
+                "Using a numpy array is deprecated. Please use a torch tensor instead.",
+                DeprecationWarning
+            )
+        H = H.type(torch.float32)
         # nn.Parameter are sent to the device when using .to(device),
         self.H = nn.Parameter(H, requires_grad=False)
 
@@ -213,10 +216,13 @@ class DynamicLinearSplit(DynamicLinear):
 
     def __init__(self, H: torch.tensor):
         # initialize self.H
-        if not isinstance(H, torch.tensor):
-            H = torch.tensor(H, dtype=torch.float32)
-        else:
-            H = H.type(torch.float32)
+        if isinstance(H, np.ndarray):
+            H = torch.from_numpy(H)
+            warnings.warn(
+                "Using a numpy array is deprecated. Please use a torch tensor instead.",
+                DeprecationWarning
+            )
+        H = H.type(torch.float32)
 
         super().__init__(H)
 
