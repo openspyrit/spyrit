@@ -36,7 +36,7 @@ class NoNoise(nn.Module):
         >>> split_acq = NoNoise(split_op)
     """
 
-    def __init__(self, meas_op: Union[Linear, LinearSplit, HadamSplit, LinearRowSplit]):
+    def __init__(self, meas_op: Union[Linear, LinearSplit, HadamSplit]):
         super().__init__()
         self.meas_op = meas_op
 
@@ -101,16 +101,15 @@ class Poisson(NoNoise):
         >>> split_op = HadamSplit(H, Perm, 32, 32)
         >>> split_acq = Poisson(split_op, 200.0)
 
-    Example 3: Using a :class:`~spyrit.core.meas.LinearRowSplit` measurement operator
-        >>> H_pos = np.random.rand(24,64)
-        >>> H_neg = np.random.rand(24,64)
-        >>> split_row_op = LinearRowSplit(H_pos,H_neg)
+    Example 3: Using a :class:`~spyrit.core.meas.LinearSplit` measurement operator
+        >>> H = np.random.rand(24,64)
+        >>> split_row_op = LinearSplit(H)
         >>> split_acq = Poisson(split_row_op, 50.0)
     """
 
     def __init__(
         self,
-        meas_op: Union[Linear, LinearSplit, HadamSplit, LinearRowSplit],
+        meas_op: Union[Linear, LinearSplit, HadamSplit],
         alpha=50.0,
     ):
         super().__init__(meas_op)
@@ -155,10 +154,9 @@ class Poisson(NoNoise):
             Measurements in (0.00 , 55338.00)
             Measurements in (0.00 , 55077.00)
 
-        Example 3: Two noisy measurement vectors from a :class:`~spyrit.core.meas.LinearRowSplit` operator
-            >>> H_pos = np.random.rand(24,64)
-            >>> H_neg = np.random.rand(24,64)
-            >>> meas_op = LinearRowSplit(H_pos,H_neg)
+        Example 3: Two noisy measurement vectors from a :class:`~spyrit.core.meas.LinearSplit` operator
+            >>> H = np.random.rand(24,64)
+            >>> meas_op = LinearSplit(H)
             >>> noise_op = Poisson(meas_op, 50.0)
             >>> x = torch.FloatTensor(10, 64, 92).uniform_(-1, 1)
             >>> y = noise_op(x)
@@ -213,16 +211,15 @@ class PoissonApproxGauss(NoNoise):
         >>> meas_op = HadamSplit(H, Perm, 32, 32)
         >>> noise_op = PoissonApproxGauss(meas_op, 200.0)
 
-    Example 3: Using a :class:`~spyrit.core.meas.LinearRowSplit` operator
-        >>> H_pos = np.random.rand(24,64)
-        >>> H_neg = np.random.rand(24,64)
-        >>> meas_op = LinearRowSplit(H_pos,H_neg)
+    Example 3: Using a :class:`~spyrit.core.meas.LinearSplit` operator
+        >>> H = np.random.rand(24,64)
+        >>> meas_op = LinearSplit(H)
         >>> noise_op = PoissonApproxGauss(meas_op, 50.0)
     """
 
     def __init__(
         self,
-        meas_op: Union[Linear, LinearSplit, HadamSplit, LinearRowSplit],
+        meas_op: Union[Linear, LinearSplit, HadamSplit],
         alpha: float,
     ):
         super().__init__(meas_op)
@@ -267,10 +264,9 @@ class PoissonApproxGauss(NoNoise):
             Measurements in (0.00 , 55951.41)
             Measurements in (0.00 , 56216.86)
 
-        Example 3: Two noisy measurement vectors from a :class:`~spyrit.core.meas.LinearRowSplit` operator
-            >>> H_pos = np.random.rand(24,64)
-            >>> H_neg = np.random.rand(24,64)
-            >>> meas_op = LinearRowSplit(H_pos,H_neg)
+        Example 3: Two noisy measurement vectors from a :class:`~spyrit.core.meas.LinearSplit` operator
+            >>> H = np.random.rand(24,64)
+            >>> meas_op = LinearSplit(H)
             >>> noise_op = PoissonApproxGauss(meas_op, 50.0)
             >>> x = torch.FloatTensor(10, 64, 92).uniform_(-1, 1)
             >>> y = noise_op(x)
