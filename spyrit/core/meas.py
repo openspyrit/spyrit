@@ -62,9 +62,13 @@ class DynamicLinear(nn.Module):
     def __init__(self, H: torch.tensor):
         super().__init__()
 
-        # nn.Parameter are sent to the device when using .to(device),
+        # convert H from numpy to torch tensor if needed
         # convert to float 32 for memory efficiency
-        H = H.type(torch.FloatTensor)
+        if isinstance(H, np.ndarray):
+            H = torch.from_numpy(H, dtype=torch.float32)
+        else:
+            H = H.type(torch.float32)
+        # nn.Parameter are sent to the device when using .to(device),
         self.H = nn.Parameter(H, requires_grad=False)
 
         self.M = H.shape[0]
@@ -207,8 +211,13 @@ class DynamicLinearSplit(DynamicLinear):
             )
     """
 
-    def __init__(self, H: np.ndarray):
-        # initialize self.H and self.H_pinv
+    def __init__(self, H: torch.tensor):
+        # initialize self.H
+        if not isinstance(H, torch.tensor):
+            H = torch.tensor(H, dtype=torch.float32)
+        else:
+            H = H.type(torch.float32)
+            
         super().__init__(H)
 
         # initialize self.P = [ H^+ ]
