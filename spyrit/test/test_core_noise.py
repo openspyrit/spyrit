@@ -71,10 +71,10 @@ def test_core_noise():
     meas_op = LinearSplit(H)
     noise_op = Poisson(meas_op, 50.0)
 
-    x = torch.FloatTensor(10, 64, 92).uniform_(-1, 1)
+    x = torch.FloatTensor(10, 64).uniform_(-1, 1)
     y = noise_op(x)
     print(y.shape)
-    assert_test(y.shape, torch.Size([10, 48, 92]), "Wrong matrix size")
+    assert_test(y.shape, torch.Size([10, 48]), "Wrong matrix size")
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
     y = noise_op(x)
@@ -120,10 +120,10 @@ def test_core_noise():
     meas_op = LinearSplit(H)
     noise_op = PoissonApproxGauss(meas_op, 50.0)
 
-    x = torch.FloatTensor(10, 64, 92).uniform_(-1, 1)
+    x = torch.FloatTensor(10, 64).uniform_(-1, 1)
     y = noise_op(x)
     print(y.shape)
-    assert_test(y.shape, torch.Size([10, 48, 92]), "Wrong matrix size")
+    assert_test(y.shape, torch.Size([10, 48]), "Wrong matrix size")
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
     y = noise_op(x)

@@ -643,7 +643,7 @@ class Linear(DynamicLinear):
             torch.Size([10, 400])
         """
         # left multiplication with transpose is equivalent to right mult
-        return x @ self.get_H().T
+        return torch.matmul(x, self.get_H().T)
 
     def adjoint(self, x: torch.tensor) -> torch.tensor:
         r"""Applies adjoint transform to incoming measurements :math:`y = H^{T}x`
@@ -667,7 +667,7 @@ class Linear(DynamicLinear):
             torch.Size([10, 1600])
         """
         # left multiplication is equivalent to right mult with transpose
-        return x @ self.get_H_T().T
+        return torch.matmul(x, self.get_H_T().T)
 
     def pinv(self, x: torch.tensor) -> torch.tensor:
         r"""Computes the pseudo inverse solution :math:`y = H^\dagger x`
@@ -691,7 +691,7 @@ class Linear(DynamicLinear):
             torch.Size([10, 1600])
         """
         # Pmat.transpose()*f
-        return x @ self.get_H_pinv().T
+        return torch.matmul(x, self.get_H_pinv().T)
 
     def __attributeslist__(self):
         return super().__attributeslist__() + [
@@ -809,7 +809,7 @@ class LinearSplit(Linear, DynamicLinearSplit):
             >>> print(y.shape)
             torch.Size([10, 800])
         """
-        return x @ self.get_P().T
+        return torch.matmul(x, self.get_P().T)
 
     def forward_H(self, x: torch.tensor) -> torch.tensor:
         r"""Applies linear transform to incoming images: :math:`m = Hx`.
