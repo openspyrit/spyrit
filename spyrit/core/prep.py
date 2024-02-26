@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from spyrit.core.meas import Linear, LinearSplit, LinearRowSplit, HadamSplit
+from spyrit.core.meas import Linear, LinearSplit, HadamSplit #, LinearRowSplit
 from typing import Union, Tuple
 import math
 
