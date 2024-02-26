@@ -459,6 +459,9 @@ class DynamicHadamSplit(DynamicLinearSplit):
         self.w = w
         print("h after", self.h)
 
+    def get_Perm(self) -> torch.tensor:
+        return self.Perm.data
+
     def __attributeslist__(self):
         return super().__attributeslist__() + [("Perm", self.Perm.shape)]
 
