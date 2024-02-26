@@ -153,7 +153,7 @@ class PseudoInverseStore2(nn.Module):
             >>> H = walsh_matrix(N)
             >>> meas_op = LinearSplit(H)
             >>> noise_op = NoNoise(meas_op)
-            >>> split_op = SplitRowPoisson(1.0, M, 92)
+            >>> split_op = SplitRowPoisson(1.0, M, 92) # splitrowpoisson has been removed !!
             >>> recon_op = PseudoInverseStore2(meas_op)
             >>> x = torch.FloatTensor(B,N,92).uniform_(-1, 1)
             >>> y = noise_op(x)
