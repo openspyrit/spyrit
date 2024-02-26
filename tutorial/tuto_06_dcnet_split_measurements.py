@@ -30,6 +30,8 @@ import matplotlib.pyplot as plt
 from spyrit.misc.disp import imagesc
 from spyrit.misc.statistics import transform_gray_norm
 
+# sphinx_gallery_thumbnail_path = 'spyrit/docs/source/fig/dcnet.png'
+
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
@@ -252,8 +254,6 @@ with torch.no_grad():
 ###############################################################################
 # We plot all results
 
-# We choose this plot as thumbnail
-# sphinx_gallery_thumbnail_number = 3
 # plot reconstruction side by side
 x_plot = x.view(-1, h, h).cpu().numpy()
 x_plot2 = z_invnet.view(-1, h, h).cpu().numpy()
