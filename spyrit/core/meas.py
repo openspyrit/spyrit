@@ -217,7 +217,7 @@ class DynamicLinearSplit(DynamicLinear):
             H = torch.tensor(H, dtype=torch.float32)
         else:
             H = H.type(torch.float32)
-            
+
         super().__init__(H)
 
         # initialize self.P = [ H^+ ]
