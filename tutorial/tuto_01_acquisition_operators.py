@@ -217,7 +217,6 @@ noaxis(axs)
 # Preprocessing measurements corrupted by Poisson noise
 # -----------------------------------------------------------------------------
 ###############################################################################
-
 # .. image:: ../fig/noise_op.png
 #    :width: 400
 #    :align: center
