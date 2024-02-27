@@ -11,24 +11,30 @@ images used in these tutorials on `this page`_ of the Spyrit GitHub.
 Here is a diagram of the whole image processing pipeline. Each tutorial focuses
 on a specific part of the pipeline.
 
-* Tutorial 1 focuses on the measurement operators, with or without noise
+* :ref:`tuto_acquisition_operators` focuses on the measurement operators, with or without noise
 
-* Tutorial 2 explains the pseudo-inverse reconstruction process from the (possibly noisy) measurements
+* :ref:`tuto_pseudoinverse_linear` explains the pseudo-inverse reconstruction process from the (possibly noisy) measurements
 
-* Tutorial 3 uses a CNN to de-noise the image if needed
+* :ref:`tuto_pseudoinverse_cnn_linear` uses a CNN to de-noise the image if needed
 
-* Tutorial 4 is used to train the CNN introduced in Tutorial 3
+* :ref:`tuto_train_pseudoinverse_cnn_linear` is used to train the CNN introduced in Tutorial 3
 
-* Tutorial 5 introduces a new type of measurement operator ('Split') that simulates positive and negative measurements
+* :ref:`tuto_acquisition_split_measurements` introduces a new type of measurement operator ('Split') that simulates positive and negative measurements
 
-* Tutorial 6 uses a Data Completion Network with a trainable image denoiser to improve the results obtained in Tutorial 5
+* :ref:`tuto_dcnet_split_measurements` uses a Data Completion Network with a trainable image denoiser to improve the results obtained in Tutorial 5
 
-* Explore Bonus Tutorial if you want to go deeper in understanding the capabilities of Spyrit
+* Explore :ref:`tuto_advanced_methods_colab` if you want to go deeper in understanding the capabilities of Spyrit
+
 
 .. image:: ../fig/principle.png
    :width: 600
    :align: center
    :alt: Principle of the image processing pipeline
+
+
+
+List of tutorials
+-----------------
 
 
 
