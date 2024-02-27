@@ -1,9 +1,9 @@
 .sphx-glr-thumbcontainer {
-    min-height: 320px !important;
+    min-height: 250px !important;
     margin: 20px !important;
 }
 .sphx-glr-thumbcontainer .figure {
-    width: 250px !important;
+    width: 1000px !important;
 }
 .sphx-glr-thumbcontainer img {
     max-height: 250px !important;
