@@ -76,7 +76,7 @@ sphinx_gallery_conf = {
     "filename_pattern": "/tuto_",
     "ignore_pattern": "/_",
     # resize the thumbnails, original size = 400x280
-    "thumbnail_size": (500*1.6, 280*1.6),
+    "thumbnail_size": (int(500*1.6), int(280*1.6)),
     # Remove the "Download all examples" button from the top level gallery
     "download_all_examples": False,
     # Sort gallery example by file name instead of number of lines (default)
