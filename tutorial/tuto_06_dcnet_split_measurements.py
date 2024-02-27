@@ -177,7 +177,7 @@ with torch.no_grad():
 # Only the last step involves learnable parameters.
 
 ###############################################################################
-# .. image:: /spyrit/docs/source/fig/dcnet.png
+# .. image:: ../fig/dcnet.png
 #    :width: 400
 #    :align: center
 #    :alt: Sketch of the DCNet architecture
