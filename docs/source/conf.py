@@ -96,7 +96,8 @@ sphinx_gallery_conf = {
 html_theme = "sphinx_rtd_theme"
 
 # directory containing custom CSS file (used to produce bigger thumbnails)
-html_static_path = ["_static/thumbnail.css"]
+html_static_path = ["_static"]
+html_css_files = ["thumbnail.css"]
 
 # on_rtd is whether we are on readthedocs.org
 on_rtd = os.environ.get("READTHEDOCS", None) == "True"
