@@ -12,6 +12,11 @@ submodule, which is based on three classes:
 
 2. **Noise operator** corrupts measurements :math:`y` with noise (see :mod:`spyrit.core.noise`)
 
+.. image:: ../fig/noise_op.png
+   :width: 400
+   :align: center
+   :alt: Example of Noise operator
+
 3. **Preprocessing operators** are typically used to process the noisy
    measurements prior to reconstruction (see :mod:`spyrit.core.prep`)
 
