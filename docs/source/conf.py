@@ -76,7 +76,7 @@ sphinx_gallery_conf = {
     "filename_pattern": "/tuto_",
     "ignore_pattern": "/_",
     # resize the thumbnails, original size = 400x280
-    "thumbnail_size": (int(500*1.6), int(280*1.6)),
+    "thumbnail_size": (400, 280),
     # Remove the "Download all examples" button from the top level gallery
     "download_all_examples": False,
     # Sort gallery example by file name instead of number of lines (default)
@@ -94,6 +94,9 @@ sphinx_gallery_conf = {
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 html_theme = "sphinx_rtd_theme"
+
+# directory containing custom CSS file (used to produce bigger thumbnails)
+html_static_path = ["_static"]
 
 # on_rtd is whether we are on readthedocs.org
 on_rtd = os.environ.get("READTHEDOCS", None) == "True"
