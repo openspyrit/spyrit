@@ -216,12 +216,14 @@ noaxis(axs)
 # %%
 # Preprocessing measurements corrupted by Poisson noise
 # -----------------------------------------------------------------------------
+
 ###############################################################################
 # .. image:: ../fig/noise_op.png
 #    :width: 400
 #    :align: center
 #    :alt: Example of Noise operator
-#
+
+###############################################################################
 # We consider the :class:`spyrit.core.prep.DirectPoisson` class that intends
 # to "undo" the :class:`spyrit.core.noise.Poisson` class by compensating for:
 #
