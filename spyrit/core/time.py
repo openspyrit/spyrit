@@ -41,7 +41,7 @@ class DeformationField(nn.Module):
     :math:`Ny` are the number of pixels along the x-axis and y-axis respectively.
     The last dimension contains the x and y coordinates of the original image
     pixel that is displayed in the warped image, at the position corresponding
-    to the indices in the dimension :math:`(Nx,Ny)` of the tensor.
+    to the indices in the dimension :math:`(Nx, Ny)` of the tensor.
 
     .. note::
         The coordinates are given in the range [-1;1]. When referring to a
@@ -311,15 +311,15 @@ class AffineDeformationField(DeformationField):
         Similarly to the method :meth:`DeformationField.forward` from the parent
         class, it warps a single image according to the *inverse
         deformation field* :math:`v` contained in the attribute
-        :attr:`inverse_grid_frames`, between the times :math:`t0` and
-        :math:`t1`. The number of frames in the animation is given by either
-        :math:`n\_frames`, or :math:`fps` if :math:`n\_frames` is `None`.
+        :attr:`inverse_grid_frames`, between the times :attr:`t0` and
+        :attr:`t1`. The number of frames in the animation is given by either
+        :attr:`n\_frames`, or :attr:`fps` if :attr:`n\_frames` is `None`.
 
         Args:
             :attr:`img` (torch.tensor):
-            Image to deform of shape :math:`(c,Nx,Ny)`, where :math:`c` is the
-            number of channels, and :math:`Nx` and
-            :math:`Ny` are the number of pixels along the x-axis and y-axis
+            Image to deform of shape :math:`(c,Nx,Ny)`, where :attr:`c` is the
+            number of channels, and :attr:`Nx` and
+            :attr:`Ny` are the number of pixels along the x-axis and y-axis
             respectively. The number of channels is usually 1 (grayscale) or
             3 (color), if not a warning is raised.
 
@@ -509,11 +509,11 @@ class AffineDeformationField(DeformationField):
 
         Returns a batch of affine transformation matrices corresponding to the
         *inverse deformation field* :math:`v`, evaluated at the times defined
-        by the parameters :math:`t0`, :math:`t1` and :math:`n\_frames`.
+        by the parameters :attr:`t0`, :attr:`t1` and :attr:`n\_frames`.
 
         .. note::
             The time vector is created using the function `numpy.linspace` with
-            the parameters :math:`t0`, :math:`t1` and :math:`n\_frames` (
+            the parameters :attr:`t0`, :attr:`t1` and :attr:`n\_frames` (
             ``time_vector = np.linspace(t0, t1, n_frames)``). If :math:`t0 > t1`,
             the time vector is created in reverse order, giving a "backwards"
             animation.
@@ -585,8 +585,8 @@ class AffineDeformationField(DeformationField):
             :attr:`size` (torch.Size):
             shape :math:`(n\_frames,c,Nx,Ny)`
             Target output image size. It is a 4-tuple of integers, where
-            :math:`n\_frames` is the number of frames in the animation,
-            :math:`c` is the number of channels, and :math:`Nx` and :math:`Ny`
+            :attr:`n\_frames` is the number of frames in the animation,
+            :attr:`c` is the number of channels, and :attr:`Nx` and :attr:`Ny`
             are the number of pixels along the x-axis and y-axis respectively.
             The number of channels is usually 1 (grayscale) or 3 (color).
 
