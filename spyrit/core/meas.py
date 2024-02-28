@@ -481,7 +481,7 @@ class Linear(DynamicLinear):
     :math:`M` the number of measurements.
 
     Args:
-        :attr:`H` (:type:`torch.tensor`): measurement matrix (linear operator) with shape :math:`(M, N)`.
+        :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator) with shape :math:`(M, N)`.
 
         :attr:`pinv` (Any): Option to have access to pseudo inverse solutions. If not
         `None`, the pseudo inverse is initialized as :math:`H^\dagger` and
