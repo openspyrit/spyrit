@@ -1,0 +1,30 @@
+.sphx-glr-thumbnails {
+    width: 100%;
+    margin: 0px 0px 20px 0px;
+  
+    /* align thumbnails on a grid */
+    justify-content: space-between;
+    display: grid;
+    /* each grid column should be at least 160px (this will determine
+    the actual number of columns) and then take as much of the
+    remaining width as possible */
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
+    gap: 20px;
+}
+.sphx-glr-thumbcontainer {
+    width: 100% !important;
+    height: 200px !important;
+    margin: 20px !important;
+}
+.sphx-glr-thumbcontainer .figure {
+    min-width: 300px !important;
+}
+.sphx-glr-thumbcontainer img {
+    display: inline !important;
+    max-height: 112px !important;
+    min-width: 200px !important;
+    max-width: 300px !important;
+  }
+.sphx-glr-thumbcontainer a.internal {
+    padding: 10px 10px 0 !important;
+}
