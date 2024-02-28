@@ -32,6 +32,8 @@ import matplotlib.pyplot as plt
 from spyrit.misc.disp import imagesc
 from spyrit.misc.statistics import transform_gray_norm
 
+# sphinx_gallery_thumbnail_path = 'fig/pinvnet_cnn.png'
+
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
@@ -171,7 +173,7 @@ x_rec = pinv_net.reconstruct(y)
 # neural network (eg. UNet from :class:`spyrit.core.nnet.Unet`).
 
 ###############################################################################
-# .. image:: /spyrit/docs/source/fig/pinvnet_cnn.png
+# .. image:: ../fig/pinvnet_cnn.png
 #    :width: 400
 #    :align: center
 #    :alt: Sketch of the PinvNet with CNN architecture
@@ -269,8 +271,6 @@ add_colorbar(im3, "bottom", size="20%")
 # We show the best result again (tutorial thumbnail purpose)
 
 # Plot
-# We choose this plot for the thumbnail
-# sphinx_gallery_thumbnail_number = 5
 imagesc(x_plot3, f"Pinv + CNN (trained {num_epochs} epochs", title_fontsize=20)
 
 plt.show()

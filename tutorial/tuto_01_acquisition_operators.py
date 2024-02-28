@@ -36,6 +36,8 @@ import matplotlib.pyplot as plt
 from spyrit.misc.disp import imagesc
 from spyrit.misc.statistics import transform_gray_norm
 
+# sphinx_gallery_thumbnail_path = 'fig/noise_op.png'
+
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
@@ -216,6 +218,12 @@ noaxis(axs)
 # -----------------------------------------------------------------------------
 
 ###############################################################################
+# .. image:: ../fig/noise_op.png
+#    :width: 400
+#    :align: center
+#    :alt: Example of Noise operator
+
+###############################################################################
 # We consider the :class:`spyrit.core.prep.DirectPoisson` class that intends
 # to "undo" the :class:`spyrit.core.noise.Poisson` class by compensating for:
 #
@@ -285,6 +293,4 @@ noaxis(axs)
 # We show again one of the preprocessed measurement vectors (tutorial thumbnail purpose)
 
 # Plot
-# Choose this plot to be the thumbnail
-# sphinx_gallery_thumbnail_number = 5
 imagesc(m2[0, :, :], "100 photons", title_fontsize=20)
