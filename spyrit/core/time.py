@@ -66,6 +66,7 @@ class DeformationField(nn.Module):
         corner pixels. If set to :attr:`False`, they are instead considered
         as referring to the corner points of the input's corner pixels,
         making the sampling more resolution agnostic. Default: :attr:`False`.
+        See `torch.nn.functional.grid_sample` for more details.
 
     Attributes:
         :attr:`self.inverse_grid_frames` (torch.tensor):
@@ -257,6 +258,7 @@ class AffineDeformationField(DeformationField):
         pixels. If set to :attr:`False`, they are instead considered as
         referring to the corner points of the input's corner pixels, making
         the sampling more resolution agnostic. Default: :attr:`False`.
+        See `torch.nn.functional.grid_sample` for more details.
 
     Attributes:
         :attr:`self.inverse_field_matrix` (torch.tensor):
@@ -292,6 +294,212 @@ class AffineDeformationField(DeformationField):
     def __init__(self, inverse_field_matrix: torch.tensor, align_corners=False):
         super().__init__(None, align_corners)
         self.inverse_field_matrix = inverse_field_matrix
+
+    def forward(
+        self,
+        img: torch.tensor,  # single image (1|3, Nx, Ny)
+        t0: float,
+        t1: float = None,
+        n_frames: int = None,
+        fps: float = None,
+        mode: str = "bilinear",
+    ) -> torch.tensor:
+        r"""
+        Warps an image according to the time interpolation parameters.
+
+        Similarly to the method :meth:`DeformationField.forward` from the parent
+        class, it warps a single image according to the *inverse
+        deformation field* :math:`v` contained in the attribute
+        :attr:`inverse_grid_frames`, between the times :math:`t0` and
+        :math:`t1`. The number of frames in the animation is given by either
+        :math:`n\_frames`, or :math:`fps` if :math:`n\_frames` is :attr:`None`.
+
+        Args:
+            :attr:`img` (torch.tensor):
+            Image to deform of shape :math:`(c,Nx,Ny)`, where :math:`c` is the
+            number of channels, and :math:`Nx` and
+            :math:`Ny` are the number of pixels along the x-axis and y-axis
+            respectively. The number of channels is usually 1 (grayscale) or
+            3 (color), if not a warning is raised.
+
+            :attr:`t0` (float):
+            Start time of the animation.
+
+            :attr:`t1` (float):
+            End time of the animation. If :attr:`None`,
+            a single frame is warped.
+
+            :attr:`n_frames` (int):
+            Number of frames in the animation. If :attr:`None`,
+            :attr:`fps` is used to compute the number of frames.
+
+            :attr:`fps` (float):
+            Number of frames per second. If :attr:`None`, :attr:`n_frames`
+            is used, or a single frame is warped.
+
+            :attr:`mode` (str, optional):
+            The interpolation mode to use. It is
+            directly passed to the function `torch.nn.functional.grid_sample`.
+            It must be one of the following: 'nearest', 'bilinear',
+            'bicubic'. Defaults to 'bilinear'.
+
+        Returns:
+            :attr:`output` (torch.tensor):
+            The deformed batch of images of
+            shape :math:`(n\_frames,c,Nx,Ny)`, where each image is
+            deformed according to the *inverse deformation field* :math:`v`
+            contained in the attribute :attr:`inverse_grid_frames`.
+
+        Example 1: Rotate a single image by 90° counter-clockwise
+            >>> def v(t):
+            ...     return torch.tensor([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
+            >>> field = AffineDeformationField(v, align_corners=False)
+            >>> image = torch.tensor([[[0. , 0.3],
+                                       [0.7, 1. ]]])
+            >>> deformed_image = field(image, 0)
+            >>> print(deformed_image)
+            tensor([[[[0.3000, 1.0000],
+                      [0.0000, 0.7000]]]])
+
+        Example 2: Animate an image between t0=0 and t1=1, with 5 frames, with counter-clockwise rotation
+            >>> def s(t):
+            ...     return np.sin(2*np.pi*t)
+            >>> def c(t):
+            ...     return np.cos(2*np.pi*t)
+            >>> def v(t):
+            ...     return torch.tensor([[c(t), -s(t), 0], [s(t), c(t), 0], [0, 0, 1]])
+            >>> field = AffineDeformationField(v, align_corners=False)
+            >>> image = torch.tensor([[[0. , 0.3],
+                                       [0.7, 1. ]]])
+            >>> deformed_image = field(image, 0, 1, 5)
+            >>> print(deformed_image)
+            tensor([[[[0.0000, 0.3000],
+                      [0.7000, 1.0000]]],
+
+                    [[[0.3000, 1.0000],
+                      [0.0000, 0.7000]]],
+
+                    [[[1.0000, 0.7000],
+                      [0.3000, 0.0000]]],
+
+                    [[[0.7000, 0.0000],
+                      [1.0000, 0.3000]]],
+
+                    [[[0.0000, 0.3000],
+                      [0.7000, 1.0000]]]])
+        """
+        t0, t1, n_frames = self.format_params(t0, t1, n_frames, fps)
+        inv_mat_frames = self.get_inv_mat_frames(t0, t1, n_frames)
+        self.save_inv_grid_frames(inv_mat_frames, [n_frames, *img.size()])
+        return super().forward(img, 0, n_frames, mode=mode)
+
+    def format_params(self, t0: float, t1: float, n_frames: int, fps: float) -> tuple:
+        r"""
+        Returns the corrected parameters :attr:`t0`, :attr:`t1` and :attr:`n_frames`
+
+        Returns the parameters :attr:`t0`, :attr:`t1` and :attr:`n_frames` in a
+        format that can be used to animate an image in multiple frames or warp
+        an image in a single frame.
+
+        .. note::
+            The parameters :attr:`n_frames` and :attr:`fps` are mutually
+            exclusive. If both are given, :attr:`n_frames` is used. If both are
+            :attr:`None`, a single frame is warped.
+
+        .. note::
+            If :attr:`fps` is given and :attr:`n_frames` is :attr:`None`, the
+            end time :attr:`t1` is truncated to the closest lowest multiple of
+            :math:`1/\text{fps}`. The number of frames is then computed as
+            usual between :attr:`t0` and the truncated :attr:`t1`.
+
+        Args:
+            :attr:`t0` (float):
+            Start time of the animation.
+
+            :attr:`t1` (float):
+            End time of the animation. If :attr:`None`, a single frame is warped.
+
+            :attr:`n_frames` (int):
+            Number of frames in the animation. If :attr:`None`, a single frame
+            is warped.
+
+            :attr:`fps` (float):
+            Number of frames per second. If :attr:`None`, a single frame is warped.
+
+        Returns:
+            :attr:`(t0, t1, n_frames)` (tuple):
+            Where :attr:`t0` (float) and :attr:`t1` (float) are the start and
+            end time of the animation respectively, and :attr:`n_frames` (int)
+            is the number of frames in the animation.
+
+        The output follows this pattern::
+
+            Is :attr:`t1` :attr:`None`?
+            ├── Yes
+            │    └── Are :attr:`n_frames` and :attr:`fps` :attr:`None`?
+            │         ├── Yes ──> :attr:`(t0, t0, 1)`: a single frame is warped.
+            │         └── No ──> :attr:`ValueError` (conflicting parameters).
+            └── No
+                └── Is :attr:`n_frames` :attr:`None`?
+                    ├── Yes
+                    │    └── Is :attr:`fps` :attr:`None`?
+                    │         ├── Yes ──> :attr:`ValueError` (conflicting parameters).
+                    │         └── No ─┬─ :attr:`n_frames = int(np.floor(1 + (t1-t0) * fps))`
+                    │                 └──> :attr:`(t0, t0 + (n_frames-1) / fps, n_frames)`
+                    └── No ──> :attr:`(t0, t1, n_frames)`
+
+        Example 1: Warp a single image at t0=0, with 1 frame
+            >>> field = AffineDeformationField(None, align_corners=False)
+            >>> field.format_params(0)
+            (0, 0, 1)
+
+        Example 2: Warp a single image between t0=0 and t1=1, with 11 frames
+            >>> field = AffineDeformationField(None, align_corners=False)
+            >>> field.format_params(0, 1, 11)
+            (0, 1, 11)
+
+        Example 3: Warp a single image between t0=0 and t1=1 at 24 fps
+            >>> field = AffineDeformationField(None, align_corners=False)
+            >>> field.format_params(0, 1, None, 24)
+            (0, 1, 25)
+
+        Example 4: Provide n_frames and fps
+            >>> field = AffineDeformationField(None, align_corners=False)
+            >>> field.format_params(0, 1, 11, 24)
+            (0, 1, 11)
+
+        Example 5: Provide conflicting parameters
+            >>> field = AffineDeformationField(None, align_corners=False)
+            >>> field.format_params(0, 1, None, None)
+            ValueError: Unable to animate multiple frames: t1 (1) was given, but fps and n_frames were not given.
+
+        Example 6: Provide conflicting parameters
+            >>> field = AffineDeformationField(None, align_corners=False)
+            >>> field.format_params(0, None, 11, 24)
+            ValueError: Unable to animate multiple frames: t1 was not given, but n_frames (11) or fps (24) or were given.
+        """
+        if t1 is None:
+            if (fps is None) and (n_frames is None):
+                return (t0, t0, 1)  # no animation
+            else:
+                raise ValueError(
+                    "Unable to animate multiple frames: t1 was not given, "
+                    + f"but n_frames ({n_frames}) or fps ({fps}) were given."
+                )
+        else:
+            # if fps and n_frames are given, use n_frames
+            if n_frames is None:
+                if fps is None:
+                    raise ValueError(
+                        f"Unable to warp one image: t1 ({t1}) was given, "
+                        + "but fps and n_frames were not given."
+                    )
+                else:
+                    # t1 is truncated to the closest lowest multiple of 1/fps
+                    n_frames = int(np.floor(1 + (t1 - t0) * fps))
+                    return (t0, t0 + (n_frames - 1) / fps, n_frames)
+            else:
+                return (t0, t1, n_frames)
 
     def get_inv_mat_frames(
         self, t0: float, t1: float = None, n_frames: int = 1
@@ -408,221 +616,9 @@ class AffineDeformationField(DeformationField):
         self.inverse_grid_frames = inv_grid_frames
         return self.inverse_grid_frames
 
-    def forward(
-        self,
-        img: torch.tensor,  # single image (1|3, Nx, Ny)
-        t0: float,
-        t1: float = None,
-        n_frames: int = None,
-        fps: float = None,
-        mode: str = "bilinear",
-    ) -> torch.tensor:
-        r"""
-        Warps an image according to the time interpolation parameters.
-
-        Similarly to the method :meth:`DeformationField.forward` from the parent
-        class, it warps a single image according to the *inverse
-        deformation field* :math:`v` contained in the attribute
-        :attr:`inverse_grid_frames`, between the times :math:`t0` and
-        :math:`t1`. The number of frames in the animation is given by either
-        :math:`n\_frames`, or :math:`fps` if :math:`n\_frames` is :attr:`None`.
-
-        Args:
-            :attr:`img` (torch.tensor):
-            Image to deform of shape :math:`(c,Nx,Ny)`, where :math:`c` is the
-            number of channels, and :math:`Nx` and
-            :math:`Ny` are the number of pixels along the x-axis and y-axis
-            respectively. The number of channels is usually 1 (grayscale) or
-            3 (color), if not a warning is raised.
-
-            :attr:`t0` (float):
-            Start time of the animation.
-
-            :attr:`t1` (float):
-            End time of the animation. If :attr:`None`,
-            a single frame is warped.
-
-            :attr:`n_frames` (int):
-            Number of frames in the animation. If :attr:`None`,
-            :attr:`fps` is used to compute the number of frames.
-
-            :attr:`fps` (float):
-            Number of frames per second. If :attr:`None`, :attr:`n_frames`
-            is used, or a single frame is warped.
-
-            :attr:`mode` (str, optional):
-            The interpolation mode to use. It is
-            directly passed to the function `torch.nn.functional.grid_sample`.
-            It must be one of the following: 'nearest', 'bilinear',
-            'bicubic'. Defaults to 'bilinear'.
-
-        Returns:
-            :attr:`output` (torch.tensor):
-            The deformed batch of images of
-            shape :math:`(n\_frames,c,Nx,Ny)`, where each image is
-            deformed according to the *inverse deformation field* :math:`v`
-            contained in the attribute :attr:`inverse_grid_frames`.
-
-        Example 1: Rotate a single image by 90° counter-clockwise
-            >>> def v(t):
-            ...     return torch.tensor([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
-            >>> field = AffineDeformationField(v, align_corners=False)
-            >>> image = torch.tensor([[[0. , 0.3],
-                                       [0.7, 1. ]]])
-            >>> deformed_image = field(image, 0)
-            >>> print(deformed_image)
-            tensor([[[[0.3000, 1.0000],
-                      [0.0000, 0.7000]]]])
-
-        Example 2: Animate an image between t0=0 and t1=1, with 5 frames, with counter-clockwise rotation
-            >>> def s(t):
-            ...     return np.sin(2*np.pi*t)
-            >>> def c(t):
-            ...     return np.cos(2*np.pi*t)
-            >>> def v(t):
-            ...     return torch.tensor([[c(t), -s(t), 0], [s(t), c(t), 0], [0, 0, 1]])
-            >>> field = AffineDeformationField(v, align_corners=False)
-            >>> image = torch.tensor([[[0. , 0.3],
-                                       [0.7, 1. ]]])
-            >>> deformed_image = field(image, 0, 1, 5)
-            >>> print(deformed_image)
-            tensor([[[[0.0000, 0.3000],
-                      [0.7000, 1.0000]]],
-
-                    [[[0.3000, 1.0000],
-                      [0.0000, 0.7000]]],
-
-                    [[[1.0000, 0.7000],
-                      [0.3000, 0.0000]]],
-
-                    [[[0.7000, 0.0000],
-                      [1.0000, 0.3000]]],
-
-                    [[[0.0000, 0.3000],
-                      [0.7000, 1.0000]]]])
-        """
-        t0, t1, n_frames = format_params(t0, t1, n_frames, fps)
-        inv_mat_frames = self.get_inv_mat_frames(t0, t1, n_frames)
-        self.save_inv_grid_frames(inv_mat_frames, [n_frames, *img.size()])
-        return super().forward(img, 0, n_frames, mode=mode)
-
     def __repr__(self):
         s = (
             f"AffineDeformationField({self.inverse_field_matrix.__name__=}, "
             + f"{self.align_corners=}, {self.inverse_grid_frames=})"
         )
         return s
-
-
-# =============================================================================
-# FUNCTIONS
-# =============================================================================
-
-
-def format_params(self, t0: float, t1: float, n_frames: int, fps: float) -> tuple:
-    r"""
-    Returns the corrected parameters :attr:`t0`, :attr:`t1` and :attr:`n_frames`
-
-    Returns the parameters :attr:`t0`, :attr:`t1` and :attr:`n_frames` in a
-    format that can be used to animate an image in multiple frames or warp
-    an image in a single frame.
-
-    .. note::
-        The parameters :attr:`n_frames` and :attr:`fps` are mutually
-        exclusive. If both are given, :attr:`n_frames` is used. If both are
-        :attr:`None`, a single frame is warped.
-
-    .. note::
-        If :attr:`fps` is given and :attr:`n_frames` is :attr:`None`, the
-        end time :attr:`t1` is truncated to the closest lowest multiple of
-        :math:`1/\text{fps}`. The number of frames is then computed as
-        usual between :attr:`t0` and the truncated :attr:`t1`.
-
-    Args:
-        :attr:`t0` (float):
-        Start time of the animation.
-
-        :attr:`t1` (float):
-        End time of the animation. If :attr:`None`, a single frame is warped.
-
-        :attr:`n_frames` (int):
-        Number of frames in the animation. If :attr:`None`, a single frame
-        is warped.
-
-        :attr:`fps` (float):
-        Number of frames per second. If :attr:`None`, a single frame is warped.
-
-    Returns:
-        :attr:`(t0, t1, n_frames)` (tuple):
-        Where :attr:`t0` (float) and :attr:`t1` (float) are the start and
-        end time of the animation respectively, and :attr:`n_frames` (int)
-        is the number of frames in the animation.
-
-    The output follows this pattern::
-
-        Is :attr:`t1` :attr:`None`?
-        ├── Yes
-        │    └── Are :attr:`n_frames` and :attr:`fps` :attr:`None`?
-        │         ├── Yes ──> :attr:`(t0, t0, 1)`: a single frame is warped.
-        │         └── No ──> :attr:`ValueError` (conflicting parameters).
-        └── No
-            └── Is :attr:`n_frames` :attr:`None`?
-                ├── Yes
-                │    └── Is :attr:`fps` :attr:`None`?
-                │         ├── Yes ──> :attr:`ValueError` (conflicting parameters).
-                │         └── No ─┬─ :attr:`n_frames = int(np.floor(1 + (t1-t0) * fps))`
-                │                 └──> :attr:`(t0, t0 + (n_frames-1) / fps, n_frames)`
-                └── No ──> :attr:`(t0, t1, n_frames)`
-
-    Example 1: Warp a single image at t0=0, with 1 frame
-        >>> field = AffineDeformationField(None, align_corners=False)
-        >>> field.format_params(0)
-        (0, 0, 1)
-
-    Example 2: Warp a single image between t0=0 and t1=1, with 11 frames
-        >>> field = AffineDeformationField(None, align_corners=False)
-        >>> field.format_params(0, 1, 11)
-        (0, 1, 11)
-
-    Example 3: Warp a single image between t0=0 and t1=1 at 24 fps
-        >>> field = AffineDeformationField(None, align_corners=False)
-        >>> field.format_params(0, 1, None, 24)
-        (0, 1, 25)
-
-    Example 4: Provide n_frames and fps
-        >>> field = AffineDeformationField(None, align_corners=False)
-        >>> field.format_params(0, 1, 11, 24)
-        (0, 1, 11)
-
-    Example 5: Provide conflicting parameters
-        >>> field = AffineDeformationField(None, align_corners=False)
-        >>> field.format_params(0, 1, None, None)
-        ValueError: Unable to animate multiple frames: t1 (1) was given, but fps and n_frames were not given.
-
-    Example 6: Provide conflicting parameters
-        >>> field = AffineDeformationField(None, align_corners=False)
-        >>> field.format_params(0, None, 11, 24)
-        ValueError: Unable to animate multiple frames: t1 was not given, but n_frames (11) or fps (24) or were given.
-    """
-    if t1 is None:
-        if (fps is None) and (n_frames is None):
-            return (t0, t0, 1)  # no animation
-        else:
-            raise ValueError(
-                "Unable to animate multiple frames: t1 was not given, "
-                + f"but n_frames ({n_frames}) or fps ({fps}) were given."
-            )
-    else:
-        # if fps and n_frames are given, use n_frames
-        if n_frames is None:
-            if fps is None:
-                raise ValueError(
-                    f"Unable to warp one image: t1 ({t1}) was given, "
-                    + "but fps and n_frames were not given."
-                )
-            else:
-                # t1 is truncated to the closest lowest multiple of 1/fps
-                n_frames = int(np.floor(1 + (t1 - t0) * fps))
-                return (t0, t0 + (n_frames - 1) / fps, n_frames)
-        else:
-            return (t0, t1, n_frames)
