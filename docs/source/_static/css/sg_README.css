@@ -1,7 +1,7 @@
 .sphx-glr-thumbnails {
     width: 100%;
     margin: 0px 0px 20px 0px;
-  
+
     /* align thumbnails on a grid */
     justify-content: space-between;
     display: grid;

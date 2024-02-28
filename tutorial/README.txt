@@ -2,7 +2,7 @@ Tutorials
 =========
 
 Here you can find a series of Tutorials that will guide you throughout the use
-of Spyrit. It is recommended to run them in order. 
+of Spyrit. It is recommended to run them in order.
 
 For each tutorial, please download the corresponding Python Script (*.py*) or
 Jupyter notebook (*.ipynb*) file at the end of the page. You can find the
@@ -31,8 +31,8 @@ on a specific part of the pipeline.
    :align: center
    :alt: Principle of the image processing pipeline
 
-| 
-| 
+|
+|
 
 
 .. _this page: https://github.com/openspyrit/spyrit/tree/3895b5e61fb6d522cff5e8b32a36da89b807b081/tutorial/images/test
