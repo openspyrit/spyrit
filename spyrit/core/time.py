@@ -59,14 +59,13 @@ class DeformationField(nn.Module):
         Default: `None`.
 
         :attr:`align_corners` (bool, optional):
-        Option passed to `torch.nn.functional.grid_sample`.
+        Option passed to :func:`torch.nn.functional.grid_sample`.
         Geometrically, we consider the pixels of the input as squares
         rather than points. If set to `True`, the extrema (-1 and 1)
         are considered as referring to the center points of the input's
         corner pixels. If set to `False`, they are instead considered
         as referring to the corner points of the input's corner pixels,
         making the sampling more resolution agnostic. Default: `False`.
-        See `torch.nn.functional.grid_sample` for more details.
 
     Attributes:
         :attr:`self.inverse_grid_frames` (torch.tensor):
@@ -138,7 +137,7 @@ class DeformationField(nn.Module):
 
             :attr:`mode` (str, optional):
             The interpolation mode to use. It is directly passed to the
-            function `torch.nn.functional.grid_sample`. It must be one of the
+            function :func:`torch.nn.functional.grid_sample`. It must be one of the
             following: 'nearest', 'bilinear', 'bicubic'. Defaults to 'bilinear'.
 
         Returns:
@@ -258,7 +257,7 @@ class AffineDeformationField(DeformationField):
         pixels. If set to `False`, they are instead considered as
         referring to the corner points of the input's corner pixels, making
         the sampling more resolution agnostic. Default: `False`.
-        See `torch.nn.functional.grid_sample` for more details.
+        See :func:`torch.nn.functional.grid_sample` for more details.
 
     Attributes:
         :attr:`self.inverse_field_matrix` (torch.tensor):
@@ -311,15 +310,15 @@ class AffineDeformationField(DeformationField):
         Similarly to the method :meth:`DeformationField.forward` from the parent
         class, it warps a single image according to the *inverse
         deformation field* :math:`v` contained in the attribute
-        :attr:`inverse_grid_frames`, between the times :attr:`t0` and
-        :attr:`t1`. The number of frames in the animation is given by either
-        :attr:`n\_frames`, or :attr:`fps` if :attr:`n\_frames` is `None`.
+        :attr:`inverse_grid_frames`, between the times :math:`t0` and
+        :math:`t1`. The number of frames in the animation is given by either
+        :math:`n\_frames`, or :math:`fps` if :math:`n\_frames` is `None`.
 
         Args:
             :attr:`img` (torch.tensor):
-            Image to deform of shape :math:`(c,Nx,Ny)`, where :attr:`c` is the
-            number of channels, and :attr:`Nx` and
-            :attr:`Ny` are the number of pixels along the x-axis and y-axis
+            Image to deform of shape :math:`(c,Nx,Ny)`, where :math:`c` is the
+            number of channels, and :math:`Nx` and
+            :math:`Ny` are the number of pixels along the x-axis and y-axis
             respectively. The number of channels is usually 1 (grayscale) or
             3 (color), if not a warning is raised.
 
@@ -339,7 +338,7 @@ class AffineDeformationField(DeformationField):
 
             :attr:`mode` (str, optional):
             The interpolation mode to use. It is
-            directly passed to the function `torch.nn.functional.grid_sample`.
+            directly passed to the function :func:`torch.nn.functional.grid_sample`.
             It must be one of the following: 'nearest', 'bilinear',
             'bicubic'. Defaults to 'bilinear'.
 
@@ -395,9 +394,9 @@ class AffineDeformationField(DeformationField):
 
     def format_params(self, t0: float, t1: float, n_frames: int, fps: float) -> tuple:
         r"""
-        Returns the corrected parameters :attr:`t0`, :attr:`t1` and :attr:`n_frames`
+        Returns the corrected parameters :math:`t0`, :math:`t1` and :math:`n_frames`
 
-        Returns the parameters :attr:`t0`, :attr:`t1` and :attr:`n_frames` in a
+        Returns the parameters :math:`t0`, :math:`t1` and :math:`n_frames` in a
         format that can be used to animate an image in multiple frames or warp
         an image in a single frame.
 
@@ -408,9 +407,9 @@ class AffineDeformationField(DeformationField):
 
         .. note::
             If :attr:`fps` is given and :attr:`n_frames` is `None`, the
-            end time :attr:`t1` is truncated to the closest lowest multiple of
+            end time :math:`t1` is truncated to the closest lowest multiple of
             :math:`1/\text{fps}`. The number of frames is then computed as
-            usual between :attr:`t0` and the truncated :attr:`t1`.
+            usual between :math:`t0` and the truncated :math:`t1`.
 
         Args:
             :attr:`t0` (float):
@@ -428,8 +427,8 @@ class AffineDeformationField(DeformationField):
 
         Returns:
             :attr:`(t0, t1, n_frames)` (tuple):
-            Where :attr:`t0` (float) and :attr:`t1` (float) are the start and
-            end time of the animation respectively, and :attr:`n_frames` (int)
+            Where :math:`t0` (float) and :math:`t1` (float) are the start and
+            end time of the animation respectively, and :math:`n_frames` (int)
             is the number of frames in the animation.
 
         The output follows this pattern::
@@ -509,11 +508,11 @@ class AffineDeformationField(DeformationField):
 
         Returns a batch of affine transformation matrices corresponding to the
         *inverse deformation field* :math:`v`, evaluated at the times defined
-        by the parameters :attr:`t0`, :attr:`t1` and :attr:`n\_frames`.
+        by the parameters :math:`t0`, :math:`t1` and :math:`n\_frames`.
 
         .. note::
-            The time vector is created using the function `numpy.linspace` with
-            the parameters :attr:`t0`, :attr:`t1` and :attr:`n\_frames` (
+            The time vector is created using the function :func:`numpy.linspace` 
+            with the parameters :math:`t0`, :math:`t1` and :math:`n\_frames` (
             ``time_vector = np.linspace(t0, t1, n_frames)``). If :math:`t0 > t1`,
             the time vector is created in reverse order, giving a "backwards"
             animation.
@@ -525,7 +524,7 @@ class AffineDeformationField(DeformationField):
 
             :attr:`t1` (float, optional):
             The last time at which to evaluate the function. If `None`,
-            the function is evaluated at the time :attr:`t0`. Default: `None`.
+            the function is evaluated at the time :math:`t0`. Default: `None`.
 
             :attr:`n_frames` (int, optional):
             The number of frames in the animation. Default: 1.
@@ -585,8 +584,8 @@ class AffineDeformationField(DeformationField):
             :attr:`size` (torch.Size):
             shape :math:`(n\_frames,c,Nx,Ny)`
             Target output image size. It is a 4-tuple of integers, where
-            :attr:`n\_frames` is the number of frames in the animation,
-            :attr:`c` is the number of channels, and :attr:`Nx` and :attr:`Ny`
+            :math:`n\_frames` is the number of frames in the animation,
+            :math:`c` is the number of channels, and :math:`Nx` and :math:`Ny`
             are the number of pixels along the x-axis and y-axis respectively.
             The number of channels is usually 1 (grayscale) or 3 (color).
 
