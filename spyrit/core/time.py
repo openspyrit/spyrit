@@ -97,7 +97,7 @@ class DeformationField(nn.Module):
             self.inverse_grid_frames = None
         self.align_corners = align_corners
 
-    def warp(
+    def forward(
         self, img: torch.tensor, n0: int, n1: int, mode: str = "bilinear"
     ) -> torch.tensor:
         r"""
@@ -160,7 +160,7 @@ class DeformationField(nn.Module):
         >>> field = DeformationField(v, align_corners=True)
         >>> image = torch.tensor([[[0. , 0.3],
                                    [0.7, 1. ]]])
-        >>> deformed_image = field.warp(image, 0, 1)
+        >>> deformed_image = field(image, 0, 1)
         >>> print(deformed_image)
         tensor([[[[0.3000, 1.0000],
                   [0.0000, 0.7000]]]])
@@ -408,7 +408,7 @@ class AffineDeformationField(DeformationField):
         self.inverse_grid_frames = inv_grid_frames
         return self.inverse_grid_frames
 
-    def warp(
+    def forward(
         self,
         img: torch.tensor,  # single image (1|3, Nx, Ny)
         t0: float,
@@ -420,7 +420,7 @@ class AffineDeformationField(DeformationField):
         r"""
         Warps an image according to the time interpolation parameters.
 
-        Similarly to the method :meth:`DeformationField.warp` from the parent
+        Similarly to the method :meth:`DeformationField.forward` from the parent
         class, it warps a single image according to the *inverse
         deformation field* :math:`v` contained in the attribute
         :attr:`inverse_grid_frames`, between the times :math:`t0` and
@@ -469,7 +469,7 @@ class AffineDeformationField(DeformationField):
             >>> field = AffineDeformationField(v, align_corners=False)
             >>> image = torch.tensor([[[0. , 0.3],
                                        [0.7, 1. ]]])
-            >>> deformed_image = field.warp(image, 0)
+            >>> deformed_image = field(image, 0)
             >>> print(deformed_image)
             tensor([[[[0.3000, 1.0000],
                       [0.0000, 0.7000]]]])
@@ -484,7 +484,7 @@ class AffineDeformationField(DeformationField):
             >>> field = AffineDeformationField(v, align_corners=False)
             >>> image = torch.tensor([[[0. , 0.3],
                                        [0.7, 1. ]]])
-            >>> deformed_image = field.warp(image, 0, 1, 5)
+            >>> deformed_image = field(image, 0, 1, 5)
             >>> print(deformed_image)
             tensor([[[[0.0000, 0.3000],
                       [0.7000, 1.0000]]],
@@ -504,7 +504,7 @@ class AffineDeformationField(DeformationField):
         t0, t1, n_frames = format_params(t0, t1, n_frames, fps)
         inv_mat_frames = self.get_inv_mat_frames(t0, t1, n_frames)
         self.save_inv_grid_frames(inv_mat_frames, [n_frames, *img.size()])
-        return super().warp(img, 0, n_frames, mode=mode)
+        return super().forward(img, 0, n_frames, mode=mode)
 
     def __repr__(self):
         s = (
