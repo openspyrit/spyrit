@@ -89,10 +89,13 @@ class DeformationField(nn.Module):
         tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]])
     """
 
-    def __init__(self, inverse_grid_frames: torch.tensor = None, align_corners=False):
+    def __init__(self, inverse_grid_frames: torch.tensor=None, align_corners=False):
         super().__init__()
         if inverse_grid_frames is not None:
-            self.inverse_grid_frames = inverse_grid_frames.float()
+            # convert to float 23 then store as nn.Parameter
+            inverse_grid_frames = inverse_grid_frames.type(torch.float32)
+            self.inverse_grid_frames = nn.Parameter(inverse_grid_frames,
+                                                    requires_grad=False)
         else:
             self.inverse_grid_frames = None
         self.align_corners = align_corners
@@ -179,7 +182,7 @@ class DeformationField(nn.Module):
             )
 
         # check that the deformation field and the image are on the same device
-        self.inverse_grid_frames = self.inverse_grid_frames.to(img.device)
+        # self.inverse_grid_frames = self.inverse_grid_frames.to(img.device)
 
         # get the right slice of the inverse deformation field v
         if n1 < n0:
@@ -611,7 +614,8 @@ class AffineDeformationField(DeformationField):
         inv_grid_frames = nn.functional.affine_grid(
             theta, size, align_corners=self.align_corners
         )
-        self.inverse_grid_frames = inv_grid_frames
+        self.inverse_grid_frames = nn.Parameter(inv_grid_frames,
+                                                requires_grad=False)
         return self.inverse_grid_frames
 
     def __repr__(self):
