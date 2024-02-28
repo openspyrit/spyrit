@@ -8,7 +8,6 @@ import numpy as np
 
 from spyrit.core.time import DeformationField, AffineDeformationField
 
-from spyrit.core.time import format_params
 from test_helpers import assert_test, assert_elementwise_equal
 
 
