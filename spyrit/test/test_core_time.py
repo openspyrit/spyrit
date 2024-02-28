@@ -78,8 +78,6 @@ def test_core_time():
         [[[3, 1], [4, 2]]]
         ], dtype=torch.float), "Wrong forward 4 images")
     
-    
-
     return True
 
 if __name__ == "__main__":
