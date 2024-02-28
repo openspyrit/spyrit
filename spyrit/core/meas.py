@@ -484,14 +484,14 @@ class Linear(DynamicLinear):
         :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
         with shape :math:`(M, N)`.
 
-        :attr:`pinv` (Any): Option to have access to pseudo inverse solutions. If not
-        `None`, the pseudo inverse is initialized as :math:`H^\dagger` and
-        stored in the attribute :attr:`H_pinv`. Defaults to `None` (the pseudo
+        :attr:`pinv` (bool): Option to have access to pseudo inverse solutions. If
+        `True`, the pseudo inverse is initialized as :math:`H^\dagger` and
+        stored in the attribute :attr:`H_pinv`. Defaults to `False` (the pseudo
         inverse is not initiliazed).
 
         :attr:`reg` (float, optional): Regularization parameter (cutoff for small
         singular values, see :mod:`numpy.linal.pinv`). Only relevant when
-        :attr:`pinv` is not `None`.
+        :attr:`pinv` is `True`.
 
     Attributes:
         :attr:`H` (torch.tensor): The learnable measurement matrix of shape
@@ -499,7 +499,7 @@ class Linear(DynamicLinear):
 
         :attr:`H_pinv` (torch.tensor, optional): The learnable adjoint measurement
         matrix of shape :math:`(N, M)` initialized as :math:`H^\dagger`.
-        Only relevant when :attr:`pinv` is not `None`.
+        Only relevant when :attr:`pinv` is `True`.
 
         :attr:`M` (int): Number of measurements performed by the linear operator.
         It is initialized as the first dimension of :math:`H`.
@@ -517,12 +517,12 @@ class Linear(DynamicLinear):
 
     .. note::
         If you know the pseudo inverse of :math:`H` and want to store it, it is
-        best to initialize the class with :attr:`pinv` set to `None` and then
+        best to initialize the class with :attr:`pinv` set to `False` and then
         call :meth:`set_H_pinv` to store the pseudo inverse.
 
     Example 1:
         >>> H = np.random.random([400, 1600])
-        >>> meas_op = Linear(H, pinv=None)
+        >>> meas_op = Linear(H, pinv=False)
         >>> print(meas_op)
         Linear(
           (Image pixels): 1600
@@ -541,9 +541,9 @@ class Linear(DynamicLinear):
           )
     """
 
-    def __init__(self, H: np.ndarray, pinv=None, reg: float = 1e-15):
+    def __init__(self, H: np.ndarray, pinv=False, reg: float = 1e-15):
         super().__init__(H)
-        if pinv is not None:
+        if pinv:
             self.set_H_pinv(reg=reg)
 
     def get_H_T(self) -> torch.tensor:
@@ -592,7 +592,7 @@ class Linear(DynamicLinear):
 
         If :attr:`pinv` is given, it is directly stored as the pseudo inverse.
         The validity of the pseudo inverse is not checked. If :attr:`pinv` is
-        :obj:`None`, the pseudo inverse is computed from the existing
+        :obj:`False`, the pseudo inverse is computed from the existing
         measurement matrix :math:`H` with regularization parameter :attr:`reg`.
 
         Args:
@@ -728,14 +728,14 @@ class LinearSplit(Linear, DynamicLinearSplit):
         shape :math:`(M, N)`, where :math:`M` is the number of measurements and
         :math:`N` the number of pixels in the image.
 
-        :attr:`pinv` (Any): Option to have access to pseudo inverse solutions. If not
-        `None`, the pseudo inverse is initialized as :math:`H^\dagger` and
-        stored in the attribute :attr:`H_pinv`. Defaults to `None` (the pseudo
+        :attr:`pinv` (Any): Option to have access to pseudo inverse solutions. If
+        `True`, the pseudo inverse is initialized as :math:`H^\dagger` and
+        stored in the attribute :attr:`H_pinv`. Defaults to `False` (the pseudo
         inverse is not initiliazed).
 
         :attr:`reg` (float, optional): Regularization parameter (cutoff for small
         singular values, see :mod:`torch.linalg.pinv`). Only relevant when
-        :attr:`pinv` is not `None`.
+        :attr:`pinv` is `True`.
 
     Attributes:
         :attr:`H` (torch.nn.Parameter): The learnable measurement matrix of
@@ -762,12 +762,12 @@ class LinearSplit(Linear, DynamicLinearSplit):
 
     .. note::
         If you know the pseudo inverse of :math:`H` and want to store it, it is
-        best to initialize the class with :attr:`pinv` set to `None` and then
+        best to initialize the class with :attr:`pinv` set to `False` and then
         call :meth:`set_H_pinv` to store the pseudo inverse.
 
     Example:
         >>> H = torch.randn(400, 1600)
-        >>> meas_op = LinearSplit(H, None)
+        >>> meas_op = LinearSplit(H, False)
         >>> print(meas_op)
         LinearSplit(
           (Image pixels): 1600
@@ -777,10 +777,10 @@ class LinearSplit(Linear, DynamicLinearSplit):
           )
     """
 
-    def __init__(self, H: np.ndarray, pinv=None, reg: float = 1e-15):
+    def __init__(self, H: np.ndarray, pinv=False, reg: float = 1e-15):
         # initialize from DynamicLinearSplit __init__
         super(Linear, self).__init__(H)
-        if pinv is not None:
+        if pinv:
             self.set_H_pinv(reg)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
