@@ -105,7 +105,7 @@ on_rtd = os.environ.get("READTHEDOCS", None) == "True"
 # so a file named "default.css" will overwrite the builtin "default.css".
 # By default, this is set to include the _static path.
 html_static_path = ["_static"]
-html_css_files = ["css/README.css"]
+html_css_files = ["css/sg_README.css"]
 
 # The master toctree document.
 master_doc = "index"
