@@ -27,6 +27,8 @@ import numpy as np
 from spyrit.misc.disp import imagesc
 from spyrit.misc.statistics import transform_gray_norm
 
+# sphinx_gallery_thumbnail_path = 'fig/pinvnet.png'
+
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
@@ -183,8 +185,6 @@ recon_op = PseudoInverse()
 x_rec = recon_op(y, meas_op)
 
 # plot
-# Choose this plot to be the thumbnail
-# sphinx_gallery_thumbnail_number = 5
 x_plot = x_rec.squeeze().view(h, h).cpu().numpy()
 imagesc(x_plot, "Pseudoinverse reconstruction (no noise)", title_fontsize=20)
 
@@ -199,7 +199,7 @@ imagesc(x_plot, "Pseudoinverse reconstruction (no noise)", title_fontsize=20)
 # can be set to the identity operator
 
 ###############################################################################
-# .. image:: /spyrit/docs/source/fig/pinvnet.png
+# .. image:: ../fig/pinvnet.png
 #    :width: 400
 #    :align: center
 #    :alt: Sketch of the PinvNet architecture
