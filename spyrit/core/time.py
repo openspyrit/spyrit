@@ -89,13 +89,14 @@ class DeformationField(nn.Module):
         tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]])
     """
 
-    def __init__(self, inverse_grid_frames: torch.tensor=None, align_corners=False):
+    def __init__(self, inverse_grid_frames: torch.tensor = None, align_corners=False):
         super().__init__()
         if inverse_grid_frames is not None:
             # convert to float 23 then store as nn.Parameter
             inverse_grid_frames = inverse_grid_frames.type(torch.float32)
-            self.inverse_grid_frames = nn.Parameter(inverse_grid_frames,
-                                                    requires_grad=False)
+            self.inverse_grid_frames = nn.Parameter(
+                inverse_grid_frames, requires_grad=False
+            )
         else:
             self.inverse_grid_frames = None
         self.align_corners = align_corners
@@ -117,7 +118,7 @@ class DeformationField(nn.Module):
             or :math:`(B,c,Nx,Ny)`,
             where :math:`B` is the number of images in the batch, :math:`c` is
             the number of channels (usually 1 or 3), and :math:`Nx` and :math:`Ny`
-            are the number of pixels along the x-axis and y-axis respectively. 
+            are the number of pixels along the x-axis and y-axis respectively.
 
             :attr:`n0` (int):
             The index of the first frame to use in the *inverse deformation
@@ -158,7 +159,7 @@ class DeformationField(nn.Module):
             is the batch size, :math:`c` is the number of channels, and
             :math:`Nx` and :math:`Ny` are the number of pixels along the x-axis
             and y-axis respectively.
-                
+
             :attr:`output`: :math:`(|n1-n0|,c,Nx,Ny)` or :math:`(B,|n1-n0|,c,Nx,Ny)`,
             depending on the input shape.
 
@@ -179,14 +180,14 @@ class DeformationField(nn.Module):
         img_size = img.size()
         nb_frames = abs(n1 - n0)
         batch_size = img.size(0)
-        
+
         if (len(img_size) < 3) or (len(img_size) > 4):
             raise ValueError(
                 f"img has incorrect number of dimensions: {img_size} (must have at 3 or 4)."
             )
         elif len(img_size) == 3:
-            img = img.unsqueeze(0) # make it 4D with size (1, c, Nx, Ny)
-        
+            img = img.unsqueeze(0)  # make it 4D with size (1, c, Nx, Ny)
+
         # vvv no longer needed with nn.Parameter ? vvv
         # check that the deformation field and the image are on the same device
         # self.inverse_grid_frames = self.inverse_grid_frames.to(img.device)
@@ -203,9 +204,9 @@ class DeformationField(nn.Module):
         # make it (B, n_frames, c, Nx, Ny)
         img_frames = img.unsqueeze(1).expand(-1, nb_frames, -1, -1, -1)
         out = torch.zeros_like(img_frames)
-        
-        for i in range(batch_size): 
-            #picture is (n_frames, c, Nx, Ny)
+
+        for i in range(batch_size):
+            # picture is (n_frames, c, Nx, Ny)
             out[i] = nn.functional.grid_sample(
                 img_frames[i],
                 sel_inv_grid_frames,
@@ -284,7 +285,7 @@ class AffineDeformationField(DeformationField):
         points of the input's corner pixels? Default: `False`.
 
         :attr:`self.inverse_grid_frames` (torch.tensor):
-        Inverse grid frames that are computed from thr attribute 
+        Inverse grid frames that are computed from thr attribute
         :attr:`inverse_field_matrix` upon calling the method
         :meth:`save_inv_grid_frames`. If set manually,
         the dtype should be `torch.float32`. Default: `None`.
@@ -311,7 +312,7 @@ class AffineDeformationField(DeformationField):
 
     def forward(
         self,
-        img: torch.tensor,  
+        img: torch.tensor,
         t0: float,
         t1: float = None,
         n_frames: int = None,
@@ -330,7 +331,7 @@ class AffineDeformationField(DeformationField):
 
         Args:
             :attr:`img` (torch.tensor):
-            Image to deform of shape :math:`(c,Nx,Ny)` or batch of images to 
+            Image to deform of shape :math:`(c,Nx,Ny)` or batch of images to
             deform of shape :math:`(B,c,Nx,Ny)`, where :math:`B` is the number
             of images in the batch, :math:`c` is the
             number of channels, and :math:`Nx` and
@@ -531,7 +532,7 @@ class AffineDeformationField(DeformationField):
         by the parameters :math:`t0`, :math:`t1` and :math:`n\_frames`.
 
         .. note::
-            The time vector is created using the function :func:`numpy.linspace` 
+            The time vector is created using the function :func:`numpy.linspace`
             with the parameters :math:`t0`, :math:`t1` and :math:`n\_frames` (
             ``time_vector = np.linspace(t0, t1, n_frames)``). If :math:`t0 > t1`,
             the time vector is created in reverse order, giving a "backwards"
@@ -631,8 +632,7 @@ class AffineDeformationField(DeformationField):
         inv_grid_frames = nn.functional.affine_grid(
             theta, size, align_corners=self.align_corners
         )
-        self.inverse_grid_frames = nn.Parameter(inv_grid_frames,
-                                                requires_grad=False)
+        self.inverse_grid_frames = nn.Parameter(inv_grid_frames, requires_grad=False)
         return self.inverse_grid_frames
 
     def __repr__(self):
