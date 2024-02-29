@@ -215,7 +215,9 @@ class DeformationField(nn.Module):
                 padding_mode="zeros",
                 align_corners=self.align_corners,
             )
-        return out.squeeze(1) if batch_size == 1 else out
+        if batch_size == 1:
+            return out.squeeze(0)
+        return out
 
     def __repr__(self):
         s = f"DeformationField({self.inverse_grid_frames=}, {self.align_corners=})"
