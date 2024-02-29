@@ -6,17 +6,17 @@ spyrit.core.recon.DCNet
 .. autoclass:: DCNet
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~DCNet.acquire
       ~DCNet.forward
       ~DCNet.reconstruct
       ~DCNet.reconstruct_expe
-   
-   
+
+

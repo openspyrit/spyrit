@@ -6,14 +6,14 @@ spyrit.core.meas.Linear
 .. autoclass:: Linear
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~Linear.adjoint
       ~Linear.forward
       ~Linear.get_H
@@ -21,5 +21,5 @@ spyrit.core.meas.Linear
       ~Linear.get_H_pinv
       ~Linear.pinv
       ~Linear.set_H_pinv
-   
-   
+
+

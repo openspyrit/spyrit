@@ -6,14 +6,14 @@ spyrit.core.recon.PositiveParameters
 .. autoclass:: PositiveParameters
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~PositiveParameters.forward
-   
-   
+
+

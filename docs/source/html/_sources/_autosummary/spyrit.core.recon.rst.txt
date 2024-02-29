@@ -4,22 +4,22 @@ spyrit.core.recon
 .. automodule:: spyrit.core.recon
    :show-inheritance:
 
-   
-   
-   
 
-   
-   
-   
 
-   
-   
+
+
+
+
+
+
+
+
    .. rubric:: Classes
 
    .. autosummary::
       :toctree:
       :template: spyrit-class-template.rst
-   
+
       DCDRUNet
       DCNet
       Denoise_layer
@@ -29,12 +29,9 @@ spyrit.core.recon
       PseudoInverse
       TikhonovMeasurementPriorDiag
       UPGD
-   
-   
 
-   
-   
-   
+
+
 
 
 

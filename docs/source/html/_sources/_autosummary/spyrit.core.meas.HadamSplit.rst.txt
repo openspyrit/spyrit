@@ -6,14 +6,14 @@ spyrit.core.meas.HadamSplit
 .. autoclass:: HadamSplit
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~HadamSplit.adjoint
       ~HadamSplit.forward
       ~HadamSplit.forward_H
@@ -25,5 +25,5 @@ spyrit.core.meas.HadamSplit
       ~HadamSplit.inverse
       ~HadamSplit.pinv
       ~HadamSplit.set_H_pinv
-   
-   
+
+

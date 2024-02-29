@@ -4,17 +4,17 @@ spyrit.misc.statistics
 .. automodule:: spyrit.misc.statistics
    :show-inheritance:
 
-   
-   
-   
 
-   
-   
+
+
+
+
+
    .. rubric:: Functions
 
    .. autosummary::
       :toctree:
-   
+
       Cov2Var
       cov_walsh
       data_loaders_ImageNet
@@ -31,24 +31,21 @@ spyrit.misc.statistics
       stat_walsh_ImageNet
       stat_walsh_stl10
       transform_gray_norm
-   
-   
 
-   
-   
+
+
+
+
    .. rubric:: Classes
 
    .. autosummary::
       :toctree:
       :template: spyrit-class-template.rst
-   
-      CenterCrop
-   
-   
 
-   
-   
-   
+      CenterCrop
+
+
+
 
 
 

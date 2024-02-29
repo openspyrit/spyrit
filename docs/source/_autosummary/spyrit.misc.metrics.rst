@@ -4,17 +4,17 @@ spyrit.misc.metrics
 .. automodule:: spyrit.misc.metrics
    :show-inheritance:
 
-   
-   
-   
 
-   
-   
+
+
+
+
+
    .. rubric:: Functions
 
    .. autosummary::
       :toctree:
-   
+
       batch_psnr
       batch_psnr_vid
       batch_ssim
@@ -30,16 +30,13 @@ spyrit.misc.metrics
       psnr
       psnr_
       ssim
-   
-   
 
-   
-   
-   
 
-   
-   
-   
+
+
+
+
+
 
 
 

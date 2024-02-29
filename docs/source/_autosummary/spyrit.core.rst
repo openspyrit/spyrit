@@ -4,21 +4,21 @@
 .. automodule:: spyrit.core
    :show-inheritance:
 
-   
-   
-   
 
-   
-   
-   
 
-   
-   
-   
 
-   
-   
-   
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -36,4 +36,3 @@
    spyrit.core.recon
    spyrit.core.time
    spyrit.core.train
-

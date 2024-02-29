@@ -6,14 +6,14 @@ spyrit.core.noise.PoissonApproxGaussSameNoise
 .. autoclass:: PoissonApproxGaussSameNoise
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~PoissonApproxGaussSameNoise.forward
-   
-   
+
+

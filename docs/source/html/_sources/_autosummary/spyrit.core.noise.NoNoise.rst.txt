@@ -6,14 +6,14 @@ spyrit.core.noise.NoNoise
 .. autoclass:: NoNoise
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~NoNoise.forward
-   
-   
+
+

@@ -4,17 +4,17 @@ spyrit.misc.disp
 .. automodule:: spyrit.misc.disp
    :show-inheritance:
 
-   
-   
-   
 
-   
-   
+
+
+
+
+
    .. rubric:: Functions
 
    .. autosummary::
       :toctree:
-   
+
       Multi_plots
       add_colorbar
       compare_video_frames
@@ -33,16 +33,13 @@ spyrit.misc.disp
       torch2numpy
       uint8
       vid2batch
-   
-   
 
-   
-   
-   
 
-   
-   
-   
+
+
+
+
+
 
 
 

@@ -6,14 +6,14 @@ spyrit.core.recon.PseudoInverse
 .. autoclass:: PseudoInverse
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~PseudoInverse.forward
-   
-   
+
+

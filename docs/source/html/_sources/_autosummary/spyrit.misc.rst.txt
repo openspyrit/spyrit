@@ -4,21 +4,21 @@
 .. automodule:: spyrit.misc
    :show-inheritance:
 
-   
-   
-   
 
-   
-   
-   
 
-   
-   
-   
 
-   
-   
-   
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -39,4 +39,3 @@
    spyrit.misc.sampling
    spyrit.misc.statistics
    spyrit.misc.walsh_hadamard
-

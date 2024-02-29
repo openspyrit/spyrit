@@ -6,14 +6,14 @@ spyrit.core.nnet.List\_denoi
 .. autoclass:: List_denoi
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~List_denoi.forward
-   
-   
+
+

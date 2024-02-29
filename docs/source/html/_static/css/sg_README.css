@@ -2,7 +2,7 @@
     width: 100%;
     height: 85% !important;
     margin: 0px 0px 20px 0px;
-  
+
     /* align thumbnails on a grid */
     justify-content: space-between;
     display: grid;

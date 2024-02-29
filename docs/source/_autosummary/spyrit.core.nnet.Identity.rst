@@ -6,14 +6,14 @@ spyrit.core.nnet.Identity
 .. autoclass:: Identity
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~Identity.forward
-   
-   
+
+
