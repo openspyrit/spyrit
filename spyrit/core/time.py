@@ -177,8 +177,6 @@ class DeformationField(nn.Module):
         """
         # check that the image has the correct number of dimensions
         img_size = img.size()
-        nb_frames = abs(n1 - n0)
-        batch_size = img.size(0)
         
         if (len(img_size) < 3) or (len(img_size) > 4):
             raise ValueError(
@@ -186,6 +184,9 @@ class DeformationField(nn.Module):
             )
         elif len(img_size) == 3:
             img = img.unsqueeze(0) # make it 4D with size (1, c, Nx, Ny)
+        
+        nb_frames = abs(n1 - n0)
+        batch_size = img.size(0)
         
         # vvv no longer needed with nn.Parameter ? vvv
         # check that the deformation field and the image are on the same device
