@@ -25,7 +25,9 @@ def test_core_time():
     warped_img = def_field(img, 0, n_frames)
     print("forward greyscale:", warped_img.shape)
     assert_test(
-        warped_img.shape, torch.Size([10, 1, nx, ny]), "Wrong forward greyscale size"
+        warped_img.shape, 
+        torch.Size([10, 1, nx, ny]), 
+        "Wrong forward greyscale size"
     )
 
     # forward color (3D)
@@ -33,7 +35,19 @@ def test_core_time():
     warped_img = def_field(img, 0, n_frames)
     print("forward color:", warped_img.shape)
     assert_test(
-        warped_img.shape, torch.Size([10, 3, nx, ny]), "Wrong forward color size"
+        warped_img.shape, 
+        torch.Size([10, 3, nx, ny]), 
+        "Wrong forward color size"
+    )
+    
+    # forward color with batch of images
+    batch_imgs = torch.randn(5, 3, nx, ny, dtype=torch.float)
+    warped_batch_imgs = def_field(batch_imgs, 0, n_frames)
+    print("forward color with batch of images:", warped_batch_imgs.shape)
+    assert_test(
+        warped_batch_imgs.shape, 
+        torch.Size([5, 10, 3, nx, ny]), 
+        "Wrong forward color with batch of images size"
     )
 
     # forward rotating clockwise
@@ -48,6 +62,7 @@ def test_core_time():
         "Wrong forward rotating clockwise",
     )
 
+    # =========================================================================
     ## Test AffineDeformationField
     # constructor
     mat = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=torch.float)
@@ -89,6 +104,16 @@ def test_core_time():
             dtype=torch.float,
         ),
         "Wrong forward 4 images",
+    )
+
+    # test 4 frames with 10 images in a batch
+    batch_imgs = torch.randn(10, 3, nx, ny, dtype=torch.float)
+    warped_batch_imgs = field(batch_imgs, t0, t1, n_frames)
+    print("forward 4 frames with 5 images in a batch:", warped_batch_imgs.shape)
+    assert_test(
+        warped_batch_imgs.shape, 
+        torch.Size([10, 4, 3, nx, ny]), 
+        "Wrong forward 4 frames with 5 images in a batch size"
     )
 
     return True
