@@ -104,31 +104,20 @@ class DeformationField(nn.Module):
         self, img: torch.tensor, n0: int, n1: int, mode: str = "bilinear"
     ) -> torch.tensor:
         r"""
-        Warps a given image with the stored *inverse deformation field* :math:`v`.
+        Warps an image or batch of images with the stored *inverse deformation field*
+        :math:`v`.
 
-        Deforms the image according to the *inverse deformation field* :math:`v`
-        contained in the attribute :attr:`inverse_grid_frames`, sliced between
-        the frames :math:`n0` (included) and :math:`n1` (excluded).
-
-            .. note::
-                If :math:`n0 < n1`, :attr:`inverse_grid_frames` is sliced
-                as follows: ``inv_grid_frames[n0:n1, :, :, :]``
-
-            .. note::
-                If :math:`n0 > n1`, :attr:`inverse_grid_frames` is sliced
-                "backwards". The first frame of the warped animation corresponds to
-                the index :math:`n0`, and the last frame corresponds to the index
-                :math:`n1+1`. This behavior is identical to slicing a list with a
-                step of -1.
+        Deforms the image or batch of images according to the *inverse deformation
+        field* :math:`v` contained in the attribute :attr:`inverse_grid_frames`,
+        sliced between the frames :math:`n0` (included) and :math:`n1` (excluded).
 
         Args:
             :attr:`img` (torch.tensor):
-            The image to deform of shape :math:`(c,Nx,Ny)`, where :math:`c`
-            is the number of channels, and :math:`Nx` and :math:`Ny` are the
-            number of pixels along the x-axis and y-axis respectively. The
-            number of channels is usually 1 (grayscale) or 3 (color), if not a
-            warning is raised. If the image has not 3 dimensions, an error is
-            raised.
+            The image or batch of images to deform of shape :math:`(c,Nx,Ny)`
+            or :math:`(B,c,Nx,Ny)`,
+            where :math:`B` is the number of images in the batch, :math:`c` is
+            the number of channels (usually 1 or 3), and :math:`Nx` and :math:`Ny`
+            are the number of pixels along the x-axis and y-axis respectively. 
 
             :attr:`n0` (int):
             The index of the first frame to use in the *inverse deformation
@@ -143,17 +132,35 @@ class DeformationField(nn.Module):
             function :func:`torch.nn.functional.grid_sample`. It must be one of the
             following: 'nearest', 'bilinear', 'bicubic'. Defaults to 'bilinear'.
 
+        .. important::
+            The input shape must be either :math:`(c,Nx,Ny)` or :math:`(B,c,Nx,Ny)`.
+
+        .. note::
+            If :math:`n0 < n1`, :attr:`inverse_grid_frames` is sliced
+            as follows: ``inv_grid_frames[n0:n1, :, :, :]``
+
+        .. note::
+            If :math:`n0 > n1`, :attr:`inverse_grid_frames` is sliced
+            "backwards". The first frame of the warped animation corresponds to
+            the index :math:`n0`, and the last frame corresponds to the index
+            :math:`n1+1`. This behavior is identical to slicing a list with a
+            step of -1.
+
         Returns:
             :attr:`output` (torch.tensor):
-            The deformed batch of images of shape :math:`(|n1-n0|,c,Nx,Ny)`,
-            where each image is deformed according to the *inverse deformation
+            The deformed batch of images of shape :math:`(|n1-n0|,c,Nx,Ny)` or
+            :math:`(B,|n1-n0|,c,Nx,Ny)` depending on the input shape, where each
+            image in the batch is deformed according to the *inverse deformation
             field* :math:`v` contained in the attribute :attr:`inverse_grid_frames`.
 
         Shape:
-            - :attr:`img`: :math:`(c,Nx,Ny)`, where c is the number of channels,
-                Nx and Ny are the number of pixels along the x-axis and y-axis
-                respectively.
-            - :attr:`output`: :math:`(|n1-n0|,c,Nx,Ny)`
+            :attr:`img`: :math:`(c,Nx,Ny)` or :math:`(B,c,Nx,Ny)`, where :math:`B`
+            is the batch size, :math:`c` is the number of channels, and
+            :math:`Nx` and :math:`Ny` are the number of pixels along the x-axis
+            and y-axis respectively.
+                
+            :attr:`output`: :math:`(|n1-n0|,c,Nx,Ny)` or :math:`(B,|n1-n0|,c,Nx,Ny)`,
+            depending on the input shape.
 
         Example 1: Rotating a 2x2 B&W image by 90 degrees counter-clockwise, using one
         frame and align_corners=True
@@ -170,17 +177,17 @@ class DeformationField(nn.Module):
         """
         # check that the image has the correct number of dimensions
         img_size = img.size()
-        if len(img_size) == 3:
-            if img_size[0] not in [1, 3]:
-                warnings.warn(
-                    "The first dimension of the image should be the number of"
-                    + f"channels (1 or 3), found: {img_size[0]}."
-                )
-        else:
+        nb_frames = abs(n1 - n0)
+        batch_size = img.size(0)
+        
+        if (len(img_size) < 3) or (len(img_size) > 4):
             raise ValueError(
-                f"Image has incorrect number of dimensions: {img_size} (must have 3)."
+                f"img has incorrect number of dimensions: {img_size} (must have at 3 or 4)."
             )
-
+        elif len(img_size) == 3:
+            img = img.unsqueeze(0) # make it 4D with size (1, c, Nx, Ny)
+        
+        # vvv no longer needed with nn.Parameter ? vvv
         # check that the deformation field and the image are on the same device
         # self.inverse_grid_frames = self.inverse_grid_frames.to(img.device)
 
@@ -192,17 +199,21 @@ class DeformationField(nn.Module):
         else:
             sel_inv_grid_frames = self.inverse_grid_frames[n0:n1, :, :, :].clone()
 
-        nb_frames = abs(n1 - n0)
-        img_frames = img.expand(nb_frames, -1, -1, -1)
-
-        warped = nn.functional.grid_sample(
-            img_frames,
-            sel_inv_grid_frames,
-            mode=mode,
-            padding_mode="zeros",
-            align_corners=self.align_corners,
-        )
-        return warped
+        # img has current shape (B, c, Nx, Ny), B is the batch size
+        # make it (B, n_frames, c, Nx, Ny)
+        img_frames = img.unsqueeze(1).expand(-1, nb_frames, -1, -1, -1)
+        out = torch.zeros_like(img_frames)
+        
+        for i in range(batch_size): 
+            #picture is (n_frames, c, Nx, Ny)
+            out[i] = nn.functional.grid_sample(
+                img_frames[i],
+                sel_inv_grid_frames,
+                mode=mode,
+                padding_mode="zeros",
+                align_corners=self.align_corners,
+            )
+        return out.squeeze(1) if batch_size == 1 else out
 
     def __repr__(self):
         s = f"DeformationField({self.inverse_grid_frames=}, {self.align_corners=})"
@@ -215,9 +226,9 @@ class AffineDeformationField(DeformationField):
     r"""
     Stores an affine deformation field as a function of time.
 
-    Warps a single image according to an *inverse affine deformation field*
-    :math:`v`, i.e. the field that maps the pixels of the *deformed image* to
-    the pixels of the *original image*.
+    Warps an image or batch of images according to an *inverse affine deformation
+    field* :math:`v`, i.e. the field that maps the pixels of the *deformed
+    image* to the pixels of the *original image*.
 
     It is constructed from a function of one parameter (time) that returns a
     tensor of shape :math:`(3,3)` representing a 2D affine homogeneous transformation
@@ -300,7 +311,7 @@ class AffineDeformationField(DeformationField):
 
     def forward(
         self,
-        img: torch.tensor,  # single image (1|3, Nx, Ny)
+        img: torch.tensor,  
         t0: float,
         t1: float = None,
         n_frames: int = None,
@@ -308,10 +319,10 @@ class AffineDeformationField(DeformationField):
         mode: str = "bilinear",
     ) -> torch.tensor:
         r"""
-        Warps an image according to the time interpolation parameters.
+        Warps an image or batch of images according to the time interpolation parameters.
 
         Similarly to the method :meth:`DeformationField.forward` from the parent
-        class, it warps a single image according to the *inverse
+        class, it warps an image or batch of images according to the *inverse
         deformation field* :math:`v` contained in the attribute
         :attr:`inverse_grid_frames`, between the times :math:`t0` and
         :math:`t1`. The number of frames in the animation is given by either
@@ -319,11 +330,13 @@ class AffineDeformationField(DeformationField):
 
         Args:
             :attr:`img` (torch.tensor):
-            Image to deform of shape :math:`(c,Nx,Ny)`, where :math:`c` is the
+            Image to deform of shape :math:`(c,Nx,Ny)` or batch of images to 
+            deform of shape :math:`(B,c,Nx,Ny)`, where :math:`B` is the number
+            of images in the batch, :math:`c` is the
             number of channels, and :math:`Nx` and
             :math:`Ny` are the number of pixels along the x-axis and y-axis
             respectively. The number of channels is usually 1 (grayscale) or
-            3 (color), if not a warning is raised.
+            3 (color).
 
             :attr:`t0` (float):
             Start time of the animation.
@@ -347,8 +360,8 @@ class AffineDeformationField(DeformationField):
 
         Returns:
             :attr:`output` (torch.tensor):
-            The deformed batch of images of
-            shape :math:`(n\_frames,c,Nx,Ny)`, where each image is
+            The deformed batch of images of shape :math:`(n\_frames,c,Nx,Ny)`
+            or :math:`(B,n\_frames,c,Nx,Ny)`, where each image is
             deformed according to the *inverse deformation field* :math:`v`
             contained in the attribute :attr:`inverse_grid_frames`.
 
@@ -390,9 +403,13 @@ class AffineDeformationField(DeformationField):
                     [[[0.0000, 0.3000],
                       [0.7000, 1.0000]]]])
         """
+        # get the right t1 and n_frames
         t0, t1, n_frames = self.format_params(t0, t1, n_frames, fps)
+        # get the inverse deformation field as batch of 3x3 matrices
         inv_mat_frames = self.get_inv_mat_frames(t0, t1, n_frames)
-        self.save_inv_grid_frames(inv_mat_frames, [n_frames, *img.size()])
+        # save the corresponding inverse deformation field in attribute
+        self.save_inv_grid_frames(inv_mat_frames, [n_frames, *img.size()[-3:]])
+        # use the parent class forward method
         return super().forward(img, 0, n_frames, mode=mode)
 
     def format_params(self, t0: float, t1: float, n_frames: int, fps: float) -> tuple:
