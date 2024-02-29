@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.core.noise &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/thumbnail.css" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../../../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">spyrit.core.noise</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <h1>Source code for spyrit.core.noise</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">import</span> <span class="nn">torch.nn.functional</span> <span class="k">as</span> <span class="nn">F</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">poisson</span>
+<span class="kn">from</span> <span class="nn">spyrit.core.meas</span> <span class="kn">import</span> <span class="n">Linear</span><span class="p">,</span> <span class="n">LinearSplit</span><span class="p">,</span> <span class="n">HadamSplit</span>  <span class="c1"># , LinearRowSplit</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span>
+
+
+<span class="c1"># =====================================================================================================================</span>
+<span class="c1"># NoNoise</span>
+<span class="c1"># =====================================================================================================================</span>
+<div class="viewcode-block" id="NoNoise">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.noise.NoNoise.html#spyrit.core.noise.NoNoise">[docs]</a>
+<span class="k">class</span> <span class="nc">NoNoise</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simulates measurements from images in the range [0;1] by computing</span>
+<span class="sd">    :math:`y = \frac{1}{2} H(1+x)`.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        Assumes that the incoming images :math:`x` are in the range [-1;1]</span>
+
+<span class="sd">    The class is constructed from a measurement operator (see the</span>
+<span class="sd">    :mod:`~spyrit.core.meas` submodule)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`meas_op` : Measurement operator (see the</span>
+<span class="sd">        :mod:`~spyrit.core.meas` submodule)</span>
+
+<span class="sd">    Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator</span>
+<span class="sd">        &gt;&gt;&gt; H =np.random.random([400,32*32])</span>
+<span class="sd">        &gt;&gt;&gt; linear_op = Linear(H)</span>
+<span class="sd">        &gt;&gt;&gt; linear_acq = NoNoise(linear_op)</span>
+
+<span class="sd">    Example 2: Using a :class:`~spyrit.core.meas.HadamSplit` measurement operator</span>
+<span class="sd">        &gt;&gt;&gt; H = np.random.random([400,32*32])</span>
+<span class="sd">        &gt;&gt;&gt; Perm = np.random.random([32*32,32*32])</span>
+<span class="sd">        &gt;&gt;&gt; split_op = HadamSplit(H, Perm, 32, 32)</span>
+<span class="sd">        &gt;&gt;&gt; split_acq = NoNoise(split_op)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">meas_op</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Linear</span><span class="p">,</span> <span class="n">LinearSplit</span><span class="p">,</span> <span class="n">HadamSplit</span><span class="p">]):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meas_op</span> <span class="o">=</span> <span class="n">meas_op</span>
+
+<div class="viewcode-block" id="NoNoise.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.noise.NoNoise.forward.html#spyrit.core.noise.NoNoise.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulates measurements</span>
+
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: Batch of images</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            - :attr:`x`: :math:`(*, N)`</span>
+<span class="sd">            - :attr:`Output`: :math:`(*, M)`</span>
+
+<span class="sd">        Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)</span>
+<span class="sd">            &gt;&gt;&gt; y = linear_acq(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+
+<span class="sd">        Example 2: Using a :class:`~spyrit.core.meas.HadamSplit` measurement operator</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)</span>
+<span class="sd">            &gt;&gt;&gt; y = split_acq(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            torch.Size([10, 800])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meas_op</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+</div>
+
+
+
+<span class="c1"># ==================================================================================</span>
+<div class="viewcode-block" id="Poisson">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.noise.Poisson.html#spyrit.core.noise.Poisson">[docs]</a>
+<span class="k">class</span> <span class="nc">Poisson</span><span class="p">(</span><span class="n">NoNoise</span><span class="p">):</span>
+    <span class="c1"># ==================================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simulates measurements corrupted by Poisson noise</span>
+
+<span class="sd">    Assuming incoming images :math:`x` in the range [-1;1], measurements are</span>
+<span class="sd">    first simulated for images in the range [0; :math:`\alpha`]. Then, Poisson</span>
+<span class="sd">    noise is applied: :math:`y = \mathcal{P}(\frac{\alpha}{2} H(1+x))`.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        Assumes that the incoming images :math:`x` are in the range [-1;1]</span>
+
+<span class="sd">    The class is constructed from a measurement operator and an image</span>
+<span class="sd">    intensity :math:`\alpha` that controls the noise level.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`meas_op`: Measurement operator :math:`H` (see the :mod:`~spyrit.core.meas` submodule)</span>
+
+<span class="sd">        :attr:`alpha` (float): Image intensity (in photoelectrons)</span>
+
+<span class="sd">    Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator</span>
+<span class="sd">        &gt;&gt;&gt; H =np.random.random([400,32*32])</span>
+<span class="sd">        &gt;&gt;&gt; linear_op = Linear(H)</span>
+<span class="sd">        &gt;&gt;&gt; linear_acq = Poisson(linear_op, 10.0)</span>
+
+<span class="sd">    Example 2: Using a :class:`~spyrit.core.meas.HadamSplit` measurement operator</span>
+<span class="sd">        &gt;&gt;&gt; H = np.random.random([400,32*32])</span>
+<span class="sd">        &gt;&gt;&gt; Perm = np.random.random([32*32,32*32])</span>
+<span class="sd">        &gt;&gt;&gt; split_op = HadamSplit(H, Perm, 32, 32)</span>
+<span class="sd">        &gt;&gt;&gt; split_acq = Poisson(split_op, 200.0)</span>
+
+<span class="sd">    Example 3: Using a :class:`~spyrit.core.meas.LinearSplit` measurement operator</span>
+<span class="sd">        &gt;&gt;&gt; H = np.random.rand(24,64)</span>
+<span class="sd">        &gt;&gt;&gt; split_row_op = LinearSplit(H)</span>
+<span class="sd">        &gt;&gt;&gt; split_acq = Poisson(split_row_op, 50.0)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">meas_op</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Linear</span><span class="p">,</span> <span class="n">LinearSplit</span><span class="p">,</span> <span class="n">HadamSplit</span><span class="p">],</span>
+        <span class="n">alpha</span><span class="o">=</span><span class="mf">50.0</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">meas_op</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+
+<div class="viewcode-block" id="Poisson.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.noise.Poisson.forward.html#spyrit.core.noise.Poisson.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulates measurements corrupted by Poisson noise</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: Batch of images</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            - :attr:`x`: :math:`(*, N)`</span>
+<span class="sd">            - :attr:`Output`: :math:`(*, M)`</span>
+
+<span class="sd">        Example 1: Two noisy measurement vectors from a :class:`~spyrit.core.meas.Linear` measurement operator</span>
+<span class="sd">            &gt;&gt;&gt; H = np.random.random([400,32*32])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = Linear(H)</span>
+<span class="sd">            &gt;&gt;&gt; noise_op = Poisson(meas_op, 10.0)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+<span class="sd">            Measurements in (2249.00 , 2896.00)</span>
+<span class="sd">            Measurements in (2237.00 , 2880.00)</span>
+
+<span class="sd">        Example 2: Two noisy measurement vectors from a :class:`~spyrit.core.meas.HadamSplit` operator</span>
+<span class="sd">            &gt;&gt;&gt; Perm = np.random.random([32*32,32*32])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = HadamSplit(H, Perm, 32, 32)</span>
+<span class="sd">            &gt;&gt;&gt; noise_op = Poisson(meas_op, 200.0)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            torch.Size([10, 800])</span>
+<span class="sd">            Measurements in (0.00 , 55338.00)</span>
+<span class="sd">            Measurements in (0.00 , 55077.00)</span>
+
+<span class="sd">        Example 3: Two noisy measurement vectors from a :class:`~spyrit.core.meas.LinearSplit` operator</span>
+<span class="sd">            &gt;&gt;&gt; H = np.random.rand(24,64)</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = LinearSplit(H)</span>
+<span class="sd">            &gt;&gt;&gt; noise_op = Poisson(meas_op, 50.0)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.FloatTensor(10, 64, 92).uniform_(-1, 1)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            torch.Size([10, 48, 92])</span>
+<span class="sd">            Measurements in (500.00 , 1134.00)</span>
+<span class="sd">            Measurements in (465.00 , 1140.00)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># x = self.alpha*(x+1)/2</span>
+        <span class="c1"># x = self.meas_op(x)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># NoNoise forward</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">x</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># troncate negative values to zero</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">poisson</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+</div>
+
+
+
+<span class="c1"># ==================================================================================</span>
+<div class="viewcode-block" id="PoissonApproxGauss">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.noise.PoissonApproxGauss.html#spyrit.core.noise.PoissonApproxGauss">[docs]</a>
+<span class="k">class</span> <span class="nc">PoissonApproxGauss</span><span class="p">(</span><span class="n">NoNoise</span><span class="p">):</span>
+    <span class="c1"># ==================================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simulates measurements corrupted by Poisson noise. To accelerate the</span>
+<span class="sd">    computation, we consider a Gaussian approximation to the Poisson</span>
+<span class="sd">    distribution.</span>
+
+<span class="sd">    Assuming incoming images :math:`x` in the range [-1;1], measurements are</span>
+<span class="sd">    first simulated for images in the range [0; :math:`\alpha`]:</span>
+<span class="sd">    :math:`y = \frac{\alpha}{2} P(1+x)`. Then, Gaussian noise</span>
+<span class="sd">    is added: :math:`y + \sqrt{y} \cdot \mathcal{G}(\mu=0,\sigma^2=1)`.</span>
+
+<span class="sd">    The class is constructed from a measurement operator :math:`P` and</span>
+<span class="sd">    an image intensity :math:`\alpha` that controls the noise level.</span>
+
+<span class="sd">    .. warning::</span>
+<span class="sd">        Assumes that the incoming images :math:`x` are in the range [-1;1]</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`meas_op`: Measurement operator :math:`H` (see the :mod:`~spyrit.core.meas` submodule)</span>
+
+<span class="sd">        :attr:`alpha` (float): Image intensity (in photoelectrons)</span>
+
+<span class="sd">    Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator</span>
+<span class="sd">        &gt;&gt;&gt; H = np.random.random([400,32*32])</span>
+<span class="sd">        &gt;&gt;&gt; meas_op = Linear(H)</span>
+<span class="sd">        &gt;&gt;&gt; noise_op = PoissonApproxGauss(meas_op, 10.0)</span>
+
+<span class="sd">    Example 2: Using a :class:`~spyrit.core.meas.HadamSplit` operator</span>
+<span class="sd">        &gt;&gt;&gt; Perm = np.random.random([32*32,32*32])</span>
+<span class="sd">        &gt;&gt;&gt; meas_op = HadamSplit(H, Perm, 32, 32)</span>
+<span class="sd">        &gt;&gt;&gt; noise_op = PoissonApproxGauss(meas_op, 200.0)</span>
+
+<span class="sd">    Example 3: Using a :class:`~spyrit.core.meas.LinearSplit` operator</span>
+<span class="sd">        &gt;&gt;&gt; H = np.random.rand(24,64)</span>
+<span class="sd">        &gt;&gt;&gt; meas_op = LinearSplit(H)</span>
+<span class="sd">        &gt;&gt;&gt; noise_op = PoissonApproxGauss(meas_op, 50.0)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">meas_op</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Linear</span><span class="p">,</span> <span class="n">LinearSplit</span><span class="p">,</span> <span class="n">HadamSplit</span><span class="p">],</span>
+        <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">meas_op</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+
+<div class="viewcode-block" id="PoissonApproxGauss.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.noise.PoissonApproxGauss.forward.html#spyrit.core.noise.PoissonApproxGauss.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulates measurements corrupted by Poisson noise</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: Batch of images</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            - :attr:`x`: :math:`(*, N)`</span>
+<span class="sd">            - :attr:`Output`: :math:`(*, M)`</span>
+
+<span class="sd">        Example 1: Two noisy measurement vectors from a :class:`~spyrit.core.meas.Linear` measurement operator</span>
+<span class="sd">            &gt;&gt;&gt; H = np.random.random([400,32*32])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = Linear(H)</span>
+<span class="sd">            &gt;&gt;&gt; noise_op = PoissonApproxGauss(meas_op, 10.0)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+<span class="sd">            Measurements in (2255.57 , 2911.18)</span>
+<span class="sd">            Measurements in (2226.49 , 2934.42)</span>
+
+<span class="sd">        Example 2: Two noisy measurement vectors from a :class:`~spyrit.core.meas.HadamSplit` operator</span>
+<span class="sd">            &gt;&gt;&gt; Perm = np.random.random([32*32,32*32])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = HadamSplit(H, Perm, 32, 32)</span>
+<span class="sd">            &gt;&gt;&gt; noise_op = PoissonApproxGauss(meas_op, 200.0)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            torch.Size([10, 800])</span>
+<span class="sd">            Measurements in (0.00 , 55951.41)</span>
+<span class="sd">            Measurements in (0.00 , 56216.86)</span>
+
+<span class="sd">        Example 3: Two noisy measurement vectors from a :class:`~spyrit.core.meas.LinearSplit` operator</span>
+<span class="sd">            &gt;&gt;&gt; H = np.random.rand(24,64)</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = LinearSplit(H)</span>
+<span class="sd">            &gt;&gt;&gt; noise_op = PoissonApproxGauss(meas_op, 50.0)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.FloatTensor(10, 64, 92).uniform_(-1, 1)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            torch.Size([10, 48, 92])</span>
+<span class="sd">            Measurements in (460.43 , 1216.94)</span>
+<span class="sd">            Measurements in (441.85 , 1230.43)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># NoNoise forward</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">x</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># remove small negative values</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+</div>
+
+
+
+<span class="c1"># ==================================================================================</span>
+<div class="viewcode-block" id="PoissonApproxGaussSameNoise">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.noise.PoissonApproxGaussSameNoise.html#spyrit.core.noise.PoissonApproxGaussSameNoise">[docs]</a>
+<span class="k">class</span> <span class="nc">PoissonApproxGaussSameNoise</span><span class="p">(</span><span class="n">NoNoise</span><span class="p">):</span>
+    <span class="c1"># ==================================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simulates measurements corrupted by Poisson noise. To accelerate the</span>
+<span class="sd">    computation, we consider a Gaussian approximation to the Poisson</span>
+<span class="sd">    distribution. Contrary to :class:`~spyrit.core.noise.PoissonApproxGauss`,</span>
+<span class="sd">    all measurements in a batch are corrupted with the same noise sample.</span>
+
+<span class="sd">    Assuming incoming images :math:`x` in the range [-1;1], measurements are</span>
+<span class="sd">    first simulated for images in the range [0; :math:`\alpha`]:</span>
+<span class="sd">    :math:`y = \frac{\alpha}{2} P(1+x)`. Then, Gaussian noise</span>
+<span class="sd">    is added: :math:`y + \sqrt{y} \cdot \mathcal{G}(\mu=0,\sigma^2=1)`.</span>
+
+<span class="sd">    The class is constructed from a measurement operator :math:`P` and</span>
+<span class="sd">    an image intensity :math:`\alpha` that controls the noise level.</span>
+
+<span class="sd">    .. warning::</span>
+<span class="sd">        Assumes that the incoming images :math:`x` are in the range [-1;1]</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`meas_op`: Measurement operator :math:`H` (see the :mod:`~spyrit.core.meas` submodule)</span>
+
+<span class="sd">        :attr:`alpha` (float): Image intensity (in photoelectrons)</span>
+
+<span class="sd">    Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator</span>
+<span class="sd">        &gt;&gt;&gt; H = np.random.random([400,32*32])</span>
+<span class="sd">        &gt;&gt;&gt; meas_op = Linear(H)</span>
+<span class="sd">        &gt;&gt;&gt; noise_op = PoissonApproxGaussSameNoise(meas_op, 10.0)</span>
+
+<span class="sd">    Example 2: Using a :class:`~spyrit.core.meas.HadamSplit` operator</span>
+<span class="sd">        &gt;&gt;&gt; Perm = np.random.random([32*32,32*32])</span>
+<span class="sd">        &gt;&gt;&gt; meas_op = HadamSplit(H, Perm, 32, 32)</span>
+<span class="sd">        &gt;&gt;&gt; noise_op = PoissonApproxGaussSameNoise(meas_op, 200.0)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">meas_op</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Linear</span><span class="p">,</span> <span class="n">LinearSplit</span><span class="p">,</span> <span class="n">HadamSplit</span><span class="p">],</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">meas_op</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+
+<div class="viewcode-block" id="PoissonApproxGaussSameNoise.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.noise.PoissonApproxGaussSameNoise.forward.html#spyrit.core.noise.PoissonApproxGaussSameNoise.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulates measurements corrupted by Poisson noise</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: Batch of images</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            - :attr:`x`: :math:`(*, N)`</span>
+<span class="sd">            - :attr:`Output`: :math:`(*, M)`</span>
+
+<span class="sd">        Example 1: Two noisy measurement vectors from a :class:`~spyrit.core.meas.Linear` measurement operator</span>
+<span class="sd">            &gt;&gt;&gt; H = np.random.random([400,32*32])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = Linear(H)</span>
+<span class="sd">            &gt;&gt;&gt; noise_op = PoissonApproxGaussSameNoise(meas_op, 10.0)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+<span class="sd">            Measurements in (2255.57 , 2911.18)</span>
+<span class="sd">            Measurements in (2226.49 , 2934.42)</span>
+
+<span class="sd">        Example 2: Two noisy measurement vectors from a :class:`~spyrit.core.meas.HadamSplit` operator</span>
+<span class="sd">            &gt;&gt;&gt; Perm = np.random.random([32*32,32*32])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = HadamSplit(H, Perm, 32, 32)</span>
+<span class="sd">            &gt;&gt;&gt; noise_op = PoissonApproxGaussSameNoise(meas_op, 200.0)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; y = noise_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(f&quot;Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})&quot;)</span>
+<span class="sd">            torch.Size([10, 800])</span>
+<span class="sd">            Measurements in (0.00 , 55951.41)</span>
+<span class="sd">            Measurements in (0.00 , 56216.86)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># NoNoise forward</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">x</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># remove small negative values</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

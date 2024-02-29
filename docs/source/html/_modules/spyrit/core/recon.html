@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.core.recon &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/thumbnail.css" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../../../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">spyrit.core.recon</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <h1>Source code for spyrit.core.recon</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Reconstruction methods and networks.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">spyrit.core.meas</span> <span class="kn">import</span> <span class="n">HadamSplit</span>
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="PseudoInverse">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.PseudoInverse.html#spyrit.core.recon.PseudoInverse">[docs]</a>
+<span class="k">class</span> <span class="nc">PseudoInverse</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Moore-Penrose pseudoinverse.</span>
+
+<span class="sd">    Considering linear measurements :math:`y = Hx`, where :math:`H` is the</span>
+<span class="sd">    measurement matrix and :math:`x` is a vectorized image, it estimates</span>
+<span class="sd">    :math:`x` from :math:`y` by computing :math:`\hat{x} = H^\dagger y`, where</span>
+<span class="sd">    :math:`H` is the Moore-Penrose pseudo inverse of :math:`H`.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; H = np.random.random([400,32*32])</span>
+<span class="sd">        &gt;&gt;&gt; Perm = np.random.random([32*32,32*32])</span>
+<span class="sd">        &gt;&gt;&gt; meas_op =  HadamSplit(H, Perm, 32, 32)</span>
+<span class="sd">        &gt;&gt;&gt; y = torch.rand([85,400], dtype=torch.float)</span>
+<span class="sd">        &gt;&gt;&gt; pinv_op = PseudoInverse()</span>
+<span class="sd">        &gt;&gt;&gt; x = pinv_op(y, meas_op)</span>
+<span class="sd">        &gt;&gt;&gt; print(x.shape)</span>
+<span class="sd">        torch.Size([85, 1024])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+<div class="viewcode-block" id="PseudoInverse.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.PseudoInverse.forward.html#spyrit.core.recon.PseudoInverse.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">,</span> <span class="n">meas_op</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Computes pseudo-inverse of measurements.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: Batch of measurement vectors.</span>
+
+<span class="sd">            :attr:`meas_op`: Measurement operator. Any class that</span>
+<span class="sd">            implements a :meth:`pinv` method can be used, e.g.,</span>
+<span class="sd">            :class:`~spyrit.core.forwop.HadamSplit`.</span>
+
+<span class="sd">        Shape:</span>
+
+<span class="sd">            :attr:`x`: :math:`(*, M)`</span>
+
+<span class="sd">            :attr:`meas_op`: not applicable</span>
+
+<span class="sd">            :attr:`output`: :math:`(*, N)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; H = np.random.random([400,32*32])</span>
+<span class="sd">            &gt;&gt;&gt; Perm = np.random.random([32*32,32*32])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op =  HadamSplit(H, Perm, 32, 32)</span>
+<span class="sd">            &gt;&gt;&gt; y = torch.rand([85,400], dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; pinv_op = PseudoInverse()</span>
+<span class="sd">            &gt;&gt;&gt; x = pinv_op(y, meas_op)</span>
+<span class="sd">            &gt;&gt;&gt; print(x.shape)</span>
+<span class="sd">            torch.Size([85, 1024])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">meas_op</span><span class="o">.</span><span class="n">pinv</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="TikhonovMeasurementPriorDiag">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.TikhonovMeasurementPriorDiag.html#spyrit.core.recon.TikhonovMeasurementPriorDiag">[docs]</a>
+<span class="k">class</span> <span class="nc">TikhonovMeasurementPriorDiag</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Tikhonov regularization with prior in the measurement domain.</span>
+
+<span class="sd">    Considering linear measurements :math:`y = Hx`, where :math:`H = GF` is the</span>
+<span class="sd">    measurement matrix and :math:`x` is a vectorized image, it estimates</span>
+<span class="sd">    :math:`x` from :math:`y` by approximately minimizing</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        \| y - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}</span>
+
+<span class="sd">    where :math:`x_0` is a mean image prior, :math:`\Sigma` is a covariance</span>
+<span class="sd">    prior, and :math:`\Sigma_\alpha` is the measurement noise covariance.</span>
+
+<span class="sd">    The class is constructed from :math:`\Sigma`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        - :attr:`sigma`:  covariance prior with shape :math:`(N, N)`</span>
+<span class="sd">        - :attr:`M`: number of measurements</span>
+
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        :attr:`comp`: The learnable completion layer initialized as</span>
+<span class="sd">        :math:`\Sigma_1 \Sigma_{21}^{-1}`. This layer is a :class:`nn.Linear`</span>
+
+<span class="sd">        :attr:`denoi`: The learnable denoising layer initialized from</span>
+<span class="sd">        :math:`\Sigma_1`.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; sigma = np.random.random([32*32, 32*32])</span>
+<span class="sd">        &gt;&gt;&gt; recon_op = TikhonovMeasurementPriorDiag(sigma, 400)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigma</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="n">N</span> <span class="o">=</span> <span class="n">sigma</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">comp</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">N</span> <span class="o">-</span> <span class="n">M</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">denoi</span> <span class="o">=</span> <span class="n">Denoise_layer</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>
+
+        <span class="n">diag_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag_indices</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>
+        <span class="n">var_prior</span> <span class="o">=</span> <span class="n">sigma</span><span class="p">[</span><span class="n">diag_index</span><span class="p">]</span>
+        <span class="n">var_prior</span> <span class="o">=</span> <span class="n">var_prior</span><span class="p">[:</span><span class="n">M</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">denoi</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var_prior</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">denoi</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">denoi</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">denoi</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="n">Sigma1</span> <span class="o">=</span> <span class="n">sigma</span><span class="p">[:</span><span class="n">M</span><span class="p">,</span> <span class="p">:</span><span class="n">M</span><span class="p">]</span>
+        <span class="n">Sigma21</span> <span class="o">=</span> <span class="n">sigma</span><span class="p">[</span><span class="n">M</span><span class="p">:,</span> <span class="p">:</span><span class="n">M</span><span class="p">]</span>
+        <span class="n">W</span> <span class="o">=</span> <span class="n">Sigma21</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">Sigma1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">comp</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">comp</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">comp</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">comp</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="TikhonovMeasurementPriorDiag.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.TikhonovMeasurementPriorDiag.forward.html#spyrit.core.recon.TikhonovMeasurementPriorDiag.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">,</span> <span class="n">x_0</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">,</span> <span class="n">var</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">,</span> <span class="n">meas_op</span><span class="p">:</span> <span class="n">HadamSplit</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes the Tikhonov regularization with prior in the measurement domain.</span>
+
+<span class="sd">        We approximate the solution as:</span>
+
+<span class="sd">        .. math::</span>
+<span class="sd">            \hat{x} = x_0 + F^{-1} \begin{bmatrix} y_1 \\ y_2\end{bmatrix}</span>
+
+<span class="sd">        with :math:`y_1 = D_1(D_1 + \Sigma_\alpha)^{-1} (y - GF x_0)` and</span>
+<span class="sd">        :math:`y_2 = \Sigma_1 \Sigma_{21}^{-1} y_1`, where</span>
+<span class="sd">        :math:`\Sigma = \begin{bmatrix} \Sigma_1 &amp; \Sigma_{21}^\top \\ \Sigma_{21} &amp; \Sigma_2\end{bmatrix}`</span>
+<span class="sd">        and  :math:`D_1 =\textrm{Diag}(\Sigma_1)`. Assuming the noise</span>
+<span class="sd">        covariance :math:`\Sigma_\alpha` is diagonal, the matrix inversion</span>
+<span class="sd">        involded in the computation of :math:`y_1` is straigtforward.</span>
+
+<span class="sd">        This is an approximation to the exact solution</span>
+
+<span class="sd">        .. math::</span>
+<span class="sd">            \hat{x} &amp;= x_0 + F^{-1}\begin{bmatrix}\Sigma_1 \\ \Sigma_{21} \end{bmatrix}</span>
+<span class="sd">                      [\Sigma_1 + \Sigma_\alpha]^{-1} (y - GF x_0)</span>
+
+
+<span class="sd">        See Lemma B.0.5 of the PhD dissertation of A. Lorente Mur (2021):</span>
+<span class="sd">        https://theses.hal.science/tel-03670825v1/file/these.pdf</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            - :attr:`x`: A batch of measurement vectors :math:`y`</span>
+<span class="sd">            - :attr:`x_0`: A batch of prior images :math:`x_0`</span>
+<span class="sd">            - :attr:`var`: A batch of measurement noise variances :math:`\Sigma_\alpha`</span>
+<span class="sd">            - :attr:`meas_op`: A measurement operator that provides :math:`GF` and :math:`F^{-1}`</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            - :attr:`x`: :math:`(*, M)`</span>
+<span class="sd">            - :attr:`x_0`: :math:`(*, N)`</span>
+<span class="sd">            - :attr:`var` :math:`(*, M)`</span>
+<span class="sd">            - Output: :math:`(*, N)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; B, H, M = 85, 32, 512</span>
+<span class="sd">            &gt;&gt;&gt; sigma = np.random.random([H**2, H**2])</span>
+<span class="sd">            &gt;&gt;&gt; recon_op = TikhonovMeasurementPriorDiag(sigma, M)</span>
+<span class="sd">            &gt;&gt;&gt; Ord = np.ones((H,H))</span>
+<span class="sd">            &gt;&gt; meas = HadamSplit(M, H, Ord)</span>
+<span class="sd">            &gt;&gt;&gt; y = torch.rand([B,M], dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; x_0 = torch.zeros((B, H**2), dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; var = torch.zeros((B, M), dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; x = recon_op(y, x_0, var, meas)</span>
+<span class="sd">            torch.Size([85, 1024])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">meas_op</span><span class="o">.</span><span class="n">forward_H</span><span class="p">(</span><span class="n">x_0</span><span class="p">)</span>
+        <span class="n">y1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mul</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">denoi</span><span class="p">(</span><span class="n">var</span><span class="p">),</span> <span class="n">x</span><span class="p">)</span>
+        <span class="n">y2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">comp</span><span class="p">(</span><span class="n">y1</span><span class="p">)</span>
+
+        <span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">y1</span><span class="p">,</span> <span class="n">y2</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x_0</span> <span class="o">+</span> <span class="n">meas_op</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="Denoise_layer">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.Denoise_layer.html#spyrit.core.recon.Denoise_layer">[docs]</a>
+<span class="k">class</span> <span class="nc">Denoise_layer</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Wiener filter that assumes additive white Gaussian noise.</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">        y = \sigma_\text{prior}^2/(\sigma^2_\text{prior} + \sigma^2_\text{meas}) x,</span>
+<span class="sd">        where :math:`\sigma^2_\text{prior}` is the variance prior and</span>
+<span class="sd">        :math:`\sigma^2_\text{meas}` is the variance of the measurement,</span>
+<span class="sd">        x is the input vector and y is the output vector.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`M` (int): size of incoming vector</span>
+
+<span class="sd">    Shape:</span>
+<span class="sd">        - Input: :math:`(*, M)`.</span>
+<span class="sd">        - Output: :math:`(*, M)`.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        :attr:`weight`:</span>
+<span class="sd">        The learnable standard deviation prior :math:`\sigma_\text{prior}` of</span>
+<span class="sd">        shape :math:`(M, 1)`. The values are initialized from</span>
+<span class="sd">        :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`, where :math:`k = 1/M`.</span>
+
+<span class="sd">        :attr:`in_features`:</span>
+<span class="sd">        The number of input features equal to :math:`M`.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; m = Denoise_layer(30)</span>
+<span class="sd">        &gt;&gt;&gt; input = torch.randn(128, 30)</span>
+<span class="sd">        &gt;&gt;&gt; output = m(input)</span>
+<span class="sd">        &gt;&gt;&gt; print(output.size())</span>
+<span class="sd">        torch.Size([128, 30])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Denoise_layer</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">in_features</span> <span class="o">=</span> <span class="n">M</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weight</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">(</span><span class="n">M</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset_parameters</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Denoise_layer.reset_parameters">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.Denoise_layer.reset_parameters.html#spyrit.core.recon.Denoise_layer.reset_parameters">[docs]</a>
+    <span class="k">def</span> <span class="nf">reset_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resets the standard deviation prior :math:`\sigma_\text{prior}`.</span>
+
+<span class="sd">        The values are initialized from :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`,</span>
+<span class="sd">        where :math:`k = 1/M`. They are stored in the :attr:`weight` attribute.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">nn</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">uniform_</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">in_features</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="Denoise_layer.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.Denoise_layer.forward.html#spyrit.core.recon.Denoise_layer.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Applies a transformation to the incoming data: :math:`y = A^2/(A^2+x)`.</span>
+
+<span class="sd">        :math:`x` is the input tensor (see :attr:`inputs`) and :math:`A` is the</span>
+<span class="sd">        standard deviation prior (see :attr:`self.weight`).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`inputs` (torch.tensor): input tensor :math:`x` of shape</span>
+<span class="sd">            :math:`(N, *, in\_features)`</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.tensor: The transformed data :math:`y` of shape</span>
+<span class="sd">            :math:`(N, in\_features)`</span>
+
+<span class="sd">        Shape:</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">tikho</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">extra_repr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;in_features=</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">in_features</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Denoise_layer.tikho">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.Denoise_layer.tikho.html#spyrit.core.recon.Denoise_layer.tikho">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">tikho</span><span class="p">(</span><span class="n">inputs</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+        <span class="c1"># type: (torch.Tensor, torch.Tensor) -&gt; torch.Tensor</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Applies a transformation to the incoming data: :math:`y = A^2/(A^2+x)`.</span>
+
+<span class="sd">        :math:`x` is the input tensor (see :attr:`inputs`) and :math:`A` is the</span>
+<span class="sd">        standard deviation prior (see :attr:`weight`).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`inputs` (torch.tensor): input tensor :math:`x` of shape</span>
+<span class="sd">            :math:`(N, *, in\_features)`</span>
+
+<span class="sd">            :attr:`weight` (torch.tensor): standard deviation prior :math:`A` of</span>
+<span class="sd">            shape :math:`(in\_features)`</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            torch.tensor: The transformed data :math:`y` of shape</span>
+<span class="sd">            :math:`(N, in\_features)`</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            - :attr:`inputs`: :math:`(N, *, in\_features)` where `*` means any number of</span>
+<span class="sd">              additional dimensions - Variance of measurements</span>
+<span class="sd">            - :attr:`weight`: :math:`(in\_features)` - corresponds to the standard deviation</span>
+<span class="sd">              of our prior.</span>
+<span class="sd">            - :attr:`output`: :math:`(N, in\_features)`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">weight</span><span class="o">**</span><span class="mi">2</span>  <span class="c1"># prefer to square it, because when learnt, it can go to the</span>
+        <span class="c1"># negative, which we do not want to happen.</span>
+        <span class="c1"># TO BE Potentially done : square inputs.</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">inputs</span>
+        <span class="k">return</span> <span class="n">a</span> <span class="o">/</span> <span class="n">b</span></div>
+</div>
+
+
+
+<span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1"># |                      RECONSTRUCTION NETWORKS                              |</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="PinvNet">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.PinvNet.html#spyrit.core.recon.PinvNet">[docs]</a>
+<span class="k">class</span> <span class="nc">PinvNet</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Pseudo inverse reconstruction network</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`noise`: Acquisition operator (see :class:`~spyrit.core.noise`)</span>
+
+<span class="sd">        :attr:`prep`: Preprocessing operator (see :class:`~spyrit.core.prep`)</span>
+
+<span class="sd">        :attr:`denoi` (optional): Image denoising operator</span>
+<span class="sd">        (see :class:`~spyrit.core.nnet`).</span>
+<span class="sd">        Default :class:`~spyrit.core.nnet.Identity`</span>
+
+<span class="sd">    Input / Output:</span>
+<span class="sd">        :attr:`input`: Ground-truth images with shape :math:`(B,C,H,W)`</span>
+<span class="sd">        corresponding to the batch size, number of channels, height, and width.</span>
+
+<span class="sd">        :attr:`output`: Reconstructed images with shape :math:`(B,C,H,W)`</span>
+<span class="sd">        corresponding to the batch size, number of channels, height, and width.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        :attr:`Acq`: Acquisition operator initialized as :attr:`noise`</span>
+
+<span class="sd">        :attr:`prep`: Preprocessing operator initialized as :attr:`prep`</span>
+
+<span class="sd">        :attr:`pinv`: Analytical reconstruction operator initialized as</span>
+<span class="sd">        :class:`~spyrit.core.recon.PseudoInverse()`</span>
+
+<span class="sd">        :attr:`Denoi`: Image denoising operator initialized as :attr:`denoi`</span>
+
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; B, C, H, M = 10, 1, 64, 64**2</span>
+<span class="sd">        &gt;&gt;&gt; Ord = np.ones((H,H))</span>
+<span class="sd">        &gt;&gt;&gt; meas = HadamSplit(M, H, Ord)</span>
+<span class="sd">        &gt;&gt;&gt; noise = NoNoise(meas)</span>
+<span class="sd">        &gt;&gt;&gt; prep = SplitPoisson(1.0, M, H*H)</span>
+<span class="sd">        &gt;&gt;&gt; recnet = PinvNet(noise, prep)</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)</span>
+<span class="sd">        &gt;&gt;&gt; z = recnet(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(z.shape)</span>
+<span class="sd">        &gt;&gt;&gt; print(torch.linalg.norm(x - z)/torch.linalg.norm(x))</span>
+<span class="sd">        torch.Size([10, 1, 64, 64])</span>
+<span class="sd">        tensor(5.8912e-06)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">noise</span><span class="p">,</span> <span class="n">prep</span><span class="p">,</span> <span class="n">denoi</span><span class="o">=</span><span class="n">nn</span><span class="o">.</span><span class="n">Identity</span><span class="p">()):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span> <span class="o">=</span> <span class="n">noise</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prep</span> <span class="o">=</span> <span class="n">prep</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pinv</span> <span class="o">=</span> <span class="n">PseudoInverse</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">denoi</span> <span class="o">=</span> <span class="n">denoi</span>
+
+<div class="viewcode-block" id="PinvNet.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.PinvNet.forward.html#spyrit.core.recon.PinvNet.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Full pipeline of reconstrcution network</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: ground-truth images</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`</span>
+
+<span class="sd">            :attr:`output`: reconstructed images with shape :math:`(B,C,H,W)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; B, C, H, M = 10, 1, 64, 64**2</span>
+<span class="sd">            &gt;&gt;&gt; Ord = np.ones((H,H))</span>
+<span class="sd">            &gt;&gt;&gt; meas = HadamSplit(M, H, Ord)</span>
+<span class="sd">            &gt;&gt;&gt; noise = NoNoise(meas)</span>
+<span class="sd">            &gt;&gt;&gt; prep = SplitPoisson(1.0, M, H*H)</span>
+<span class="sd">            &gt;&gt;&gt; recnet = PinvNet(noise, prep)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)</span>
+<span class="sd">            &gt;&gt;&gt; z = recnet(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(z.shape)</span>
+<span class="sd">            &gt;&gt;&gt; print(torch.linalg.norm(x - z)/torch.linalg.norm(x))</span>
+<span class="sd">            torch.Size([10, 1, 64, 64])</span>
+<span class="sd">            tensor(5.8912e-06)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Acquisition</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>  <span class="c1"># shape x = [b*c,h*w] = [b*c,N]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># shape x = [b*c, 2*M]</span>
+
+        <span class="c1"># Reconstruction</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reconstruct</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># shape x = [bc, 1, h,w]</span>
+        <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">h</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">w</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PinvNet.acquire">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.PinvNet.acquire.html#spyrit.core.recon.PinvNet.acquire">[docs]</a>
+    <span class="k">def</span> <span class="nf">acquire</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Simulates data acquisition</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: ground-truth images</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`</span>
+
+<span class="sd">            :attr:`output`: measurement vectors with shape :math:`(BC,2M)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; B, C, H, M = 10, 1, 64, 64**2</span>
+<span class="sd">            &gt;&gt;&gt; Ord = np.ones((H,H))</span>
+<span class="sd">            &gt;&gt;&gt; meas = HadamSplit(M, H, Ord)</span>
+<span class="sd">            &gt;&gt;&gt; noise = NoNoise(meas)</span>
+<span class="sd">            &gt;&gt;&gt; prep = SplitPoisson(1.0, M, H*H)</span>
+<span class="sd">            &gt;&gt;&gt; recnet = PinvNet(noise, prep)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)</span>
+<span class="sd">            &gt;&gt;&gt; z = recnet.acquire(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(z.shape)</span>
+<span class="sd">            torch.Size([10, 8192])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+        <span class="c1"># Acquisition</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>  <span class="c1"># shape x = [b*c,h*w] = [b*c,N]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># shape x = [b*c, 2*M]</span></div>
+
+
+<div class="viewcode-block" id="PinvNet.meas2img">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.PinvNet.meas2img.html#spyrit.core.recon.PinvNet.meas2img">[docs]</a>
+    <span class="k">def</span> <span class="nf">meas2img</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns images from raw measurement vectors</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: raw measurement vectors</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: :math:`(BC,2M)`</span>
+
+<span class="sd">            :attr:`output`: :math:`(BC,1,H,W)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; B, C, H, M = 10, 1, 64, 64**2</span>
+<span class="sd">            &gt;&gt;&gt; Ord = np.ones((H,H))</span>
+<span class="sd">            &gt;&gt;&gt; meas = HadamSplit(M, H, Ord)</span>
+<span class="sd">            &gt;&gt;&gt; noise = NoNoise(meas)</span>
+<span class="sd">            &gt;&gt;&gt; prep = SplitPoisson(1.0, M, H**2)</span>
+<span class="sd">            &gt;&gt;&gt; recnet = PinvNet(noise, prep)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand((B*C,2*M), dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; z = recnet.reconstruct(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(z.shape)</span>
+<span class="sd">            torch.Size([10, 1, 64, 64])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prep</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">N</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">M</span><span class="p">))</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">m</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">get_Perm</span><span class="p">()</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">return</span> <span class="n">z</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">h</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">w</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PinvNet.reconstruct">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.PinvNet.reconstruct.html#spyrit.core.recon.PinvNet.reconstruct">[docs]</a>
+    <span class="k">def</span> <span class="nf">reconstruct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Preprocesses, reconstructs, and denoises raw measurement vectors.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: raw measurement vectors</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: :math:`(BC,2M)`</span>
+
+<span class="sd">            :attr:`output`: :math:`(BC,1,H,W)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; B, C, H, M = 10, 1, 64, 64**2</span>
+<span class="sd">            &gt;&gt;&gt; Ord = np.ones((H,H))</span>
+<span class="sd">            &gt;&gt;&gt; meas = HadamSplit(M, H, Ord)</span>
+<span class="sd">            &gt;&gt;&gt; noise = NoNoise(meas)</span>
+<span class="sd">            &gt;&gt;&gt; prep = SplitPoisson(1.0, M, H**2)</span>
+<span class="sd">            &gt;&gt;&gt; recnet = PinvNet(noise, prep)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand((B*C,2*M), dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; z = recnet.reconstruct(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(z.shape)</span>
+<span class="sd">            torch.Size([10, 1, 64, 64])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Denoise image-domain</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">denoi</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reconstruct_pinv</span><span class="p">(</span><span class="n">x</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="PinvNet.reconstruct_pinv">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.PinvNet.reconstruct_pinv.html#spyrit.core.recon.PinvNet.reconstruct_pinv">[docs]</a>
+    <span class="k">def</span> <span class="nf">reconstruct_pinv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Preprocesses and reconstructs raw measurement vectors.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: raw measurement vectors</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: :math:`(BC,2M)`</span>
+
+<span class="sd">            :attr:`output`: :math:`(BC,1,H,W)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; B, C, H, M = 10, 1, 64, 64**2</span>
+<span class="sd">            &gt;&gt;&gt; Ord = np.ones((H,H))</span>
+<span class="sd">            &gt;&gt;&gt; meas = HadamSplit(M, H, Ord)</span>
+<span class="sd">            &gt;&gt;&gt; noise = NoNoise(meas)</span>
+<span class="sd">            &gt;&gt;&gt; prep = SplitPoisson(1.0, M, H**2)</span>
+<span class="sd">            &gt;&gt;&gt; recnet = PinvNet(noise, prep)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand((B*C,2*M), dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; z = recnet.reconstruct_pinv(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(z.shape)</span>
+<span class="sd">            torch.Size([10, 1, 64, 64])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Measurement to image domain mapping</span>
+        <span class="n">bc</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Preprocessing in the measurement domain</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prep</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># , self.acqu.meas_op) # shape x = [b*c, M]</span>
+
+        <span class="c1"># measurements to image-domain processing</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pinv</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="p">)</span>  <span class="c1"># shape x = [b*c,N]</span>
+
+        <span class="c1"># Image-domain denoising</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span>
+            <span class="n">bc</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">h</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">w</span>
+        <span class="p">)</span>  <span class="c1"># shape x = [b*c,1,h,w]</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="PinvNet.reconstruct_expe">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.PinvNet.reconstruct_expe.html#spyrit.core.recon.PinvNet.reconstruct_expe">[docs]</a>
+    <span class="k">def</span> <span class="nf">reconstruct_expe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Reconstruction step of a reconstruction network</span>
+
+<span class="sd">        Same as :meth:`reconstruct` reconstruct except that:</span>
+
+<span class="sd">        1. The preprocessing step estimates the image intensity for normalization</span>
+
+<span class="sd">        2. The output images are &quot;denormalized&quot;, i.e., have units of photon counts</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: raw measurement vectors</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: :math:`(BC,2M)`</span>
+
+<span class="sd">            :attr:`output`: :math:`(BC,1,H,W)`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># x of shape [b*c, 2M]</span>
+        <span class="n">bc</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Preprocessing</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">N0_est</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prep</span><span class="o">.</span><span class="n">forward_expe</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="p">)</span>  <span class="c1"># shape x = [b*c, M]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">N0_est</span><span class="p">)</span>
+
+        <span class="c1"># measurements to image domain processing</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pinv</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="p">)</span>  <span class="c1"># shape x = [b*c,N]</span>
+
+        <span class="c1"># Image domain denoising</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span>
+            <span class="n">bc</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">h</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">w</span>
+        <span class="p">)</span>  <span class="c1"># shape x = [b*c,1,h,w]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">denoi</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># shape x = [b*c,1,h,w]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+
+        <span class="c1"># Denormalization</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prep</span><span class="o">.</span><span class="n">denormalize_expe</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">N0_est</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">h</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">w</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="DCNet">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.DCNet.html#spyrit.core.recon.DCNet">[docs]</a>
+<span class="k">class</span> <span class="nc">DCNet</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Denoised completion reconstruction network</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`noise`: Acquisition operator (see :class:`~spyrit.core.noise`)</span>
+
+<span class="sd">        :attr:`prep`: Preprocessing operator (see :class:`~spyrit.core.prep`)</span>
+
+<span class="sd">        :attr:`sigma`: UPDATE!! Tikhonov reconstruction operator of type</span>
+<span class="sd">        :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag()`</span>
+
+<span class="sd">        :attr:`denoi` (optional): Image denoising operator</span>
+<span class="sd">        (see :class:`~spyrit.core.nnet`).</span>
+<span class="sd">        Default :class:`~spyrit.core.nnet.Identity`</span>
+
+<span class="sd">    Input / Output:</span>
+<span class="sd">        :attr:`input`: Ground-truth images with shape :math:`(B,C,H,W)`</span>
+
+<span class="sd">        :attr:`output`: Reconstructed images with shape :math:`(B,C,H,W)`</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        :attr:`Acq`: Acquisition operator initialized as :attr:`noise`</span>
+
+<span class="sd">        :attr:`PreP`: Preprocessing operator initialized as :attr:`prep`</span>
+
+<span class="sd">        :attr:`DC_Layer`: Data consistency layer initialized as :attr:`tikho`</span>
+
+<span class="sd">        :attr:`Denoi`: Image denoising operator initialized as :attr:`denoi`</span>
+
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; B, C, H, M = 10, 1, 64, 64**2</span>
+<span class="sd">        &gt;&gt;&gt; Ord = np.ones((H,H))</span>
+<span class="sd">        &gt;&gt;&gt; meas = HadamSplit(M, H, Ord)</span>
+<span class="sd">        &gt;&gt;&gt; noise = NoNoise(meas)</span>
+<span class="sd">        &gt;&gt;&gt; prep = SplitPoisson(1.0, M, H*H)</span>
+<span class="sd">        &gt;&gt;&gt; sigma = np.random.random([H**2, H**2])</span>
+<span class="sd">        &gt;&gt;&gt; recnet = DCNet(noise,prep,sigma)</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)</span>
+<span class="sd">        &gt;&gt;&gt; z = recnet(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(z.shape)</span>
+<span class="sd">        torch.Size([10, 1, 64, 64])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">noise</span><span class="p">,</span> <span class="n">prep</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">denoi</span><span class="o">=</span><span class="n">nn</span><span class="o">.</span><span class="n">Identity</span><span class="p">()):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span> <span class="o">=</span> <span class="n">noise</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prep</span> <span class="o">=</span> <span class="n">prep</span>
+        <span class="n">Perm</span> <span class="o">=</span> <span class="n">noise</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">get_Perm</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">sigma_perm</span> <span class="o">=</span> <span class="n">Perm</span> <span class="o">@</span> <span class="n">sigma</span> <span class="o">@</span> <span class="n">Perm</span><span class="o">.</span><span class="n">T</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tikho</span> <span class="o">=</span> <span class="n">TikhonovMeasurementPriorDiag</span><span class="p">(</span><span class="n">sigma_perm</span><span class="p">,</span> <span class="n">noise</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">M</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">denoi</span> <span class="o">=</span> <span class="n">denoi</span>
+
+<div class="viewcode-block" id="DCNet.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.DCNet.forward.html#spyrit.core.recon.DCNet.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Full pipeline of the reconstruction network</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: ground-truth images</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`</span>
+
+<span class="sd">            :attr:`output`: reconstructed images with shape :math:`(B,C,H,W)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; B, C, H, M = 10, 1, 64, 64**2</span>
+<span class="sd">            &gt;&gt;&gt; Ord = np.ones((H,H))</span>
+<span class="sd">            &gt;&gt;&gt; meas = HadamSplit(M, H, Ord)</span>
+<span class="sd">            &gt;&gt;&gt; noise = NoNoise(meas)</span>
+<span class="sd">            &gt;&gt;&gt; prep = SplitPoisson(1.0, M, H*H)</span>
+<span class="sd">            &gt;&gt;&gt; sigma = np.random.random([H**2, H**2])</span>
+<span class="sd">            &gt;&gt;&gt; recnet = DCNet(noise,prep,sigma)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)</span>
+<span class="sd">            &gt;&gt;&gt; z = recnet(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(z.shape)</span>
+<span class="sd">            torch.Size([10, 1, 64, 64])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Acquisition</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>  <span class="c1"># shape x = [b*c,h*w] = [b*c,N]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># shape x = [b*c, 2*M]</span>
+
+        <span class="c1"># Reconstruction</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reconstruct</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># shape x = [bc, 1, h,w]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">h</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">w</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="DCNet.acquire">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.DCNet.acquire.html#spyrit.core.recon.DCNet.acquire">[docs]</a>
+    <span class="k">def</span> <span class="nf">acquire</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Simulate data acquisition</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: ground-truth images</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`</span>
+
+<span class="sd">            :attr:`output`: measurement vectors with shape :math:`(BC,2M)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; B, C, H, M = 10, 1, 64, 64**2</span>
+<span class="sd">            &gt;&gt;&gt; Ord = np.ones((H,H))</span>
+<span class="sd">            &gt;&gt;&gt; meas = HadamSplit(M, H, Ord)</span>
+<span class="sd">            &gt;&gt;&gt; noise = NoNoise(meas)</span>
+<span class="sd">            &gt;&gt;&gt; prep = SplitPoisson(1.0, M, H*H)</span>
+<span class="sd">            &gt;&gt;&gt; sigma = np.random.random([H**2, H**2])</span>
+<span class="sd">            &gt;&gt;&gt; recnet = DCNet(noise,prep,sigma)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)</span>
+<span class="sd">            &gt;&gt;&gt; z = recnet.acquire(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(z.shape)</span>
+<span class="sd">            torch.Size([10, 8192])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Acquisition</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>  <span class="c1"># shape x = [b*c,h*w] = [b*c,N]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># shape x = [b*c, 2*M]</span>
+
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="DCNet.reconstruct">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.DCNet.reconstruct.html#spyrit.core.recon.DCNet.reconstruct">[docs]</a>
+    <span class="k">def</span> <span class="nf">reconstruct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Reconstruction step of a reconstruction network</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: raw measurement vectors</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: raw measurement vectors with shape :math:`(BC,2M)`</span>
+
+<span class="sd">            :attr:`output`: reconstructed images with shape :math:`(BC,1,H,W)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; B, C, H, M = 10, 1, 64, 64**2</span>
+<span class="sd">            &gt;&gt;&gt; Ord = np.ones((H,H))</span>
+<span class="sd">            &gt;&gt;&gt; meas = HadamSplit(M, H, Ord)</span>
+<span class="sd">            &gt;&gt;&gt; noise = NoNoise(meas)</span>
+<span class="sd">            &gt;&gt;&gt; prep = SplitPoisson(1.0, M, H*H)</span>
+<span class="sd">            &gt;&gt;&gt; sigma = np.random.random([H**2, H**2])</span>
+<span class="sd">            &gt;&gt;&gt; recnet = DCNet(noise,prep,sigma)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand((B*C,2*M), dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; z = recnet.reconstruct(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(z.shape)</span>
+<span class="sd">            torch.Size([10, 1, 64, 64])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># x of shape [b*c, 2M]</span>
+        <span class="n">bc</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Preprocessing</span>
+        <span class="n">var_noi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prep</span><span class="o">.</span><span class="n">sigma</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prep</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># shape x = [b*c, M]</span>
+
+        <span class="c1"># measurements to image domain processing</span>
+        <span class="n">x_0</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">bc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">N</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tikho</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x_0</span><span class="p">,</span> <span class="n">var_noi</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span>
+            <span class="n">bc</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">h</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">w</span>
+        <span class="p">)</span>  <span class="c1"># shape x = [b*c,1,h,w]</span>
+
+        <span class="c1"># Image domain denoising</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">denoi</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="DCNet.reconstruct_expe">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.DCNet.reconstruct_expe.html#spyrit.core.recon.DCNet.reconstruct_expe">[docs]</a>
+    <span class="k">def</span> <span class="nf">reconstruct_expe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Reconstruction step of a reconstruction network</span>
+
+<span class="sd">        Same as :meth:`reconstruct` reconstruct except that:</span>
+
+<span class="sd">            1. The preprocessing step estimates the image intensity. The</span>
+<span class="sd">            estimated intensity is used for both normalizing the raw</span>
+<span class="sd">            data and computing the variance of the normalized data.</span>
+
+<span class="sd">            2. The output images are &quot;denormalized&quot;, i.e., have units of photon</span>
+<span class="sd">            counts</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: raw measurement vectors</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: :math:`(BC,2M)`</span>
+
+<span class="sd">            :attr:`output`: :math:`(BC,1,H,W)`</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># x of shape [b*c, 2M]</span>
+        <span class="n">bc</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Preprocessing expe</span>
+        <span class="n">var_noi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prep</span><span class="o">.</span><span class="n">sigma_expe</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">N0_est</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prep</span><span class="o">.</span><span class="n">forward_expe</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="p">)</span>  <span class="c1"># x &lt;- x/N0_est</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">prep</span><span class="o">.</span><span class="n">gain</span>
+        <span class="n">norm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prep</span><span class="o">.</span><span class="n">gain</span> <span class="o">*</span> <span class="n">N0_est</span>
+
+        <span class="c1"># variance of preprocessed measurements</span>
+        <span class="n">var_noi</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">div</span><span class="p">(</span>
+            <span class="n">var_noi</span><span class="p">,</span> <span class="p">(</span><span class="n">norm</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">bc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">M</span><span class="p">))</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="p">)</span>
+
+        <span class="c1"># measurements to image domain processing</span>
+        <span class="n">x_0</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">bc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">N</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tikho</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x_0</span><span class="p">,</span> <span class="n">var_noi</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span>
+            <span class="n">bc</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">h</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">w</span>
+        <span class="p">)</span>  <span class="c1"># shape x = [b*c,1,h,w]</span>
+
+        <span class="c1"># Image domain denoising</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">denoi</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># shape x = [b*c,1,h,w]</span>
+
+        <span class="c1"># Denormalization</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prep</span><span class="o">.</span><span class="n">denormalize_expe</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">norm</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">h</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">w</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">x</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="DCDRUNet">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.DCDRUNet.html#spyrit.core.recon.DCDRUNet">[docs]</a>
+<span class="k">class</span> <span class="nc">DCDRUNet</span><span class="p">(</span><span class="n">DCNet</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Denoised completion reconstruction network based on DRUNet wich concatenates a</span>
+<span class="sd">        noise level map to the input</span>
+
+<span class="sd">    .. math:</span>
+
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`noise`: Acquisition operator (see :class:`~spyrit.core.noise`)</span>
+
+<span class="sd">        :attr:`prep`: Preprocessing operator (see :class:`~spyrit.core.prep`)</span>
+
+<span class="sd">        :attr:`sigma`: UPDATE!! Tikhonov reconstruction operator of type</span>
+<span class="sd">        :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag()`</span>
+
+<span class="sd">        :attr:`denoi` (optional): Image denoising operator</span>
+<span class="sd">        (see :class:`~spyrit.core.nnet`).</span>
+<span class="sd">        Default :class:`~spyrit.core.nnet.Identity`</span>
+
+<span class="sd">        :attr:`noise_level` (optional): Noise level in the range [0, 255], default is noise_level=5</span>
+
+
+<span class="sd">    Input / Output:</span>
+<span class="sd">        :attr:`input`: Ground-truth images with concatenated noise level map with</span>
+<span class="sd">         shape :math:`(B,C+1,H,W)`</span>
+
+<span class="sd">        :attr:`output`: Reconstructed images with shape :math:`(B,C,H,W)`</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        :attr:`Acq`: Acquisition operator initialized as :attr:`noise`</span>
+
+<span class="sd">        :attr:`PreP`: Preprocessing operator initialized as :attr:`prep`</span>
+
+<span class="sd">        :attr:`DC_Layer`: Data consistency layer initialized as :attr:`tikho`</span>
+
+<span class="sd">        :attr:`Denoi`: Image (DRUNet architecture type) denoising operator</span>
+<span class="sd">        initialized as :attr:`denoi`</span>
+
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; B, C, H, M = 10, 1, 64, 64**2</span>
+<span class="sd">        &gt;&gt;&gt; Ord = np.ones((H,H))</span>
+<span class="sd">        &gt;&gt;&gt; meas = HadamSplit(M, H, Ord)</span>
+<span class="sd">        &gt;&gt;&gt; noise = NoNoise(meas)</span>
+<span class="sd">        &gt;&gt;&gt; prep = SplitPoisson(1.0, M, H*H)</span>
+<span class="sd">        &gt;&gt;&gt; sigma = np.random.random([H**2, H**2])</span>
+<span class="sd">        &gt;&gt;&gt; n_channels = 1                   # 1 for grayscale image</span>
+<span class="sd">        &gt;&gt;&gt; model_drunet_path = &#39;./spyrit/drunet/model_zoo/drunet_gray.pth&#39;</span>
+<span class="sd">        &gt;&gt;&gt; denoi_drunet = drunet(in_nc=n_channels+1, out_nc=n_channels, nc=[64, 128, 256, 512], nb=4, act_mode=&#39;R&#39;,</span>
+<span class="sd">            downsample_mode=&quot;strideconv&quot;, upsample_mode=&quot;convtranspose&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; recnet = DCDRUNet(noise,prep,sigma,denoi_drunet)</span>
+<span class="sd">        &gt;&gt;&gt; z = recnet(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(z.shape)</span>
+<span class="sd">        torch.Size([10, 1, 64, 64])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">noise</span><span class="p">,</span> <span class="n">prep</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">denoi</span><span class="o">=</span><span class="n">nn</span><span class="o">.</span><span class="n">Identity</span><span class="p">(),</span> <span class="n">noise_level</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">noise</span><span class="p">,</span> <span class="n">prep</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">denoi</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;noise_level&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">([</span><span class="n">noise_level</span> <span class="o">/</span> <span class="mf">255.0</span><span class="p">]))</span>
+
+<div class="viewcode-block" id="DCDRUNet.reconstruct">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.DCDRUNet.reconstruct.html#spyrit.core.recon.DCDRUNet.reconstruct">[docs]</a>
+    <span class="k">def</span> <span class="nf">reconstruct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Reconstruction step of a reconstruction network</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: raw measurement vectors</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: raw measurement vectors with shape :math:`(BC,2M)`</span>
+
+<span class="sd">            :attr:`output`: reconstructed images with shape :math:`(BC,1,H,W)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; B, C, H, M = 10, 1, 64, 64**2</span>
+<span class="sd">            &gt;&gt;&gt; Ord = np.ones((H,H))</span>
+<span class="sd">            &gt;&gt;&gt; meas = HadamSplit(M, H, Ord)</span>
+<span class="sd">            &gt;&gt;&gt; noise = NoNoise(meas)</span>
+<span class="sd">            &gt;&gt;&gt; prep = SplitPoisson(1.0, M, H*H)</span>
+<span class="sd">            &gt;&gt;&gt; sigma = np.random.random([H**2, H**2])</span>
+<span class="sd">            &gt;&gt;&gt; n_channels = 1                   # 1 for grayscale image</span>
+<span class="sd">            &gt;&gt;&gt; model_drunet_path = &#39;./spyrit/drunet/model_zoo/drunet_gray.pth&#39;</span>
+<span class="sd">            &gt;&gt;&gt; denoi_drunet = drunet(in_nc=n_channels+1, out_nc=n_channels, nc=[64, 128, 256, 512], nb=4, act_mode=&#39;R&#39;,</span>
+<span class="sd">                downsample_mode=&quot;strideconv&quot;, upsample_mode=&quot;convtranspose&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; recnet = DCDRUNet(noise,prep,sigma,denoi_drunet)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand((B*C,2*M), dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; z = recnet.reconstruct(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(z.shape)</span>
+<span class="sd">            torch.Size([10, 1, 64, 64])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># x of shape [b*c, 2M]</span>
+
+        <span class="n">bc</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Preprocessing</span>
+        <span class="n">var_noi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prep</span><span class="o">.</span><span class="n">sigma</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prep</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># shape x = [b*c, M]</span>
+
+        <span class="c1"># measurements to image domain processing</span>
+        <span class="n">x_0</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">bc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">N</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tikho</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x_0</span><span class="p">,</span> <span class="n">var_noi</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span>
+            <span class="n">bc</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">h</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Acq</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">w</span>
+        <span class="p">)</span>  <span class="c1"># shape x = [b*c,1,h,w]</span>
+
+        <span class="c1"># Image domain denoising</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">concat_noise_map</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">denoi</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="DCDRUNet.concat_noise_map">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.DCDRUNet.concat_noise_map.html#spyrit.core.recon.DCDRUNet.concat_noise_map">[docs]</a>
+    <span class="k">def</span> <span class="nf">concat_noise_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Concatenation of noise level map to reconstructed images</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: reconstructed images from the reconstruction layer</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: reconstructed images with shape :math:`(BC,1,H,W)`</span>
+
+<span class="sd">            :attr:`output`: reconstructed images with concatenated noise level map with shape :math:`(BC,2,H,W)`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_level</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">)),</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="DCDRUNet.set_noise_level">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.DCDRUNet.set_noise_level.html#spyrit.core.recon.DCDRUNet.set_noise_level">[docs]</a>
+    <span class="k">def</span> <span class="nf">set_noise_level</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">noise_level</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Reset noise level value</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`noise_level`: noise level value in the range [0, 255]</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`noise_level`: float value noise level :math:`(1)`</span>
+
+<span class="sd">            :attr:`output`: noise level tensor with shape :math:`(1)`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">noise_level</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">([</span><span class="n">noise_level</span> <span class="o">/</span> <span class="mf">255.0</span><span class="p">])</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="PositiveParameters">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.PositiveParameters.html#spyrit.core.recon.PositiveParameters">[docs]</a>
+<span class="k">class</span> <span class="nc">PositiveParameters</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="c1"># ==========================================================================</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">val_min</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">PositiveParameters</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">val_min</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">val_min</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">val_min</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="PositiveParameters.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.PositiveParameters.forward.html#spyrit.core.recon.PositiveParameters.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="PositiveMonoIncreaseParameters">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.PositiveMonoIncreaseParameters.html#spyrit.core.recon.PositiveMonoIncreaseParameters">[docs]</a>
+<span class="k">class</span> <span class="nc">PositiveMonoIncreaseParameters</span><span class="p">(</span><span class="n">PositiveParameters</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">val_min</span><span class="o">=</span><span class="mf">0.000001</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">val_min</span><span class="p">)</span>
+
+<div class="viewcode-block" id="PositiveMonoIncreaseParameters.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.PositiveMonoIncreaseParameters.forward.html#spyrit.core.recon.PositiveMonoIncreaseParameters.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># cumsum in opposite order</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">forward</span><span class="p">()</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">dims</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="UPGD">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.UPGD.html#spyrit.core.recon.UPGD">[docs]</a>
+<span class="k">class</span> <span class="nc">UPGD</span><span class="p">(</span><span class="n">PinvNet</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">noise</span><span class="p">,</span>
+        <span class="n">prep</span><span class="p">,</span>
+        <span class="n">denoi</span><span class="o">=</span><span class="n">nn</span><span class="o">.</span><span class="n">Identity</span><span class="p">(),</span>
+        <span class="n">num_iter</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+        <span class="n">lamb</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span>
+        <span class="n">lamb_min</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">,</span>
+        <span class="n">split</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">UPGD</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">noise</span><span class="p">,</span> <span class="n">prep</span><span class="p">,</span> <span class="n">denoi</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_iter</span> <span class="o">=</span> <span class="n">num_iter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lamb</span> <span class="o">=</span> <span class="n">lamb</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lamb_min</span> <span class="o">=</span> <span class="n">lamb_min</span>
+        <span class="c1"># Set a trainable tensor for the regularization parameter with dimension num_iter</span>
+        <span class="c1"># and constrained to be positive with clamp(min=0.0, max=None)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lambs</span> <span class="o">=</span> <span class="n">PositiveMonoIncreaseParameters</span><span class="p">(</span>
+            <span class="n">num_iter</span><span class="p">,</span> <span class="n">lamb_min</span>
+        <span class="p">)</span>  <span class="c1"># shape lambs = [num_iter,1]</span>
+        <span class="c1"># self.noise = noise</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">split</span> <span class="o">=</span> <span class="n">split</span>
+
+<div class="viewcode-block" id="UPGD.reconstruct">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.recon.UPGD.reconstruct.html#spyrit.core.recon.UPGD.reconstruct">[docs]</a>
+    <span class="k">def</span> <span class="nf">reconstruct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Reconstruction step of a reconstruction network</span>
+
+<span class="sd">        Same as :meth:`reconstruct` reconstruct except that:</span>
+
+<span class="sd">            1. The regularization parameter is trainable</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: raw measurement vectors</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: :math:`(BC,2M)`</span>
+
+<span class="sd">            :attr:`output`: :math:`(BC,1,H,W)`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Measurement operator</span>
+        <span class="c1"># if self.split:</span>
+        <span class="c1">#    meas = super().Acq.meas_op</span>
+        <span class="c1"># else:</span>
+        <span class="c1"># meas = self.Acq.meas_op</span>
+        <span class="n">meas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span>
+
+        <span class="c1"># x of shape [b*c, 2M]</span>
+        <span class="n">bc</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># First estimate: Pseudo inverse</span>
+        <span class="c1"># Preprocessing in the measurement domain</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prep</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># [5, 1024]</span>
+
+        <span class="c1"># Save measurements</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>  <span class="c1"># [5, 1024]</span>
+
+        <span class="c1"># measurements to image domain processing</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pinv</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="p">)</span>  <span class="c1"># [5, 4096]         # shape x = [b*c,N]</span>
+        <span class="c1"># x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)   # shape x = [b*c,1,h,w]</span>
+
+        <span class="c1"># Unroll network</span>
+        <span class="c1"># Ensure step size is positive and monotonically decreasing and larger than self.lamb!</span>
+        <span class="n">lambs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lambs</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_iter</span><span class="p">):</span>
+            <span class="c1"># Projection onto the measurement space</span>
+            <span class="n">proj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">forward_H</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># [5, 1024]</span>
+
+            <span class="c1"># Residual</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">proj</span> <span class="o">-</span> <span class="n">m</span>  <span class="c1"># [5, 1024]</span>
+
+            <span class="c1"># Gradient step</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">lambs</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">H_adjoint</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>  <span class="c1"># [5, 4096]</span>
+
+            <span class="c1"># Denoising step</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span>
+                <span class="n">bc</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">h</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">w</span>
+            <span class="p">)</span>  <span class="c1"># [5, 1, 64, 64]</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">denoi</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">bc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">acqu</span><span class="o">.</span><span class="n">meas_op</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>  <span class="c1"># [5, 4096]</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

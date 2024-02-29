@@ -1,0 +1,80 @@
+
+
+Examples using ``spyrit.misc.sampling.Permutation_Matrix``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+.. start-sphx-glr-thumbnails
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to simulate measurements and perform image reconstruction. The measurem...">
+
+.. only:: html
+
+  .. image:: /gallery/images/thumb/sphx_glr_tuto_02_pseudoinverse_linear_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_gallery_tuto_02_pseudoinverse_linear.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">02. Pseudoinverse solution from linear measurements</div>
+    </div>
+
+
+.. only:: not html
+
+ * :ref:`sphx_glr_gallery_tuto_02_pseudoinverse_linear.py`
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to simulate measurements and perform image reconstruction using PinvNet...">
+
+.. only:: html
+
+  .. image:: /gallery/images/thumb/sphx_glr_tuto_03_pseudoinverse_cnn_linear_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_gallery_tuto_03_pseudoinverse_cnn_linear.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">03. Pseudoinverse solution + CNN denoising</div>
+    </div>
+
+
+.. only:: not html
+
+ * :ref:`sphx_glr_gallery_tuto_03_pseudoinverse_cnn_linear.py`
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to train PinvNet with a CNN denoiser for reconstruction of linear measu...">
+
+.. only:: html
+
+  .. image:: /gallery/images/thumb/sphx_glr_tuto_04_train_pseudoinverse_cnn_linear_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_gallery_tuto_04_train_pseudoinverse_cnn_linear.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">04. Train pseudoinverse solution + CNN denoising</div>
+    </div>
+
+
+.. only:: not html
+
+ * :ref:`sphx_glr_gallery_tuto_04_train_pseudoinverse_cnn_linear.py`
+
+.. raw:: html
+
+    </div>

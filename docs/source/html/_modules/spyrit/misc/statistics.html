@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.misc.statistics &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/thumbnail.css" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../../../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">spyrit.misc.statistics</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <h1>Source code for spyrit.misc.statistics</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span><span class="p">,</span> <span class="n">division</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torchvision</span>
+
+<span class="c1"># from torchvision import datasets, transforms</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+
+<span class="c1"># from spyrit.learning.model_Had_DCAN import *</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">spyrit.misc.walsh_hadamard</span> <span class="k">as</span> <span class="nn">wh</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">rankdata</span>
+
+
+<div class="viewcode-block" id="stat_walsh_ImageNet">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.stat_walsh_ImageNet.html#spyrit.misc.statistics.stat_walsh_ImageNet">[docs]</a>
+<span class="k">def</span> <span class="nf">stat_walsh_ImageNet</span><span class="p">(</span>
+    <span class="n">stat_root</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./stats/&quot;</span><span class="p">),</span>
+    <span class="n">data_root</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./data/ILSVRC2012_img_test_v10102019/&quot;</span><span class="p">),</span>
+    <span class="n">img_size</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+    <span class="n">n_loop</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span><span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`data_root` needs to have all images in a subfolder</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; from pathlib import Path</span>
+<span class="sd">        &gt;&gt;&gt; from spyrit.misc.statistics import stat_walsh_ImageNet</span>
+<span class="sd">        &gt;&gt;&gt; data_root =  Path(&#39;../data/ILSVRC2012_v10102019&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; stat_root =  Path(&#39;../stat/ILSVRC2012_v10102019&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; stat_walsh_ImageNet(stat_root = stat_root, data_root = data_root, img_size = 32, batch_size = 1024)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">dataloaders</span> <span class="o">=</span> <span class="n">data_loaders_ImageNet</span><span class="p">(</span>
+        <span class="n">data_root</span><span class="p">,</span> <span class="n">img_size</span><span class="o">=</span><span class="n">img_size</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">7</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Walsh ordered transforms</span>
+    <span class="n">time_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+    <span class="n">stat_walsh</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">],</span> <span class="n">device</span><span class="p">,</span> <span class="n">stat_root</span><span class="p">,</span> <span class="n">n_loop</span><span class="p">)</span>
+    <span class="n">time_elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_start</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computed in </span><span class="si">{</span><span class="n">time_elapsed</span><span class="si">}</span><span class="s2"> seconds&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="stat_walsh_stl10">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.stat_walsh_stl10.html#spyrit.misc.statistics.stat_walsh_stl10">[docs]</a>
+<span class="k">def</span> <span class="nf">stat_walsh_stl10</span><span class="p">(</span>
+    <span class="n">stat_root</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./stats/&quot;</span><span class="p">),</span>
+    <span class="n">data_root</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./data/&quot;</span><span class="p">),</span>
+    <span class="n">img_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span><span class="p">),</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`data_root` is expected to contain an &#39;stl10_binary&#39; subfolder with the</span>
+<span class="sd">        test*.bin, train*.bin and unlabeled_X.bin files.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; data_root =  Path(&#39;../datasets/&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; stat_root =  Path(&#39;../stat/stl10&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; from spyrit.misc.statistics import stat_walsh_stl10</span>
+<span class="sd">        &gt;&gt;&gt; stat_walsh_stl10(stat_root = stat_root, data_root = data_root)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dataloaders</span> <span class="o">=</span> <span class="n">data_loaders_stl10</span><span class="p">(</span>
+        <span class="n">data_root</span><span class="p">,</span> <span class="n">img_size</span><span class="o">=</span><span class="n">img_size</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">7</span>
+    <span class="p">)</span>
+    <span class="c1"># Walsh ordered transforms</span>
+    <span class="n">time_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+    <span class="n">stat_walsh</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">],</span> <span class="n">device</span><span class="p">,</span> <span class="n">stat_root</span><span class="p">)</span>
+    <span class="n">time_elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_start</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computed in </span><span class="si">{</span><span class="n">time_elapsed</span><span class="si">}</span><span class="s2"> seconds&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="data_loaders_ImageNet">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.data_loaders_ImageNet.html#spyrit.misc.statistics.data_loaders_ImageNet">[docs]</a>
+<span class="k">def</span> <span class="nf">data_loaders_ImageNet</span><span class="p">(</span>
+    <span class="n">train_root</span><span class="p">,</span> <span class="n">val_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">img_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        Both &#39;train_root&#39; and &#39;val_root&#39; need to have images in a subfolder</span>
+<span class="sd">        shuffle=True to shuffle train set only (test set not shuffled)</span>
+
+<span class="sd">    The output of torchvision datasets are PILImage images in the range [0, 1].</span>
+<span class="sd">    We transform them to Tensors in the range [-1, 1]. Also RGB images are</span>
+<span class="sd">    converted into grayscale images.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>  <span class="c1"># reproductibility of random crop</span>
+    <span class="c1">#</span>
+    <span class="n">transform</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">to_grayscale</span><span class="p">,</span>
+            <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">RandomCrop</span><span class="p">(</span>
+                <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">img_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">),</span> <span class="n">pad_if_needed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">padding_mode</span><span class="o">=</span><span class="s2">&quot;edge&quot;</span>
+            <span class="p">),</span>
+            <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span>
+            <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">Normalize</span><span class="p">([</span><span class="mf">0.5</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">]),</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="c1"># train set</span>
+    <span class="n">trainset</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">ImageFolder</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">train_root</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">)</span>
+    <span class="n">trainloader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span>
+        <span class="n">trainset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span>
+    <span class="p">)</span>
+
+    <span class="c1"># validation set (if any)</span>
+    <span class="k">if</span> <span class="n">val_root</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">valset</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">ImageFolder</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">val_root</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">)</span>
+        <span class="n">valloader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span>
+            <span class="n">valset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">valloader</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">dataloaders</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;train&quot;</span><span class="p">:</span> <span class="n">trainloader</span><span class="p">,</span> <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="n">valloader</span><span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">dataloaders</span></div>
+
+
+
+<div class="viewcode-block" id="CenterCrop">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.CenterCrop.html#spyrit.misc.statistics.CenterCrop">[docs]</a>
+<span class="k">class</span> <span class="nc">CenterCrop</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        img_size=int, image size</span>
+
+<span class="sd">    Center crop if image not square in order to ensure that all images have same size</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img_size</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">img_size</span> <span class="o">=</span> <span class="n">img_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">centerCrop</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">CenterCrop</span><span class="p">(</span><span class="n">img_size</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
+        <span class="c1"># Center crop if not square</span>
+        <span class="n">img_shape</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">size</span>
+        <span class="k">if</span> <span class="n">img_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">img_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">centerCrop</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">inputs</span></div>
+
+
+
+<div class="viewcode-block" id="transform_gray_norm">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.transform_gray_norm.html#spyrit.misc.statistics.transform_gray_norm">[docs]</a>
+<span class="k">def</span> <span class="nf">transform_gray_norm</span><span class="p">(</span><span class="n">img_size</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        img_size=int, image size</span>
+
+<span class="sd">    Create torchvision transform for natural images (stl10, imagenet):</span>
+<span class="sd">    convert them to grayscale, then to tensor, and normalize between [-1, 1]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">transform</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">to_grayscale</span><span class="p">,</span>
+            <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">Resize</span><span class="p">(</span><span class="n">img_size</span><span class="p">),</span>
+            <span class="c1"># torchvision.transforms.CenterCrop(img_size),</span>
+            <span class="n">CenterCrop</span><span class="p">(</span><span class="n">img_size</span><span class="p">),</span>
+            <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span>
+            <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">Normalize</span><span class="p">([</span><span class="mf">0.5</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">]),</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">transform</span></div>
+
+
+
+<div class="viewcode-block" id="data_loaders_stl10">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.data_loaders_stl10.html#spyrit.misc.statistics.data_loaders_stl10">[docs]</a>
+<span class="k">def</span> <span class="nf">data_loaders_stl10</span><span class="p">(</span>
+    <span class="n">data_root</span><span class="p">,</span> <span class="n">img_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        shuffle=True to shuffle train set only (test set not shuffled)</span>
+
+<span class="sd">    The output of torchvision datasets are PILImage images in the range [0, 1].</span>
+<span class="sd">    We transform them to Tensors in the range [-1, 1]. Also RGB images are</span>
+<span class="sd">    converted into grayscale images.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">transform</span> <span class="o">=</span> <span class="n">transform_gray_norm</span><span class="p">(</span><span class="n">img_size</span><span class="p">)</span>
+
+    <span class="n">trainset</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">STL10</span><span class="p">(</span>
+        <span class="n">root</span><span class="o">=</span><span class="n">data_root</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train+unlabeled&quot;</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="n">download</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transform</span>
+    <span class="p">)</span>
+    <span class="n">trainloader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span>
+        <span class="n">trainset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="n">shuffle</span>
+    <span class="p">)</span>
+
+    <span class="n">testset</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">STL10</span><span class="p">(</span>
+        <span class="n">root</span><span class="o">=</span><span class="n">data_root</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="n">download</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transform</span>
+    <span class="p">)</span>
+    <span class="n">testloader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span>
+        <span class="n">testset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+
+    <span class="n">dataloaders</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;train&quot;</span><span class="p">:</span> <span class="n">trainloader</span><span class="p">,</span> <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="n">testloader</span><span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">dataloaders</span></div>
+
+
+
+<div class="viewcode-block" id="stat_walsh">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.stat_walsh.html#spyrit.misc.statistics.stat_walsh">[docs]</a>
+<span class="k">def</span> <span class="nf">stat_walsh</span><span class="p">(</span><span class="n">dataloader</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">n_loop</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    nloop &gt; 1 is relevant for dataloaders with random crops such as that</span>
+<span class="sd">    provided by data_loaders_ImageNet</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Get dimensions and estimate total number of images in the dataset</span>
+    <span class="n">inputs</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloader</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="c1"># --------------------------------------------------------------------------</span>
+    <span class="c1"># 1. Mean</span>
+    <span class="c1"># --------------------------------------------------------------------------</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">mean_walsh</span><span class="p">(</span><span class="n">dataloader</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">n_loop</span><span class="o">=</span><span class="n">n_loop</span><span class="p">)</span>
+
+    <span class="c1"># Save</span>
+    <span class="k">if</span> <span class="n">n_loop</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;Average_</span><span class="si">{}</span><span class="s2">x</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.npy&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;Average_</span><span class="si">{}</span><span class="s2">_</span><span class="si">{}</span><span class="s2">x</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">n_loop</span><span class="p">,</span> <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.npy&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">root</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">root</span><span class="o">.</span><span class="n">mkdir</span><span class="p">()</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">mean</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+    <span class="c1"># --------------------------------------------------------------------------</span>
+    <span class="c1"># 2. Covariance</span>
+    <span class="c1"># -------------------------------------------------------------------------</span>
+    <span class="n">cov</span> <span class="o">=</span> <span class="n">cov_walsh</span><span class="p">(</span><span class="n">dataloader</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">n_loop</span><span class="o">=</span><span class="n">n_loop</span><span class="p">)</span>
+
+    <span class="c1"># Save</span>
+    <span class="k">if</span> <span class="n">n_loop</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;Cov_</span><span class="si">{}</span><span class="s2">x</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.npy&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;Cov_</span><span class="si">{}</span><span class="s2">_</span><span class="si">{}</span><span class="s2">x</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">n_loop</span><span class="p">,</span> <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.npy&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">root</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">root</span><span class="o">.</span><span class="n">mkdir</span><span class="p">()</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">cov</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span></div>
+
+
+
+<div class="viewcode-block" id="mean_walsh">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.mean_walsh.html#spyrit.misc.statistics.mean_walsh">[docs]</a>
+<span class="k">def</span> <span class="nf">mean_walsh</span><span class="p">(</span><span class="n">dataloader</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">n_loop</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    nloop &gt; 1 is relevant for dataloaders with random crops such as that</span>
+<span class="sd">    provided by data_loaders_ImageNet</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Get dimensions and estimate total number of images in the dataset</span>
+    <span class="n">inputs</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloader</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">tot_num</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataloader</span><span class="p">)</span> <span class="o">*</span> <span class="n">b</span>
+
+    <span class="c1"># Init</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">H</span> <span class="o">=</span> <span class="n">wh</span><span class="o">.</span><span class="n">walsh_matrix</span><span class="p">(</span><span class="n">nx</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+    <span class="c1"># Send to device (e.g., cuda)</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">mean</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">H</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">H</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># Compute Mean</span>
+    <span class="c1"># Accumulate sum over all images in dataset</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_loop</span><span class="p">):</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+            <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">trans</span> <span class="o">=</span> <span class="n">wh</span><span class="o">.</span><span class="n">walsh2_torch</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
+            <span class="n">mean</span> <span class="o">=</span> <span class="n">mean</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">trans</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="c1"># print</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">n</span> <span class="o">+</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mean:  </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> / (less than) </span><span class="si">{</span><span class="n">tot_num</span><span class="o">*</span><span class="n">n_loop</span><span class="si">}</span><span class="s2"> images&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># test</span>
+            <span class="c1"># print(f&#39; | {inputs[53,0,33,49]}&#39;, end=&#39;\n&#39;)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Normalize</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">mean</span> <span class="o">/</span> <span class="n">n</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">mean</span></div>
+
+
+
+<div class="viewcode-block" id="cov_walsh">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.cov_walsh.html#spyrit.misc.statistics.cov_walsh">[docs]</a>
+<span class="k">def</span> <span class="nf">cov_walsh</span><span class="p">(</span><span class="n">dataloader</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">n_loop</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    nloop &gt; 1 is relevant for dataloaders with random crops such as that</span>
+<span class="sd">    provided by data_loaders_ImageNet</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Get dimensions and estimate total number of images in the dataset</span>
+    <span class="n">inputs</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloader</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">tot_num</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataloader</span><span class="p">)</span> <span class="o">*</span> <span class="n">b</span>
+
+    <span class="n">H</span> <span class="o">=</span> <span class="n">wh</span><span class="o">.</span><span class="n">walsh_matrix</span><span class="p">(</span><span class="n">nx</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">H</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">H</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># Covariance --------------------------------------------------------------</span>
+    <span class="c1"># Init</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">cov</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">cov</span> <span class="o">=</span> <span class="n">cov</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># Accumulate (im - mu)*(im - mu)^T over all images in dataset</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_loop</span><span class="p">):</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+            <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">trans</span> <span class="o">=</span> <span class="n">wh</span><span class="o">.</span><span class="n">walsh2_torch</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
+            <span class="n">trans</span> <span class="o">=</span> <span class="n">trans</span> <span class="o">-</span> <span class="n">mean</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">trans</span> <span class="o">=</span> <span class="n">trans</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">cov</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">addbmm</span><span class="p">(</span><span class="n">cov</span><span class="p">,</span> <span class="n">trans</span><span class="p">,</span> <span class="n">trans</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">))</span>
+            <span class="c1"># print</span>
+            <span class="n">n</span> <span class="o">+=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cov:  </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> / (less than) </span><span class="si">{</span><span class="n">tot_num</span><span class="o">*</span><span class="n">n_loop</span><span class="si">}</span><span class="s2"> images&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># test</span>
+            <span class="c1"># print(f&#39; | {inputs[53,0,33,49]}&#39;, end=&#39;\n&#39;)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Normalize</span>
+    <span class="n">cov</span> <span class="o">=</span> <span class="n">cov</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">cov</span></div>
+
+
+
+<div class="viewcode-block" id="stat_fwalsh_S">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.stat_fwalsh_S.html#spyrit.misc.statistics.stat_fwalsh_S">[docs]</a>
+<span class="k">def</span> <span class="nf">stat_fwalsh_S</span><span class="p">(</span><span class="n">dataloader</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">root</span><span class="p">):</span>  <span class="c1"># NOT validated!</span>
+    <span class="c1"># Get dimensions and estimate total number of images in the dataset</span>
+    <span class="n">inputs</span><span class="p">,</span> <span class="n">classes</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloader</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">tot_num</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataloader</span><span class="p">)</span> <span class="o">*</span> <span class="n">b</span>
+
+    <span class="c1"># 1. Mean</span>
+
+    <span class="c1"># Init</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+    <span class="c1"># Send to device (e.g., cuda)</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">mean</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">ind</span> <span class="o">=</span> <span class="n">wh</span><span class="o">.</span><span class="n">sequency_perm_ind</span><span class="p">(</span><span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">)</span>
+
+    <span class="c1"># Accumulate sum over all images in dataset</span>
+    <span class="k">for</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">trans</span> <span class="o">=</span> <span class="n">wh</span><span class="o">.</span><span class="n">fwalsh2_S_torch</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">ind</span><span class="p">)</span>
+        <span class="n">mean</span> <span class="o">=</span> <span class="n">mean</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">trans</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="c1"># print</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">n</span> <span class="o">+</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mean:  </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> / (less than) </span><span class="si">{</span><span class="n">tot_num</span><span class="si">}</span><span class="s2"> images&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Normalize</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">mean</span> <span class="o">/</span> <span class="n">n</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
+    <span class="c1"># torch.save(mean, root+&#39;Average_{}x{}&#39;.format(nx,ny)+&#39;.pth&#39;)</span>
+
+    <span class="n">path</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;Average_</span><span class="si">{}</span><span class="s2">x</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.npy&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">root</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">root</span><span class="o">.</span><span class="n">mkdir</span><span class="p">()</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">mean</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+
+    <span class="c1"># 2. Covariance</span>
+
+    <span class="c1"># Init</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">cov</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">cov</span> <span class="o">=</span> <span class="n">cov</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># Accumulate (im - mu)*(im - mu)^T over all images in dataset</span>
+    <span class="k">for</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">trans</span> <span class="o">=</span> <span class="n">wh</span><span class="o">.</span><span class="n">fwalsh2_S_torch</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">ind</span><span class="p">)</span>
+        <span class="n">trans</span> <span class="o">=</span> <span class="n">trans</span> <span class="o">-</span> <span class="n">mean</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">trans</span> <span class="o">=</span> <span class="n">trans</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">cov</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">addbmm</span><span class="p">(</span><span class="n">cov</span><span class="p">,</span> <span class="n">trans</span><span class="p">,</span> <span class="n">trans</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">))</span>
+        <span class="c1"># print</span>
+        <span class="n">n</span> <span class="o">+=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cov:  </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> / (less than) </span><span class="si">{</span><span class="n">tot_num</span><span class="si">}</span><span class="s2"> images&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Normalize</span>
+    <span class="n">cov</span> <span class="o">=</span> <span class="n">cov</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># torch.save(cov, root+&#39;Cov_{}x{}&#39;.format(nx,ny)+&#39;.pth&#39;) # todo?</span>
+
+    <span class="n">path</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;Cov_</span><span class="si">{}</span><span class="s2">x</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.npy&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">root</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">root</span><span class="o">.</span><span class="n">mkdir</span><span class="p">()</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">cov</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span></div>
+
+
+
+<div class="viewcode-block" id="Cov2Var">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.Cov2Var.html#spyrit.misc.statistics.Cov2Var">[docs]</a>
+<span class="k">def</span> <span class="nf">Cov2Var</span><span class="p">(</span><span class="n">Cov</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extracts Variance Matrix from Covariance Matrix</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="p">(</span><span class="n">Nx</span><span class="p">,</span> <span class="n">Ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">Cov</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">diag_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag_indices</span><span class="p">(</span><span class="n">Nx</span><span class="p">)</span>
+    <span class="n">Var</span> <span class="o">=</span> <span class="n">Cov</span><span class="p">[</span><span class="n">diag_index</span><span class="p">]</span>
+    <span class="n">Var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">Var</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Nx</span><span class="p">)),</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Nx</span><span class="p">))))</span>
+    <span class="k">return</span> <span class="n">Var</span></div>
+
+
+
+<div class="viewcode-block" id="img2mask">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.img2mask.html#spyrit.misc.statistics.img2mask">[docs]</a>
+<span class="k">def</span> <span class="nf">img2mask</span><span class="p">(</span><span class="n">Ord</span><span class="p">,</span> <span class="n">M</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns subsampling mask from order matrix</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">Ord</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">msk</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">))</span>
+    <span class="n">ranked_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">rankdata</span><span class="p">(</span><span class="o">-</span><span class="n">Ord</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;ordinal&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">))</span>
+    <span class="n">msk</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">absolute</span><span class="p">(</span><span class="n">ranked_data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">M</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">msk</span></div>
+
+
+
+<span class="c1"># todo: rewrite in a fashion similar to stat_walsh_stl10</span>
+<div class="viewcode-block" id="stat_fwalsh_S_stl10">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.stat_fwalsh_S_stl10.html#spyrit.misc.statistics.stat_fwalsh_S_stl10">[docs]</a>
+<span class="k">def</span> <span class="nf">stat_fwalsh_S_stl10</span><span class="p">(</span>
+    <span class="n">stat_root</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./stats/&quot;</span><span class="p">),</span> <span class="n">data_root</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./data/&quot;</span><span class="p">),</span> <span class="n">img_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1024</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fast Walsh S-transform of X in &quot;2D&quot;</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`X` (torch.tensor): input image with shape `(*, n, n)`. `n`**2</span>
+<span class="sd">        should be a power of two.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.tensor: S-transformed signal with shape `(*, n, n)`</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.statistics as st</span>
+<span class="sd">        &gt;&gt;&gt; st.stat_fwalsh_S_stl10()</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="mi">7</span><span class="p">)</span>  <span class="c1"># for reproductibility</span>
+
+    <span class="n">transform</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">to_grayscale</span><span class="p">,</span>
+            <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">Resize</span><span class="p">((</span><span class="n">img_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">)),</span>
+            <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span>
+            <span class="n">torchvision</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">Normalize</span><span class="p">([</span><span class="mf">0.5</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">]),</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="n">trainset</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">STL10</span><span class="p">(</span>
+        <span class="n">root</span><span class="o">=</span><span class="n">data_root</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;train+unlabeled&quot;</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transform</span>
+    <span class="p">)</span>
+    <span class="n">trainloader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span>
+        <span class="n">trainset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+
+    <span class="n">testset</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">STL10</span><span class="p">(</span>
+        <span class="n">root</span><span class="o">=</span><span class="n">data_root</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transform</span>
+    <span class="p">)</span>
+    <span class="n">testloader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span>
+        <span class="n">testset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+
+    <span class="n">dataloaders</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;train&quot;</span><span class="p">:</span> <span class="n">trainloader</span><span class="p">,</span> <span class="s2">&quot;val&quot;</span><span class="p">:</span> <span class="n">testloader</span><span class="p">}</span>
+
+    <span class="c1"># Walsh ordered transforms</span>
+    <span class="n">time_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+    <span class="n">stat_fwalsh_S</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">],</span> <span class="n">device</span><span class="p">,</span> <span class="n">stat_root</span><span class="p">)</span>
+    <span class="n">time_elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_start</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">time_elapsed</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># %% delete ? Deprecated ?</span>
+
+<span class="c1"># def stat_walsh_np(dataloader, root):</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#         Computes Mean Hadamard Image over the whole dataset +</span>
+<span class="c1">#         Covariance Matrix Amongst the coefficients</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     inputs, classes = next(iter(dataloader))</span>
+<span class="c1">#     inputs = inputs.cpu().detach().numpy()</span>
+<span class="c1">#     (batch_size, channels, nx, ny) = inputs.shape</span>
+<span class="c1">#     tot_num = len(dataloader)*batch_size</span>
+
+<span class="c1">#     H1d = wh.walsh_ordered(nx)</span>
+
+<span class="c1">#      # Abs matrix</span>
+<span class="c1">#     Mean_had = abs_walsh_ordered(dataloader, H1d, tot_num)</span>
+<span class="c1">#     print(&quot;Saving abs&quot;)</span>
+<span class="c1">#     np.save(root / Path(&#39;Abs_{}x{}&#39;.format(nx,ny)+&#39;.npy&#39;), Mean_had)</span>
+
+<span class="c1">#     # Mean matrix</span>
+<span class="c1">#     #-- Accumulate over all images in dataset</span>
+<span class="c1">#     n = 0</span>
+<span class="c1">#     Mean_had = np.zeros((nx, ny))</span>
+<span class="c1">#     for inputs,_ in dataloader:</span>
+<span class="c1">#         inputs = inputs.cpu().detach().numpy()</span>
+<span class="c1">#         for i in range(inputs.shape[0]):</span>
+<span class="c1">#             img = inputs[i,0,:,:]</span>
+<span class="c1">#             h_img = wh.walsh_ordered2(img,H1d)</span>
+<span class="c1">#             Mean_had += h_img</span>
+<span class="c1">#             n = n+1</span>
+<span class="c1">#         print(f&#39;Mean:  {n} / (less than) {tot_num} images&#39;, end=&#39;\r&#39;)</span>
+<span class="c1">#     print(&#39;&#39;, end=&#39;\n&#39;)</span>
+
+<span class="c1">#     #-- Normalize &amp; save</span>
+<span class="c1">#     Mean_had = Mean_had/n;</span>
+<span class="c1">#     print(&quot;Saving mean&quot;)</span>
+<span class="c1">#     np.save(root / Path(&#39;Mean_{}x{}&#39;.format(nx,ny)+&#39;.npy&#39;), Mean_had)</span>
+
+<span class="c1">#     # Covariance matrix</span>
+<span class="c1">#     n = 0</span>
+<span class="c1">#     Cov_had = np.zeros((nx*ny, nx*ny));</span>
+<span class="c1">#     for inputs,_ in dataloader:</span>
+<span class="c1">#         inputs = inputs.cpu().detach().numpy();</span>
+<span class="c1">#         for i in range(inputs.shape[0]):</span>
+<span class="c1">#             img = inputs[i,0,:,:];</span>
+<span class="c1">#             h_img = wh.walsh_ordered2(img, H1d);</span>
+<span class="c1">#             Norm_Variable = np.reshape(h_img-Mean_had, (nx*ny,1));</span>
+<span class="c1">#             Cov_had += Norm_Variable*np.transpose(Norm_Variable);</span>
+<span class="c1">#             n = n+1</span>
+<span class="c1">#         print(f&#39;Covariance:  {n} / (less than) {tot_num} images&#39;, end=&#39;\r&#39;)</span>
+<span class="c1">#     print()</span>
+
+<span class="c1">#     #-- Normalize &amp; save</span>
+<span class="c1">#     Cov_had = Cov_had/(n-1);</span>
+<span class="c1">#     np.save(root / Path(&#39;Cov_{}x{}&#39;.format(nx,ny)+&#39;.npy&#39;), Cov_had)</span>
+
+<span class="c1"># %% delete ? Deprecated ?</span>
+
+<span class="c1"># def abs_walsh(dataloader, device):</span>
+
+<span class="c1">#     # Estimate tot_num</span>
+<span class="c1">#     inputs, classes = next(iter(dataloader))</span>
+<span class="c1">#     #inputs = inputs.cpu().detach().numpy();</span>
+<span class="c1">#     (batch_size, channels, nx, ny) = inputs.shape;</span>
+<span class="c1">#     tot_num = len(dataloader)*batch_size;</span>
+
+<span class="c1">#     # Init</span>
+<span class="c1">#     n = 0</span>
+<span class="c1">#     output = torch.zeros((nx,ny),dtype=torch.float32)</span>
+<span class="c1">#     H = wh.walsh_matrix(nx).astype(np.float32, copy=False)</span>
+
+<span class="c1">#     # Send to device (e.g., cuda)</span>
+<span class="c1">#     output = output.to(device)</span>
+<span class="c1">#     H = torch.from_numpy(H).to(device)</span>
+
+<span class="c1">#     # Accumulate over all images in dataset</span>
+<span class="c1">#     for inputs,_ in dataloader:</span>
+<span class="c1">#         inputs = inputs.to(device);</span>
+<span class="c1">#         n = n + inputs.shape[0]</span>
+<span class="c1">#         trans = wh.walsh2_torch(inputs,H);</span>
+<span class="c1">#         trans = torch.abs(trans)</span>
+<span class="c1">#         output = output.add(torch.sum(trans,0))</span>
+<span class="c1">#         print(f&#39;Abs:  {n} / (less than) {tot_num} images&#39;, end=&#39;\n&#39;)</span>
+<span class="c1">#     print(&#39;&#39;, end=&#39;\n&#39;)</span>
+
+<span class="c1">#     #-- Normalize</span>
+<span class="c1">#     output = output/n;</span>
+<span class="c1">#     output = torch.squeeze(output)</span>
+
+<span class="c1">#     return output</span>
+
+<span class="c1"># %% delete ? Deprecated ?</span>
+
+<span class="c1"># def Stat_had(dataloader, root):</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#         Computes Mean Hadamard Image over the whole dataset +</span>
+<span class="c1">#         Covariance Matrix Amongst the coefficients</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+
+<span class="c1">#     inputs, classes = next(iter(dataloader))</span>
+<span class="c1">#     inputs = inputs.cpu().detach().numpy();</span>
+<span class="c1">#     (batch_size, channels, nx, ny) = inputs.shape;</span>
+<span class="c1">#     tot_num = len(dataloader)*batch_size;</span>
+
+<span class="c1">#     Mean_had = np.zeros((nx, ny));</span>
+<span class="c1">#     for inputs,labels in dataloader:</span>
+<span class="c1">#         inputs = inputs.cpu().detach().numpy();</span>
+<span class="c1">#         for i in range(inputs.shape[0]):</span>
+<span class="c1">#             img = inputs[i,0,:,:];</span>
+<span class="c1">#             H = wh.walsh_matrix(len(img))</span>
+<span class="c1">#             h_img = wh.walsh2(img,H)/len(img)</span>
+<span class="c1">#             Mean_had += h_img;</span>
+<span class="c1">#     Mean_had = Mean_had/tot_num;</span>
+
+<span class="c1">#     Cov_had = np.zeros((nx*ny, nx*ny));</span>
+<span class="c1">#     for inputs,labels in dataloader:</span>
+<span class="c1">#         inputs = inputs.cpu().detach().numpy();</span>
+<span class="c1">#         for i in range(inputs.shape[0]):</span>
+<span class="c1">#             img = inputs[i,0,:,:];</span>
+<span class="c1">#             H = wh.walsh_matrix(len(img))</span>
+<span class="c1">#             h_img = wh.walsh2(img,H)/len(img)</span>
+<span class="c1">#             Norm_Variable = np.reshape(h_img-Mean_had, (nx*ny,1));</span>
+<span class="c1">#             Cov_had += Norm_Variable*np.transpose(Norm_Variable);</span>
+<span class="c1">#     Cov_had = Cov_had/(tot_num-1);</span>
+
+<span class="c1">#     np.save(root+&#39;Cov_{}x{}&#39;.format(nx,ny)+&#39;.npy&#39;, Cov_had)</span>
+<span class="c1">#     np.savetxt(root+&#39;Cov_{}x{}&#39;.format(nx,ny)+&#39;.txt&#39;, Cov_had)</span>
+
+<span class="c1">#     np.save(root+&#39;Average_{}x{}&#39;.format(nx,ny)+&#39;.npy&#39;, Mean_had)</span>
+<span class="c1">#     np.savetxt(root+&#39;Average_{}x{}&#39;.format(nx,ny)+&#39;.txt&#39;, Mean_had)</span>
+<span class="c1">#     cv2.imwrite(root+&#39;Average_{}x{}&#39;.format(nx,ny)+&#39;.png&#39;, Mean_had) #Needs conversion to Uint8!</span>
+<span class="c1">#     return Mean_had, Cov_had</span>
+
+
+<span class="c1"># %% Keep or delete?</span>
+<div class="viewcode-block" id="optim_had">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.optim_had.html#spyrit.misc.statistics.optim_had">[docs]</a>
+<span class="k">def</span> <span class="nf">optim_had</span><span class="p">(</span><span class="n">dataloader</span><span class="p">,</span> <span class="n">root</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes image that ranks the hadamard coefficients&quot;&quot;&quot;</span>
+    <span class="n">inputs</span><span class="p">,</span> <span class="n">classes</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloader</span><span class="p">))</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+    <span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">channels</span><span class="p">,</span> <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="n">tot_num</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataloader</span><span class="p">)</span> <span class="o">*</span> <span class="n">batch_size</span>
+    <span class="n">Cumulated_had</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">))</span>
+    <span class="c1"># Iterate over data.</span>
+    <span class="k">for</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+            <span class="n">H</span> <span class="o">=</span> <span class="n">wh</span><span class="o">.</span><span class="n">walsh_matrix</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">img</span><span class="p">))</span>
+            <span class="n">h_img</span> <span class="o">=</span> <span class="n">wh</span><span class="o">.</span><span class="n">walsh2</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+            <span class="n">h_img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">h_img</span><span class="p">)</span> <span class="o">/</span> <span class="n">tot_num</span>
+            <span class="n">Cumulated_had</span> <span class="o">+=</span> <span class="n">h_img</span>
+
+    <span class="n">Cumulated_had</span> <span class="o">=</span> <span class="n">Cumulated_had</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">Cumulated_had</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">root</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">x</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.npy&quot;</span><span class="p">,</span> <span class="n">Cumulated_had</span><span class="p">)</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">root</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">x</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.txt&quot;</span><span class="p">,</span> <span class="n">Cumulated_had</span><span class="p">)</span>
+    <span class="n">im</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">Cumulated_had</span><span class="p">)</span>
+    <span class="n">im</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">root</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">x</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.png&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Cumulated_had</span></div>
+
+
+
+<span class="c1"># %% What for? Still in use? Ask Antonio?</span>
+<div class="viewcode-block" id="stat_mean_coef_from_model">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.stat_mean_coef_from_model.html#spyrit.misc.statistics.stat_mean_coef_from_model">[docs]</a>
+<span class="k">def</span> <span class="nf">stat_mean_coef_from_model</span><span class="p">(</span><span class="n">dataloader</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">model_exp</span><span class="p">):</span>
+    <span class="c1"># A rediscuter avec Nicolas</span>
+    <span class="c1"># Get dimensions and estimate total number of images in the dataset</span>
+    <span class="n">inputs</span><span class="p">,</span> <span class="n">classes</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloader</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">ny</span><span class="p">,</span> <span class="n">nh</span><span class="p">)</span> <span class="o">=</span> <span class="n">mdt</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nh</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="c1">#</span>
+    <span class="k">for</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">trans</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">model_exp</span><span class="p">)</span>  <span class="c1"># .cpu()</span>
+        <span class="n">mean</span> <span class="o">=</span> <span class="n">mean</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">trans</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
+    <span class="n">mean_vect</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">mean</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()))</span>
+    <span class="c1"># mean = mean/mean.max()</span>
+    <span class="k">return</span> <span class="n">mean_vect</span></div>
+
+
+
+<div class="viewcode-block" id="mea_abs_model">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.mea_abs_model.html#spyrit.misc.statistics.mea_abs_model">[docs]</a>
+<span class="k">def</span> <span class="nf">mea_abs_model</span><span class="p">(</span><span class="n">dataloader</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">root</span><span class="p">):</span>
+    <span class="c1"># Get dimensions and estimate total number of images in the dataset</span>
+    <span class="n">inputs</span><span class="p">,</span> <span class="n">classes</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloader</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">nh</span><span class="p">)</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+    <span class="n">tot_num</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataloader</span><span class="p">)</span>
+    <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span><span class="p">)</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+    <span class="c1"># 1. Mean</span>
+
+    <span class="c1"># Init</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nh</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># Accumulate sum over all images in dataset</span>
+    <span class="k">for</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">trans</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">model</span><span class="p">))</span>  <span class="c1"># .cpu()</span>
+        <span class="n">mean</span> <span class="o">=</span> <span class="n">mean</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">trans</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
+        <span class="c1"># print</span>
+        <span class="n">n</span> <span class="o">+=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># print(f&#39;Mean:  {n} / (less than) {tot_num} images&#39;, end=&#39;\n&#39;)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Normalize</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">mean</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="n">ny</span><span class="p">)</span>
+    <span class="c1"># print(mean.size())</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
+    <span class="c1"># torch.save(mean, root+&#39;Average_{}x{}&#39;.format(nx,ny)+&#39;.pth&#39;)</span>
+
+    <span class="n">path</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;W_Average_abs_Nx</span><span class="si">{}</span><span class="s2">_Nh</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">nh</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.npy&quot;</span><span class="p">)</span>
+    <span class="c1"># if not root.exists():</span>
+    <span class="c1">#    root.mkdir()</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">mean</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">mean</span></div>
+
+
+
+<div class="viewcode-block" id="stat_model">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.statistics.stat_model.html#spyrit.misc.statistics.stat_model">[docs]</a>
+<span class="k">def</span> <span class="nf">stat_model</span><span class="p">(</span><span class="n">dataloader</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">root</span><span class="p">):</span>
+    <span class="c1"># Get dimensions and estimate total number of images in the dataset</span>
+    <span class="n">inputs</span><span class="p">,</span> <span class="n">classes</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloader</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">nh</span><span class="p">)</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+    <span class="n">tot_num</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataloader</span><span class="p">)</span>
+    <span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span><span class="p">)</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+    <span class="c1"># 1. Mean</span>
+
+    <span class="c1"># Init</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nh</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># Accumulate sum over all images in dataset</span>
+    <span class="k">for</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">trans</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>  <span class="c1"># .cpu()</span>
+        <span class="n">mean</span> <span class="o">=</span> <span class="n">mean</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">trans</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
+        <span class="c1"># print</span>
+        <span class="n">n</span> <span class="o">+=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># print(f&#39;Mean:  {n} / (less than) {tot_num} images&#39;, end=&#39;\n&#39;)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Normalize</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">mean</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="n">ny</span><span class="p">)</span>
+    <span class="c1"># print(mean.size())</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
+    <span class="c1"># torch.save(mean, root+&#39;Average_{}x{}&#39;.format(nx,ny)+&#39;.pth&#39;)</span>
+
+    <span class="n">path</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;W_Average_Nx</span><span class="si">{}</span><span class="s2">_Nh</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">nh</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.npy&quot;</span><span class="p">)</span>
+    <span class="c1"># if not root.exists():</span>
+    <span class="c1">#    root.mkdir()</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">mean</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+
+    <span class="c1"># 2. Covariance</span>
+
+    <span class="c1"># Init</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">cov</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nh</span><span class="p">,</span> <span class="n">nh</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">cov</span> <span class="o">=</span> <span class="n">cov</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># Accumulate (im - mu)*(im - mu)^T over all images in dataset</span>
+    <span class="k">for</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">trans</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+        <span class="c1"># print(trans.size())</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ny</span><span class="p">):</span>
+            <span class="n">im_mu</span> <span class="o">=</span> <span class="n">trans</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">mean</span>
+
+            <span class="n">cov</span> <span class="o">+=</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">im_mu</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">nh</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">im_mu</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nh</span><span class="p">))</span>
+        <span class="c1"># print</span>
+        <span class="n">n</span> <span class="o">+=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="c1"># print(f&#39;Cov:  {n} / (less than) {tot_num} images&#39;, end=&#39;\n&#39;)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Normalize</span>
+    <span class="n">cov</span> <span class="o">=</span> <span class="n">cov</span> <span class="o">/</span> <span class="p">((</span><span class="n">n</span> <span class="o">*</span> <span class="n">ny</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># torch.save(cov, root+&#39;Cov_{}x{}&#39;.format(nx,ny)+&#39;.pth&#39;) # todo?</span>
+
+    <span class="n">path</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;W_Cov_Nx</span><span class="si">{}</span><span class="s2">_Nh</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">nh</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.npy&quot;</span><span class="p">)</span>
+    <span class="c1"># if not root.exists():</span>
+    <span class="c1">#    root.mkdir()</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">cov</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

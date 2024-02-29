@@ -1,0 +1,101 @@
+
+
+Examples using ``spyrit.misc.disp.add_colorbar``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+.. start-sphx-glr-thumbnails
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to simulate measurements using the spyrit.core submodule, which is base...">
+
+.. only:: html
+
+  .. image:: /gallery/images/thumb/sphx_glr_tuto_01_acquisition_operators_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_gallery_tuto_01_acquisition_operators.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">01. Acquisition operators</div>
+    </div>
+
+
+.. only:: not html
+
+ * :ref:`sphx_glr_gallery_tuto_01_acquisition_operators.py`
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to simulate measurements and perform image reconstruction using PinvNet...">
+
+.. only:: html
+
+  .. image:: /gallery/images/thumb/sphx_glr_tuto_03_pseudoinverse_cnn_linear_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_gallery_tuto_03_pseudoinverse_cnn_linear.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">03. Pseudoinverse solution + CNN denoising</div>
+    </div>
+
+
+.. only:: not html
+
+ * :ref:`sphx_glr_gallery_tuto_03_pseudoinverse_cnn_linear.py`
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial is a continuation of the Acquisition operators tutorial &lt;tuto_acquisition_operato...">
+
+.. only:: html
+
+  .. image:: /gallery/images/thumb/sphx_glr_tuto_05_acquisition_split_measurements_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_gallery_tuto_05_acquisition_split_measurements.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">05. Acquisition operators (advanced) - Split measurements and subsampling</div>
+    </div>
+
+
+.. only:: not html
+
+ * :ref:`sphx_glr_gallery_tuto_05_acquisition_split_measurements.py`
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to perform image reconstruction using DCNet (data completion network) w...">
+
+.. only:: html
+
+  .. image:: /gallery/images/thumb/sphx_glr_tuto_06_dcnet_split_measurements_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_gallery_tuto_06_dcnet_split_measurements.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">06. DCNet solution for split measurements</div>
+    </div>
+
+
+.. only:: not html
+
+ * :ref:`sphx_glr_gallery_tuto_06_dcnet_split_measurements.py`
+
+.. raw:: html
+
+    </div>

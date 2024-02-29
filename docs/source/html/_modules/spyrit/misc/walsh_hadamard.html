@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.misc.walsh_hadamard &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/thumbnail.css" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../../../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">spyrit.misc.walsh_hadamard</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <h1>Source code for spyrit.misc.walsh_hadamard</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="sd">&quot;&quot;&quot; Walsh-ordered Hadamard tranforms.</span>
+
+<span class="sd">Longer description of this module.</span>
+
+<span class="sd">This program is free software: you can redistribute it and/or modify it under</span>
+<span class="sd">the terms of the GNU General Public License as published by the Free Software</span>
+<span class="sd">Foundation, either version 3 of the License, or (at your option) any later</span>
+<span class="sd">version.</span>
+
+<span class="sd">This program is distributed in the hope that it will be useful, but WITHOUT</span>
+<span class="sd">ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS</span>
+<span class="sd">FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.</span>
+
+<span class="sd">You should have received a copy of the GNU General Public License along with</span>
+<span class="sd">this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># __author__ = &quot;One solo developer&quot;</span>
+<span class="n">__authors__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Sebastien Crombez&quot;</span><span class="p">,</span> <span class="s2">&quot;Nicolas Ducros&quot;</span><span class="p">]</span>
+<span class="n">__contact__</span> <span class="o">=</span> <span class="s2">&quot;nicolas.ducros@creatis.insa-lyon.fr&quot;</span>
+<span class="c1"># __copyright__ = &quot;Copyright $YEAR, $COMPANY_NAME&quot;</span>
+<span class="c1"># __credits__ = [&quot;One developer&quot;, &quot;And another one&quot;, &quot;etc&quot;]</span>
+<span class="n">__date__</span> <span class="o">=</span> <span class="s2">&quot;2020/01/15&quot;</span>
+<span class="n">__deprecated__</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="c1"># __email__ =  &quot;nicolas.ducros@creatis.insa-lyon.fr&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;GPLv3&quot;</span>
+<span class="n">__maintainer__</span> <span class="o">=</span> <span class="s2">&quot;developer&quot;</span>
+<span class="n">__status__</span> <span class="o">=</span> <span class="s2">&quot;Development&quot;</span>
+<span class="c1"># __version__ = &quot;0.0.1&quot;</span>
+
+
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy.linalg</span> <span class="kn">import</span> <span class="n">hadamard</span>
+<span class="kn">from</span> <span class="nn">sympy.combinatorics.graycode</span> <span class="kn">import</span> <span class="n">GrayCode</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+
+
+<span class="c1"># ------------------------------------------------------------------------------</span>
+<span class="c1"># -- To generate sequency (aka Walsh) order --------------------------------------</span>
+<span class="c1"># ------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="b2_to_b10">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.b2_to_b10.html#spyrit.misc.walsh_hadamard.b2_to_b10">[docs]</a>
+<span class="k">def</span> <span class="nf">b2_to_b10</span><span class="p">(</span><span class="n">l</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Convert a list of numbers in base 2 to base 10</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :math:`l` (list[str]): base2 numbers.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list[int]: base10 numbers</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+        <span class="n">l</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">l</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">l</span></div>
+
+
+
+<div class="viewcode-block" id="perm_matrix_from_ind">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.perm_matrix_from_ind.html#spyrit.misc.walsh_hadamard.perm_matrix_from_ind">[docs]</a>
+<span class="k">def</span> <span class="nf">perm_matrix_from_ind</span><span class="p">(</span><span class="n">l</span><span class="p">):</span>  <span class="c1"># generate a matrix of zero and ones from list of index</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N</span><span class="p">,</span> <span class="n">N</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">):</span>
+        <span class="n">P</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">l</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">P</span></div>
+
+
+
+<div class="viewcode-block" id="gray_code_permutation">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.gray_code_permutation.html#spyrit.misc.walsh_hadamard.gray_code_permutation">[docs]</a>
+<span class="k">def</span> <span class="nf">gray_code_permutation</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>  <span class="c1"># Generate the N grey code</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="n">graycode</span> <span class="o">=</span> <span class="n">GrayCode</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>
+    <span class="n">graycode_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">graycode</span><span class="o">.</span><span class="n">generate_gray</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">perm_matrix_from_ind</span><span class="p">(</span><span class="n">b2_to_b10</span><span class="p">((</span><span class="n">graycode_list</span><span class="p">)))</span></div>
+
+
+
+<div class="viewcode-block" id="gray_code_list">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.gray_code_list.html#spyrit.misc.walsh_hadamard.gray_code_list">[docs]</a>
+<span class="k">def</span> <span class="nf">gray_code_list</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>  <span class="c1"># Generate the N grey code permutation matrix</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="n">graycode</span> <span class="o">=</span> <span class="n">GrayCode</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>
+    <span class="n">graycode_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">graycode</span><span class="o">.</span><span class="n">generate_gray</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">b2_to_b10</span><span class="p">(</span><span class="n">graycode_list</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="bit_reverse_traverse">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.bit_reverse_traverse.html#spyrit.misc.walsh_hadamard.bit_reverse_traverse">[docs]</a>
+<span class="k">def</span> <span class="nf">bit_reverse_traverse</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>  <span class="c1"># internet function to generate bit reverse</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">assert</span> <span class="ow">not</span> <span class="n">n</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="s2">&quot;n must be a power of 2&quot;</span>  <span class="c1"># assert n is power of 2</span>
+
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">even_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
+        <span class="n">odd_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">even</span> <span class="ow">in</span> <span class="n">bit_reverse_traverse</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">even_index</span><span class="p">]):</span>
+            <span class="k">yield</span> <span class="n">even</span>
+        <span class="k">for</span> <span class="n">odd</span> <span class="ow">in</span> <span class="n">bit_reverse_traverse</span><span class="p">(</span><span class="n">a</span><span class="p">[</span><span class="n">odd_index</span><span class="p">]):</span>
+            <span class="k">yield</span> <span class="n">odd</span></div>
+
+
+
+<div class="viewcode-block" id="get_bit_reversed_list">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.get_bit_reversed_list.html#spyrit.misc.walsh_hadamard.get_bit_reversed_list">[docs]</a>
+<span class="k">def</span> <span class="nf">get_bit_reversed_list</span><span class="p">(</span><span class="n">l</span><span class="p">):</span>  <span class="c1"># from the internet</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+    <span class="n">indexs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">bit_reverse_traverse</span><span class="p">(</span><span class="n">indexs</span><span class="p">):</span>
+        <span class="n">b</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">l</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">b</span></div>
+
+
+
+<div class="viewcode-block" id="bit_reversed_matrix">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.bit_reversed_matrix.html#spyrit.misc.walsh_hadamard.bit_reversed_matrix">[docs]</a>
+<span class="k">def</span> <span class="nf">bit_reversed_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>  <span class="c1"># internet function to generate bit reverse</span>
+    <span class="n">br</span> <span class="o">=</span> <span class="n">bit_reversed_list</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">perm_matrix_from_ind</span><span class="p">(</span><span class="n">br</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="bit_reversed_list">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.bit_reversed_list.html#spyrit.misc.walsh_hadamard.bit_reversed_list">[docs]</a>
+<span class="k">def</span> <span class="nf">bit_reversed_list</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+    <span class="n">br</span> <span class="o">=</span> <span class="n">get_bit_reversed_list</span><span class="p">([</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)])</span>
+    <span class="k">return</span> <span class="n">br</span></div>
+
+
+
+<div class="viewcode-block" id="sequency_perm">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.sequency_perm.html#spyrit.misc.walsh_hadamard.sequency_perm">[docs]</a>
+<span class="k">def</span> <span class="nf">sequency_perm</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">ind</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Permute the rows of a matrix to get sequency order</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`X` (np.ndarray): n-by-m input matrix</span>
+
+<span class="sd">        :attr:`ind` : index list of length n</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-m input matrix</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">ind</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ind</span> <span class="o">=</span> <span class="n">sequency_perm_ind</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">))</span>
+
+    <span class="n">Y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="c1"># Y = X[ind,] # returns dtype = object ?!</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">Y</span><span class="p">[</span><span class="n">i</span><span class="p">,]</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">ind</span><span class="p">[</span><span class="n">i</span><span class="p">],]</span>
+    <span class="k">return</span> <span class="n">Y</span></div>
+
+
+
+<div class="viewcode-block" id="sequency_perm_torch">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.sequency_perm_torch.html#spyrit.misc.walsh_hadamard.sequency_perm_torch">[docs]</a>
+<span class="k">def</span> <span class="nf">sequency_perm_torch</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">ind</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Permute the last dimension of a tensor to get sequency order</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`X` (torch.tensor): -by-n input matrix</span>
+
+<span class="sd">        :attr:`ind` : index list of length n</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.tensor: -by-n input matrix</span>
+
+<span class="sd">    Example :</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])</span>
+<span class="sd">        &gt;&gt;&gt; x = x[None, None, :]</span>
+<span class="sd">        &gt;&gt;&gt; x = wh.sequency_perm_torch(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(x)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">ind</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ind</span> <span class="o">=</span> <span class="n">sequency_perm_ind</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">Y</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">ind</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">Y</span></div>
+
+
+
+<div class="viewcode-block" id="sequency_perm_matrix">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.sequency_perm_matrix.html#spyrit.misc.walsh_hadamard.sequency_perm_matrix">[docs]</a>
+<span class="k">def</span> <span class="nf">sequency_perm_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Return permutation matrix to get sequency from the natural order</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`n` (int): Order of the matrix, a power of two.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: A n-by-n permutation matrix</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Permutation matrix of order 8</span>
+
+<span class="sd">        &gt;&gt;&gt; print(sequency_perm_matrix(8))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">BR</span> <span class="o">=</span> <span class="n">bit_reversed_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">GC</span> <span class="o">=</span> <span class="n">gray_code_permutation</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">GC</span> <span class="o">@</span> <span class="n">BR</span></div>
+
+
+
+<div class="viewcode-block" id="sequency_perm_ind">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.sequency_perm_ind.html#spyrit.misc.walsh_hadamard.sequency_perm_ind">[docs]</a>
+<span class="k">def</span> <span class="nf">sequency_perm_ind</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Return permutation indices to get sequency from the natural order</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`n` (int): Order of the matrix, a power of two.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list:</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Permutation indices to get a Walsh matrix of order 8</span>
+
+<span class="sd">        &gt;&gt;&gt; print(sequency_perm_ind(8))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">perm_br</span> <span class="o">=</span> <span class="n">bit_reversed_list</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">perm_gc</span> <span class="o">=</span> <span class="n">gray_code_list</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">perm</span> <span class="o">=</span> <span class="p">[</span><span class="n">perm_br</span><span class="p">[</span><span class="n">perm_gc</span><span class="p">[</span><span class="n">k</span><span class="p">]]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">)]</span>
+
+    <span class="k">return</span> <span class="n">perm</span></div>
+
+
+
+<span class="c1"># ------------------------------------------------------------------------------</span>
+<span class="c1"># -- 1D Walsh/Hamadard matrix and transforms -----------------------------------</span>
+<span class="c1"># ------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="walsh_matrix">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh_matrix.html#spyrit.misc.walsh_hadamard.walsh_matrix">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return 1D Walsh-ordered Hadamard transform matrix</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        n (int): Order of the matrix, a power of two.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: A n-by-n array</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Walsh-ordered Hadamard matrix of order 8</span>
+
+<span class="sd">        &gt;&gt;&gt; print(walsh_matrix(8))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="n">sequency_perm_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">H</span> <span class="o">=</span> <span class="n">hadamard</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">P</span> <span class="o">@</span> <span class="n">H</span></div>
+
+
+
+<div class="viewcode-block" id="fwht">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.fwht.html#spyrit.misc.walsh_hadamard.fwht">[docs]</a>
+<span class="k">def</span> <span class="nf">fwht</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fast Walsh-Hadamard transform of x</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (np.ndarray): n-by-1 input signal, where n is a power of two.</span>
+<span class="sd">        order (bool, optional): True for sequency (default), False for natural.</span>
+<span class="sd">        order (list, optional): permutation indices.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-1 transformed signal</span>
+
+<span class="sd">    Example 1:</span>
+
+<span class="sd">        Fast sequency-ordered (i.e., Walsh) Hadamard transform</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = np.array([1, 3, 0, -1, 7, 5, 1, -2])</span>
+<span class="sd">        &gt;&gt;&gt; y = wh.fwht(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(y)</span>
+
+<span class="sd">    Example 2:</span>
+
+<span class="sd">        Fast Hadamard transform</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = np.array([1, 3, 0, -1, 7, 5, 1, -2])</span>
+<span class="sd">        &gt;&gt;&gt; y = wh.fwht(x, False)</span>
+<span class="sd">        &gt;&gt;&gt; print(y)</span>
+
+<span class="sd">    Example 3:</span>
+
+<span class="sd">        Permuted fast Hadamard transform</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = np.array([1, 3, 0, -1, 7, 5, 1, -2])</span>
+<span class="sd">        &gt;&gt;&gt; ind = [1, 0, 3, 2, 7, 4, 5, 6]</span>
+<span class="sd">        &gt;&gt;&gt; y = wh.fwht(x, ind)</span>
+<span class="sd">        &gt;&gt;&gt; print(y)</span>
+
+<span class="sd">    Example 4:</span>
+
+<span class="sd">        Comparison with Walsh-Hadamard transform via matrix-vector product</span>
+
+<span class="sd">        &gt;&gt;&gt; from spyrit.misc.walsh_hadamard import fwht, walsh_matrix</span>
+<span class="sd">        &gt;&gt;&gt; x = np.array([1, 3, 0, -1, 7, 5, 1, -2])</span>
+<span class="sd">        &gt;&gt;&gt; y1 = fwht(x)</span>
+<span class="sd">        &gt;&gt;&gt; H = walsh_matrix(8)</span>
+<span class="sd">        &gt;&gt;&gt; y2 = H @ x</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Diff = {np.linalg.norm(y1-y2)}&quot;)</span>
+
+<span class="sd">    Example 5:</span>
+
+<span class="sd">        Comparison with the fast Walsh-Hadamard transform from sympy</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; import sympy as sp</span>
+<span class="sd">        &gt;&gt;&gt; x = np.array([1, 3, 0, -1, 7, 5, 1, -2])</span>
+<span class="sd">        &gt;&gt;&gt; y1 = wh.fwht(x)</span>
+<span class="sd">        &gt;&gt;&gt; y2 = sp.fwht(x)</span>
+<span class="sd">        &gt;&gt;&gt; y3 = wh.sequency_perm(np.array(y2))</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Diff = {np.linalg.norm(y1-y3)}&quot;)</span>
+
+<span class="sd">    Example 6:</span>
+
+<span class="sd">        Computation times for a signal of length 2**12</span>
+
+<span class="sd">        &gt;&gt;&gt; import timeit</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = np.random.rand(2**12,1)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwht(x), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Fast Walsh transform, no ind (10x): {t:.3f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; ind = wh.sequency_perm_ind(len(x))</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwht(x,ind), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Fast Walsh transform, with ind (10x): {t:.3f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwht(x,False), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Fast Hadamard transform (10x): {t:.3f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; import sympy as sp</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: sp.fwht(x), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Fast Hadamard transform from sympy (10x): {t:.3f} seconds&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">while</span> <span class="n">h</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">h</span> <span class="o">*</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="n">h</span><span class="p">):</span>
+                <span class="n">u</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">j</span> <span class="o">+</span> <span class="n">h</span><span class="p">]</span>
+                <span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">u</span> <span class="o">+</span> <span class="n">v</span>
+                <span class="n">y</span><span class="p">[</span><span class="n">j</span> <span class="o">+</span> <span class="n">h</span><span class="p">]</span> <span class="o">=</span> <span class="n">u</span> <span class="o">-</span> <span class="n">v</span>
+        <span class="n">h</span> <span class="o">*=</span> <span class="mi">2</span>
+
+    <span class="c1"># Arbitrary order</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">order</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">sequency_perm</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">order</span><span class="p">)</span>
+    <span class="c1"># Sequency (aka Walsh) order</span>
+    <span class="k">elif</span> <span class="n">order</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">sequency_perm</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="c1"># Hadamard order, otherwise</span>
+    <span class="k">return</span> <span class="n">y</span></div>
+
+
+
+<span class="c1"># ------------------------------------------------------------------------------</span>
+<span class="c1"># -- G-matrix and G-transforms -------------------------------------------------</span>
+<span class="c1"># ------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="walsh_G_matrix">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh_G_matrix.html#spyrit.misc.walsh_hadamard.walsh_G_matrix">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh_G_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">H</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return Walsh-ordered Hadamard S-matrix of order n</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        n (int): Matrix order. n+1 should be a power of two.</span>
+<span class="sd">        H (np.ndarray, optional):</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-n array</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Walsh-ordered Hadamard G-matrix of order 7</span>
+
+<span class="sd">        &gt;&gt;&gt; print(walsh_G_matrix(7))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">math</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">1</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">+1 must be a power of two&quot;</span>
+
+    <span class="k">if</span> <span class="n">H</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">H</span> <span class="o">=</span> <span class="n">walsh_matrix</span><span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">H</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="mi">1</span><span class="p">:]</span></div>
+
+
+
+<div class="viewcode-block" id="walsh_G">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh_G.html#spyrit.misc.walsh_hadamard.walsh_G">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh_G</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">G</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the Walsh S-transform of x</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (np.ndarray): n-by-1 signal. n+1 should be a power of two.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-1 S-transformed signal</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Walsh-ordered S-transform of a 15-by-1 signal</span>
+
+<span class="sd">        &gt;&gt;&gt; x = np.random.rand(15,1)</span>
+<span class="sd">        &gt;&gt;&gt; s = walsh_S(x)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">G</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">walsh_G_matrix</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">G</span> <span class="o">@</span> <span class="n">x</span></div>
+
+
+
+<div class="viewcode-block" id="fwalsh_G">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.fwalsh_G.html#spyrit.misc.walsh_hadamard.fwalsh_G">[docs]</a>
+<span class="k">def</span> <span class="nf">fwalsh_G</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ind</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Fast Walsh G-transform of x</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`x` (np.ndarray): n-by-1 signal. n+1 should be a power of two.</span>
+
+<span class="sd">        :attr:`ind` (bool, optional): True for sequency (default)</span>
+
+<span class="sd">        :attr:`ind` (list, optional): permutation indices. This is faster than True</span>
+<span class="sd">                            when repeating the sequency-ordered transform</span>
+<span class="sd">                            multilple times.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-1 S-transformed signal</span>
+
+<span class="sd">    Example 1:</span>
+<span class="sd">        Walsh-ordered G-transform of a signal of length 7</span>
+
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; x = np.array([1, 3, 0, -1, 7, 5, 1])</span>
+<span class="sd">        &gt;&gt;&gt; s = wh.fwalsh_G(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(s)</span>
+
+<span class="sd">    Example 2:</span>
+<span class="sd">        Permuted fast G-transform</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = np.array([1, 3, 0, -1, 7, 5, 1])</span>
+<span class="sd">        &gt;&gt;&gt; ind = [1, 0, 3, 2, 7, 4, 5, 6]</span>
+<span class="sd">        &gt;&gt;&gt; y = wh.fwalsh_G(x, ind)</span>
+<span class="sd">        &gt;&gt;&gt; print(y)</span>
+
+<span class="sd">    Example 3:</span>
+<span class="sd">        Repeating the Walsh-ordered G-transform using input indices is faster</span>
+
+<span class="sd">        &gt;&gt;&gt; import timeit</span>
+<span class="sd">        &gt;&gt;&gt; x = np.random.rand(2**12-1,1)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwalsh_G(x), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;No indices as inputs (10x): {t:.3f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; ind = wh.sequency_perm_ind(len(x)+1)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwalsh_G(x,ind), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;With indices as inputs (10x): {t:.3f} seconds&quot;)</span>
+
+<span class="sd">    Example 4:</span>
+<span class="sd">        Comparison with G-transform via matrix-vector product</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = np.array([3, 0, -1, 7, 5, 1, -2])</span>
+<span class="sd">        &gt;&gt;&gt; y1 = wh.fwalsh_G(x)</span>
+<span class="sd">        &gt;&gt;&gt; y2 = wh.walsh_G(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Diff = {np.linalg.norm(y1-y2)}&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">fwht</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ind</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="k">return</span> <span class="n">y</span></div>
+
+
+
+<span class="c1"># ------------------------------------------------------------------------------</span>
+<span class="c1"># -- S-matrix and S-transforms -------------------------------------------------</span>
+<span class="c1"># ------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="walsh_S_matrix">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh_S_matrix.html#spyrit.misc.walsh_hadamard.walsh_S_matrix">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh_S_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">H</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return Walsh S-matrix of order n</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        n (int): Matrix order. n+1 should be a power of two.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-n array</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Walsh-ordered Hadamard S-matrix of order 7</span>
+
+<span class="sd">        &gt;&gt;&gt; print(walsh_S_matrix(7))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">walsh_G_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">H</span><span class="p">))</span> <span class="o">/</span> <span class="mi">2</span></div>
+
+
+
+<div class="viewcode-block" id="iwalsh_S_matrix">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.iwalsh_S_matrix.html#spyrit.misc.walsh_hadamard.iwalsh_S_matrix">[docs]</a>
+<span class="k">def</span> <span class="nf">iwalsh_S_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">H</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return inverse Walsh S-matrix of order n</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        n (int): Matrix order. n+1 should be a power of two.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-n array</span>
+
+<span class="sd">    Example 1:</span>
+<span class="sd">        Inverse of the Walsh S-matrix of order 7</span>
+
+<span class="sd">        &gt;&gt;&gt; print(iwalsh_S_matrix(7))</span>
+
+<span class="sd">    Example 2:</span>
+<span class="sd">        Check the inverse of the Walsh S-matrix of order 7</span>
+<span class="sd">        &gt;&gt;&gt; print(iwalsh_S_matrix(7) @ walsh_S_matrix(7))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">2</span> <span class="o">*</span> <span class="n">walsh_G_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="walsh_S">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh_S.html#spyrit.misc.walsh_hadamard.walsh_S">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh_S</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">S</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the Walsh S-transform of x</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (np.ndarray): n-by-1 signal. n+1 should be a power of two.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-1 S-transformed signal</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Walsh-ordered S-transform of a 15-by-1 signal</span>
+
+<span class="sd">        &gt;&gt;&gt; x = np.random.rand(15,1)</span>
+<span class="sd">        &gt;&gt;&gt; s = walsh_S(x)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">S</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">S</span> <span class="o">=</span> <span class="n">walsh_S_matrix</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">S</span> <span class="o">@</span> <span class="n">x</span></div>
+
+
+
+<div class="viewcode-block" id="iwalsh_S">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.iwalsh_S.html#spyrit.misc.walsh_hadamard.iwalsh_S">[docs]</a>
+<span class="k">def</span> <span class="nf">iwalsh_S</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">T</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the inverse Walsh S-transform of s</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (np.ndarray): n-by-1 signal. n+1 should be a power of two.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-1 inverse transformed signal</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Inverse S-transform of a 4095-by-1 signal</span>
+
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; x = np.random.rand(4095,1)</span>
+<span class="sd">        &gt;&gt;&gt; s = wh.walsh_S(x)</span>
+<span class="sd">        &gt;&gt;&gt; y = wh.iwalsh_S(s)</span>
+<span class="sd">        &gt;&gt;&gt; err = np.linalg.norm(1-y/x)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&#39;Error: {err}&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">T</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">iwalsh_S_matrix</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">T</span> <span class="o">@</span> <span class="n">s</span></div>
+
+
+
+<div class="viewcode-block" id="fwalsh_S">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.fwalsh_S.html#spyrit.misc.walsh_hadamard.fwalsh_S">[docs]</a>
+<span class="k">def</span> <span class="nf">fwalsh_S</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ind</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Fast Walsh S-transform of x</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`x` (np.ndarray): n-by-1 signal. n+1 should be a power of two.</span>
+
+<span class="sd">        :attr:`ind` (bool, optional): True for sequency (default)</span>
+
+<span class="sd">        :attr:`ind` (list, optional): permutation indices. This is faster than True</span>
+<span class="sd">                            when repeating the sequency-ordered transform</span>
+<span class="sd">                            multilple times.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-1 S-transformed signal</span>
+
+<span class="sd">    Example 1:</span>
+<span class="sd">        Walsh-ordered S-transform of a signal of length 7</span>
+
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; x = np.array([1, 3, 0, -1, 7, 5, 1])</span>
+<span class="sd">        &gt;&gt;&gt; s = wh.fwalsh_S(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(s)</span>
+
+<span class="sd">    Example 2:</span>
+<span class="sd">        Permuted fast S-transform</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = np.array([1, 3, 0, -1, 7, 5, 1])</span>
+<span class="sd">        &gt;&gt;&gt; ind = [1, 0, 3, 2, 7, 4, 5, 6]</span>
+<span class="sd">        &gt;&gt;&gt; y = wh.fwalsh_S(x, ind)</span>
+<span class="sd">        &gt;&gt;&gt; print(y)</span>
+
+<span class="sd">    Example 3:</span>
+<span class="sd">        Repeating the Walsh-ordered S-transform using input indices is faster</span>
+
+<span class="sd">        &gt;&gt;&gt; import timeit</span>
+<span class="sd">        &gt;&gt;&gt; x = np.random.rand(2**12-1,1)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwalsh_S(x), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;No indices as inputs (10x): {t:.3f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; ind = wh.sequency_perm_ind(len(x)+1)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwalsh_S(x,ind), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;With indices as inputs (10x): {t:.3f} seconds&quot;)</span>
+
+<span class="sd">    Example 4:</span>
+<span class="sd">        Comparison with S-transform via matrix-vector product</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = np.array([3, 0, -1, 7, 5, 1, -2])</span>
+<span class="sd">        &gt;&gt;&gt; y1 = wh.fwalsh_S(x)</span>
+<span class="sd">        &gt;&gt;&gt; y2 = wh.walsh_S(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Diff = {np.linalg.norm(y1-y2)}&quot;)</span>
+
+<span class="sd">    Example 5:</span>
+<span class="sd">        Computation times for a signal of length 2**12-1</span>
+
+<span class="sd">        &gt;&gt;&gt; import timeit</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = np.random.rand(2**14-1,1)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwalsh_S(x), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Fast transform, no ind (10x): {t:.3f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; ind = wh.sequency_perm_ind(len(x)+1)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwalsh_S(x,ind), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Fast transform, with ind (10x): {t:.3f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; S = wh.walsh_S_matrix(len(x))</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.walsh_S(x,S), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Naive transform (10x): {t:.3f} seconds&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">fwalsh_G</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ind</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="n">j</span> <span class="o">-</span> <span class="n">s</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="k">return</span> <span class="n">s</span></div>
+
+
+
+<div class="viewcode-block" id="ifwalsh_S">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.ifwalsh_S.html#spyrit.misc.walsh_hadamard.ifwalsh_S">[docs]</a>
+<span class="k">def</span> <span class="nf">ifwalsh_S</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">ind</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Inverse fast Walsh S-transform of s</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`x` (np.ndarray): n-by-1 signal. n+1 should be a power of two.</span>
+
+<span class="sd">        :attr:`ind` (bool, optional): True for sequency (default).</span>
+
+<span class="sd">        :attr:`ind` (list, optional): permutation indices. This is faster than True</span>
+<span class="sd">                            when repeating the sequency-ordered transform</span>
+<span class="sd">                            multilple times.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-1 inverse transformed signal</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Inverse S-transform of a 15-by-1 signal</span>
+
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; x = np.array([1, 3, 0, -1, 7, 5, 1])</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;signal: {x}&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; s = wh.fwalsh_S(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;s-transform: {s}&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; y = wh.ifwalsh_S(s)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;inverse s-transform: {y}&quot;)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">fwalsh_G</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">ind</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">x</span></div>
+
+
+
+<span class="c1"># ------------------------------------------------------------------------------</span>
+<span class="c1"># -- 2D transforms -------------------------------------------------------------</span>
+<span class="c1"># ------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="walsh2_matrix">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh2_matrix.html#spyrit.misc.walsh_hadamard.walsh2_matrix">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh2_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return Walsh-ordered Hadamard matrix in 2D</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        n (int): Order of the matrix, which must be a power of two.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        H (np.ndarray): A n*n-by-n*n matrix</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">H1d</span> <span class="o">=</span> <span class="n">walsh_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">kron</span><span class="p">(</span><span class="n">H1d</span><span class="p">,</span> <span class="n">H1d</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="walsh2">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh2.html#spyrit.misc.walsh_hadamard.walsh2">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh2</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">H</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Return 2D Walsh-ordered Hadamard transform of an image :math:`H^\top X H`</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        X (np.ndarray): image as a 2d array. The size is a power of two.</span>
+<span class="sd">        H (np.ndarray, optional): 1D Walsh-ordered Hadamard transformation matrix</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: Hadamard transformed image as a 2D array.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">H</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">H</span> <span class="o">=</span> <span class="n">walsh_matrix</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">X</span><span class="p">),</span> <span class="n">H</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="iwalsh2">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.iwalsh2.html#spyrit.misc.walsh_hadamard.iwalsh2">[docs]</a>
+<span class="k">def</span> <span class="nf">iwalsh2</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">H</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return 2D inverse Walsh-ordered Hadamard transform of an image</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        X (np.ndarray): Image as a 2D array. The image is square and its size is a power of two.</span>
+<span class="sd">        H (np.ndarray, optional): 1D inverse Walsh-ordered Hadamard transformation matrix</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: Inverse Hadamard transformed image as a 2D array.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">H</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">H</span> <span class="o">=</span> <span class="n">walsh_matrix</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">walsh2</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span></div>
+
+
+
+<div class="viewcode-block" id="fwalsh2_S">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.fwalsh2_S.html#spyrit.misc.walsh_hadamard.fwalsh2_S">[docs]</a>
+<span class="k">def</span> <span class="nf">fwalsh2_S</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">ind</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fast Walsh S-transform of X in &quot;2D&quot;</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (np.ndarray): n-by-n signal. n**2 should be a power of two.</span>
+<span class="sd">        ind (bool, optional): True for sequency (default)</span>
+<span class="sd">        ind (list, optional): permutation indices.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-1 S-transformed signal</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; X = np.array([[1, 3, 0, 8],[7, 5, 1, 2],[2, 3, 6, 1],[4, 6, 8, 0]])</span>
+<span class="sd">        &gt;&gt;&gt; wh.fwalsh2_S(X)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">walsh2_S_unfold</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">fwalsh_S</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ind</span><span class="p">)</span>
+    <span class="n">S</span> <span class="o">=</span> <span class="n">walsh2_S_fold</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">S</span></div>
+
+
+
+<div class="viewcode-block" id="ifwalsh2_S">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.ifwalsh2_S.html#spyrit.misc.walsh_hadamard.ifwalsh2_S">[docs]</a>
+<span class="k">def</span> <span class="nf">ifwalsh2_S</span><span class="p">(</span><span class="n">Y</span><span class="p">,</span> <span class="n">ind</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Inverse Fast Walsh S-transform of Y in &quot;2D&quot;</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`Y` (np.ndarray): n-by-n signal. n**2 should be a power of two.</span>
+
+<span class="sd">        :attr:`ind` (bool, optional): True for sequency (default)</span>
+
+<span class="sd">        :attr:`ind` (list, optional): permutation indices.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-1 S-transformed signal</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; X = np.array([[1, 3, 0, 8],[7, 5, 1, 2],[2, 3, 6, 1],[4, 6, 8, 0]])</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;image:\n {X}&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; Y = wh.fwalsh2_S(X)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;s-transform:\n {Y}&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; Z = wh.ifwalsh2_S(Y)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;inverse s-transform:\n {Z}&quot;)</span>
+
+<span class="sd">        Note that the first pixel is not meaningful and arbitrily set to 0.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">walsh2_S_unfold</span><span class="p">(</span><span class="n">Y</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">ifwalsh_S</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ind</span><span class="p">)</span>
+    <span class="n">S</span> <span class="o">=</span> <span class="n">walsh2_S_fold</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">S</span></div>
+
+
+
+<div class="viewcode-block" id="walsh2_S">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh2_S.html#spyrit.misc.walsh_hadamard.walsh2_S">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh2_S</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">S</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fast Walsh S-transform of X in &quot;2D&quot;</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (np.ndarray): n-by-n signal. n**2 should be a power of two.</span>
+<span class="sd">        ind (bool, optional): True for sequency (default)</span>
+<span class="sd">        ind (list, optional): permutation indices.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-1 S-transformed signal</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; X = np.array([[1, 3, 0, 8],[7, 5, 1, 2],[2, 3, 6, 1],[4, 6, 8, 0]])</span>
+<span class="sd">        &gt;&gt;&gt; wh.walsh2_S(X)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">walsh2_S_unfold</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">walsh_S</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">S</span><span class="p">)</span>
+    <span class="n">Y</span> <span class="o">=</span> <span class="n">walsh2_S_fold</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Y</span></div>
+
+
+
+<div class="viewcode-block" id="iwalsh2_S">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.iwalsh2_S.html#spyrit.misc.walsh_hadamard.iwalsh2_S">[docs]</a>
+<span class="k">def</span> <span class="nf">iwalsh2_S</span><span class="p">(</span><span class="n">Y</span><span class="p">,</span> <span class="n">T</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Inverse Fast Walsh S-transform of Y in &quot;2D&quot;</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`Y` (np.ndarray): n-by-n signal. n**2 should be a power of two.</span>
+
+<span class="sd">        :attr:`T` (np.ndarray): Inverse S-matrix</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-1 S-transformed signal</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; X = np.array([[1, 3, 0, 8],[7, 5, 1, 2],[2, 3, 6, 1],[4, 6, 8, 0]])</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;image:\n {X}&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; Y = wh.walsh2_S(X)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;s-transform:\n {Y}&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; Z = wh.iwalsh2_S(Y)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;inverse s-transform:\n {Z}&quot;)</span>
+
+<span class="sd">        Note that the first pixel is not meaningful and arbitrily set to 0.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">walsh2_S_unfold</span><span class="p">(</span><span class="n">Y</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">iwalsh_S</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">walsh2_S_fold</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">X</span></div>
+
+
+
+<div class="viewcode-block" id="walsh2_S_matrix">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh2_S_matrix.html#spyrit.misc.walsh_hadamard.walsh2_S_matrix">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh2_S_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return Walsh S-matrix in &quot;2d&quot;</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        n (int): Order of the matrix. n must be a power of two.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        S (np.ndarray): (n*n-1)-by-(n*n-1) matrix</span>
+
+<span class="sd">    Example 1:</span>
+<span class="sd">        &gt;&gt;&gt; S = walsh2_S_matrix(4)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">H</span> <span class="o">=</span> <span class="n">walsh2_matrix</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">S</span> <span class="o">=</span> <span class="n">walsh_S_matrix</span><span class="p">(</span><span class="n">n</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">S</span></div>
+
+
+
+<div class="viewcode-block" id="walsh2_S_fold">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh2_S_fold.html#spyrit.misc.walsh_hadamard.walsh2_S_fold">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh2_S_fold</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fold a signal to get a &quot;2d&quot; s-transformed representation</span>
+
+<span class="sd">    Note: the top left (first) pixel is arbitrarily set to zero</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (np.ndarray): N-by- vector. N is such that N+1 = n*n, where n is a</span>
+<span class="sd">                        power of two. N = 2**(2b) - 1, where b is an integer</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        X (np.ndarray): n-by-n matrix</span>
+
+<span class="sd">    Example 1:</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; S = wh.walsh2_S_matrix(4)</span>
+<span class="sd">        &gt;&gt;&gt; X = wh.walsh2_S_fold(S[2,:])</span>
+<span class="sd">        &gt;&gt;&gt; print(X)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span>
+    <span class="k">assert</span> <span class="n">math</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">%</span> <span class="mi">1</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;N+1 = n*n, where n=</span><span class="si">{</span><span class="n">n</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> must be a power of two&quot;</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">X</span></div>
+
+
+
+<div class="viewcode-block" id="walsh2_S_unfold">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh2_S_unfold.html#spyrit.misc.walsh_hadamard.walsh2_S_unfold">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh2_S_unfold</span><span class="p">(</span><span class="n">X</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Unfold a signal from a &quot;2d&quot; s-transformed representation</span>
+
+<span class="sd">    Note: the top left (first) pixel is arbitrarily set to zero</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        X (np.ndarray): n-by-m image.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        X (np.ndarray): (n*n-1)-by-1 signal</span>
+
+<span class="sd">    Example 1:</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; X = np.array([[1, 3, 0, 8],[7, 5, 1, 2]])</span>
+<span class="sd">        &gt;&gt;&gt; wh.walsh2_S_unfold(X)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="k">return</span> <span class="n">x</span></div>
+
+
+
+<span class="c1"># ------------------------------------------------------------------------------</span>
+<span class="c1"># -- PyTorch functions ---------------------------------------------------------</span>
+<span class="c1"># ------------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="fwht_torch">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.fwht_torch.html#spyrit.misc.walsh_hadamard.fwht_torch">[docs]</a>
+<span class="k">def</span> <span class="nf">fwht_torch</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fast Walsh-Hadamard transform of x</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (np.ndarray): -by-n input signal, where n is a power of two.</span>
+<span class="sd">        order (bool, optional): True for sequency (default), False for natural.</span>
+<span class="sd">        order (list, optional): permutation indices.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        np.ndarray: n-by-1 transformed signal</span>
+
+<span class="sd">    Example 1:</span>
+<span class="sd">        Fast sequency-ordered (i.e., Walsh) Hadamard transform</span>
+
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])</span>
+<span class="sd">        &gt;&gt;&gt; x = x[None,:]</span>
+<span class="sd">        &gt;&gt;&gt; y = wh.fwht_torch(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(y)</span>
+
+<span class="sd">    Example 2:</span>
+<span class="sd">        Fast Hadamard transform</span>
+
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])</span>
+<span class="sd">        &gt;&gt;&gt; x = x[None,:]</span>
+<span class="sd">        &gt;&gt;&gt; y = wh.fwht_torch(x, False)</span>
+<span class="sd">        &gt;&gt;&gt; print(y)</span>
+
+<span class="sd">    Example 3:</span>
+<span class="sd">        Permuted fast Hadamard transform</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])</span>
+<span class="sd">        &gt;&gt;&gt; ind = [1, 0, 3, 2, 7, 4, 5, 6]</span>
+<span class="sd">        &gt;&gt;&gt; y = wh.fwht_torch(x, ind)</span>
+<span class="sd">        &gt;&gt;&gt; print(y)</span>
+
+<span class="sd">    Example 4:</span>
+<span class="sd">        Comparison with the numpy transform</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = np.array([1, 3, 0, -1, 7, 5, 1, -2])</span>
+<span class="sd">        &gt;&gt;&gt; y_np = wh.fwht(x)</span>
+<span class="sd">        &gt;&gt;&gt; x_torch = torch.from_numpy(x).to(torch.device(&#39;cuda:0&#39;))</span>
+<span class="sd">        &gt;&gt;&gt; y_torch = wh.fwht_torch(x_torch)</span>
+<span class="sd">        &gt;&gt;&gt; print(y_np)</span>
+<span class="sd">        &gt;&gt;&gt; print(y_torch)</span>
+
+
+<span class="sd">    Example 5:</span>
+<span class="sd">        Computation times for a signal of length 2**12</span>
+
+<span class="sd">        &gt;&gt;&gt; import timeit</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = np.random.rand(2**12,1)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwht(x,False), number=200)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Fast Hadamard transform numpy CPU (200x): {t:.4f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; x_torch = torch.from_numpy(x)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwht_torch(x_torch,False), number=200)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Fast Hadamard transform pytorch CPU (200x): {t:.4f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; x_torch = torch.from_numpy(x).to(torch.device(&#39;cuda:0&#39;))</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwht_torch(x_torch,False), number=200)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Fast Hadamard transform pytorch GPU (200x): {t:.4f} seconds&quot;)</span>
+
+<span class="sd">    Example 6:</span>
+<span class="sd">        CPU vs GPU: Computation times for 512 signals of length 2**12</span>
+
+<span class="sd">        &gt;&gt;&gt; import timeit</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x_cpu = torch.rand(512,2**12)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwht_torch(x_cpu,False), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Fast Hadamard transform pytorch CPU (10x): {t:.4f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; x_gpu = x_cpu.to(torch.device(&#39;cuda:0&#39;))</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwht_torch(x_gpu,False), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Fast Hadamard transform pytorch GPU (10x): {t:.4f} seconds&quot;)</span>
+
+<span class="sd">    Example 7:</span>
+<span class="sd">        Repeating the Walsh-ordered transform using input indices is faster</span>
+
+<span class="sd">        &gt;&gt;&gt; import timeit</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.rand(256,2**12).to(torch.device(&#39;cuda:0&#39;))</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwht_torch(x), number=100)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;No indices as inputs (100x): {t:.3f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; ind = wh.sequency_perm_ind(x.shape[-1])</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwht_torch(x,ind), number=100)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;With indices as inputs (100x): {t:.3f} seconds&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">m</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">n</span><span class="p">))</span>
+    <span class="k">assert</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="n">m</span><span class="p">,</span> <span class="s2">&quot;n must be a power of 2&quot;</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">m</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span> <span class="o">+</span> <span class="n">y</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="p">:],</span> <span class="n">y</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">y</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span>
+        <span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># Arbitrary order</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">order</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">sequency_perm_torch</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">order</span><span class="p">)</span>
+    <span class="c1"># Sequency (aka Walsh) order</span>
+    <span class="k">elif</span> <span class="n">order</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">sequency_perm_torch</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="c1"># Hadamard order, otherwise</span>
+    <span class="k">return</span> <span class="n">y</span></div>
+
+
+
+<div class="viewcode-block" id="fwalsh_G_torch">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.fwalsh_G_torch.html#spyrit.misc.walsh_hadamard.fwalsh_G_torch">[docs]</a>
+<span class="k">def</span> <span class="nf">fwalsh_G_torch</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ind</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Fast Walsh G-transform of x</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`x` (torch.tensor):  input signal with shape :math:`(*, n)`. :math:`n`+1 should be a power of two.</span>
+
+<span class="sd">        :attr:`ind` (bool, optional): True for sequency (default)</span>
+
+<span class="sd">        :attr:`ind` (list, optional): permutation indices. This is faster than True when repeating the sequency-ordered transform multilple times.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.tensor: S-transformed signal with shape :math:`(*, n)`.</span>
+
+<span class="sd">    Example 1:</span>
+<span class="sd">        Walsh-ordered G-transform of a signal of length 7</span>
+
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.tensor([1, 3, 0, -1, 7, 5, 1])</span>
+<span class="sd">        &gt;&gt;&gt; s = wh.fwalsh_G_torch(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(s)</span>
+
+<span class="sd">    Example 2:</span>
+<span class="sd">        Permuted fast G-transform</span>
+
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.tensor([1, 3, 0, -1, 7, 5, 1])</span>
+<span class="sd">        &gt;&gt;&gt; ind = [0, 1, 3, 2, 7, 4, 5, 6]</span>
+<span class="sd">        &gt;&gt;&gt; y = wh.fwalsh_G_torch(x, ind)</span>
+<span class="sd">        &gt;&gt;&gt; print(y)</span>
+
+<span class="sd">    Example 3:</span>
+<span class="sd">        Comparison with the numpy transform</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = np.array([1, 3, 0, -1, 7, 5, 1])</span>
+<span class="sd">        &gt;&gt;&gt; y_np = wh.fwalsh_G(x)</span>
+<span class="sd">        &gt;&gt;&gt; x_torch = torch.from_numpy(x).to(torch.device(&#39;cuda:0&#39;))</span>
+<span class="sd">        &gt;&gt;&gt; y_torch = wh.fwalsh_G_torch(x_torch)</span>
+<span class="sd">        &gt;&gt;&gt; print(y_np)</span>
+<span class="sd">        &gt;&gt;&gt; print(y_torch)</span>
+
+<span class="sd">    Example 3:</span>
+<span class="sd">        Repeating the Walsh-ordered G-transform using input indices is faster</span>
+
+<span class="sd">        &gt;&gt;&gt; import timeit</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.rand(512,2**12-1, device=torch.device(&#39;cuda:0&#39;))</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwalsh_G_torch(x), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;No indices as inputs (10x): {t:.3f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; ind = wh.sequency_perm_ind(x.shape[-1]+1)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwalsh_G_torch(x,ind), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;With indices as inputs (10x): {t:.3f} seconds&quot;)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Concatenate with zeros</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">z</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">z</span><span class="p">,</span> <span class="n">x</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># Fast Hadamard transform</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">fwht_torch</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ind</span><span class="p">)</span>
+    <span class="c1"># Remove 0th entries</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span>
+    <span class="k">return</span> <span class="n">y</span></div>
+
+
+
+<div class="viewcode-block" id="fwalsh_S_torch">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.fwalsh_S_torch.html#spyrit.misc.walsh_hadamard.fwalsh_S_torch">[docs]</a>
+<span class="k">def</span> <span class="nf">fwalsh_S_torch</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ind</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Fast Walsh S-transform of x</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`x` (torch.tensor):  input signal with shape `(*, n)`. `n`+1</span>
+<span class="sd">                            should be a power of two.</span>
+
+<span class="sd">        :attr:`ind` (bool, optional): True for sequency (default)</span>
+
+<span class="sd">        :attr:`ind` (list, optional): permutation indices. This is faster than True</span>
+<span class="sd">                            when repeating the sequency-ordered transform</span>
+<span class="sd">                            multilple times.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.tensor: -by-n S-transformed signal</span>
+
+<span class="sd">    Example 1:</span>
+<span class="sd">        Walsh-ordered S-transform of a signal of length 7</span>
+
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.tensor([1, 3, 0, -1, 7, 5, 1])</span>
+<span class="sd">        &gt;&gt;&gt; s = wh.fwalsh_S_torch(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(s)</span>
+
+
+<span class="sd">    Example 2:</span>
+<span class="sd">        Repeating the Walsh-ordered S-transform using input indices is faster</span>
+
+<span class="sd">        &gt;&gt;&gt; import timeit</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.rand(512, 2**14-1, device=torch.device(&#39;cuda:0&#39;))</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwalsh_S_torch(x), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;No indices as inputs (10x): {t:.3f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; ind = wh.sequency_perm_ind(x.shape[-1]+1)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwalsh_S_torch(x,ind), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;With indices as inputs (10x): {t:.3f} seconds&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">fwalsh_G_torch</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ind</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="n">j</span> <span class="o">-</span> <span class="n">s</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="k">return</span> <span class="n">s</span></div>
+
+
+
+<div class="viewcode-block" id="fwalsh2_S_torch">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.fwalsh2_S_torch.html#spyrit.misc.walsh_hadamard.fwalsh2_S_torch">[docs]</a>
+<span class="k">def</span> <span class="nf">fwalsh2_S_torch</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">ind</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>  <span class="c1"># not validated!</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fast Walsh S-transform of X in &quot;2D&quot;</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`X` (torch.tensor):  input image with shape `(*, n, n)`. `n`**2</span>
+<span class="sd">                                    should be a power of two.</span>
+<span class="sd">        :attr:`ind` (bool, optional): True for sequency (default)</span>
+<span class="sd">        :attr:`ind` (list, optional): permutation indices.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.tensor: S-transformed signal with shape `(*, n, n)`</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; X = torch.tensor([[1, 3, 0, 8],[7, 5, 1, 2],[2, 3, 6, 1],[4, 6, 8, 0]])</span>
+<span class="sd">        &gt;&gt;&gt; wh.fwalsh2_S_torch(X)</span>
+
+<span class="sd">    Example 2:</span>
+<span class="sd">        Repeating the Walsh-ordered S-transform using input indices is faster</span>
+
+<span class="sd">        &gt;&gt;&gt; import timeit</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; X = torch.rand(128, 2**6, 2**6, device=torch.device(&#39;cuda:0&#39;))</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwalsh2_S_torch(X), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;No indices as inputs (10x): {t:.3f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; ind = wh.sequency_perm_ind(X.shape[-1]*X.shape[-2])</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwalsh2_S_torch(X,ind), number=10)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;With indices as inputs (10x): {t:.3f} seconds&quot;)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">walsh2_S_unfold_torch</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">fwalsh_S_torch</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ind</span><span class="p">)</span>
+    <span class="n">S</span> <span class="o">=</span> <span class="n">walsh2_S_fold_torch</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">S</span></div>
+
+
+
+<div class="viewcode-block" id="walsh2_S_fold_torch">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh2_S_fold_torch.html#spyrit.misc.walsh_hadamard.walsh2_S_fold_torch">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh2_S_fold_torch</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fold a signal to get a &quot;2d&quot; s-transformed representation</span>
+
+<span class="sd">    Note: the top left (first) pixel is arbitrarily set to zero</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`x` (torch.tensor): input signal with shape `(*, n)`. n is</span>
+<span class="sd">        such that n+1 = N*N, where N is a power of two. n = 2**(2b) - 1,</span>
+<span class="sd">        where b is an integer.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.tensor: output matrix with shape `(*, N, N)`</span>
+
+<span class="sd">    Example 1:</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; S = wh.walsh2_S_matrix(4)</span>
+<span class="sd">        &gt;&gt;&gt; X = torch.from_numpy(S[2:4,:])</span>
+<span class="sd">        &gt;&gt;&gt; Y = wh.walsh2_S_fold_torch(X)</span>
+<span class="sd">        &gt;&gt;&gt; print(Y)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># N and n should be consistent with doc</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="p">(</span><span class="n">N</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span>
+    <span class="k">assert</span> <span class="n">math</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">%</span> <span class="mi">1</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;N+1 = n*n, where n=</span><span class="si">{</span><span class="n">n</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> must be a power of two&quot;</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+
+    <span class="c1"># Concatenate with zeros</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">z</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">((</span><span class="n">z</span><span class="p">,</span> <span class="n">x</span><span class="p">),</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># Extra memory allocated here</span>
+
+    <span class="c1"># Reshape to get images</span>
+    <span class="n">new_shape</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">([</span><span class="o">*</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">n</span><span class="p">,</span> <span class="n">n</span><span class="p">])</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">new_shape</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">X</span></div>
+
+
+
+<div class="viewcode-block" id="walsh2_S_unfold_torch">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh2_S_unfold_torch.html#spyrit.misc.walsh_hadamard.walsh2_S_unfold_torch">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh2_S_unfold_torch</span><span class="p">(</span><span class="n">X</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Unfold a signal from a &quot;2d&quot; s-transformed representation</span>
+
+<span class="sd">    Note: Return a view of X</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`X` (torch.tensor): input image with shape `(*, n,n)`.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        output signal with shape `(*, n*n-1)`</span>
+
+<span class="sd">    Example 1:</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; X = torch.tensor([[1, 3, 0, 8],[7, 5, 1, 2]])</span>
+<span class="sd">        &gt;&gt;&gt; x = wh.walsh2_S_unfold_torch(X)</span>
+<span class="sd">        &gt;&gt;&gt; print(X)</span>
+<span class="sd">        &gt;&gt;&gt; print(x)</span>
+
+<span class="sd">    Example 2:</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; X = torch.randint(10,(3,4,4))</span>
+<span class="sd">        &gt;&gt;&gt; x = wh.walsh2_S_unfold_torch(X)</span>
+<span class="sd">        &gt;&gt;&gt; print(X)</span>
+<span class="sd">        &gt;&gt;&gt; print(x)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">size</span><span class="p">()[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span>
+    <span class="k">return</span> <span class="n">x</span></div>
+
+
+
+<div class="viewcode-block" id="walsh_torch">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh_torch.html#spyrit.misc.walsh_hadamard.walsh_torch">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh_torch</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">H</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return 1D Walsh-ordered Hadamard transform of a signal</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`x` (:obj:`torch.tensor`): Input signals with shape `(*, n)`.</span>
+
+<span class="sd">        :attr:`H` (:obj:`torch.tensor`, optional): 1D Walsh-ordered Hadamard</span>
+<span class="sd">        matrix with shape `(*, m)`.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        :obj:`torch.tensor`: Hadamard transformed signals with shape `(*, m)`.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Providing the input argument :attr:`H` leads to much faster</span>
+<span class="sd">        computation when multiple Hadamard transforms are repeated</span>
+<span class="sd">        (see Example 2).</span>
+
+<span class="sd">    Example 1:</span>
+<span class="sd">        Sequency-ordered (i.e., Walsh) Hadamard transform</span>
+
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.tensor([1.0, 3.0, 0.0, -1.0, 7.0, 5.0, 1.0, -2.0])</span>
+<span class="sd">        &gt;&gt;&gt; y = wh.fwht_torch(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(y)</span>
+<span class="sd">        &gt;&gt;&gt; y = wh.walsh_torch(x)</span>
+<span class="sd">        &gt;&gt;&gt; print(y)</span>
+
+
+<span class="sd">    Example 2:</span>
+<span class="sd">        Fast vs regular: Computation times for 5 batches of 512 signals of</span>
+<span class="sd">        length 2**10</span>
+
+<span class="sd">        &gt;&gt;&gt; import timeit</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.rand(5, 1, 512, 2**10)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.fwht_torch(x), number=200)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Fast Hadamard transform (200x): {t:.4f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: torch.from_numpy(walsh_matrix(x.shape[-1]).astype(&#39;float32&#39;)), number=200)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Construction of Hadamard matrix (200x): {t:.4f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; H = torch.from_numpy(walsh_matrix(x.shape[-1]).astype(&#39;float32&#39;))</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.walsh_torch(x, H), number=200)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Matrix-vector products (200x): {t:.4f} seconds&quot;)</span>
+
+<span class="sd">    Example 3:</span>
+<span class="sd">        CPU vs GPU: Computation times for 5 batches of 512 signals of</span>
+<span class="sd">        length 2**10</span>
+
+<span class="sd">        &gt;&gt;&gt; import timeit</span>
+<span class="sd">        &gt;&gt;&gt; import torch</span>
+<span class="sd">        &gt;&gt;&gt; import spyrit.misc.walsh_hadamard as wh</span>
+<span class="sd">        &gt;&gt;&gt; x = torch.rand(5, 1, 512, 2**10)</span>
+<span class="sd">        &gt;&gt;&gt; H = torch.tensor(walsh_matrix(x.shape[-1]), dtype=torch.float32)</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.walsh_torch(x, H), number=200)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Fast Hadamard transform pytorch CPU (200x): {t:.4f} seconds&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; x = x.to(torch.device(&#39;cuda:0&#39;))</span>
+<span class="sd">        &gt;&gt;&gt; H = H.to(torch.device(&#39;cuda:0&#39;))</span>
+<span class="sd">        &gt;&gt;&gt; t = timeit.timeit(lambda: wh.walsh_torch(x, H), number=200)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;Fast Hadamard transform pytorch GPU (200x): {t:.4f} seconds&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">H</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">H</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">walsh_matrix</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float32&quot;</span><span class="p">))</span>
+    <span class="n">H</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="c1"># return (H @ x.mT).mT</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">@</span> <span class="n">H</span><span class="o">.</span><span class="n">mT</span></div>
+
+
+
+<div class="viewcode-block" id="walsh2_torch">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.walsh_hadamard.walsh2_torch.html#spyrit.misc.walsh_hadamard.walsh2_torch">[docs]</a>
+<span class="k">def</span> <span class="nf">walsh2_torch</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">H</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return 2D Walsh-ordered Hadamard transform of an image</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        im (torch.tensor): Image, typically a B-by-C-by-W-by-H Tensor</span>
+<span class="sd">        H (torch.tensor, optional): 1D Walsh-ordered Hadamard transformation</span>
+<span class="sd">        matrix. A 2-D tensor of size W-by-H.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.tensor: Hadamard transformed image. Same size as im</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        &gt;&gt;&gt; im = torch.randn(256, 1, 64, 64)</span>
+<span class="sd">        &gt;&gt;&gt; had = walsh2_torch(im)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">H</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">H</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">walsh_matrix</span><span class="p">(</span><span class="n">im</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float32&quot;</span><span class="p">))</span>
+    <span class="n">H</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">im</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">im</span><span class="p">),</span> <span class="n">H</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

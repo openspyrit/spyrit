@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>01. Acquisition operators &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/sg_README.css?v=78231cbc" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="02. Pseudoinverse solution from linear measurements" href="tuto_02_pseudoinverse_linear.html" />
+    <link rel="prev" title="Tutorials" href="index.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Tutorials</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">01. Acquisition operators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#load-a-batch-of-images">Load a batch of images</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-measurement-and-noise-operators">The measurement and noise operators</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#a-simple-example-identity-measurement-matrix-and-no-noise">A simple example: identity measurement matrix and no noise</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#same-example-with-poisson-noise">Same example with Poisson noise</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-preprocessing-operator">The preprocessing operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#preprocessing-measurements-corrupted-by-poisson-noise">Preprocessing measurements corrupted by Poisson noise</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_02_pseudoinverse_linear.html">02. Pseudoinverse solution from linear measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_03_pseudoinverse_cnn_linear.html">03. Pseudoinverse solution + CNN denoising</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_04_train_pseudoinverse_cnn_linear.html">04. Train pseudoinverse solution + CNN denoising</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_05_acquisition_split_measurements.html">05. Acquisition operators (advanced) - Split measurements and subsampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_06_dcnet_split_measurements.html">06. DCNet solution for split measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_bonus_advanced_methods_colab.html">Bonus. Advanced methods - Colab</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Tutorials</a></li>
+      <li class="breadcrumb-item active">01. Acquisition operators</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/gallery/tuto_01_acquisition_operators.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-gallery-tuto-01-acquisition-operators-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code</p>
+</div>
+<section class="sphx-glr-example-title" id="acquisition-operators">
+<span id="sphx-glr-gallery-tuto-01-acquisition-operators-py"></span><h1>01. Acquisition operators<a class="headerlink" href="#acquisition-operators" title="Link to this heading"></a></h1>
+<p id="tuto-acquisition-operators">This tutorial shows how to simulate measurements using the <a class="reference internal" href="../_autosummary/spyrit.core.html#module-spyrit.core" title="spyrit.core"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core</span></code></a>
+submodule, which is based on three classes:</p>
+<ol class="arabic simple">
+<li><p><strong>Measurement operators</strong> compute linear measurements <span class="math notranslate nohighlight">\(y = Hx\)</span> from
+images <span class="math notranslate nohighlight">\(x\)</span>, where <span class="math notranslate nohighlight">\(H\)</span> is a linear operator (matrix) and <span class="math notranslate nohighlight">\(x\)</span>
+is a vectorized image (see <a class="reference internal" href="../_autosummary/spyrit.core.meas.html#module-spyrit.core.meas" title="spyrit.core.meas"><code class="xref py py-mod docutils literal notranslate"><span class="pre">spyrit.core.meas</span></code></a>)</p></li>
+<li><p><strong>Noise operator</strong> corrupts measurements <span class="math notranslate nohighlight">\(y\)</span> with noise (see <a class="reference internal" href="../_autosummary/spyrit.core.noise.html#module-spyrit.core.noise" title="spyrit.core.noise"><code class="xref py py-mod docutils literal notranslate"><span class="pre">spyrit.core.noise</span></code></a>)</p></li>
+<li><p><strong>Preprocessing operators</strong> are typically used to process the noisy
+measurements prior to reconstruction (see <a class="reference internal" href="../_autosummary/spyrit.core.prep.html#module-spyrit.core.prep" title="spyrit.core.prep"><code class="xref py py-mod docutils literal notranslate"><span class="pre">spyrit.core.prep</span></code></a>)</p></li>
+</ol>
+<p>These tutorials load image samples from <cite>/images/</cite>.</p>
+<section id="load-a-batch-of-images">
+<h2>Load a batch of images<a class="headerlink" href="#load-a-batch-of-images" title="Link to this heading"></a></h2>
+<p>Images <span class="math notranslate nohighlight">\(x\)</span> for training neural networks expect values in [-1,1]. The images are normalized
+using the <code class="xref py py-func docutils literal notranslate"><span class="pre">transform_gray_norm()</span></code> function.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torchvision</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="kn">from</span> <span class="nn">spyrit.misc.disp</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.disp.imagesc.html#spyrit.misc.disp.imagesc" title="spyrit.misc.disp.imagesc" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">imagesc</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.misc.statistics</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.statistics.transform_gray_norm.html#spyrit.misc.statistics.transform_gray_norm" title="spyrit.misc.statistics.transform_gray_norm" class="sphx-glr-backref-module-spyrit-misc-statistics sphx-glr-backref-type-py-function"><span class="n">transform_gray_norm</span></a>
+
+<span class="c1"># sphinx_gallery_thumbnail_path = &#39;fig/noise_op.png&#39;</span>
+
+<span class="n">h</span> <span class="o">=</span> <span class="mi">64</span>  <span class="c1"># image size hxh</span>
+<span class="n">i</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Image index (modify to change the image)</span>
+<span class="n">spyritPath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+<span class="n">imgs_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">spyritPath</span><span class="p">,</span> <span class="s2">&quot;images/&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># Create a transform for natural images to normalized grayscale image tensors</span>
+<span class="n">transform</span> <span class="o">=</span> <a href="../_autosummary/spyrit.misc.statistics.transform_gray_norm.html#spyrit.misc.statistics.transform_gray_norm" title="spyrit.misc.statistics.transform_gray_norm" class="sphx-glr-backref-module-spyrit-misc-statistics sphx-glr-backref-type-py-function"><span class="n">transform_gray_norm</span></a><span class="p">(</span><span class="n">img_size</span><span class="o">=</span><span class="n">h</span><span class="p">)</span>
+
+<span class="c1"># Create dataset and loader (expects class folder &#39;images/test/&#39;)</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">ImageFolder</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">imgs_path</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">)</span>
+<span class="n">dataloader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+
+<span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloader</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of input images: </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Select image</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span> <span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+<span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
+<span class="c1"># plot</span>
+<span class="n">x_plot</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<a href="../_autosummary/spyrit.misc.disp.imagesc.html#spyrit.misc.disp.imagesc" title="spyrit.misc.disp.imagesc" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">imagesc</span></a><span class="p">(</span><span class="n">x_plot</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="sa">r</span><span class="s2">&quot;$x$ in [-1, 1]&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="the-measurement-and-noise-operators">
+<h2>The measurement and noise operators<a class="headerlink" href="#the-measurement-and-noise-operators" title="Link to this heading"></a></h2>
+<p>Noise operators are defined in the <a class="reference internal" href="../_autosummary/spyrit.core.noise.html#module-spyrit.core.noise" title="spyrit.core.noise"><code class="xref py py-mod docutils literal notranslate"><span class="pre">noise</span></code></a> module. A noise
+operator computes the following three steps sequentially:</p>
+<p>1. Normalization of the image <span class="math notranslate nohighlight">\(x\)</span> with values in [-1,1] to get an image
+<span class="math notranslate nohighlight">\(\tilde{x}=\frac{x+1}{2}\)</span> in [0,1], as it is required for measurement simulation</p>
+<ol class="arabic simple" start="2">
+<li><p>Application of the measurement model, i.e., computation of <span class="math notranslate nohighlight">\(H\tilde{x}\)</span></p></li>
+<li><p>Application of the noise model</p></li>
+</ol>
+<div class="math notranslate nohighlight">
+\[y \sim \texttt{Noise}(H\tilde{x}) = \texttt{Noise}\left(\frac{H(x+1)}{2}\right),\]</div>
+<p>The normalization is usefull when considering distributions such
+as the Poisson distribution that are defined on positive values.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The noise operator is constructed from a measurement operator (see the
+<a class="reference internal" href="../_autosummary/spyrit.core.meas.html#module-spyrit.core.meas" title="spyrit.core.meas"><code class="xref py py-mod docutils literal notranslate"><span class="pre">meas</span></code></a> submodule) in order to compute the measurements
+<span class="math notranslate nohighlight">\(H\tilde{x}\)</span>, as given by step #2.</p>
+</div>
+</section>
+<section id="a-simple-example-identity-measurement-matrix-and-no-noise">
+<h2>A simple example: identity measurement matrix and no noise<a class="headerlink" href="#a-simple-example-identity-measurement-matrix-and-no-noise" title="Link to this heading"></a></h2>
+<div class="math notranslate nohighlight">
+\[y = \tilde{x}\]</div>
+<p>We start with a simple example where the measurement matrix <span class="math notranslate nohighlight">\(H\)</span> is
+the identity, which can be handled  by the more general
+<a class="reference internal" href="../_autosummary/spyrit.core.meas.Linear.html#spyrit.core.meas.Linear" title="spyrit.core.meas.Linear"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.meas.Linear</span></code></a> class. We consider the noiseless case handled
+by the <a class="reference internal" href="../_autosummary/spyrit.core.noise.NoNoise.html#spyrit.core.noise.NoNoise" title="spyrit.core.noise.NoNoise"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.noise.NoNoise</span></code></a> class.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.meas</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.meas.Linear.html#spyrit.core.meas.Linear" title="spyrit.core.meas.Linear" class="sphx-glr-backref-module-spyrit-core-meas sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Linear</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.core.noise</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.noise.NoNoise.html#spyrit.core.noise.NoNoise" title="spyrit.core.noise.NoNoise" class="sphx-glr-backref-module-spyrit-core-noise sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">NoNoise</span></a>
+
+<span class="n">meas_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.meas.Linear.html#spyrit.core.meas.Linear" title="spyrit.core.meas.Linear" class="sphx-glr-backref-module-spyrit-core-meas sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Linear</span></a><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">h</span> <span class="o">*</span> <span class="n">h</span><span class="p">))</span>
+<span class="n">noise_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.noise.NoNoise.html#spyrit.core.noise.NoNoise" title="spyrit.core.noise.NoNoise" class="sphx-glr-backref-module-spyrit-core-noise sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">NoNoise</span></a><span class="p">(</span><span class="n">meas_op</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We simulate the measurement vector <span class="math notranslate nohighlight">\(y\)</span> that we visualise as an image.
+Remember that the input image <span class="math notranslate nohighlight">\(x\)</span> is handled as a vector.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span> <span class="o">*</span> <span class="n">w</span><span class="p">)</span>  <span class="c1"># vectorized image</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of vectorized image: </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">y_eye</span> <span class="o">=</span> <span class="n">noise_op</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># noisy measurement vector</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of simulated measurements y: </span><span class="si">{</span><span class="n">y_eye</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># plot</span>
+<span class="n">x_plot</span> <span class="o">=</span> <span class="n">y_eye</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<a href="../_autosummary/spyrit.misc.disp.imagesc.html#spyrit.misc.disp.imagesc" title="spyrit.misc.disp.imagesc" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">imagesc</span></a><span class="p">(</span><span class="n">x_plot</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="sa">r</span><span class="s2">&quot;$\tilde</span><span class="si">{x}</span><span class="s2">$ in [0, 1]&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Note that the image identical to the original one, except it has been
+normalized in [0,1].</p>
+</div>
+</section>
+<section id="same-example-with-poisson-noise">
+<h2>Same example with Poisson noise<a class="headerlink" href="#same-example-with-poisson-noise" title="Link to this heading"></a></h2>
+<p>We now consider Poisson noise, i.e., a noisy measurement vector given by</p>
+<div class="math notranslate nohighlight">
+\[y \sim \mathcal{P}(\alpha H \tilde{x}),\]</div>
+<p>where <span class="math notranslate nohighlight">\(\alpha\)</span> is a scalar value that represents the maximum image intensity
+(in photons). The larger <span class="math notranslate nohighlight">\(\alpha\)</span>, the higher the signal-to-noise ratio.</p>
+<p>We consider the <a class="reference internal" href="../_autosummary/spyrit.core.noise.Poisson.html#spyrit.core.noise.Poisson" title="spyrit.core.noise.Poisson"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.noise.Poisson</span></code></a> class and set <span class="math notranslate nohighlight">\(\alpha\)</span>
+to 100 photons.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.noise</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.noise.Poisson.html#spyrit.core.noise.Poisson" title="spyrit.core.noise.Poisson" class="sphx-glr-backref-module-spyrit-core-noise sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Poisson</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.misc.disp</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">,</span> <a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a>
+
+<span class="n">alpha</span> <span class="o">=</span> <span class="mi">100</span>  <span class="c1"># number of photons</span>
+<span class="n">noise_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.noise.Poisson.html#spyrit.core.noise.Poisson" title="spyrit.core.noise.Poisson" class="sphx-glr-backref-module-spyrit-core-noise sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Poisson</span></a><span class="p">(</span><span class="n">meas_op</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We simulate two noisy measurement vectors</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">y1</span> <span class="o">=</span> <span class="n">noise_op</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># a noisy measurement vector</span>
+<span class="n">y2</span> <span class="o">=</span> <span class="n">noise_op</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># another noisy measurement vector</span>
+</pre></div>
+</div>
+<p>We now consider the case <span class="math notranslate nohighlight">\(\alpha = 1000\)</span> photons.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">noise_op</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">y3</span> <span class="o">=</span> <span class="n">noise_op</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># noisy measurement vector</span>
+</pre></div>
+</div>
+<p>We finally plot the measurement vectors as images</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># plot</span>
+<span class="n">y1_plot</span> <span class="o">=</span> <span class="n">y1</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">y2_plot</span> <span class="o">=</span> <span class="n">y2</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">y3_plot</span> <span class="o">=</span> <span class="n">y3</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+<span class="n">f</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;100 photons&quot;</span><span class="p">)</span>
+<span class="n">im</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">y1_plot</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;100 photons&quot;</span><span class="p">)</span>
+<span class="n">im</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">y2_plot</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<span class="n">axs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;1000 photons&quot;</span><span class="p">)</span>
+<span class="n">im</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">y3_plot</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">axs</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>As expected the signal-to-noise ratio of the measurement vector is higher for
+1,000 photons than for 100 photons</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Not only the signal-to-noise, but also the scale of the measurements
+depends on <span class="math notranslate nohighlight">\(\alpha\)</span>, which motivate the introduction of the
+preprocessing operator.</p>
+</div>
+</section>
+<section id="the-preprocessing-operator">
+<h2>The preprocessing operator<a class="headerlink" href="#the-preprocessing-operator" title="Link to this heading"></a></h2>
+<p>Preprocessing operators are defined in the <a class="reference internal" href="../_autosummary/spyrit.core.prep.html#module-spyrit.core.prep" title="spyrit.core.prep"><code class="xref py py-mod docutils literal notranslate"><span class="pre">spyrit.core.prep</span></code></a> module.
+A preprocessing operator applies to the noisy measurements</p>
+<div class="math notranslate nohighlight">
+\[m = \texttt{Prep}(y),\]</div>
+<p>For instance, a preprocessing operator can be used to compensate for the
+scaling factors that appear in the measurement or noise operators. In this
+case, a preprocessing operator is closely linked to its measurement and/or
+noise operator counterpart. While scaling factors are required to simulate
+realistic measurements, they are not required for reconstruction.</p>
+</section>
+<section id="preprocessing-measurements-corrupted-by-poisson-noise">
+<h2>Preprocessing measurements corrupted by Poisson noise<a class="headerlink" href="#preprocessing-measurements-corrupted-by-poisson-noise" title="Link to this heading"></a></h2>
+<a class="reference internal image-reference" href="../_images/noise_op.png"><img alt="Example of Noise operator" class="align-center" src="../_images/noise_op.png" style="width: 400px;" /></a>
+<p>We consider the <a class="reference internal" href="../_autosummary/spyrit.core.prep.DirectPoisson.html#spyrit.core.prep.DirectPoisson" title="spyrit.core.prep.DirectPoisson"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.prep.DirectPoisson</span></code></a> class that intends
+to “undo” the <a class="reference internal" href="../_autosummary/spyrit.core.noise.Poisson.html#spyrit.core.noise.Poisson" title="spyrit.core.noise.Poisson"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.noise.Poisson</span></code></a> class by compensating for:</p>
+<ul class="simple">
+<li><p>the scaling that appears when computing Poisson-corrupted measurements</p></li>
+<li><p>the affine transformation to get images in [0,1] from images in [-1,1]</p></li>
+</ul>
+<p>For this, it computes</p>
+<div class="math notranslate nohighlight">
+\[m = \frac{2}{\alpha} y - H1\]</div>
+<p>We consider the <a class="reference internal" href="../_autosummary/spyrit.core.prep.DirectPoisson.html#spyrit.core.prep.DirectPoisson" title="spyrit.core.prep.DirectPoisson"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.prep.DirectPoisson</span></code></a> class and set <span class="math notranslate nohighlight">\(\alpha\)</span>
+to 100 photons.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.prep</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.prep.DirectPoisson.html#spyrit.core.prep.DirectPoisson" title="spyrit.core.prep.DirectPoisson" class="sphx-glr-backref-module-spyrit-core-prep sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">DirectPoisson</span></a>
+
+<span class="n">alpha</span> <span class="o">=</span> <span class="mi">100</span>  <span class="c1"># number of photons</span>
+<span class="n">prep_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.prep.DirectPoisson.html#spyrit.core.prep.DirectPoisson" title="spyrit.core.prep.DirectPoisson" class="sphx-glr-backref-module-spyrit-core-prep sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">DirectPoisson</span></a><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">meas_op</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We preprocess the first two noisy measurement vectors</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">m1</span> <span class="o">=</span> <span class="n">prep_op</span><span class="p">(</span><span class="n">y1</span><span class="p">)</span>
+<span class="n">m2</span> <span class="o">=</span> <span class="n">prep_op</span><span class="p">(</span><span class="n">y2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We now consider the case <span class="math notranslate nohighlight">\(\alpha = 1000\)</span> photons to preprocess the third
+measurement vector</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">prep_op</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">m3</span> <span class="o">=</span> <span class="n">prep_op</span><span class="p">(</span><span class="n">y3</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We finally plot the preprocessed measurement vectors as images</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># plot</span>
+<span class="n">m1</span> <span class="o">=</span> <span class="n">m1</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">m2</span> <span class="o">=</span> <span class="n">m2</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">m3</span> <span class="o">=</span> <span class="n">m3</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+<span class="n">f</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;100 photons&quot;</span><span class="p">)</span>
+<span class="n">im</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">m1</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;100 photons&quot;</span><span class="p">)</span>
+<span class="n">im</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">m2</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<span class="n">axs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;1000 photons&quot;</span><span class="p">)</span>
+<span class="n">im</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">m3</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">axs</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The preprocessed measurements still have different the signal-to-noise ratios
+depending on <span class="math notranslate nohighlight">\(\alpha\)</span>; however, they (approximately) all lie within
+the same range (here, [-1, 1]).</p>
+</div>
+<p>We show again one of the preprocessed measurement vectors (tutorial thumbnail purpose)</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Plot</span>
+<a href="../_autosummary/spyrit.misc.disp.imagesc.html#spyrit.misc.disp.imagesc" title="spyrit.misc.disp.imagesc" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">imagesc</span></a><span class="p">(</span><span class="n">m2</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="s2">&quot;100 photons&quot;</span><span class="p">,</span> <span class="n">title_fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-gallery-tuto-01-acquisition-operators-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/86763d9b5d3c9342b2d1ce5cbd777db5/tuto_01_acquisition_operators.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">tuto_01_acquisition_operators.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/2d015ff52016bcc8957cc2c76e04e555/tuto_01_acquisition_operators.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">tuto_01_acquisition_operators.py</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Tutorials" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="tuto_02_pseudoinverse_linear.html" class="btn btn-neutral float-right" title="02. Pseudoinverse solution from linear measurements" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>
