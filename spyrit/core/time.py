@@ -178,17 +178,17 @@ class DeformationField(nn.Module):
         """
         # check that the image has the correct number of dimensions
         img_size = img.size()
-        
+
         if (len(img_size) < 3) or (len(img_size) > 4):
             raise ValueError(
                 f"img has incorrect number of dimensions: {img_size} (must have at 3 or 4)."
             )
         elif len(img_size) == 3:
-            img = img.unsqueeze(0) # make it 4D with size (1, c, Nx, Ny)
-        
+            img = img.unsqueeze(0)  # make it 4D with size (1, c, Nx, Ny)
+
         nb_frames = abs(n1 - n0)
         batch_size = img.size(0)
-        
+
         # vvv no longer needed with nn.Parameter ? vvv
         # check that the deformation field and the image are on the same device
         # self.inverse_grid_frames = self.inverse_grid_frames.to(img.device)
