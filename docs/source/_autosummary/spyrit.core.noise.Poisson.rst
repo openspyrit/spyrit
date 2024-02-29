@@ -6,14 +6,14 @@ spyrit.core.noise.Poisson
 .. autoclass:: Poisson
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~Poisson.forward
-   
-   
+
+

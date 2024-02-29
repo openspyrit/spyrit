@@ -4,17 +4,17 @@ spyrit.misc.matrix\_tools
 .. automodule:: spyrit.misc.matrix_tools
    :show-inheritance:
 
-   
-   
-   
 
-   
-   
+
+
+
+
+
    .. rubric:: Functions
 
    .. autosummary::
       :toctree:
-   
+
       Permutation_Matrix
       Sum_coll
       clean_out
@@ -28,16 +28,13 @@ spyrit.misc.matrix\_tools
       resize
       smooth
       stack_depth_matrice
-   
-   
 
-   
-   
-   
 
-   
-   
-   
+
+
+
+
+
 
 
 

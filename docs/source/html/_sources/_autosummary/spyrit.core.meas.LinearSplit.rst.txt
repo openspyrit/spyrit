@@ -6,14 +6,14 @@ spyrit.core.meas.LinearSplit
 .. autoclass:: LinearSplit
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~LinearSplit.adjoint
       ~LinearSplit.forward
       ~LinearSplit.forward_H
@@ -23,5 +23,5 @@ spyrit.core.meas.LinearSplit
       ~LinearSplit.get_P
       ~LinearSplit.pinv
       ~LinearSplit.set_H_pinv
-   
-   
+
+

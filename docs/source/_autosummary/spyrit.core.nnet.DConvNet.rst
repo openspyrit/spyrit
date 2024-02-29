@@ -6,14 +6,14 @@ spyrit.core.nnet.DConvNet
 .. autoclass:: DConvNet
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~DConvNet.forward
-   
-   
+
+

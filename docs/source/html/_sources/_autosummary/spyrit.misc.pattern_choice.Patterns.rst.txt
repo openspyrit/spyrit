@@ -6,14 +6,14 @@ spyrit.misc.pattern\_choice.Patterns
 .. autoclass:: Patterns
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~Patterns.add_desired_patterns
       ~Patterns.get_all_desired_pattern
       ~Patterns.get_desired_pattern
@@ -21,5 +21,5 @@ spyrit.misc.pattern\_choice.Patterns
       ~Patterns.save_measurement_matrix
       ~Patterns.set_desired_pattern
       ~Patterns.set_measurement_matrix
-   
-   
+
+

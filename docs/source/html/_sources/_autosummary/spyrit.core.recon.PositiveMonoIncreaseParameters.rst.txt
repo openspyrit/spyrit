@@ -6,14 +6,14 @@ spyrit.core.recon.PositiveMonoIncreaseParameters
 .. autoclass:: PositiveMonoIncreaseParameters
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~PositiveMonoIncreaseParameters.forward
-   
-   
+
+

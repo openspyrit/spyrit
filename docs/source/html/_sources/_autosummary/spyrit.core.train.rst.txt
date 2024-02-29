@@ -4,17 +4,17 @@ spyrit.core.train
 .. automodule:: spyrit.core.train
    :show-inheritance:
 
-   
-   
-   
 
-   
-   
+
+
+
+
+
    .. rubric:: Functions
 
    .. autosummary::
       :toctree:
-   
+
       attr_removal
       attr_transformation
       boxplot
@@ -40,25 +40,22 @@ spyrit.core.train
       train_model_supervised
       visualize_conv_layers
       visualize_model
-   
-   
 
-   
-   
+
+
+
+
    .. rubric:: Classes
 
    .. autosummary::
       :toctree:
       :template: spyrit-class-template.rst
-   
+
       Train_par
       Weight_Decay_Loss
-   
-   
 
-   
-   
-   
+
+
 
 
 

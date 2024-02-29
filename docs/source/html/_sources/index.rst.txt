@@ -24,20 +24,20 @@ combine them into a full-network.
 
 
 
-The full network contains two main parts: a Physics Simulation part that 
+The full network contains two main parts: a Physics Simulation part that
 simulates measurements :math:`y` from images :math:`x`, and a Reconstruction part
 that estimates the unknown image :math:`x*` from measurements :math:`y`.
 
 
-The Physics Simulation part is composed of a Measurement operator (:math:`N`) 
-and a Noise operator (:math:`P`). 
+The Physics Simulation part is composed of a Measurement operator (:math:`N`)
+and a Noise operator (:math:`P`).
 
 
 The Reconstruction part is composed of a Preprocessing operator (:math:`B`) that
 gives the preprocessed measurements :math:`m` from the noisy measurements :math:`y`,
 a Reconstruction operator (:math:`R`) that estimates the unknown image :math:`x*` from
 the preprocessed measurements :math:`m`, and an optional Neural Network (:math:`G_{\theta}`)
-that can be trained to improve the reconstruction quality. 
+that can be trained to improve the reconstruction quality.
 
 
 

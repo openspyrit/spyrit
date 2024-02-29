@@ -4,17 +4,17 @@ spyrit.misc.walsh\_hadamard
 .. automodule:: spyrit.misc.walsh_hadamard
    :show-inheritance:
 
-   
-   
-   
 
-   
-   
+
+
+
+
+
    .. rubric:: Functions
 
    .. autosummary::
       :toctree:
-   
+
       b2_to_b10
       bit_reverse_traverse
       bit_reversed_list
@@ -56,16 +56,13 @@ spyrit.misc.walsh\_hadamard
       walsh_S_matrix
       walsh_matrix
       walsh_torch
-   
-   
 
-   
-   
-   
 
-   
-   
-   
+
+
+
+
+
 
 
 

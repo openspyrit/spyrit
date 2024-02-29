@@ -6,16 +6,16 @@ spyrit.core.prep.DirectPoisson
 .. autoclass:: DirectPoisson
    :show-inheritance:
 
-   
-   
+
+
    .. rubric:: Methods
 
    .. autosummary::
       :toctree:
       :template: spyrit-method-template.rst
-   
+
       ~DirectPoisson.denormalize_expe
       ~DirectPoisson.forward
       ~DirectPoisson.sigma
-   
-   
+
+
