@@ -21,5 +21,3 @@ spyrit.core.meas.Linear
       ~Linear.get_H_pinv
       ~Linear.pinv
       ~Linear.set_H_pinv
-
-

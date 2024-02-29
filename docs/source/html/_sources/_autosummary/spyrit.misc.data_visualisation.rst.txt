@@ -19,13 +19,3 @@ spyrit.misc.data\_visualisation
       show_image_and_infos
       show_images_infos
       simple_plot_2D
-
-
-
-
-
-
-
-
-
-

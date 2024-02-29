@@ -20,5 +20,3 @@ spyrit.core.nnet.Unet
       ~Unet.expans
       ~Unet.final_block
       ~Unet.forward
-
-

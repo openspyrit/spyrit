@@ -17,5 +17,3 @@ spyrit.core.prep.DirectPoisson
       ~DirectPoisson.denormalize_expe
       ~DirectPoisson.forward
       ~DirectPoisson.sigma
-
-

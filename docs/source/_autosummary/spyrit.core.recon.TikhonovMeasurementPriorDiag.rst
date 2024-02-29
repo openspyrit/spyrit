@@ -15,5 +15,3 @@ spyrit.core.recon.TikhonovMeasurementPriorDiag
       :template: spyrit-method-template.rst
 
       ~TikhonovMeasurementPriorDiag.forward
-
-

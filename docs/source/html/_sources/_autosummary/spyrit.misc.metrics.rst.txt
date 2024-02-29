@@ -30,13 +30,3 @@ spyrit.misc.metrics
       psnr
       psnr_
       ssim
-
-
-
-
-
-
-
-
-
-

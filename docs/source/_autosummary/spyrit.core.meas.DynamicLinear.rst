@@ -16,5 +16,3 @@ spyrit.core.meas.DynamicLinear
 
       ~DynamicLinear.forward
       ~DynamicLinear.get_H
-
-

@@ -22,9 +22,3 @@ spyrit.core.prep
 
       DirectPoisson
       SplitPoisson
-
-
-
-
-
-

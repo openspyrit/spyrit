@@ -43,9 +43,3 @@ spyrit.misc.statistics
       :template: spyrit-class-template.rst
 
       CenterCrop
-
-
-
-
-
-

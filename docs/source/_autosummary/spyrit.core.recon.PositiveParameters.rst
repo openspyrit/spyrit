@@ -15,5 +15,3 @@ spyrit.core.recon.PositiveParameters
       :template: spyrit-method-template.rst
 
       ~PositiveParameters.forward
-
-

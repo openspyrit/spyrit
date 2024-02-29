@@ -29,9 +29,3 @@ spyrit.core.time
 
       AffineDeformationField
       DeformationField
-
-
-
-
-
-

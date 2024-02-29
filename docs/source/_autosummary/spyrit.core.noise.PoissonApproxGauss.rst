@@ -15,5 +15,3 @@ spyrit.core.noise.PoissonApproxGauss
       :template: spyrit-method-template.rst
 
       ~PoissonApproxGauss.forward
-
-

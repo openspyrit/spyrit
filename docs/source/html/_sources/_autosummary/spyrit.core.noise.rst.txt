@@ -24,9 +24,3 @@ spyrit.core.noise
       Poisson
       PoissonApproxGauss
       PoissonApproxGaussSameNoise
-
-
-
-
-
-

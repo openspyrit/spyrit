@@ -22,5 +22,3 @@ spyrit.misc.pattern\_choice.Optimized\_patterns
       ~Optimized_patterns.save_measurement_matrix
       ~Optimized_patterns.set_desired_pattern
       ~Optimized_patterns.set_measurement_matrix
-
-

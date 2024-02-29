@@ -20,5 +20,3 @@ spyrit.core.recon.UPGD
       ~UPGD.reconstruct
       ~UPGD.reconstruct_expe
       ~UPGD.reconstruct_pinv
-
-

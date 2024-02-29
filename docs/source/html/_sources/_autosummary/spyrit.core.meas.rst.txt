@@ -26,9 +26,3 @@ spyrit.core.meas
       HadamSplit
       Linear
       LinearSplit
-
-
-
-
-
-

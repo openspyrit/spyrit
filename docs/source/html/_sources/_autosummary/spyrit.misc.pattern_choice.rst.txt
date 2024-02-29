@@ -41,9 +41,3 @@ spyrit.misc.pattern\_choice
       Custom_patterns
       Optimized_patterns
       Patterns
-
-
-
-
-
-

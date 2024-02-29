@@ -21,5 +21,3 @@ spyrit.misc.pattern\_choice.Patterns
       ~Patterns.save_measurement_matrix
       ~Patterns.set_desired_pattern
       ~Patterns.set_measurement_matrix
-
-

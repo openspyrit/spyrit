@@ -15,5 +15,3 @@ spyrit.core.nnet.List\_denoi
       :template: spyrit-method-template.rst
 
       ~List_denoi.forward
-
-

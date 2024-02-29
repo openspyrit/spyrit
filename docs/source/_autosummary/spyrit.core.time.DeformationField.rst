@@ -16,5 +16,3 @@ spyrit.core.time.DeformationField
 
       ~DeformationField.forward
       ~DeformationField.warp
-
-

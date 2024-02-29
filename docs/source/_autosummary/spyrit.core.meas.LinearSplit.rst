@@ -23,5 +23,3 @@ spyrit.core.meas.LinearSplit
       ~LinearSplit.get_P
       ~LinearSplit.pinv
       ~LinearSplit.set_H_pinv
-
-

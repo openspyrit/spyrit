@@ -29,9 +29,3 @@ spyrit.core.recon
       PseudoInverse
       TikhonovMeasurementPriorDiag
       UPGD
-
-
-
-
-
-

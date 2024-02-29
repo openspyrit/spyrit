@@ -20,5 +20,3 @@ spyrit.core.recon.PinvNet
       ~PinvNet.reconstruct
       ~PinvNet.reconstruct_expe
       ~PinvNet.reconstruct_pinv
-
-

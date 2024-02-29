@@ -53,9 +53,3 @@ spyrit.core.train
 
       Train_par
       Weight_Decay_Loss
-
-
-
-
-
-

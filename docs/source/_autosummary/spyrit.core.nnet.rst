@@ -26,9 +26,3 @@ spyrit.core.nnet
       Identity
       List_denoi
       Unet
-
-
-
-
-
-

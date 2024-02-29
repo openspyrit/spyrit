@@ -19,5 +19,3 @@ spyrit.core.train.Train\_par
       ~Train_par.plot_log
       ~Train_par.set_loss
       ~Train_par.title
-
-

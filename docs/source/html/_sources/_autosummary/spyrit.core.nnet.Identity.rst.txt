@@ -15,5 +15,3 @@ spyrit.core.nnet.Identity
       :template: spyrit-method-template.rst
 
       ~Identity.forward
-
-

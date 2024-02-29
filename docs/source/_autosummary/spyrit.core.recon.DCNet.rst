@@ -18,5 +18,3 @@ spyrit.core.recon.DCNet
       ~DCNet.forward
       ~DCNet.reconstruct
       ~DCNet.reconstruct_expe
-
-

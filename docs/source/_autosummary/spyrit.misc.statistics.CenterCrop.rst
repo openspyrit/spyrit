@@ -5,7 +5,3 @@ spyrit.misc.statistics.CenterCrop
 
 .. autoclass:: CenterCrop
    :show-inheritance:
-
-
-
-

@@ -15,5 +15,3 @@ spyrit.core.noise.Poisson
       :template: spyrit-method-template.rst
 
       ~Poisson.forward
-
-

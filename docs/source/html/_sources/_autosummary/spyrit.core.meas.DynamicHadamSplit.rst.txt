@@ -19,5 +19,3 @@ spyrit.core.meas.DynamicHadamSplit
       ~DynamicHadamSplit.get_H
       ~DynamicHadamSplit.get_P
       ~DynamicHadamSplit.get_Perm
-
-

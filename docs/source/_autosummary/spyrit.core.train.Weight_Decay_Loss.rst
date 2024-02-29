@@ -15,5 +15,3 @@ spyrit.core.train.Weight\_Decay\_Loss
       :template: spyrit-method-template.rst
 
       ~Weight_Decay_Loss.forward
-
-

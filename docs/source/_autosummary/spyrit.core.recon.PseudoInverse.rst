@@ -15,5 +15,3 @@ spyrit.core.recon.PseudoInverse
       :template: spyrit-method-template.rst
 
       ~PseudoInverse.forward
-
-

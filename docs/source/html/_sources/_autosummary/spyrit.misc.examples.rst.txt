@@ -18,13 +18,3 @@ spyrit.misc.examples
       circle
       permutation_matrix
       translation_matrix
-
-
-
-
-
-
-
-
-
-

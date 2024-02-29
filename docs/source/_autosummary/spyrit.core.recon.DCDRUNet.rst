@@ -20,5 +20,3 @@ spyrit.core.recon.DCDRUNet
       ~DCDRUNet.reconstruct
       ~DCDRUNet.reconstruct_expe
       ~DCDRUNet.set_noise_level
-
-

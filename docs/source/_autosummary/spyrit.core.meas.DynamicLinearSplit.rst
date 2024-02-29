@@ -18,5 +18,3 @@ spyrit.core.meas.DynamicLinearSplit
       ~DynamicLinearSplit.forward_H
       ~DynamicLinearSplit.get_H
       ~DynamicLinearSplit.get_P
-
-

@@ -18,5 +18,3 @@ spyrit.core.time.AffineDeformationField
       ~AffineDeformationField.get_inv_mat_frames
       ~AffineDeformationField.save_inv_grid_frames
       ~AffineDeformationField.warp
-
-

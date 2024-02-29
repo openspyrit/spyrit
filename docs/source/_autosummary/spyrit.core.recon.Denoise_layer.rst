@@ -17,5 +17,3 @@ spyrit.core.recon.Denoise\_layer
       ~Denoise_layer.forward
       ~Denoise_layer.reset_parameters
       ~Denoise_layer.tikho
-
-

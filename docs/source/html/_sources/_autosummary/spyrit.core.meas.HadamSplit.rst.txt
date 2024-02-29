@@ -25,5 +25,3 @@ spyrit.core.meas.HadamSplit
       ~HadamSplit.inverse
       ~HadamSplit.pinv
       ~HadamSplit.set_H_pinv
-
-

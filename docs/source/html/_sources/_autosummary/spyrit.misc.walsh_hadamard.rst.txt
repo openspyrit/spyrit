@@ -56,13 +56,3 @@ spyrit.misc.walsh\_hadamard
       walsh_S_matrix
       walsh_matrix
       walsh_torch
-
-
-
-
-
-
-
-
-
-

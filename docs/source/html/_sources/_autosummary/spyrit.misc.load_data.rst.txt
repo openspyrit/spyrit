@@ -19,13 +19,3 @@ spyrit.misc.load\_data
       load_data_Comp_1D_new
       load_data_Comp_1D_old
       load_data_recon_3D
-
-
-
-
-
-
-
-
-
-

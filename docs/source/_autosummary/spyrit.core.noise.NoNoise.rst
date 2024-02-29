@@ -15,5 +15,3 @@ spyrit.core.noise.NoNoise
       :template: spyrit-method-template.rst
 
       ~NoNoise.forward
-
-

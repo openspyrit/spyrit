@@ -21,5 +21,3 @@ spyrit.core.prep.SplitPoisson
       ~SplitPoisson.sigma
       ~SplitPoisson.sigma_expe
       ~SplitPoisson.sigma_from_image
-
-

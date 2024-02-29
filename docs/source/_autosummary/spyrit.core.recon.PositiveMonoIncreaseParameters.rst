@@ -15,5 +15,3 @@ spyrit.core.recon.PositiveMonoIncreaseParameters
       :template: spyrit-method-template.rst
 
       ~PositiveMonoIncreaseParameters.forward
-
-

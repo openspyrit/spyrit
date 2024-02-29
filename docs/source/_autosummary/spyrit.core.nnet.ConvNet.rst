@@ -15,5 +15,3 @@ spyrit.core.nnet.ConvNet
       :template: spyrit-method-template.rst
 
       ~ConvNet.forward
-
-

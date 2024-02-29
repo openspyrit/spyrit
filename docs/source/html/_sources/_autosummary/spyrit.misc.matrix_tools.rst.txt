@@ -28,13 +28,3 @@ spyrit.misc.matrix\_tools
       resize
       smooth
       stack_depth_matrice
-
-
-
-
-
-
-
-
-
-
