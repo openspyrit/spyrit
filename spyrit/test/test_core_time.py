@@ -13,6 +13,7 @@ from test_helpers import assert_test, assert_elementwise_equal
 
 def test_core_time():
 
+    print('\n*** Testing time.py ***')
     ## Test DeformationField
     n_frames = 10
     nx, ny = 64, 64
@@ -112,10 +113,10 @@ def test_core_time():
         "Wrong forward 4 frames with 5 images in a batch size",
     )
 
+    print("✓ All tests passed for time.py")
+    print("==============================")
     return True
 
 
 if __name__ == "__main__":
     test_core_time()
-    print("✓ All tests passed for time.py")
-    print("================================================================\n")
