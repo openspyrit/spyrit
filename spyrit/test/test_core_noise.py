@@ -6,8 +6,8 @@ from test_helpers import assert_test
 
 
 def test_core_noise():
-    
-    print('\n*** Testing noise.py ***')
+
+    print("\n*** Testing noise.py ***")
     # %% NoNoise
     from spyrit.core.noise import NoNoise
 

@@ -13,7 +13,7 @@ from test_helpers import assert_test, assert_elementwise_equal
 
 def test_core_time():
 
-    print('\n*** Testing time.py ***')
+    print("\n*** Testing time.py ***")
     ## Test DeformationField
     n_frames = 10
     nx, ny = 64, 64
