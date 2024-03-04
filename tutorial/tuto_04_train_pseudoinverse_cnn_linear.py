@@ -121,7 +121,7 @@ Sampling_map[M_xy:, :] = 0
 
 # imagesc(Sampling_map, 'low-frequency sampling map')
 
-F = sort_by_significance(F, Sampling_map, 'rows', False)
+F = sort_by_significance(F, Sampling_map, "rows", False)
 H = F[:M, :]
 
 print(f"Shape of the measurement matrix: {H.shape}")

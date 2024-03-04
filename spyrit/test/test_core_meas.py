@@ -12,8 +12,8 @@ from test_helpers import assert_test
 
 
 def test_core_meas():
-    
-    print('\n*** Testing meas.py ***')
+
+    print("\n*** Testing meas.py ***")
     # %% Test Linear
     from spyrit.core.meas import Linear
 
