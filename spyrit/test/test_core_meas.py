@@ -135,7 +135,7 @@ def test_core_meas():
     # print(H.shape)
     # assert_test(H.shape, torch.Size([24, 64]), "Wrong measurement matrix size")
     
-    print("✓ All tests passed for meas.py")
+    print("All tests passed for meas.py")
     print("==============================")
     return True
 

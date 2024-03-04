@@ -132,7 +132,7 @@ def test_core_recon():
     print(z.shape)
     assert_test(z.shape, torch.Size([10, 1, 64, 64]), "Wrong recon size")
 
-    print("✓ All tests passed for recon.py")
+    print("All tests passed for recon.py")
     print("===============================")
     return True
 

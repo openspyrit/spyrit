@@ -113,7 +113,7 @@ def test_core_time():
         "Wrong forward 4 frames with 5 images in a batch size",
     )
 
-    print("✓ All tests passed for time.py")
+    print("All tests passed for time.py")
     print("==============================")
     return True
 

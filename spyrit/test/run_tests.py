@@ -16,5 +16,5 @@ def run_tests():
 if __name__ == "__main__":
     run_tests()
     print("==================================================================")
-    print("            ✓ All tests passed for all core modules")
+    print("              All tests passed for all core modules")
     print("==================================================================")
