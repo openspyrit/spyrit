@@ -97,6 +97,12 @@ def Permutation_Matrix(Mat: np.ndarray) -> np.ndarray:
 
     Returns:
         P (np.ndarray): N^2-by-N^2 permutation matrix (boolean)
+    
+    .. note::
+        Consider using :func:`order_by_significance` for increased
+        computational performance if using :func:`Permutation_Matrix` to
+        reorder a matrix as follows:
+        ``y = Permutation_Matrix(Ord) @ Mat``
     """
     (nx, ny) = Mat.shape
     Reorder = rankdata(-Mat, method="ordinal")
@@ -104,6 +110,94 @@ def Permutation_Matrix(Mat: np.ndarray) -> np.ndarray:
     P = np.zeros((nx * ny, nx * ny))
     P[Reorder - 1, Columns] = 1
     return P
+
+
+def order_by_significance(arr: np.ndarray,
+                          sig: np.ndarray,
+                          axis: str='rows',
+                          use_inverse_permutation: bool=False
+                          ) -> np.ndarray:
+    """
+    Returns an array ordered by decreasing significance along the specified
+    dimension.
+    
+    The significance values are given in the :math:`Mat` array.
+    
+    This function is equivalent to calling :func:`Permutation_Matrix` and
+    multiplying the input array by the permutation matrix. More specifically,
+    here are the four possible different calls and their equivalent:
+    
+    .. code-block:: python
+        h = 64
+        arr = np.random.randn(h, h)
+        sig = np.random.randn(h)
+        
+        # 1
+        y = order_by_significance(arr, sig, axis='rows', use_inverse_permutation=False)
+        y = Permutation_Matrix(sig) @ arr
+        
+        # 2
+        y = order_by_significance(arr, sig, axis='rows', use_inverse_permutation=True)
+        y = Permutation_Matrix(sig).T @ arr
+        
+        # 3
+        y = order_by_significance(arr, sig, axis='cols', use_inverse_permutation=False)
+        y = arr @ Permutation_Matrix(sig)
+        
+        # 4
+        y = order_by_significance(arr, sig, axis='cols', use_inverse_permutation=True)
+        y = arr @ Permutation_Matrix(sig).T
+        
+    .. note::
+        :math:`arr` must have the same number of rows or columns as there are
+        elements in the flattened :math:`sig` array.
+    
+    Args:
+        arr (np.ndarray):
+            Array to be ordered by rows or columns.
+        sig (np.ndarray):
+            Array containing the significance values.
+        axis (str, optional):
+            Axis along which to order the array. Must be either 'rows' or
+            'cols'. Defaults to 'rows'.
+        use_inverse_permutation (bool, optional):
+            If True, the permutation matrix is transposed before being used.
+            This is equivalent to using the inverse permutation matrix. 
+            Defaults to False.
+
+    Shape:
+        - arr: :math:`(*, r, c)`, where :math:`(*)` is any number of dimensions,
+        and :math:`r` and :math:`c` are the number of rows and columns
+        respectively.
+        
+        - sig: :math:`(r)` if axis is 'rows' or :math:`(c)` if axis is 'cols'
+        (or any shape that has the same number of elements)
+        
+        - Output: :math:`(*, r, c)`
+    
+    Returns:
+        (np.ndarray):
+            Array :math:`sig` ordered by decreasing significance :math:`sig`
+            along its rows or columns.
+    """
+    try:
+        axis_index = ['rows', 'cols'].index(axis) -2
+    except ValueError:
+        raise ValueError(f"axis must be either 'rows' or 'cols', not {axis}")
+        
+    if np.prod(sig.shape) != arr.shape[axis_index]:
+        raise ValueError("The number of elements in sig must be equal to the "
+                         "number of rows or columns in arr")
+        
+    reorder = rankdata(-sig, method="ordinal") -1 # -1 to make it zero-based
+    # reorder corresponds to the inverse permutation matrix
+    
+    if ((axis == 'rows') and (not use_inverse_permutation)
+        or ((axis == 'cols') and use_inverse_permutation)):
+        reorder = reorder.argsort()
+        # now it corresponds to the permutation matrix
+        
+    return np.take(arr, reorder, axis_index)
 
 
 def reorder(meas: np.ndarray, Perm_acq: np.ndarray, Perm_rec: np.ndarray) -> np.ndarray:
