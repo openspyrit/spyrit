@@ -13,8 +13,8 @@ from test_helpers import assert_test
 
 
 def test_core_prep():
-    
-    print('\n*** Testing prep.py ***')
+
+    print("\n*** Testing prep.py ***")
     # constructor and forward
     x = torch.rand([10, 400], dtype=torch.float)
     H = np.random.random([400, 32 * 32])
@@ -115,6 +115,7 @@ def test_core_prep():
     print("✓ All tests passed for prep.py")
     print("==============================")
     return True
+
 
 if __name__ == "__main__":
     test_core_prep()

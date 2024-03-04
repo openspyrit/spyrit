@@ -11,8 +11,8 @@ from test_helpers import assert_test
 
 
 def test_core_recon():
-    
-    print('\n*** Testing recon.py ***')
+
+    print("\n*** Testing recon.py ***")
     # EXAMPLE 1
     # constructor
     recon_op = PseudoInverse()
@@ -135,6 +135,7 @@ def test_core_recon():
     print("✓ All tests passed for recon.py")
     print("===============================")
     return True
+
 
 if __name__ == "__main__":
     test_core_recon()

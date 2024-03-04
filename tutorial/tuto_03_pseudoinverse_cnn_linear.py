@@ -83,7 +83,7 @@ M_xy = math.ceil(M**0.5)
 Sampling_map[:, M_xy:] = 0
 Sampling_map[M_xy:, :] = 0
 
-F = sort_by_significance(F, Sampling_map, 'rows', False)
+F = sort_by_significance(F, Sampling_map, "rows", False)
 H = F[:M, :]
 print(f"Shape of the measurement matrix: {H.shape}")
 
