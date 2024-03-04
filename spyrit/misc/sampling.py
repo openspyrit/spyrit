@@ -99,7 +99,7 @@ def Permutation_Matrix(Mat: np.ndarray) -> np.ndarray:
         P (np.ndarray): N^2-by-N^2 permutation matrix (boolean)
     
     .. note::
-        Consider using :func:`order_by_significance` for increased
+        Consider using :func:`sort_by_significance` for increased
         computational performance if using :func:`Permutation_Matrix` to
         reorder a matrix as follows:
         ``y = Permutation_Matrix(Ord) @ Mat``
@@ -112,7 +112,7 @@ def Permutation_Matrix(Mat: np.ndarray) -> np.ndarray:
     return P
 
 
-def order_by_significance(arr: np.ndarray,
+def sort_by_significance(arr: np.ndarray,
                           sig: np.ndarray,
                           axis: str='rows',
                           use_inverse_permutation: bool=False
@@ -133,19 +133,19 @@ def order_by_significance(arr: np.ndarray,
         sig = np.random.randn(h)
         
         # 1
-        y = order_by_significance(arr, sig, axis='rows', use_inverse_permutation=False)
+        y = sort_by_significance(arr, sig, axis='rows', use_inverse_permutation=False)
         y = Permutation_Matrix(sig) @ arr
         
         # 2
-        y = order_by_significance(arr, sig, axis='rows', use_inverse_permutation=True)
+        y = sort_by_significance(arr, sig, axis='rows', use_inverse_permutation=True)
         y = Permutation_Matrix(sig).T @ arr
         
         # 3
-        y = order_by_significance(arr, sig, axis='cols', use_inverse_permutation=False)
+        y = sort_by_significance(arr, sig, axis='cols', use_inverse_permutation=False)
         y = arr @ Permutation_Matrix(sig)
         
         # 4
-        y = order_by_significance(arr, sig, axis='cols', use_inverse_permutation=True)
+        y = sort_by_significance(arr, sig, axis='cols', use_inverse_permutation=True)
         y = arr @ Permutation_Matrix(sig).T
         
     .. note::
