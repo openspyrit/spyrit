@@ -75,10 +75,11 @@ F = np.where(F > 0, F, 0)
 #
 # Next, we subsample the rows of the measurement matrix to simulate an
 # accelerated acquisition. For this, we use the
-# :func:`spyrit.misc.sampling.Permutation_Matrix` function
-# that returns a :attr:`h*h`-by-:attr:`h*h` permutation matrix from a
-# :attr:`h`-by-:attr:`h` sampling maps that indicates the location of the most
-# relevant coefficients in the transformed domain.
+# :func:`spyrit.misc.sampling.sort_by_significance` function
+# that returns an input matrix whose rows are ordered in increasing order of
+# significance according to a given array. The array is a sampling map that
+# indicates the location of the most significant coefficients in the
+# transformed domain.
 #
 # To keep the low-frequency Hadamard coefficients, we choose a sampling map
 # with ones in the top left corner and zeros elsewhere.
@@ -99,10 +100,9 @@ imagesc(Sampling_map, "low-frequency sampling map")
 # After permutation of the full Hadamard matrix, we keep only its first
 # :attr:`M` rows
 
-from spyrit.misc.sampling import Permutation_Matrix
+from spyrit.misc.sampling import sort_by_significance
 
-Perm = Permutation_Matrix(Sampling_map)
-F = Perm @ F
+F = sort_by_significance(F, Sampling_map, 'rows', False)
 H = F[:M, :]
 
 print(f"Shape of the measurement matrix: {H.shape}")
