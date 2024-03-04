@@ -112,7 +112,7 @@ def test_core_prep():
     # print(m.shape)
     # assert_test(m.shape, torch.Size([10, 24, 64]), "Wrong matrix size")
 
-    print("✓ All tests passed for prep.py")
+    print("All tests passed for prep.py")
     print("==============================")
     return True
 

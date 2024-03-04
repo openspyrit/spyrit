@@ -166,7 +166,7 @@ def test_core_noise():
     y = noise_op(x)
     print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
-    print("✓ All tests passed for noise.py")
+    print("All tests passed for noise.py")
     print("===============================")
     return True
 
