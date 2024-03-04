@@ -39,9 +39,10 @@ def meas2img(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
             N-by-N measurement image
     """
     y = np.pad(meas, (0, Mat.size - len(meas)))
-    Perm = Permutation_Matrix(Mat)
-    Img = np.dot(np.transpose(Perm), y).reshape(Mat.shape)
-    return Img
+    # Perm = Permutation_Matrix(Mat)
+    # Img = np.dot(np.transpose(Perm), y).reshape(Mat.shape)
+    Img = sort_by_significance(y, Mat, axis='rows', use_inverse_permutation=True)
+    return Img.reshape(Mat.shape)
 
 
 def meas2img2(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
@@ -63,8 +64,9 @@ def meas2img2(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
     Nx, Ny = Mat.shape
 
     y = np.pad(meas, ((0, Mat.size - len(meas)), (0, 0)))
-    Perm = Permutation_Matrix(Mat)
-    Img = Perm.T @ y
+    # Perm = Permutation_Matrix(Mat)
+    # Img = Perm.T @ y
+    Img = sort_by_significance(y, Mat, axis='rows', use_inverse_permutation=True)
     Img = Img.reshape((Nx, Ny, B))
     return Img
 
@@ -82,8 +84,9 @@ def img2meas(Img: np.ndarray, Mat: np.ndarray) -> np.ndarray:
         meas (np.ndarray):
             Measurement vector of lenth M <= N**2.
     """
-    Perm = Permutation_Matrix(Mat)
-    meas = np.dot(Perm, np.ravel(Img))
+    # Perm = Permutation_Matrix(Mat)
+    # meas = np.dot(Perm, np.ravel(Img))
+    meas = sort_by_significance(np.ravel(Img), Mat, axis='rows', use_inverse_permutation=False)
     return meas
 
 
