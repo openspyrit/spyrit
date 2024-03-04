@@ -106,7 +106,7 @@ if mode_run:
 
 import math
 from spyrit.misc.walsh_hadamard import walsh2_matrix
-from spyrit.misc.sampling import Permutation_Matrix
+from spyrit.misc.sampling import sort_by_significance
 
 und = 4  # undersampling factor
 M = h**2 // und  # number of measurements (undersampling factor = 4)
@@ -121,8 +121,7 @@ Sampling_map[M_xy:, :] = 0
 
 # imagesc(Sampling_map, 'low-frequency sampling map')
 
-Perm = Permutation_Matrix(Sampling_map)
-F = Perm @ F
+F = sort_by_significance(F, Sampling_map, 'rows', False)
 H = F[:M, :]
 
 print(f"Shape of the measurement matrix: {H.shape}")
