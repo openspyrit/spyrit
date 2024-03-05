@@ -18,7 +18,7 @@ a preprocessing operator, a reconstruction operator, and a learnable neural netw
 All operators inherit from PyTorch `nn.Module` class, which allows to easily
 combine them into a full-network.
 
-.. image:: fig/pull.png
+.. image:: fig/full.png
    :width: 800
    :align: center
 
