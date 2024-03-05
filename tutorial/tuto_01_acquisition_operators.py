@@ -3,8 +3,8 @@ r"""
 ==========================
 .. _tuto_acquisition_operators:
 
-This tutorial shows how to simulate measurements using the :class:`spyrit.core`
-submodule, which is based on three classes:
+This tutorial shows how to simulate measurements using the :mod:`spyrit.core`
+submodule. The simulation is based on three modules:
 
 1. **Measurement operators** compute linear measurements :math:`y = Hx` from
    images :math:`x`, where :math:`H` is a linear operator (matrix) and :math:`x`
@@ -15,6 +15,11 @@ submodule, which is based on three classes:
 3. **Preprocessing operators** are typically used to process the noisy
    measurements prior to reconstruction (see :mod:`spyrit.core.prep`)
 
+.. image:: ../fig/tuto1.png
+   :width: 600
+   :align: center
+   :alt: Measurement, noise, and preprocessing sketches
+   
 These tutorials load image samples from `/images/`.
 """
 
@@ -36,7 +41,7 @@ import matplotlib.pyplot as plt
 from spyrit.misc.disp import imagesc
 from spyrit.misc.statistics import transform_gray_norm
 
-# sphinx_gallery_thumbnail_path = 'fig/noise_op.png'
+# sphinx_gallery_thumbnail_path = 'fig/tuto1.png'
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)

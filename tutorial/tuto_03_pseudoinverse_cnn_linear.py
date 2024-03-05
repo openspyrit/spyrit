@@ -11,6 +11,11 @@ but uses a CNN denoiser instead of the identity operator in order to remove arte
 The measurement operator is chosen as a Hadamard matrix with positive coefficients,
 which can be replaced by any matrix.
 
+.. image:: ../fig/tuto3.png
+   :width: 600
+   :align: center
+   :alt: Reconstruction and neural network denoising architecture sketch
+
 These tutorials load image samples from `/images/`.
 """
 
@@ -32,7 +37,7 @@ import matplotlib.pyplot as plt
 from spyrit.misc.disp import imagesc
 from spyrit.misc.statistics import transform_gray_norm
 
-# sphinx_gallery_thumbnail_path = 'fig/pinvnet_cnn.png'
+# sphinx_gallery_thumbnail_path = 'fig/tuto3.png'
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
