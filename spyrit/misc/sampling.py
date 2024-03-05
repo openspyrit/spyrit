@@ -182,7 +182,7 @@ def sort_by_significance(
 
     Returns:
         (np.ndarray):
-            Array :math:`sig` ordered by decreasing significance :math:`sig`
+            Array :math:`arr` ordered by decreasing significance :math:`sig`
             along its rows or columns.
     """
     try:
