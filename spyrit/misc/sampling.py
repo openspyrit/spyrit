@@ -127,13 +127,12 @@ def sort_by_significance(
     Returns an array ordered by decreasing significance along the specified
     dimension.
 
-    The significance values are given in the :math:`Mat` array.
+    The significance values are given in the :math:`sig` array.
 
-    This function is equivalent to calling :func:`Permutation_Matrix` and
+    This function is equivalent to (but faster) :func:`Permutation_Matrix` and
     multiplying the input array by the permutation matrix. More specifically,
-    here are the four possible different calls and their equivalent:
+    here are the four possible different calls and their equivalent::
 
-    .. code-block:: python
         h = 64
         arr = np.random.randn(h, h)
         sig = np.random.randn(h)
@@ -183,7 +182,7 @@ def sort_by_significance(
 
     Returns:
         (np.ndarray):
-            Array :math:`sig` ordered by decreasing significance :math:`sig`
+            Array :math:`arr` ordered by decreasing significance :math:`sig`
             along its rows or columns.
     """
     try:

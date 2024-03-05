@@ -7,6 +7,11 @@ This tutorial shows how to simulate measurements and perform image reconstructio
 The measurement operator is chosen as a Hadamard matrix with positive coefficients.
 Note that this matrix can be replaced by any desired matrix.
 
+.. image:: ../fig/tuto2.png
+   :width: 600
+   :align: center
+   :alt: Reconstruction architecture sketch
+
 These tutorials load image samples from `/images/`.
 """
 
@@ -27,7 +32,7 @@ import numpy as np
 from spyrit.misc.disp import imagesc
 from spyrit.misc.statistics import transform_gray_norm
 
-# sphinx_gallery_thumbnail_path = 'fig/pinvnet.png'
+# sphinx_gallery_thumbnail_path = 'fig/tuto2.png'
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
