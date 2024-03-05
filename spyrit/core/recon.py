@@ -1156,8 +1156,11 @@ class LearnedPGD(nn.Module):
             std_mat = 1/torch.sqrt(self.meas_variance)
             std_mat = torch.diag(std_mat.view(-1))
             H = torch.matmul(std_mat, H)
-        #s = torch.linalg.svdvals(torch.matmul(H.t(), H))
-        s = torch.linalg.svdvals(H)**2
+        try: 
+            s = torch.linalg.svdvals(torch.matmul(H.t(), H))
+        except:
+            print("svdvals(H^T*H) failed, trying svdvals(H) instead")
+            s = torch.linalg.svdvals(H)**2
         return s
 
     def stepsize_gd(self):
@@ -1207,9 +1210,8 @@ class LearnedPGD(nn.Module):
         if self.wls:
             # Get variance of the measurements
             self.meas_variance = self.prep.sigma(x)
-            #self.meas_variance = 1/m
 
-            # Normalize the stepsize to compensate normalization by the variance
+            # Normalize the stepsize to account for the variance
             self.gamma = self.gamma*torch.mean(self.meas_variance)
             #self.gamma = self.gamma*torch.min(self.meas_variance)
 
@@ -1267,60 +1269,3 @@ class LearnedPGD(nn.Module):
             self.mse = mse
         return x
     
-    def reconstruct_eval(self, x):
-        r""" Reconstruction step of a reconstruction network
-            
-        Args:
-            :attr:`x`: raw measurement vectors
-        
-        Shape:
-            :attr:`x`: :math:`(BC,2M)`
-            
-            :attr:`output`: :math:`(BC,1,H,W)`
-        
-        Example:
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H**2)
-            >>> recnet = PinvNet(noise, prep) 
-            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
-            >>> z = recnet.reconstruct(x)
-            >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
-        """
-        
-        with torch.no_grad():
-
-            # Measurement to image domain mapping
-            bc, _ = x.shape
-            
-            # Preprocessing in the measurement domain
-            m = self.prep(x) # shape x = [b*c, M]
-    
-            # init solution and dual variable
-            x = self.acqu.meas_op.pinv(m) # shape x = [b*c,N]
-            u = None
-    
-            for i in range(self.iter_stop):
-                x = x.view(bc,self.acqu.meas_op.N)
-                x_old = x.clone() # Do we needs detach here? https://discuss.pytorch.org/t/clone-and-detach-in-v0-4-0/16861/21
-    
-                # gradient step (data fidelity)
-                res = self.acqu.meas_op.forward_H(x)-m
-                x = x - self.gamma*self.acqu.meas_op.adjoint(res)
-    
-                # proximal step (prior)
-                #x, u = self.denoi.module.forward_eval(x, x, l=self.mu*self.gamma, u=u)
-                x, _ = self.denoi.module.forward_eval(x, x, l=self.mu*self.gamma, u=u)
-    
-                # # stopping criteria
-                x_old = x_old.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)
-                norm_it = torch.linalg.vector_norm(x-x_old)/torch.linalg.vector_norm(x)
-                
-                print(f'{i}: |x - x_old| / |x| = {norm_it}')
-                # if norm_it < self.norm_stop:
-                    # break
-
-            return x
