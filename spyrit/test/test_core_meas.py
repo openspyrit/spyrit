@@ -12,6 +12,8 @@ from test_helpers import assert_test
 
 
 def test_core_meas():
+
+    print("\n*** Testing meas.py ***")
     # %% Test Linear
     from spyrit.core.meas import Linear
 
@@ -133,6 +135,8 @@ def test_core_meas():
     # print(H.shape)
     # assert_test(H.shape, torch.Size([24, 64]), "Wrong measurement matrix size")
 
+    print("All tests passed for meas.py")
+    print("==============================")
     return True
 
 
