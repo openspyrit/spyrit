@@ -3,9 +3,10 @@ import warnings
 import torch
 import torch.nn as nn
 import numpy as np
+import scipy.stats
 
 from spyrit.misc.walsh_hadamard import walsh2_torch, walsh2_matrix
-from spyrit.misc.sampling import Permutation_Matrix
+from spyrit.misc.sampling import Permutation_Matrix, sort_by_significance
 
 
 # =============================================================================
@@ -444,20 +445,19 @@ class DynamicHadamSplit(DynamicLinearSplit):
     # ========================================================================= change this ????? ^
     def __init__(self, M: int, h: int, Ord: np.ndarray):
         F = walsh2_matrix(h)  # full matrix
-        Perm = Permutation_Matrix(Ord)
-        F = Perm @ F  # If Perm is not learnt, could be computed much faster
-        H = F[:M, :]
+        H = sort_by_significance(F, Ord, "rows", False)[
+            :M, :
+        ]  # much faster than previously
         w = h  # we assume a square image
 
         super().__init__(torch.from_numpy(H))
-        print("h before", self.h)
 
+        Perm = Permutation_Matrix(Ord)
         Perm = torch.from_numpy(Perm).float()  # float32
         self.Perm = nn.Parameter(Perm, requires_grad=False)
-        # overwrite self.h and self.w
+        # overwrite self.h and self.w   /!\   is it necessary?
         self.h = h
         self.w = w
-        print("h after", self.h)
 
     def get_Perm(self) -> torch.tensor:
         return self.Perm.data

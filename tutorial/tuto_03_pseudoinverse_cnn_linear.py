@@ -70,7 +70,7 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # (see :ref:`Positive Hadamard matrix <hadamard_positive>` for full explantion).
 
 import math
-from spyrit.misc.sampling import Permutation_Matrix
+from spyrit.misc.sampling import sort_by_significance
 from spyrit.misc.walsh_hadamard import walsh2_matrix
 
 F = walsh2_matrix(h)
@@ -83,8 +83,7 @@ M_xy = math.ceil(M**0.5)
 Sampling_map[:, M_xy:] = 0
 Sampling_map[M_xy:, :] = 0
 
-Perm = Permutation_Matrix(Sampling_map)
-F = Perm @ F
+F = sort_by_significance(F, Sampling_map, "rows", False)
 H = F[:M, :]
 print(f"Shape of the measurement matrix: {H.shape}")
 
