@@ -171,20 +171,23 @@ def sort_by_significance(
             Defaults to False.
 
     Shape:
-        - arr: :math:`(*, r, c)`, where :math:`(*)` is any number of dimensions,
-        and :math:`r` and :math:`c` are the number of rows and columns
-        respectively.
+        - arr: :math:`(*, r, c)` or :math:`(c)`, where :math:`(*)` is any
+        number of dimensions, and :math:`r` and :math:`c` are the number of
+        rows and columns respectively.
 
         - sig: :math:`(r)` if axis is 'rows' or :math:`(c)` if axis is 'cols'
-        (or any shape that has the same number of elements)
+        (or any shape that has the same number of elements). Not used if
+        arr is 1D.
 
-        - Output: :math:`(*, r, c)`
+        - Output: :math:`(*, r, c)` or :math:`(c)`
 
     Returns:
         (np.ndarray):
             Array :math:`arr` ordered by decreasing significance :math:`sig`
             along its rows or columns.
     """
+    if arr.ndim == 1:
+        axis = 'cols'
     try:
         axis_index = ["rows", "cols"].index(axis) - 2
     except ValueError:
