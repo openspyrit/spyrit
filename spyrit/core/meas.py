@@ -452,18 +452,22 @@ class DynamicHadamSplit(DynamicLinearSplit):
 
         super().__init__(torch.from_numpy(H))
 
-        Perm = Permutation_Matrix(Ord)
-        Perm = torch.from_numpy(Perm).float()  # float32
-        self.Perm = nn.Parameter(Perm, requires_grad=False)
         # overwrite self.h and self.w   /!\   is it necessary?
         self.h = h
         self.w = w
+        
+        #######################################################################
+        # these lines can be deleted in a future version, along with the 
+        # method self.get_Perm()
+        #######################################################################
+        Perm = Permutation_Matrix(Ord)
+        Perm = torch.from_numpy(Perm).float()  # float32
+        self.Perm = nn.Parameter(Perm, requires_grad=False)
 
     def get_Perm(self) -> torch.tensor:
+        warnings.warn("The attribute 'Perm' will be removed in a future version.",
+                      DeprecationWarning)
         return self.Perm.data
-
-    def __attributeslist__(self):
-        return super().__attributeslist__() + [("Perm", self.Perm.shape)]
 
 
 # =============================================================================
@@ -934,6 +938,10 @@ class HadamSplit(LinearSplit, DynamicHadamSplit):
         # initialize from DynamicHadamSplit (the MRO is not trivial here)
         super(Linear, self).__init__(M, h, Ord)
         self.set_H_pinv(pinv=1 / self.N * self.get_H_T())
+        
+        # store Ord as attribute for use of self.inverse() method
+        Ord = torch.from_numpy(Ord).float()  # float32
+        self.Ord = nn.Parameter(Ord, requires_grad=False)
 
     def inverse(self, x: torch.tensor) -> torch.tensor:
         r"""Inverse transform of Hadamard-domain images
@@ -961,9 +969,15 @@ class HadamSplit(LinearSplit, DynamicHadamSplit):
         # permutations
         # todo: check walsh2_S_fold_torch to speed up
         b, N = x.shape
-        x = x @ self.Perm.T
+        
+        x = sort_by_significance(x, self.Ord, 'cols', True) # new way
+        # x = x @ self.Perm.T                               # old way
+        
         x = x.view(b, 1, self.h, self.w)
         # inverse of full transform
         # todo: initialize with 1D transform to speed up
         x = 1 / self.N * walsh2_torch(x)
         return x.view(b, N)
+
+    def __attributeslist__(self):
+        return super().__attributeslist__() + [("Perm", self.Ord.shape)]
