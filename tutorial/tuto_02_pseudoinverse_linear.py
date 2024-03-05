@@ -11,7 +11,7 @@ Note that this matrix can be replaced by any desired matrix.
    :width: 600
    :align: center
    :alt: Reconstruction architecture sketch
-   
+
 These tutorials load image samples from `/images/`.
 """
 
