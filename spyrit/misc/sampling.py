@@ -131,9 +131,8 @@ def sort_by_significance(
 
     This function is equivalent to calling :func:`Permutation_Matrix` and
     multiplying the input array by the permutation matrix. More specifically,
-    here are the four possible different calls and their equivalent:
+    here are the four possible different calls and their equivalent::
 
-    .. code-block:: python
         h = 64
         arr = np.random.randn(h, h)
         sig = np.random.randn(h)
