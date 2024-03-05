@@ -9,6 +9,11 @@ and without a trainable image denoiser. In the previous tutorial
 we showed how to handle split measurements for a Hadamard operator
 and how to perform a pseudo-inverse reconstruction with PinvNet.
 
+.. image:: ../fig/tuto6.png
+   :width: 600
+   :align: center
+   :alt: Reconstruction and neural network denoising architecture sketch using split measurements
+
 These tutorials load image samples from `/images/`.
 """
 
@@ -30,7 +35,7 @@ import matplotlib.pyplot as plt
 from spyrit.misc.disp import imagesc
 from spyrit.misc.statistics import transform_gray_norm
 
-# sphinx_gallery_thumbnail_path = 'fig/dcnet.png'
+# sphinx_gallery_thumbnail_path = 'fig/tuto6.png'
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
