@@ -442,7 +442,6 @@ class DynamicHadamSplit(DynamicLinearSplit):
           )
     """
 
-    # ========================================================================= change this ????? ^
     def __init__(self, M: int, h: int, Ord: np.ndarray):
         F = walsh2_matrix(h)  # full matrix
         H = sort_by_significance(F, Ord, "rows", False)[
