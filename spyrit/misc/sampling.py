@@ -129,7 +129,7 @@ def sort_by_significance(
 
     The significance values are given in the :math:`sig` array.
 
-    This function is equivalent to calling :func:`Permutation_Matrix` and
+    This function is equivalent to (but faster) :func:`Permutation_Matrix` and
     multiplying the input array by the permutation matrix. More specifically,
     here are the four possible different calls and their equivalent::
 
