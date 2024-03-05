@@ -454,9 +454,9 @@ class DynamicHadamSplit(DynamicLinearSplit):
         # overwrite self.h and self.w   /!\   is it necessary?
         self.h = h
         self.w = w
-        
+
         #######################################################################
-        # these lines can be deleted in a future version, along with the 
+        # these lines can be deleted in a future version, along with the
         # method self.get_Perm()
         #######################################################################
         Perm = Permutation_Matrix(Ord)
@@ -464,8 +464,10 @@ class DynamicHadamSplit(DynamicLinearSplit):
         self.Perm = nn.Parameter(Perm, requires_grad=False)
 
     def get_Perm(self) -> torch.tensor:
-        warnings.warn("The attribute 'Perm' will be removed in a future version.",
-                      DeprecationWarning)
+        warnings.warn(
+            "The attribute 'Perm' will be removed in a future version.",
+            DeprecationWarning,
+        )
         return self.Perm.data
 
 
@@ -937,7 +939,7 @@ class HadamSplit(LinearSplit, DynamicHadamSplit):
         # initialize from DynamicHadamSplit (the MRO is not trivial here)
         super(Linear, self).__init__(M, h, Ord)
         self.set_H_pinv(pinv=1 / self.N * self.get_H_T())
-        
+
         # store Ord as attribute for use of self.inverse() method
         Ord = torch.from_numpy(Ord).float()  # float32
         self.Ord = nn.Parameter(Ord, requires_grad=False)
@@ -968,10 +970,10 @@ class HadamSplit(LinearSplit, DynamicHadamSplit):
         # permutations
         # todo: check walsh2_S_fold_torch to speed up
         b, N = x.shape
-        
-        x = sort_by_significance(x, self.Ord, 'cols', True) # new way
+
+        x = sort_by_significance(x, self.Ord, "cols", True)  # new way
         # x = x @ self.Perm.T                               # old way
-        
+
         x = x.view(b, 1, self.h, self.w)
         # inverse of full transform
         # todo: initialize with 1D transform to speed up

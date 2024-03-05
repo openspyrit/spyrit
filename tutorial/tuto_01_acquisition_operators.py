@@ -19,7 +19,7 @@ submodule. The simulation is based on three modules:
    :width: 600
    :align: center
    :alt: Measurement, noise, and preprocessing sketches
-   
+
 These tutorials load image samples from `/images/`.
 """
 
