@@ -127,7 +127,7 @@ def sort_by_significance(
     Returns an array ordered by decreasing significance along the specified
     dimension.
 
-    The significance values are given in the :math:`Mat` array.
+    The significance values are given in the :math:`sig` array.
 
     This function is equivalent to calling :func:`Permutation_Matrix` and
     multiplying the input array by the permutation matrix. More specifically,
