@@ -187,7 +187,7 @@ def sort_by_significance(
             along its rows or columns.
     """
     if arr.ndim == 1:
-        axis = 'cols'
+        axis = "cols"
     try:
         axis_index = ["rows", "cols"].index(axis) - 2
     except ValueError:
