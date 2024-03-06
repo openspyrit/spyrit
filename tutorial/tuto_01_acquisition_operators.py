@@ -41,7 +41,7 @@ import matplotlib.pyplot as plt
 from spyrit.misc.disp import imagesc
 from spyrit.misc.statistics import transform_gray_norm
 
-# sphinx_gallery_thumbnail_path = 'fig/tuto1.png'
+# sphinx_gallery_thumbnail_path = '../fig/tuto1.png'
 
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
