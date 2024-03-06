@@ -1224,7 +1224,9 @@ class LearnedPGD(nn.Module):
             x = self.acqu.meas_op.pinv(m)
 
             # proximal step (prior)
+            x = x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
             x = self.denoi(x)      
+            x = x.view(bc,self.acqu.meas_op.N)
         else: 
             # zero init
             x = torch.zeros_like(x)
