@@ -26,7 +26,7 @@ on a specific part of the pipeline.
 * Explore :ref:`Bonus Tutorial <sphx_glr_gallery_tuto_bonus_advanced_methods_colab.py>` if you want to go deeper in understanding the capabilities of Spyrit
 
 
-.. image:: fig/full.png
+.. image:: ../fig/full.png
    :width: 800
    :align: center
    :alt: Principle of the image processing pipeline
