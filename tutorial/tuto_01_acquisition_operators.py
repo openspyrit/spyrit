@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 r"""
 01. Acquisition operators
 ==========================
