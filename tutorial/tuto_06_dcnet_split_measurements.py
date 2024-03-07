@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 r"""
 06. DCNet solution for split measurements
 =========================================
