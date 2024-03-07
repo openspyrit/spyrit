@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 r"""
 05. Acquisition operators (advanced) - Split measurements and subsampling
 =========================================================================
