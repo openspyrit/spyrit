@@ -1,3 +1,8 @@
+# TODO
+# - remove optional parameter from DeformationField __init__
+# - add mandatory t0 t1, fps and n_frames to AffineDeformationField __init__
+
+
 """
 Stores deformation fields and warps images.
 
@@ -7,14 +12,14 @@ a deformation field that is stored as as class attribute. They can be fed
 an image (called "*original image*") and will return the warped image
 ("*deformed image*").
 
-The function that maps the pixels of the *original image* to the pixels of
-the *deformed image* is called the "*deformation field*" and is noted
-:math:`u`. The function that maps the pixels of the *deformed image* to the
+The function that maps the *original image* pixel coordinates to the *deformed
+image* pixel coordinates is called the "*deformation field*" and is noted
+:math:`v`. The function that maps the pixels of the *deformed image* to the
 pixels of the *original image* is called the "*inverse deformation field*" and
-is noted :math:`v`. The *deformation field* and the *inverse deformation field*
-are related by the equation :math:`u = v^{-1}`.
+is noted :math:`u`. The *deformation field* and the *inverse deformation field*
+are related by the equation :math:`v = u^{-1}`.
 
-Here, the two classes use and store the *inverse deformation field* :math:`v`
+Here, the two classes use and store the *inverse deformation field* :math:`u`
 as a class attribute.
 """
 
@@ -32,9 +37,9 @@ class DeformationField(nn.Module):
     r"""
     Stores a discrete deformation field as a :math:`(b,Nx,Ny,2)` tensor.
 
-    Warps a single image according to an *inverse deformation field* :math:`v`,
-    i.e. the field that maps the pixels of the deformed image to the pixels of
-    the original image.
+    Warps a single image according to an *inverse deformation field* :math:`u`,
+    i.e. the field that maps the *deformed image* pixel coordinates to the 
+    *original image* pixel coordinates.
 
     It is constructed from a tensor of shape :math:`(n\_frames,Nx,Ny,2)`, where
     :math:`n\_frames` is the number of frames in the animation, :math:`Nx` and
@@ -55,7 +60,7 @@ class DeformationField(nn.Module):
 
     Args:
         :attr:`inverse_grid_frames` (torch.tensor, optional):
-        *Inverse deformation field* :math:`v` of shape :math:`(n\_frames,Nx,Ny,2)`.
+        *Inverse deformation field* :math:`u` of shape :math:`(n\_frames,Nx,Ny,2)`.
         Default: `None`.
 
         :attr:`align_corners` (bool, optional):
@@ -69,7 +74,7 @@ class DeformationField(nn.Module):
 
     Attributes:
         :attr:`self.inverse_grid_frames` (torch.tensor):
-        *Inverse deformation field* :math:`v` of shape :math:`(n\_frames,Nx,Ny,2)`.
+        *Inverse deformation field* :math:`u` of shape :math:`(n\_frames,Nx,Ny,2)`.
         If set manually, the dtype should be `torch.float32`. Default: `None`.
 
         :attr:`self.align_corners` (bool):
@@ -77,19 +82,19 @@ class DeformationField(nn.Module):
         points of the input's corner pixels? Default: `False`.
 
     **Example 1:** Rotating a 2x2 B&W image by 90 degrees counter-clockwise, using one frame and align_corners=False
-        >>> v = torch.tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]]])
-        >>> field = DeformationField(v, align_corners=False)
+        >>> u = torch.tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]]])
+        >>> field = DeformationField(u, align_corners=False)
         >>> print(field.inverse_grid_frames)
         tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]]])
 
     **Example 2:** Rotating a 2x2 B&W image by 90 degrees clockwise, using one frame and align_corners=True
-        >>> v = torch.tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]]])
-        >>> field = DeformationField(v, align_corners=True)
+        >>> u = torch.tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]]])
+        >>> field = DeformationField(u, align_corners=True)
         >>> print(field.inverse_grid_frames)
         tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]])
     """
 
-    def __init__(self, inverse_grid_frames: torch.tensor = None, align_corners=False):
+    def __init__(self, inverse_grid_frames: torch.tensor=None, align_corners=False):
         super().__init__()
         if inverse_grid_frames is not None:
             # convert to float 23 then store as nn.Parameter
@@ -98,19 +103,42 @@ class DeformationField(nn.Module):
                 inverse_grid_frames, requires_grad=False
             )
         else:
-            self.inverse_grid_frames = None
+            self.inverse_grid_frames = None     # to be removed
         self.align_corners = align_corners
+
+    def get_inverse_grid_frames(self):
+        r"""
+        Returns the *inverse deformation field* :math:`u`.
+
+        Returns the *inverse deformation field* :math:`u` contained in the
+        attribute :attr:`inverse_grid_frames`.
+
+        Returns:
+            :attr:`self.inverse_grid_frames` (torch.tensor):
+            *Inverse deformation field* :math:`u` of shape :math:`(n\_frames,Nx,Ny,2)`.
+
+        Example 1: Get the inverse deformation field of a 2x2 B&W image rotated by 90 degrees counter-clockwise
+            >>> u = torch.tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]]])
+            >>> field = DeformationField(u, align_corners=False)
+            >>> print(field.get_inverse_grid_frames())
+            tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]])
+        """
+        if self.inverse_grid_frames is None:
+            return None
+        return self.inverse_grid_frames.data    # if None will raise error
 
     def forward(
         self, img: torch.tensor, n0: int, n1: int, mode: str = "bilinear"
     ) -> torch.tensor:
         r"""
         Warps an image or batch of images with the stored *inverse deformation field*
-        :math:`v`.
+        :math:`u`.
 
         Deforms the image or batch of images according to the *inverse deformation
-        field* :math:`v` contained in the attribute :attr:`inverse_grid_frames`,
+        field* :math:`u` contained in the attribute :attr:`inverse_grid_frames`,
         sliced between the frames :math:`n0` (included) and :math:`n1` (excluded).
+        :math:`u` is the field that maps the pixels of the *deformed image* to
+        the pixels of the *original image*.
 
         Args:
             :attr:`img` (torch.tensor):
@@ -152,7 +180,7 @@ class DeformationField(nn.Module):
             The deformed batch of images of shape :math:`(|n1-n0|,c,Nx,Ny)` or
             :math:`(B,|n1-n0|,c,Nx,Ny)` depending on the input shape, where each
             image in the batch is deformed according to the *inverse deformation
-            field* :math:`v` contained in the attribute :attr:`inverse_grid_frames`.
+            field* :math:`u` contained in the attribute :attr:`inverse_grid_frames`.
 
         Shape:
             :attr:`img`: :math:`(c,Nx,Ny)` or :math:`(B,c,Nx,Ny)`, where :math:`B`
@@ -231,23 +259,23 @@ class AffineDeformationField(DeformationField):
     Stores an affine deformation field as a function of time.
 
     Warps an image or batch of images according to an *inverse affine deformation
-    field* :math:`v`, i.e. the field that maps the pixels of the *deformed
-    image* to the pixels of the *original image*.
+    field* :math:`u`, i.e. the field that maps the *deformed image* pixel
+    coordinates to the *original image* pixel coordinates.
 
     It is constructed from a function of one parameter (time) that returns a
     tensor of shape :math:`(3,3)` representing a 2D affine homogeneous transformation
     matrix. The homogeneous transformation matrix corresponds to the *inverse
-    deformation field* :math:`v`, i.e. the field that maps the pixels of the
+    deformation field* :math:`u`, i.e. the field that maps the pixels of the
     *deformed image* to the pixels of the *original image*.
 
     To warp an image, the affine transformation matrix is evaluated at each
     time corresponding to the frames of the animation. The *inverse deformation
-    field* :math:`v` is then computed from the inverse of the affine
+    field* :math:`u` is then computed from the inverse of the affine
     transformation matrix, and the image is warped according to the *inverse
-    deformation field* :math:`v`.
+    deformation field* :math:`u`.
 
     Contrary to :class:`DeformationField`, this class can warp images of
-    variable sizes, as the *inverse deformation field* :math:`v` is computed from the
+    variable sizes, as the *inverse deformation field* :math:`u` is computed from the
     affine transformation matrix at the desired spatial resolution.
 
     .. note::
@@ -264,7 +292,7 @@ class AffineDeformationField(DeformationField):
         :attr:`inverse_field_matrix` (torch.tensor):
         Function of one parameter (time) that returns a tensor of shape
         :math:`(3,3)` representing a 2D affine homogeneous transformation
-        matrix. That matrix is the *inverse deformation field* :math:`v`, i.e.
+        matrix. That matrix is the *inverse deformation field* :math:`u`, i.e.
         the field that maps the pixels of the *deformed image* to the pixels of
         the *original image*.
 
@@ -294,9 +322,9 @@ class AffineDeformationField(DeformationField):
         the dtype should be `torch.float32`. Default: `None`.
 
     Example 1: Progressive zooming **in**
-        >>> def v(t):
+        >>> def u(t):
         ...     return torch.tensor([[1-t/10, 0, 0], [0, 1-t/10, 0], [0, 0, 1]])
-        >>> field = AffineDeformationField(v, align_corners=False)
+        >>> field = AffineDeformationField(u, align_corners=False)
 
     Example 2: Rotation of an image **counter-clockwise**, at a frequency of 1Hz
         >>> import numpy as np
@@ -304,9 +332,9 @@ class AffineDeformationField(DeformationField):
         ...     return np.sin(2*np.pi*t)
         >>> def c(t):
         ...     return np.cos(2*np.pi*t)
-        >>> def v(t):
+        >>> def u(t):
         ...     return torch.tensor([[c(t), s(t), 0], [-s(t), c(t), 0], [0, 0, 1]])
-        >>> field = AffineDeformationField(v, align_corners=False)
+        >>> field = AffineDeformationField(u, align_corners=False)
     """
 
     def __init__(self, inverse_field_matrix: torch.tensor, align_corners=False):
@@ -327,7 +355,7 @@ class AffineDeformationField(DeformationField):
 
         Similarly to the method :meth:`DeformationField.forward` from the parent
         class, it warps an image or batch of images according to the *inverse
-        deformation field* :math:`v` contained in the attribute
+        deformation field* :math:`u` contained in the attribute
         :attr:`inverse_grid_frames`, between the times :math:`t0` and
         :math:`t1`. The number of frames in the animation is given by either
         :math:`n\_frames`, or :math:`fps` if :math:`n\_frames` is `None`.
@@ -366,13 +394,13 @@ class AffineDeformationField(DeformationField):
             :attr:`output` (torch.tensor):
             The deformed batch of images of shape :math:`(n\_frames,c,Nx,Ny)`
             or :math:`(B,n\_frames,c,Nx,Ny)`, where each image is
-            deformed according to the *inverse deformation field* :math:`v`
+            deformed according to the *inverse deformation field* :math:`u`
             contained in the attribute :attr:`inverse_grid_frames`.
 
         Example 1: Rotate a single image by 90° counter-clockwise
-            >>> def v(t):
+            >>> def u(t):
             ...     return torch.tensor([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
-            >>> field = AffineDeformationField(v, align_corners=False)
+            >>> field = AffineDeformationField(u, align_corners=False)
             >>> image = torch.tensor([[[0. , 0.3],
                                        [0.7, 1. ]]])
             >>> deformed_image = field(image, 0)
@@ -385,9 +413,9 @@ class AffineDeformationField(DeformationField):
             ...     return np.sin(2*np.pi*t)
             >>> def c(t):
             ...     return np.cos(2*np.pi*t)
-            >>> def v(t):
+            >>> def u(t):
             ...     return torch.tensor([[c(t), -s(t), 0], [s(t), c(t), 0], [0, 0, 1]])
-            >>> field = AffineDeformationField(v, align_corners=False)
+            >>> field = AffineDeformationField(u, align_corners=False)
             >>> image = torch.tensor([[[0. , 0.3],
                                        [0.7, 1. ]]])
             >>> deformed_image = field(image, 0, 1, 5)
@@ -531,7 +559,7 @@ class AffineDeformationField(DeformationField):
         Returns a batch of affine transformation matrices of shape :math:`(n\_frames,3,3)`.
 
         Returns a batch of affine transformation matrices corresponding to the
-        *inverse deformation field* :math:`v`, evaluated at the times defined
+        *inverse deformation field* :math:`u`, evaluated at the times defined
         by the parameters :math:`t0`, :math:`t1` and :math:`n\_frames`.
 
         .. note::
@@ -559,17 +587,17 @@ class AffineDeformationField(DeformationField):
             with dtype `torch.float32`.
 
         Example 1: Evaluate the affine transformation matrix between t0=0 and t1 = 10, with 11 frames
-            >>> def v(t):
+            >>> def u(t):
             ...     return torch.tensor([[1-t/10, 0, 0], [0, 1-t/10, 0], [0, 0, 1]])
-            >>> field = AffineDeformationField(v, align_corners=False)
+            >>> field = AffineDeformationField(u, align_corners=False)
             >>> inv_mat_frames = field.get_inv_mat_frames(0, 10, 11)
             >>> print(inv_mat_frames.size())
             torch.Size([11, 3, 3])
 
         Example 2: Evaluate the affine transformation matrix at t0=4.5, with 1 frame
-            >>> def v(t):
+            >>> def u(t):
             ...     return torch.tensor([[1-t/10, 0, 0], [0, 1-t/10, 0], [0, 0, 1]])
-            >>> field = AffineDeformationField(v, align_corners=False)
+            >>> field = AffineDeformationField(u, align_corners=False)
             >>> inv_mat_frames = field.get_inv_mat_frames(4.5)
             >>> print(inv_mat_frames.size())
             torch.Size([1, 3, 3])
@@ -589,10 +617,10 @@ class AffineDeformationField(DeformationField):
         self, inv_mat_frames: torch.tensor, size: torch.Size
     ) -> torch.tensor:
         r"""
-        Saves as a class attribute the inverse deformation field :math:`v`.
+        Saves as a class attribute the inverse deformation field :math:`u`.
 
         Saves as a class attribute :attr:`self.inverse_grid_frames` the
-        *inverse deformation field* :math:`v` computed from the inverse of the affine
+        *inverse deformation field* :math:`u` computed from the inverse of the affine
         transformation matrices, evaluated at multiple times.
 
         .. note::
@@ -622,9 +650,9 @@ class AffineDeformationField(DeformationField):
             ...     return np.sin(2*np.pi*t)
             >>> def c(t):
             ...     return np.cos(2*np.pi*t)
-            >>> def v(t):
+            >>> def u(t):
             ...     return torch.tensor([[c(t), -s(t), 0], [s(t), c(t), 0], [0, 0, 1]])
-            >>> field = AffineDeformationField(v, align_corners=False)
+            >>> field = AffineDeformationField(u, align_corners=False)
             >>> inv_mat_frames = field.get_inv_mat_frames(0, 10, 101)
             >>> field.save_inv_grid_frames(inv_mat_frames, [101, 3, 128, 128])
             >>> print(field.inverse_grid_frames.size())
