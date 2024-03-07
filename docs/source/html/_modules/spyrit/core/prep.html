@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.core.prep &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/thumbnail.css" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../../../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">spyrit.core.prep</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <h1>Source code for spyrit.core.prep</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">from</span> <span class="nn">spyrit.core.meas</span> <span class="kn">import</span> <span class="n">Linear</span><span class="p">,</span> <span class="n">LinearSplit</span><span class="p">,</span> <span class="n">HadamSplit</span>  <span class="c1"># , LinearRowSplit</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">import</span> <span class="nn">math</span>
+
+
+<span class="c1"># ==============================================================================</span>
+<div class="viewcode-block" id="DirectPoisson">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.prep.DirectPoisson.html#spyrit.core.prep.DirectPoisson">[docs]</a>
+<span class="k">class</span> <span class="nc">DirectPoisson</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="c1"># ==============================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Preprocess the raw data acquired with a direct measurement operator assuming</span>
+<span class="sd">    Poisson noise.  It also compensates for the affine transformation applied</span>
+<span class="sd">    to the images to get positive intensities.</span>
+
+<span class="sd">    It computes :math:`m = \frac{2}{\alpha}y - H1` and the variance</span>
+<span class="sd">    :math:`\sigma^2 = 4\frac{y}{\alpha^{2}}`, where :math:`y = Hx` are obtained</span>
+<span class="sd">    using a direct linear measurement operator (see :mod:`spyrit.core.Linear`),</span>
+<span class="sd">    :math:`\alpha` is the image intensity, and 1 is the all-ones vector.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`alpha`: maximun image intensity :math:`\alpha` (in counts)</span>
+
+<span class="sd">        :attr:`meas_op`: measurement operator (see :mod:`~spyrit.core.meas`)</span>
+
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; H = np.random.random([400,32*32])</span>
+<span class="sd">        &gt;&gt;&gt; meas_op =  Linear(H)</span>
+<span class="sd">        &gt;&gt;&gt; prep_op = DirectPoisson(1.0, meas_op)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">meas_op</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="n">meas_op</span><span class="o">.</span><span class="n">N</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">M</span> <span class="o">=</span> <span class="n">meas_op</span><span class="o">.</span><span class="n">M</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">max</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MaxPool1d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span><span class="s2">&quot;H_ones&quot;</span><span class="p">,</span> <span class="n">meas_op</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">))))</span>
+
+<div class="viewcode-block" id="DirectPoisson.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.prep.DirectPoisson.forward.html#spyrit.core.prep.DirectPoisson.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Preprocess measurements to compensate for the affine image normalization</span>
+
+<span class="sd">        It computes :math:`\frac{2}{\alpha}x - H1`, where H1 represents the</span>
+<span class="sd">        all-ones vector.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: batch of measurement vectors</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            x: :math:`(B, M)` where :math:`B` is the batch dimension</span>
+
+<span class="sd">            meas_op: the number of measurements :attr:`meas_op.M` should match</span>
+<span class="sd">            :math:`M`.</span>
+
+<span class="sd">            Output: :math:`(B, M)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand([10,400], dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; H = np.random.random([400,32*32])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op =  Linear(H)</span>
+<span class="sd">            &gt;&gt;&gt; prep_op = DirectPoisson(1.0, meas_op)</span>
+<span class="sd">            &gt;&gt;&gt; m = prep_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(m.shape)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># normalize</span>
+        <span class="n">H_ones</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H_ones</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">x</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">-</span> <span class="n">H_ones</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="DirectPoisson.sigma">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.prep.DirectPoisson.sigma.html#spyrit.core.prep.DirectPoisson.sigma">[docs]</a>
+    <span class="k">def</span> <span class="nf">sigma</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Estimates the variance of the preprocessed measurements</span>
+
+<span class="sd">        The variance is estimated as :math:`\frac{4}{\alpha^2} x`</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: batch of measurement vectors</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: :math:`(B,M)` where :math:`B` is the batch dimension</span>
+
+<span class="sd">            Output: :math:`(B, M)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand([10,400], dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; v = prep_op.sigma(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(v.shape)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">x</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># Cov is in [-1,1] so *4</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="DirectPoisson.denormalize_expe">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.prep.DirectPoisson.denormalize_expe.html#spyrit.core.prep.DirectPoisson.denormalize_expe">[docs]</a>
+    <span class="k">def</span> <span class="nf">denormalize_expe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Denormalize images from the range [-1;1] to the range [0; :math:`\beta`]</span>
+
+<span class="sd">        It computes :math:`m = \frac{\beta}{2}(x+1)`, where</span>
+<span class="sd">        :math:`\beta` is the normalization factor.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: Batch of images</span>
+
+<span class="sd">            :attr:`beta`: Normalizarion factor</span>
+
+<span class="sd">            :attr:`h`: Image height</span>
+
+<span class="sd">            :attr:`w`: Image width</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: :math:`(*, 1, h, w)`</span>
+
+<span class="sd">            :attr:`beta`: :math:`(*)` or :math:`(*, 1)`</span>
+
+<span class="sd">            :attr:`h`: int</span>
+
+<span class="sd">            :attr:`w`: int</span>
+
+<span class="sd">            :attr:`Output`: :math:`(*, 1, h, w)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand([10, 1, 32,32], dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; beta = 9*torch.rand([10])</span>
+<span class="sd">            &gt;&gt;&gt; y = prep_op.denormalize_expe(x, beta, 32, 32)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            torch.Size([10, 1, 32, 32])</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">bc</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Denormalization</span>
+        <span class="n">beta</span> <span class="o">=</span> <span class="n">beta</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">bc</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">beta</span> <span class="o">=</span> <span class="n">beta</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">bc</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">beta</span>
+
+        <span class="k">return</span> <span class="n">x</span></div>
+</div>
+
+
+
+<span class="c1"># ==============================================================================</span>
+<div class="viewcode-block" id="SplitPoisson">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.prep.SplitPoisson.html#spyrit.core.prep.SplitPoisson">[docs]</a>
+<span class="k">class</span> <span class="nc">SplitPoisson</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="c1"># ==============================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Preprocess the raw data acquired with a split measurement operator assuming</span>
+<span class="sd">    Poisson noise.  It also compensates for the affine transformation applied</span>
+<span class="sd">    to the images to get positive intensities.</span>
+
+<span class="sd">    It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha} - H1` and the variance</span>
+<span class="sd">    :math:`var = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where</span>
+<span class="sd">    :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using a</span>
+<span class="sd">    split measurement operator (see :mod:`spyrit.core.LinearSplit`),</span>
+<span class="sd">    :math:`\alpha` is the image intensity, and 1 is the all-ones vector.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        alpha (float): maximun image intensity :math:`\alpha` (in counts)</span>
+
+<span class="sd">        :attr:`meas_op`: measurement operator (see :mod:`~spyrit.core.meas`)</span>
+
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; H = np.random.random([400,32*32])</span>
+<span class="sd">        &gt;&gt;&gt; meas_op =  LinearSplit(H)</span>
+<span class="sd">        &gt;&gt;&gt; split_op = SplitPoisson(10, meas_op)</span>
+
+<span class="sd">    Example 2:</span>
+<span class="sd">        &gt;&gt;&gt; Perm = np.random.random([32,32])</span>
+<span class="sd">        &gt;&gt;&gt; meas_op = HadamSplit(400, 32,  Perm)</span>
+<span class="sd">        &gt;&gt;&gt; split_op = SplitPoisson(10, meas_op)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">meas_op</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="n">meas_op</span><span class="o">.</span><span class="n">N</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">M</span> <span class="o">=</span> <span class="n">meas_op</span><span class="o">.</span><span class="n">M</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">even_index</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">odd_index</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MaxPool1d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_buffer</span><span class="p">(</span>
+            <span class="s2">&quot;H_ones&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">),</span> <span class="n">meas_op</span><span class="o">.</span><span class="n">get_H_T</span><span class="p">())</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="SplitPoisson.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.prep.SplitPoisson.forward.html#spyrit.core.prep.SplitPoisson.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Preprocess to compensates for image normalization and splitting of the</span>
+<span class="sd">        measurement operator.</span>
+
+<span class="sd">        It computes :math:`\frac{x[0::2]-x[1::2]}{\alpha} - H1`</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: batch of measurement vectors</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            x: :math:`(*, 2M)` where :math:`*` indicates one or more dimensions</span>
+
+<span class="sd">            meas_op: the number of measurements :attr:`meas_op.M` should match</span>
+<span class="sd">            :math:`M`.</span>
+
+<span class="sd">            Output: :math:`(*, M)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand([10,2*400], dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; H = np.random.random([400,32*32])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op =  LinearSplit(H)</span>
+<span class="sd">            &gt;&gt;&gt; split_op = SplitPoisson(10, meas_op)</span>
+<span class="sd">            &gt;&gt;&gt; m = split_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(m.shape)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+
+<span class="sd">        Example 2:</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand([10,2*400], dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; Perm = np.random.random([32,32])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = HadamSplit(400, 32,  Perm)</span>
+<span class="sd">            &gt;&gt;&gt; split_op = SplitPoisson(10, meas_op)</span>
+<span class="sd">            &gt;&gt;&gt; m = split_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(m.shape)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">])</span>  <span class="c1"># torch.Size([*,M])</span>
+        <span class="n">H_ones</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H_ones</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+
+        <span class="c1"># unsplit</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">even_index</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">odd_index</span><span class="p">]</span>
+        <span class="c1"># normalize</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">x</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">-</span> <span class="n">H_ones</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="SplitPoisson.forward_expe">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.prep.SplitPoisson.forward_expe.html#spyrit.core.prep.SplitPoisson.forward_expe">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward_expe</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">,</span> <span class="n">meas_op</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">LinearSplit</span><span class="p">,</span> <span class="n">HadamSplit</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Preprocess to compensate for image normalization and splitting of the</span>
+<span class="sd">        measurement operator.</span>
+
+<span class="sd">        It computes :math:`m = \frac{x[0::2]-x[1::2]}{\alpha}`, where</span>
+<span class="sd">        :math:`\alpha = \max H^\dagger (x[0::2]-x[1::2])`.</span>
+
+<span class="sd">        Contrary to :meth:`~forward`, the image intensity :math:`\alpha`</span>
+<span class="sd">        is estimated from the pseudoinverse of the unsplit measurements. This</span>
+<span class="sd">        method is typically called for the reconstruction of experimental</span>
+<span class="sd">        measurements, while :meth:`~forward` is called in simulations.</span>
+
+<span class="sd">        The method returns a tuple containing both :math:`m` and :math:`\alpha`</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: batch of measurement vectors</span>
+
+<span class="sd">            :attr:`meas_op`: measurement operator (required to estimate</span>
+<span class="sd">            :math:`\alpha`)</span>
+
+<span class="sd">            Output (:math:`m`, :math:`\alpha`): preprocess measurement and estimated</span>
+<span class="sd">            intensities.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            x: :math:`(B, 2M)` where :math:`B` is the batch dimension</span>
+
+<span class="sd">            meas_op: the number of measurements :attr:`meas_op.M` should match</span>
+<span class="sd">            :math:`M`.</span>
+
+<span class="sd">            :math:`m`: :math:`(B, M)`</span>
+
+<span class="sd">            :math:`\alpha`: :math:`(B)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand([10,2*400], dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; Perm = np.random.random([32,32])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = HadamSplit(400, 32,  Perm)</span>
+<span class="sd">            &gt;&gt;&gt; split_op = SplitPoisson(10, meas_op)</span>
+<span class="sd">            &gt;&gt;&gt; m, alpha = split_op.forward_expe(x, meas_op)</span>
+<span class="sd">            &gt;&gt;&gt; print(m.shape)</span>
+<span class="sd">            &gt;&gt;&gt; print(alpha.shape)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+<span class="sd">            torch.Size([10])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">bc</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># unsplit</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">even_index</span><span class="p">]</span> <span class="o">-</span> <span class="n">x</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">odd_index</span><span class="p">]</span>
+
+        <span class="c1"># estimate alpha</span>
+        <span class="n">x_pinv</span> <span class="o">=</span> <span class="n">meas_op</span><span class="o">.</span><span class="n">pinv</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">x_pinv</span><span class="p">)</span>
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">bc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">)</span>  <span class="c1"># shape is (b*c, M)</span>
+
+        <span class="c1"># normalize</span>
+        <span class="n">H_ones</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">H_ones</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">bc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">div</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">x</span> <span class="o">-</span> <span class="n">H_ones</span>
+
+        <span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>  <span class="c1"># shape is (b*c,)</span>
+
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">alpha</span></div>
+
+
+<div class="viewcode-block" id="SplitPoisson.sigma">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.prep.SplitPoisson.sigma.html#spyrit.core.prep.SplitPoisson.sigma">[docs]</a>
+    <span class="k">def</span> <span class="nf">sigma</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Estimates the variance of the preprocessed measurements</span>
+
+<span class="sd">        The variance is estimated as :math:`\frac{4}{\alpha^2} H(x[0::2]+x[1::2])`</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: batch of images in the Hadamard domain</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            - Input: :math:`(*,2*M)` :math:`*` indicates one or more dimensions</span>
+<span class="sd">            - Output: :math:`(*, M)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand([10,2*400], dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; v = split_op.sigma(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(v.shape)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">even_index</span><span class="p">]</span> <span class="o">+</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">odd_index</span><span class="p">]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">x</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># Cov is in [-1,1] so *4</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="SplitPoisson.set_expe">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.prep.SplitPoisson.set_expe.html#spyrit.core.prep.SplitPoisson.set_expe">[docs]</a>
+    <span class="k">def</span> <span class="nf">set_expe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">mudark</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigdark</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sets experimental parameters of the sensor</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            - :attr:`gain` (float): gain (in count/electron)</span>
+<span class="sd">            - :attr:`mudark` (float): average dark current (in counts)</span>
+<span class="sd">            - :attr:`sigdark` (float): standard deviation or dark current (in counts)</span>
+<span class="sd">            - :attr:`nbin` (float): number of raw bin in each spectral channel (if input x results from the sommation/binning of the raw data)</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; split_op.set_expe(gain=1.6)</span>
+<span class="sd">            &gt;&gt;&gt; print(split_op.gain)</span>
+<span class="sd">            1.6</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gain</span> <span class="o">=</span> <span class="n">gain</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mudark</span> <span class="o">=</span> <span class="n">mudark</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigdark</span> <span class="o">=</span> <span class="n">sigdark</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nbin</span> <span class="o">=</span> <span class="n">nbin</span></div>
+
+
+<div class="viewcode-block" id="SplitPoisson.sigma_expe">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.prep.SplitPoisson.sigma_expe.html#spyrit.core.prep.SplitPoisson.sigma_expe">[docs]</a>
+    <span class="k">def</span> <span class="nf">sigma_expe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimates the variance of the measurements that are compensated for</span>
+<span class="sd">        splitting but **NOT** for image normalization</span>
+
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: Batch of images in the Hadamard domain.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            Input: :math:`(B,2*M)` where :math:`B` is the batch dimension</span>
+
+<span class="sd">            Output: :math:`(B, M)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand([10,2*32*32], dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; split_op.set_expe(gain=1.6)</span>
+<span class="sd">            &gt;&gt;&gt; v = split_op.sigma_expe(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(v.shape)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Input shape (b*c, 2*M)</span>
+        <span class="c1"># output shape (b*c, M)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">even_index</span><span class="p">]</span> <span class="o">+</span> <span class="n">x</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">odd_index</span><span class="p">]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gain</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbin</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">mudark</span><span class="p">)</span>
+            <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbin</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigdark</span><span class="o">**</span><span class="mi">2</span>
+        <span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">x</span>  <span class="c1"># to get the cov of an image in [-1,1], not in [0,1]</span>
+
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="SplitPoisson.sigma_from_image">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.prep.SplitPoisson.sigma_from_image.html#spyrit.core.prep.SplitPoisson.sigma_from_image">[docs]</a>
+    <span class="k">def</span> <span class="nf">sigma_from_image</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">,</span> <span class="n">meas_op</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">LinearSplit</span><span class="p">,</span> <span class="n">HadamSplit</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimates the variance of the preprocessed measurements corresponding</span>
+<span class="sd">        to images through a measurement operator</span>
+
+<span class="sd">        The variance is estimated as</span>
+<span class="sd">        :math:`\frac{4}{\alpha} \{(Px)[0::2] + (Px)[1::2]\}`</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x`: Batch of images</span>
+
+<span class="sd">            :attr:`meas_op`: Measurement operator</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: :math:`(*,N)`</span>
+
+<span class="sd">            :attr:`meas_op`: An operator such that :attr:`meas_op.N` :math:`=N`</span>
+<span class="sd">            and :attr:`meas_op.M` :math:`=M`</span>
+
+<span class="sd">            Output: :math:`(*, M)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand([10,2*400], dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; Perm = np.random.random([32,32])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = HadamSplit(400, 32,  Perm)</span>
+<span class="sd">            &gt;&gt;&gt; split_op = SplitPoisson(10, meas_op)</span>
+<span class="sd">            &gt;&gt;&gt; v = split_op.sigma_from_image(x, meas_op)</span>
+<span class="sd">            &gt;&gt;&gt; print(v.shape)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">meas_op</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">even_index</span><span class="p">]</span> <span class="o">+</span> <span class="n">x</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">odd_index</span><span class="p">]</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">x</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span>  <span class="c1"># here alpha should not be squared</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+<div class="viewcode-block" id="SplitPoisson.denormalize_expe">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.prep.SplitPoisson.denormalize_expe.html#spyrit.core.prep.SplitPoisson.denormalize_expe">[docs]</a>
+    <span class="k">def</span> <span class="nf">denormalize_expe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">):</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Denormalize images from the range [-1;1] to the range [0; :math:`\beta`]</span>
+
+<span class="sd">        It computes :math:`m = \frac{\beta}{2}(x+1)`, where</span>
+<span class="sd">        :math:`\beta` is the normalization factor.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            - :attr:`x`: Batch of images</span>
+<span class="sd">            - :attr:`beta`: Normalizarion factor</span>
+<span class="sd">            - :attr:`h`: Image height</span>
+<span class="sd">            - :attr:`w`: Image width</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            - :attr:`x`: :math:`(*, 1, h, w)`</span>
+<span class="sd">            - :attr:`beta`: :math:`(*)` or :math:`(*, 1)`</span>
+<span class="sd">            - :attr:`h`: int</span>
+<span class="sd">            - :attr:`w`: int</span>
+<span class="sd">            - Output: :math:`(*, 1, h, w)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand([10, 1, 32,32], dtype=torch.float)</span>
+<span class="sd">            &gt;&gt;&gt; beta = 9*torch.rand([10])</span>
+<span class="sd">            &gt;&gt;&gt; y = split_op.denormalize_expe(x, beta, 32, 32)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            torch.Size([10, 1, 32, 32])</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">bc</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Denormalization</span>
+        <span class="n">beta</span> <span class="o">=</span> <span class="n">beta</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">bc</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">beta</span> <span class="o">=</span> <span class="n">beta</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">bc</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">beta</span>
+
+        <span class="k">return</span> <span class="n">x</span></div>
+</div>
+
+
+
+<span class="c1"># ==============================================================================</span>
+<span class="c1"># class SplitRowPoisson(nn.Module):</span>
+<span class="c1">#     # ==============================================================================</span>
+<span class="c1">#     r&quot;&quot;&quot;</span>
+<span class="c1">#     Preprocess raw data acquired with a split measurement operator</span>
+
+<span class="c1">#     It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha}` and the variance</span>
+<span class="c1">#     :math:`\sigma^2 = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where</span>
+<span class="c1">#     :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using</span>
+<span class="c1">#     a split measurement operator such as :class:`spyrit.core.LinearSplit`.</span>
+
+<span class="c1">#     Args:</span>
+<span class="c1">#         - :math:`\alpha` (float): maximun image intensity (in counts)</span>
+<span class="c1">#         - :math:`M` (int): number of measurements</span>
+<span class="c1">#         - :math:`h` (int): number of rows in the image, i.e., image height</span>
+
+<span class="c1">#     Example:</span>
+<span class="c1">#         &gt;&gt;&gt; split_op = SplitRawPoisson(2.0, 24, 64)</span>
+
+<span class="c1">#     &quot;&quot;&quot;</span>
+
+<span class="c1">#     def __init__(self, alpha: float, M: int, h: int):</span>
+<span class="c1">#         super().__init__()</span>
+<span class="c1">#         self.alpha = alpha</span>
+<span class="c1">#         self.M = M</span>
+<span class="c1">#         self.h = h</span>
+
+<span class="c1">#         self.even_index = range(0, 2 * M, 2)</span>
+<span class="c1">#         self.odd_index = range(1, 2 * M, 2)</span>
+<span class="c1">#         # self.max = nn.MaxPool1d(h)</span>
+
+<span class="c1">#     def forward(</span>
+<span class="c1">#         self,</span>
+<span class="c1">#         x: torch.tensor,</span>
+<span class="c1">#         meas_op: LinearSplit,</span>
+<span class="c1">#     ) -&gt; torch.tensor:</span>
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         Args:</span>
+<span class="c1">#             x: batch of images that are Hadamard transformed across rows</span>
+<span class="c1">#             meas_op: measurement operator</span>
+
+<span class="c1">#         Shape:</span>
+<span class="c1">#             x: :math:`(b*c, 2M, w)` with :math:`b` the batch size, :math:`c` the</span>
+<span class="c1">#             number of channels, :math:`2M` is twice the number of patterns (as</span>
+<span class="c1">#             it includes both positive and negative components), and :math:`w`</span>
+<span class="c1">#             is the image width.</span>
+
+<span class="c1">#             meas_op: The number of measurement `meas_op.M` should match `M`,</span>
+<span class="c1">#             while the length of the measurements :math:`meas_op.N` should match</span>
+<span class="c1">#             image height :math:`h`.</span>
+
+<span class="c1">#             Output: :math:`(b*c,M)`</span>
+
+<span class="c1">#         Example:</span>
+<span class="c1">#             &gt;&gt;&gt; x = torch.rand([10,48,64], dtype=torch.float)</span>
+<span class="c1">#             &gt;&gt;&gt; H_pos = np.random.random([24,64])</span>
+<span class="c1">#             &gt;&gt;&gt; H_neg = np.random.random([24,64])</span>
+<span class="c1">#             &gt;&gt;&gt; meas_op = LinearSplit(H_pos, H_neg)</span>
+<span class="c1">#             &gt;&gt;&gt; m = split_op(x, meas_op)</span>
+<span class="c1">#             &gt;&gt;&gt; print(m.shape)</span>
+<span class="c1">#             torch.Size([10, 24, 64])</span>
+
+<span class="c1">#         &quot;&quot;&quot;</span>
+<span class="c1">#         # unsplit</span>
+<span class="c1">#         x = x[:, self.even_index] - x[:, self.odd_index]</span>
+<span class="c1">#         # normalize</span>
+<span class="c1">#         e = torch.ones([x.shape[0], meas_op.N, self.h], device=x.device)</span>
+<span class="c1">#         print(&quot;shape of e:&quot;, e.shape)</span>
+<span class="c1">#         print(&quot;shape of x:&quot;, x.shape)</span>
+<span class="c1">#         print(&quot;shape of fwd:&quot;, meas_op.forward_H(e).shape)</span>
+<span class="c1">#         x = 2 * x / self.alpha - meas_op.forward_H(e)</span>
+<span class="c1">#         return x</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,59 @@
+
+
+Examples using ``spyrit.core``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+.. start-sphx-glr-thumbnails
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to simulate measurements using the spyrit.core submodule, which is base...">
+
+.. only:: html
+
+  .. image:: /gallery/images/thumb/sphx_glr_tuto_01_acquisition_operators_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_gallery_tuto_01_acquisition_operators.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">01. Acquisition operators</div>
+    </div>
+
+
+.. only:: not html
+
+ * :ref:`sphx_glr_gallery_tuto_01_acquisition_operators.py`
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial is a continuation of the Acquisition operators tutorial &lt;tuto_acquisition_operato...">
+
+.. only:: html
+
+  .. image:: /gallery/images/thumb/sphx_glr_tuto_05_acquisition_split_measurements_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_gallery_tuto_05_acquisition_split_measurements.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">05. Acquisition operators (advanced) - Split measurements and subsampling</div>
+    </div>
+
+
+.. only:: not html
+
+ * :ref:`sphx_glr_gallery_tuto_05_acquisition_split_measurements.py`
+
+.. raw:: html
+
+    </div>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bonus. Advanced methods - Colab &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/sg_README.css?v=78231cbc" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="06. DCNet solution for split measurements" href="tuto_06_dcnet_split_measurements.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="tuto_01_acquisition_operators.html">01. Acquisition operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_02_pseudoinverse_linear.html">02. Pseudoinverse solution from linear measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_03_pseudoinverse_cnn_linear.html">03. Pseudoinverse solution + CNN denoising</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_04_train_pseudoinverse_cnn_linear.html">04. Train pseudoinverse solution + CNN denoising</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_05_acquisition_split_measurements.html">05. Acquisition operators (advanced) - Split measurements and subsampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_06_dcnet_split_measurements.html">06. DCNet solution for split measurements</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Bonus. Advanced methods - Colab</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Tutorials</a></li>
+      <li class="breadcrumb-item active">Bonus. Advanced methods - Colab</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/gallery/tuto_bonus_advanced_methods_colab.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-gallery-tuto-bonus-advanced-methods-colab-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code</p>
+</div>
+<section class="sphx-glr-example-title" id="bonus-advanced-methods-colab">
+<span id="sphx-glr-gallery-tuto-bonus-advanced-methods-colab-py"></span><h1>Bonus. Advanced methods - Colab<a class="headerlink" href="#bonus-advanced-methods-colab" title="Link to this heading"></a></h1>
+<p id="tuto-advanced-methods-colab">We refer to <a class="reference external" href="https://github.com/openspyrit/spyrit-examples/tree/master/tutorial">spyrit-examples/tutorial</a>
+for a list of tutorials that can be run directly in colab and present more advanced cases than the main spyrit tutorials,
+such as comparison of methods for split measurements, or comparison of different denoising networks.</p>
+<p>The spyrit-examples repository also includes research contributions based on the SPYRIT toolbox.</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-gallery-tuto-bonus-advanced-methods-colab-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/6bff9c57edd922553bfaaca5bde6019c/tuto_bonus_advanced_methods_colab.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">tuto_bonus_advanced_methods_colab.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/9907d433ab102c61b284387c583eb60a/tuto_bonus_advanced_methods_colab.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">tuto_bonus_advanced_methods_colab.py</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="tuto_06_dcnet_split_measurements.html" class="btn btn-neutral float-left" title="06. DCNet solution for split measurements" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

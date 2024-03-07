@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.misc.sampling &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/thumbnail.css" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../../../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">spyrit.misc.sampling</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <h1>Source code for spyrit.misc.sampling</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">rankdata</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+<span class="c1"># from /misc/statistics.py</span>
+<div class="viewcode-block" id="img2mask">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.sampling.img2mask.html#spyrit.misc.sampling.img2mask">[docs]</a>
+<span class="k">def</span> <span class="nf">img2mask</span><span class="p">(</span><span class="n">Mat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns sampling mask from sampling matrix.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        Mat (np.ndarray):</span>
+<span class="sd">            N-by-N sampling matrix, where high values indicate high significance.</span>
+<span class="sd">        M (int):</span>
+<span class="sd">            Number of measurements to be kept.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Mask (np.ndarray):</span>
+<span class="sd">            N-by-N sampling mask, where 1 indicates the measurements to sample</span>
+<span class="sd">            and 0 that to discard.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">Mat</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">Mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">))</span>
+    <span class="n">ranked_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">rankdata</span><span class="p">(</span><span class="o">-</span><span class="n">Mat</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;ordinal&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">))</span>
+    <span class="n">Mask</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">absolute</span><span class="p">(</span><span class="n">ranked_data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">M</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">Mask</span></div>
+
+
+
+<span class="c1"># from /former/_model_Had_DCAN.py</span>
+<div class="viewcode-block" id="meas2img">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.sampling.meas2img.html#spyrit.misc.sampling.meas2img">[docs]</a>
+<span class="k">def</span> <span class="nf">meas2img</span><span class="p">(</span><span class="n">meas</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Mat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return measurement image from a single measurement vector</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        meas : `np.ndarray` with shape :math:`(M,)`</span>
+<span class="sd">            Measurement vector of length :math:`M \le N^2`.</span>
+<span class="sd">        Mat : `np.ndarray` with shape :math:`(N,N)`</span>
+<span class="sd">            Sampling matrix, where high values indicate high significance.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Img : `np.ndarray` with shape :math:`(N,N,)`</span>
+<span class="sd">            N-by-N measurement image</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">meas</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">Mat</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">meas</span><span class="p">)))</span>
+    <span class="n">Perm</span> <span class="o">=</span> <span class="n">Permutation_Matrix</span><span class="p">(</span><span class="n">Mat</span><span class="p">)</span>
+    <span class="n">Img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">Perm</span><span class="p">),</span> <span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">Mat</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Img</span></div>
+
+
+
+<div class="viewcode-block" id="meas2img2">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.sampling.meas2img2.html#spyrit.misc.sampling.meas2img2">[docs]</a>
+<span class="k">def</span> <span class="nf">meas2img2</span><span class="p">(</span><span class="n">meas</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Mat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return multiple measurement images from multiple measurement vectors.</span>
+<span class="sd">    It is essentially the same as `meas2img`, but the `meas` argument is</span>
+<span class="sd">    two-dimensional.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        meas : `np.ndarray` with shape :math:`(M,B)`</span>
+<span class="sd">            Set of :math:`B` measurement vectors of lenth :math:`M \le N^2`.</span>
+<span class="sd">        Mat : `np.ndarray` with shape :math:`(N,N)`</span>
+<span class="sd">            Sampling matrix, where high values indicate high significance.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Img : `np.ndarray` with shape :math:`(N,N,B)`</span>
+<span class="sd">            Set of :math:`B` images of shape :math:`(N,N)`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">M</span><span class="p">,</span> <span class="n">B</span> <span class="o">=</span> <span class="n">meas</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">Nx</span><span class="p">,</span> <span class="n">Ny</span> <span class="o">=</span> <span class="n">Mat</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">meas</span><span class="p">,</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">Mat</span><span class="o">.</span><span class="n">size</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">meas</span><span class="p">)),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)))</span>
+    <span class="n">Perm</span> <span class="o">=</span> <span class="n">Permutation_Matrix</span><span class="p">(</span><span class="n">Mat</span><span class="p">)</span>
+    <span class="n">Img</span> <span class="o">=</span> <span class="n">Perm</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">y</span>
+    <span class="n">Img</span> <span class="o">=</span> <span class="n">Img</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">Nx</span><span class="p">,</span> <span class="n">Ny</span><span class="p">,</span> <span class="n">B</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">Img</span></div>
+
+
+
+<div class="viewcode-block" id="img2meas">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.sampling.img2meas.html#spyrit.misc.sampling.img2meas">[docs]</a>
+<span class="k">def</span> <span class="nf">img2meas</span><span class="p">(</span><span class="n">Img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Mat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return measurement vector from measurement image (not TESTED)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        Img (np.ndarray):</span>
+<span class="sd">            N-by-N measurement image.</span>
+<span class="sd">        Mat (np.ndarray):</span>
+<span class="sd">            N-by-N sampling matrix, where high values indicate high significance.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        meas (np.ndarray):</span>
+<span class="sd">            Measurement vector of lenth M &lt;= N**2.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Perm</span> <span class="o">=</span> <span class="n">Permutation_Matrix</span><span class="p">(</span><span class="n">Mat</span><span class="p">)</span>
+    <span class="n">meas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Perm</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">Img</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">meas</span></div>
+
+
+
+<div class="viewcode-block" id="Permutation_Matrix">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.sampling.Permutation_Matrix.html#spyrit.misc.sampling.Permutation_Matrix">[docs]</a>
+<span class="k">def</span> <span class="nf">Permutation_Matrix</span><span class="p">(</span><span class="n">Mat</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns permutation matrix from sampling matrix</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        Mat (np.ndarray):</span>
+<span class="sd">            N-by-N sampling matrix, where high values indicate high significance.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        P (np.ndarray): N^2-by-N^2 permutation matrix (boolean)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">Mat</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">Reorder</span> <span class="o">=</span> <span class="n">rankdata</span><span class="p">(</span><span class="o">-</span><span class="n">Mat</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;ordinal&quot;</span><span class="p">)</span>
+    <span class="n">Columns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">))</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">,</span> <span class="n">nx</span> <span class="o">*</span> <span class="n">ny</span><span class="p">))</span>
+    <span class="n">P</span><span class="p">[</span><span class="n">Reorder</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">Columns</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">P</span></div>
+
+
+
+<div class="viewcode-block" id="reorder">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.sampling.reorder.html#spyrit.misc.sampling.reorder">[docs]</a>
+<span class="k">def</span> <span class="nf">reorder</span><span class="p">(</span><span class="n">meas</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Perm_acq</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Perm_rec</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Reorder measurement vectors</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        meas (np.ndarray):</span>
+<span class="sd">            Measurements with dimensions (:math:`M_{acq} \times K_{rep}`), where</span>
+<span class="sd">            :math:`M_{acq}` is the number of acquired patterns and</span>
+<span class="sd">            :math:`K_{rep}` is the number of acquisition repetitions</span>
+<span class="sd">            (e.g., wavelength or image batch).</span>
+
+<span class="sd">        Perm_acq (np.ndarray):</span>
+<span class="sd">            Permutation matrix used for acquisition</span>
+<span class="sd">            (:math:`N_{acq}^2 \times N_{acq}^2` square matrix).</span>
+
+<span class="sd">        Perm_rec (np.ndarray):</span>
+<span class="sd">            Permutation matrix used for reconstruction</span>
+<span class="sd">            (:math:`N_{rec} \times N_{rec}` square matrix).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        (np.ndarray):</span>
+<span class="sd">            Measurements with dimensions (:math:`M_{rec} \times K_{rep}`),</span>
+<span class="sd">            where :math:`M_{rec} = N_{rec}^2`.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">            If :math:`M_{rec} &lt; M_{acq}`, the input measurement vectors are</span>
+<span class="sd">            subsampled.</span>
+
+<span class="sd">            If :math:`M_{rec} &gt; M_{acq}`, the input measurement vectors are</span>
+<span class="sd">            filled with zeros.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Dimensions (N.B: images are assumed to be square)</span>
+    <span class="n">N_acq</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">Perm_acq</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">N_rec</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">Perm_rec</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">K_rep</span> <span class="o">=</span> <span class="n">meas</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># Acquisition order -&gt; natural order (fill with zeros if necessary)</span>
+    <span class="k">if</span> <span class="n">N_rec</span> <span class="o">&gt;</span> <span class="n">N_acq</span><span class="p">:</span>
+        <span class="c1"># Square subsampling in the &quot;natural&quot; order</span>
+        <span class="n">Ord_sub</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N_rec</span><span class="p">,</span> <span class="n">N_rec</span><span class="p">))</span>
+        <span class="n">Ord_sub</span><span class="p">[:</span><span class="n">N_acq</span><span class="p">,</span> <span class="p">:</span><span class="n">N_acq</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">N_acq</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">N_acq</span><span class="p">,</span> <span class="n">N_acq</span><span class="p">)</span>
+        <span class="n">Perm_sub</span> <span class="o">=</span> <span class="n">Permutation_Matrix</span><span class="p">(</span><span class="n">Ord_sub</span><span class="p">)</span>
+
+        <span class="c1"># Natural order measurements (N_acq resolution)</span>
+        <span class="n">Perm_raw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">N_acq</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">N_acq</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">Perm_raw</span><span class="p">[::</span><span class="mi">2</span><span class="p">,</span> <span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">Perm_acq</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">Perm_raw</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">Perm_acq</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">meas</span> <span class="o">=</span> <span class="n">Perm_raw</span> <span class="o">@</span> <span class="n">meas</span>
+
+        <span class="c1"># Zero filling (needed only when reconstruction resolution is higher</span>
+        <span class="c1"># than acquisition res)</span>
+        <span class="n">zero_filled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">N_rec</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">K_rep</span><span class="p">))</span>
+        <span class="n">zero_filled</span><span class="p">[:</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">N_acq</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">meas</span>
+
+        <span class="n">meas</span> <span class="o">=</span> <span class="n">zero_filled</span>
+
+        <span class="n">Perm_raw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">N_rec</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">N_rec</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+        <span class="n">Perm_raw</span><span class="p">[::</span><span class="mi">2</span><span class="p">,</span> <span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">Perm_sub</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">Perm_raw</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">Perm_sub</span><span class="o">.</span><span class="n">T</span>
+
+        <span class="n">meas</span> <span class="o">=</span> <span class="n">Perm_raw</span> <span class="o">@</span> <span class="n">meas</span>
+
+    <span class="k">elif</span> <span class="n">N_rec</span> <span class="o">==</span> <span class="n">N_acq</span><span class="p">:</span>
+        <span class="n">Perm_sub</span> <span class="o">=</span> <span class="n">Perm_acq</span><span class="p">[:</span> <span class="n">N_rec</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="k">elif</span> <span class="n">N_rec</span> <span class="o">&lt;</span> <span class="n">N_acq</span><span class="p">:</span>
+        <span class="c1"># Square subsampling in the &quot;natural&quot; order</span>
+        <span class="n">Ord_sub</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">N_acq</span><span class="p">,</span> <span class="n">N_acq</span><span class="p">))</span>
+        <span class="n">Ord_sub</span><span class="p">[:</span><span class="n">N_rec</span><span class="p">,</span> <span class="p">:</span><span class="n">N_rec</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">N_rec</span><span class="o">**</span><span class="mi">2</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">N_rec</span><span class="p">,</span> <span class="n">N_rec</span><span class="p">)</span>
+        <span class="n">Perm_sub</span> <span class="o">=</span> <span class="n">Permutation_Matrix</span><span class="p">(</span><span class="n">Ord_sub</span><span class="p">)</span>
+        <span class="n">Perm_sub</span> <span class="o">=</span> <span class="n">Perm_sub</span><span class="p">[:</span> <span class="n">N_rec</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">Perm_sub</span> <span class="o">=</span> <span class="n">Perm_sub</span> <span class="o">@</span> <span class="n">Perm_acq</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="c1"># Reorder measurements when the reconstruction order is not &quot;natural&quot;</span>
+    <span class="k">if</span> <span class="n">N_rec</span> <span class="o">&lt;=</span> <span class="n">N_acq</span><span class="p">:</span>
+        <span class="c1"># Get both positive and negative coefficients permutated</span>
+        <span class="n">Perm</span> <span class="o">=</span> <span class="n">Perm_rec</span> <span class="o">@</span> <span class="n">Perm_sub</span>
+        <span class="n">Perm_raw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">N_rec</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">N_acq</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+
+    <span class="k">elif</span> <span class="n">N_rec</span> <span class="o">&gt;</span> <span class="n">N_acq</span><span class="p">:</span>
+        <span class="n">Perm</span> <span class="o">=</span> <span class="n">Perm_rec</span>
+        <span class="n">Perm_raw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span> <span class="o">*</span> <span class="n">N_rec</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">N_rec</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+
+    <span class="n">Perm_raw</span><span class="p">[::</span><span class="mi">2</span><span class="p">,</span> <span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">Perm</span>
+    <span class="n">Perm_raw</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">Perm</span>
+    <span class="n">meas</span> <span class="o">=</span> <span class="n">Perm_raw</span> <span class="o">@</span> <span class="n">meas</span>
+
+    <span class="k">return</span> <span class="n">meas</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

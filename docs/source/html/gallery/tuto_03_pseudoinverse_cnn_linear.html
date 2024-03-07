@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>03. Pseudoinverse solution + CNN denoising &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/sg_README.css?v=78231cbc" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="04. Train pseudoinverse solution + CNN denoising" href="tuto_04_train_pseudoinverse_cnn_linear.html" />
+    <link rel="prev" title="02. Pseudoinverse solution from linear measurements" href="tuto_02_pseudoinverse_linear.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="tuto_01_acquisition_operators.html">01. Acquisition operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_02_pseudoinverse_linear.html">02. Pseudoinverse solution from linear measurements</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">03. Pseudoinverse solution + CNN denoising</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#load-a-batch-of-images">Load a batch of images</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#define-a-measurement-operator">Define a measurement operator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#noiseless-case">Noiseless case</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pinvnet-network">PinvNet Network</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#removing-artefacts-with-a-cnn">Removing artefacts with a CNN</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_04_train_pseudoinverse_cnn_linear.html">04. Train pseudoinverse solution + CNN denoising</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_05_acquisition_split_measurements.html">05. Acquisition operators (advanced) - Split measurements and subsampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_06_dcnet_split_measurements.html">06. DCNet solution for split measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_bonus_advanced_methods_colab.html">Bonus. Advanced methods - Colab</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Tutorials</a></li>
+      <li class="breadcrumb-item active">03. Pseudoinverse solution + CNN denoising</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/gallery/tuto_03_pseudoinverse_cnn_linear.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-gallery-tuto-03-pseudoinverse-cnn-linear-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code</p>
+</div>
+<section class="sphx-glr-example-title" id="pseudoinverse-solution-cnn-denoising">
+<span id="sphx-glr-gallery-tuto-03-pseudoinverse-cnn-linear-py"></span><h1>03. Pseudoinverse solution + CNN denoising<a class="headerlink" href="#pseudoinverse-solution-cnn-denoising" title="Link to this heading"></a></h1>
+<p id="tuto-pseudoinverse-cnn-linear">This tutorial shows how to simulate measurements and perform image reconstruction
+using PinvNet (pseudoinverse linear network) with CNN denoising as a last layer.
+This tutorial is a continuation of the <a class="reference internal" href="tuto_02_pseudoinverse_linear.html#tuto-pseudoinverse-linear"><span class="std std-ref">Pseudoinverse solution tutorial</span></a>
+but uses a CNN denoiser instead of the identity operator in order to remove artefacts.</p>
+<p>The measurement operator is chosen as a Hadamard matrix with positive coefficients,
+which can be replaced by any matrix.</p>
+<p>These tutorials load image samples from <cite>/images/</cite>.</p>
+<section id="load-a-batch-of-images">
+<h2>Load a batch of images<a class="headerlink" href="#load-a-batch-of-images" title="Link to this heading"></a></h2>
+<p>Images <span class="math notranslate nohighlight">\(x\)</span> for training expect values in [-1,1]. The images are normalized
+using the <code class="xref py py-func docutils literal notranslate"><span class="pre">transform_gray_norm()</span></code> function.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torchvision</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="kn">from</span> <span class="nn">spyrit.misc.disp</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.disp.imagesc.html#spyrit.misc.disp.imagesc" title="spyrit.misc.disp.imagesc" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">imagesc</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.misc.statistics</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.statistics.transform_gray_norm.html#spyrit.misc.statistics.transform_gray_norm" title="spyrit.misc.statistics.transform_gray_norm" class="sphx-glr-backref-module-spyrit-misc-statistics sphx-glr-backref-type-py-function"><span class="n">transform_gray_norm</span></a>
+
+<span class="c1"># sphinx_gallery_thumbnail_path = &#39;fig/pinvnet_cnn.png&#39;</span>
+
+<span class="n">h</span> <span class="o">=</span> <span class="mi">64</span>  <span class="c1"># image size hxh</span>
+<span class="n">i</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Image index (modify to change the image)</span>
+<span class="n">spyritPath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+<span class="n">imgs_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">spyritPath</span><span class="p">,</span> <span class="s2">&quot;images/&quot;</span><span class="p">)</span>
+
+<span class="c1"># Create a transform for natural images to normalized grayscale image tensors</span>
+<span class="n">transform</span> <span class="o">=</span> <a href="../_autosummary/spyrit.misc.statistics.transform_gray_norm.html#spyrit.misc.statistics.transform_gray_norm" title="spyrit.misc.statistics.transform_gray_norm" class="sphx-glr-backref-module-spyrit-misc-statistics sphx-glr-backref-type-py-function"><span class="n">transform_gray_norm</span></a><span class="p">(</span><span class="n">img_size</span><span class="o">=</span><span class="n">h</span><span class="p">)</span>
+
+<span class="c1"># Create dataset and loader (expects class folder &#39;images/test/&#39;)</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">ImageFolder</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">imgs_path</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">)</span>
+<span class="n">dataloader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+
+<span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloader</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of input images: </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Select image</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span> <span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+<span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
+<span class="c1"># plot</span>
+<span class="n">x_plot</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<a href="../_autosummary/spyrit.misc.disp.imagesc.html#spyrit.misc.disp.imagesc" title="spyrit.misc.disp.imagesc" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">imagesc</span></a><span class="p">(</span><span class="n">x_plot</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="sa">r</span><span class="s2">&quot;$x$ in [-1, 1]&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="define-a-measurement-operator">
+<h2>Define a measurement operator<a class="headerlink" href="#define-a-measurement-operator" title="Link to this heading"></a></h2>
+<p>We consider the case where the measurement matrix is the positive
+component of a Hadamard matrix and the sampling operator preserves only
+the first <code class="xref py py-attr docutils literal notranslate"><span class="pre">M</span></code> low-frequency coefficients
+(see <a class="reference internal" href="tuto_02_pseudoinverse_linear.html#hadamard-positive"><span class="std std-ref">Positive Hadamard matrix</span></a> for full explantion).</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">spyrit.misc.sampling</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.sampling.Permutation_Matrix.html#spyrit.misc.sampling.Permutation_Matrix" title="spyrit.misc.sampling.Permutation_Matrix" class="sphx-glr-backref-module-spyrit-misc-sampling sphx-glr-backref-type-py-function"><span class="n">Permutation_Matrix</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.misc.walsh_hadamard</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.walsh_hadamard.walsh2_matrix.html#spyrit.misc.walsh_hadamard.walsh2_matrix" title="spyrit.misc.walsh_hadamard.walsh2_matrix" class="sphx-glr-backref-module-spyrit-misc-walsh_hadamard sphx-glr-backref-type-py-function"><span class="n">walsh2_matrix</span></a>
+
+<span class="n">F</span> <span class="o">=</span> <a href="../_autosummary/spyrit.misc.walsh_hadamard.walsh2_matrix.html#spyrit.misc.walsh_hadamard.walsh2_matrix" title="spyrit.misc.walsh_hadamard.walsh2_matrix" class="sphx-glr-backref-module-spyrit-misc-walsh_hadamard sphx-glr-backref-type-py-function"><span class="n">walsh2_matrix</span></a><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+<span class="n">F</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">F</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="n">und</span> <span class="o">=</span> <span class="mi">4</span>  <span class="c1"># undersampling factor</span>
+<span class="n">M</span> <span class="o">=</span> <span class="n">h</span><span class="o">**</span><span class="mi">2</span> <span class="o">//</span> <span class="n">und</span>  <span class="c1"># number of measurements (undersampling factor = 4)</span>
+
+<span class="n">Sampling_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">))</span>
+<span class="n">M_xy</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">M</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="n">Sampling_map</span><span class="p">[:,</span> <span class="n">M_xy</span><span class="p">:]</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">Sampling_map</span><span class="p">[</span><span class="n">M_xy</span><span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="n">Perm</span> <span class="o">=</span> <a href="../_autosummary/spyrit.misc.sampling.Permutation_Matrix.html#spyrit.misc.sampling.Permutation_Matrix" title="spyrit.misc.sampling.Permutation_Matrix" class="sphx-glr-backref-module-spyrit-misc-sampling sphx-glr-backref-type-py-function"><span class="n">Permutation_Matrix</span></a><span class="p">(</span><span class="n">Sampling_map</span><span class="p">)</span>
+<span class="n">F</span> <span class="o">=</span> <span class="n">Perm</span> <span class="o">@</span> <span class="n">F</span>
+<span class="n">H</span> <span class="o">=</span> <span class="n">F</span><span class="p">[:</span><span class="n">M</span><span class="p">,</span> <span class="p">:]</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of the measurement matrix: </span><span class="si">{</span><span class="n">H</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<a href="../_autosummary/spyrit.misc.disp.imagesc.html#spyrit.misc.disp.imagesc" title="spyrit.misc.disp.imagesc" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">imagesc</span></a><span class="p">(</span><span class="n">Sampling_map</span><span class="p">,</span> <span class="s2">&quot;low-frequency sampling map&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then, we instantiate a <a class="reference internal" href="../_autosummary/spyrit.core.meas.Linear.html#spyrit.core.meas.Linear" title="spyrit.core.meas.Linear"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.meas.Linear</span></code></a> measurement operator</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.meas</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.meas.Linear.html#spyrit.core.meas.Linear" title="spyrit.core.meas.Linear" class="sphx-glr-backref-module-spyrit-core-meas sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Linear</span></a>
+
+<span class="n">meas_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.meas.Linear.html#spyrit.core.meas.Linear" title="spyrit.core.meas.Linear" class="sphx-glr-backref-module-spyrit-core-meas sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Linear</span></a><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">pinv</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="noiseless-case">
+<h2>Noiseless case<a class="headerlink" href="#noiseless-case" title="Link to this heading"></a></h2>
+<p>In the noiseless case, we consider the <a class="reference internal" href="../_autosummary/spyrit.core.noise.NoNoise.html#spyrit.core.noise.NoNoise" title="spyrit.core.noise.NoNoise"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.noise.NoNoise</span></code></a> noise
+operator</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.noise</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.noise.NoNoise.html#spyrit.core.noise.NoNoise" title="spyrit.core.noise.NoNoise" class="sphx-glr-backref-module-spyrit-core-noise sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">NoNoise</span></a>
+
+<span class="n">N0</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># Noise level (noiseless)</span>
+<span class="n">noise</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.noise.NoNoise.html#spyrit.core.noise.NoNoise" title="spyrit.core.noise.NoNoise" class="sphx-glr-backref-module-spyrit-core-noise sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">NoNoise</span></a><span class="p">(</span><span class="n">meas_op</span><span class="p">)</span>
+
+<span class="c1"># Simulate measurements</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">noise</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span> <span class="o">*</span> <span class="n">w</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of raw measurements: </span><span class="si">{</span><span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We now compute and plot the preprocessed measurements corresponding to an
+image in [-1,1]</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.prep</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.prep.DirectPoisson.html#spyrit.core.prep.DirectPoisson" title="spyrit.core.prep.DirectPoisson" class="sphx-glr-backref-module-spyrit-core-prep sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">DirectPoisson</span></a>
+
+<span class="n">prep</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.prep.DirectPoisson.html#spyrit.core.prep.DirectPoisson" title="spyrit.core.prep.DirectPoisson" class="sphx-glr-backref-module-spyrit-core-prep sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">DirectPoisson</span></a><span class="p">(</span><span class="n">N0</span><span class="p">,</span> <span class="n">meas_op</span><span class="p">)</span>  <span class="c1"># &quot;Undo&quot; the NoNoise operator</span>
+
+<span class="n">m</span> <span class="o">=</span> <span class="n">prep</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of the preprocessed measurements: </span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To display the subsampled measurement vector as an image in the transformed
+domain, we use the <a class="reference internal" href="../_autosummary/spyrit.misc.sampling.meas2img.html#spyrit.misc.sampling.meas2img" title="spyrit.misc.sampling.meas2img"><code class="xref py py-func docutils literal notranslate"><span class="pre">spyrit.misc.sampling.meas2img()</span></code></a> function</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># plot</span>
+<span class="kn">from</span> <span class="nn">spyrit.misc.sampling</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.sampling.meas2img.html#spyrit.misc.sampling.meas2img" title="spyrit.misc.sampling.meas2img" class="sphx-glr-backref-module-spyrit-misc-sampling sphx-glr-backref-type-py-function"><span class="n">meas2img</span></a>
+
+<span class="n">m_plot</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+<span class="n">m_plot</span> <span class="o">=</span> <a href="../_autosummary/spyrit.misc.sampling.meas2img.html#spyrit.misc.sampling.meas2img" title="spyrit.misc.sampling.meas2img" class="sphx-glr-backref-module-spyrit-misc-sampling sphx-glr-backref-type-py-function"><span class="n">meas2img</span></a><span class="p">(</span><span class="n">m_plot</span><span class="p">,</span> <span class="n">Sampling_map</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of the preprocessed measurement image: </span><span class="si">{</span><span class="n">m_plot</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<a href="../_autosummary/spyrit.misc.disp.imagesc.html#spyrit.misc.disp.imagesc" title="spyrit.misc.disp.imagesc" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">imagesc</span></a><span class="p">(</span><span class="n">m_plot</span><span class="p">,</span> <span class="s2">&quot;Preprocessed measurements (no noise)&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="pinvnet-network">
+<h2>PinvNet Network<a class="headerlink" href="#pinvnet-network" title="Link to this heading"></a></h2>
+<p>We consider the <a class="reference internal" href="../_autosummary/spyrit.core.recon.PinvNet.html#spyrit.core.recon.PinvNet" title="spyrit.core.recon.PinvNet"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.recon.PinvNet</span></code></a> class that reconstructs an
+image by computing the pseudoinverse solution, which is fed to a neural
+network denoiser. To compute the pseudoinverse solution only, the denoiser
+can be set to the identity operator</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.recon</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.recon.PinvNet.html#spyrit.core.recon.PinvNet" title="spyrit.core.recon.PinvNet" class="sphx-glr-backref-module-spyrit-core-recon sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">PinvNet</span></a>
+
+<span class="n">pinv_net</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.recon.PinvNet.html#spyrit.core.recon.PinvNet" title="spyrit.core.recon.PinvNet" class="sphx-glr-backref-module-spyrit-core-recon sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">PinvNet</span></a><span class="p">(</span><span class="n">noise</span><span class="p">,</span> <span class="n">prep</span><span class="p">,</span> <span class="n">denoi</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Identity</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>or equivalently</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">pinv_net</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.recon.PinvNet.html#spyrit.core.recon.PinvNet" title="spyrit.core.recon.PinvNet" class="sphx-glr-backref-module-spyrit-core-recon sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">PinvNet</span></a><span class="p">(</span><span class="n">noise</span><span class="p">,</span> <span class="n">prep</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then, we reconstruct the image from the measurement vector <code class="xref py py-attr docutils literal notranslate"><span class="pre">y</span></code> using the
+<a class="reference internal" href="../_autosummary/spyrit.core.recon.PinvNet.reconstruct.html#spyrit.core.recon.PinvNet.reconstruct" title="spyrit.core.recon.PinvNet.reconstruct"><code class="xref py py-func docutils literal notranslate"><span class="pre">reconstruct()</span></code></a> method</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">x_rec</span> <span class="o">=</span> <span class="n">pinv_net</span><span class="o">.</span><span class="n">reconstruct</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="removing-artefacts-with-a-cnn">
+<h2>Removing artefacts with a CNN<a class="headerlink" href="#removing-artefacts-with-a-cnn" title="Link to this heading"></a></h2>
+<p>Artefacts can be removed by selecting a neural network denoiser
+(last layer of PinvNet). We select a simple CNN using the
+<a class="reference internal" href="../_autosummary/spyrit.core.nnet.ConvNet.html#spyrit.core.nnet.ConvNet" title="spyrit.core.nnet.ConvNet"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.nnet.ConvNet</span></code></a> class, but this can be replaced by any
+neural network (eg. UNet from <a class="reference internal" href="../_autosummary/spyrit.core.nnet.Unet.html#spyrit.core.nnet.Unet" title="spyrit.core.nnet.Unet"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.nnet.Unet</span></code></a>).</p>
+<a class="reference internal image-reference" href="../_images/pinvnet_cnn.png"><img alt="Sketch of the PinvNet with CNN architecture" class="align-center" src="../_images/pinvnet_cnn.png" style="width: 400px;" /></a>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.nnet</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.nnet.ConvNet.html#spyrit.core.nnet.ConvNet" title="spyrit.core.nnet.ConvNet" class="sphx-glr-backref-module-spyrit-core-nnet sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">ConvNet</span></a><span class="p">,</span> <span class="n">Unet</span>
+<span class="kn">from</span> <span class="nn">spyrit.core.train</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.train.load_net.html#spyrit.core.train.load_net" title="spyrit.core.train.load_net" class="sphx-glr-backref-module-spyrit-core-train sphx-glr-backref-type-py-function"><span class="n">load_net</span></a>
+
+<span class="c1"># Define PInvNet with ConvNet denoising layer</span>
+<span class="n">denoi</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.nnet.ConvNet.html#spyrit.core.nnet.ConvNet" title="spyrit.core.nnet.ConvNet" class="sphx-glr-backref-module-spyrit-core-nnet sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">ConvNet</span></a><span class="p">()</span>
+<span class="n">pinv_net_cnn</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.recon.PinvNet.html#spyrit.core.recon.PinvNet" title="spyrit.core.recon.PinvNet" class="sphx-glr-backref-module-spyrit-core-recon sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">PinvNet</span></a><span class="p">(</span><span class="n">noise</span><span class="p">,</span> <span class="n">prep</span><span class="p">,</span> <span class="n">denoi</span><span class="p">)</span>
+
+<span class="c1"># Send to GPU if available</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">pinv_net_cnn</span> <span class="o">=</span> <span class="n">pinv_net_cnn</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>As an example, we use a simple ConvNet that has been pretrained using STL-10 dataset.
+We download the pretrained weights and load them into the network.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Load pretrained model</span>
+<span class="n">model_path</span> <span class="o">=</span> <span class="s2">&quot;./model&quot;</span>
+<span class="n">num_epochs</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="n">pretrained_model_num</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="k">if</span> <span class="n">pretrained_model_num</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="c1"># 1 epoch</span>
+    <span class="n">url_cnn</span> <span class="o">=</span> <span class="s2">&quot;https://drive.google.com/file/d/1iGjxOk06nlB5hSm3caIfx0vy2byQd-ZC/view?usp=drive_link&quot;</span>
+    <span class="n">name_cnn</span> <span class="o">=</span> <span class="s2">&quot;pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_1_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth&quot;</span>
+    <span class="n">num_epochs</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="k">elif</span> <span class="n">pretrained_model_num</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+    <span class="c1"># 5 epochs</span>
+    <span class="n">url_cnn</span> <span class="o">=</span> <span class="s2">&quot;https://drive.google.com/file/d/1tzZg1lU3AxOi8-EVXFgnxdtqQCJPjQ9f/view?usp=drive_link&quot;</span>
+    <span class="n">name_cnn</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_5_lr_0.001_sss_10_sdr_0.5_bs_512.pth&quot;</span>
+    <span class="p">)</span>
+    <span class="n">num_epochs</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="k">elif</span> <span class="n">pretrained_model_num</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+    <span class="c1"># 30 epochs</span>
+    <span class="n">url_cnn</span> <span class="o">=</span> <span class="s2">&quot;https://drive.google.com/file/d/1IZYff1xQxJ3ckAnObqAWyOure6Bjkj4k/view?usp=drive_link&quot;</span>
+    <span class="n">name_cnn</span> <span class="o">=</span> <span class="s2">&quot;pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth&quot;</span>
+    <span class="n">num_epochs</span> <span class="o">=</span> <span class="mi">30</span>
+
+<span class="c1"># Create model folder</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Download model weights</span>
+<span class="n">model_cnn_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">model_path</span><span class="p">,</span> <span class="n">name_cnn</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">model_cnn_path</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">model_cnn_path</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">gdown</span>
+
+        <span class="n">gdown</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="n">url_cnn</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_cnn_path</span><span class="si">}</span><span class="s2">.pth&quot;</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fuzzy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model </span><span class="si">{</span><span class="n">model_cnn_path</span><span class="si">}</span><span class="s2"> not downloaded!&quot;</span><span class="p">)</span>
+
+<span class="c1"># Load model weights</span>
+<a href="../_autosummary/spyrit.core.train.load_net.html#spyrit.core.train.load_net" title="spyrit.core.train.load_net" class="sphx-glr-backref-module-spyrit-core-train sphx-glr-backref-type-py-function"><span class="n">load_net</span></a><span class="p">(</span><span class="n">model_cnn_path</span><span class="p">,</span> <span class="n">pinv_net_cnn</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model </span><span class="si">{</span><span class="n">model_cnn_path</span><span class="si">}</span><span class="s2"> loaded.&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We now reconstruct the image using PinvNet with pretrained CNN denoising
+and plot results side by side with the PinvNet without denoising</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+    <span class="n">x_rec_cnn</span> <span class="o">=</span> <span class="n">pinv_net_cnn</span><span class="o">.</span><span class="n">reconstruct</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">))</span>
+    <span class="n">x_rec_cnn</span> <span class="o">=</span> <span class="n">pinv_net_cnn</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">))</span>
+
+<span class="c1"># plot</span>
+<span class="n">x_plot</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">x_plot2</span> <span class="o">=</span> <span class="n">x_rec</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">x_plot3</span> <span class="o">=</span> <span class="n">x_rec_cnn</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+<span class="kn">from</span> <span class="nn">spyrit.misc.disp</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">,</span> <a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a>
+
+<span class="n">f</span><span class="p">,</span> <span class="p">(</span><span class="n">ax1</span><span class="p">,</span> <span class="n">ax2</span><span class="p">,</span> <span class="n">ax3</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">im1</span> <span class="o">=</span> <span class="n">ax1</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">x_plot</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Ground-truth image&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">ax1</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im1</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;20%&quot;</span><span class="p">)</span>
+
+<span class="n">im2</span> <span class="o">=</span> <span class="n">ax2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">x_plot2</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Pinv reconstruction&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">ax2</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im2</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;20%&quot;</span><span class="p">)</span>
+
+<span class="n">im3</span> <span class="o">=</span> <span class="n">ax3</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">x_plot3</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">ax3</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pinv + CNN (trained </span><span class="si">{</span><span class="n">num_epochs</span><span class="si">}</span><span class="s2"> epochs&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">ax3</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im3</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="s2">&quot;20%&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We show the best result again (tutorial thumbnail purpose)</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Plot</span>
+<a href="../_autosummary/spyrit.misc.disp.imagesc.html#spyrit.misc.disp.imagesc" title="spyrit.misc.disp.imagesc" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">imagesc</span></a><span class="p">(</span><span class="n">x_plot3</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Pinv + CNN (trained </span><span class="si">{</span><span class="n">num_epochs</span><span class="si">}</span><span class="s2"> epochs&quot;</span><span class="p">,</span> <span class="n">title_fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>In the next tutorial, we will show how to train PinvNet + CNN denoiser.</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-gallery-tuto-03-pseudoinverse-cnn-linear-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/f0e69a9263c9b442a8f521dbd3eb8c9f/tuto_03_pseudoinverse_cnn_linear.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">tuto_03_pseudoinverse_cnn_linear.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/da2bc0ba21fa9ac64fb10a2c26f4d0e8/tuto_03_pseudoinverse_cnn_linear.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">tuto_03_pseudoinverse_cnn_linear.py</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="tuto_02_pseudoinverse_linear.html" class="btn btn-neutral float-left" title="02. Pseudoinverse solution from linear measurements" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="tuto_04_train_pseudoinverse_cnn_linear.html" class="btn btn-neutral float-right" title="04. Train pseudoinverse solution + CNN denoising" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

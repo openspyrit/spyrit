@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.misc.pattern_choice.matrix2conv &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/sg_README.css?v=78231cbc" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="spyrit.misc.pattern_choice.shift" href="spyrit.misc.pattern_choice.shift.html" />
+    <link rel="prev" title="spyrit.misc.pattern_choice.Hadamard_opt" href="spyrit.misc.pattern_choice.Hadamard_opt.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="spyrit.misc.html">spyrit.misc</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.data_visualisation.html">spyrit.misc.data_visualisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.disp.html">spyrit.misc.disp</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.examples.html">spyrit.misc.examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.load_data.html">spyrit.misc.load_data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.matrix_tools.html">spyrit.misc.matrix_tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.metrics.html">spyrit.misc.metrics</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="spyrit.misc.pattern_choice.html">spyrit.misc.pattern_choice</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.pattern_choice.Daubechies.html">spyrit.misc.pattern_choice.Daubechies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.pattern_choice.Daubechies_opt.html">spyrit.misc.pattern_choice.Daubechies_opt</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.pattern_choice.Fourier.html">spyrit.misc.pattern_choice.Fourier</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.pattern_choice.Fourier_opt.html">spyrit.misc.pattern_choice.Fourier_opt</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.pattern_choice.Haar.html">spyrit.misc.pattern_choice.Haar</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.pattern_choice.Haar_opt.html">spyrit.misc.pattern_choice.Haar_opt</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.pattern_choice.Hadamard.html">spyrit.misc.pattern_choice.Hadamard</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.pattern_choice.Hadamard_opt.html">spyrit.misc.pattern_choice.Hadamard_opt</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">spyrit.misc.pattern_choice.matrix2conv</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#spyrit.misc.pattern_choice.matrix2conv"><code class="docutils literal notranslate"><span class="pre">matrix2conv()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.pattern_choice.shift.html">spyrit.misc.pattern_choice.shift</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.pattern_choice.split.html">spyrit.misc.pattern_choice.split</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.pattern_choice.Basis_patterns.html">spyrit.misc.pattern_choice.Basis_patterns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.pattern_choice.Custom_patterns.html">spyrit.misc.pattern_choice.Custom_patterns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.pattern_choice.Optimized_patterns.html">spyrit.misc.pattern_choice.Optimized_patterns</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spyrit.misc.pattern_choice.Patterns.html">spyrit.misc.pattern_choice.Patterns</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.sampling.html">spyrit.misc.sampling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.statistics.html">spyrit.misc.statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.misc.walsh_hadamard.html">spyrit.misc.walsh_hadamard</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="spyrit.misc.html">spyrit.misc</a></li>
+          <li class="breadcrumb-item"><a href="spyrit.misc.pattern_choice.html">spyrit.misc.pattern_choice</a></li>
+      <li class="breadcrumb-item active">spyrit.misc.pattern_choice.matrix2conv</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/spyrit.misc.pattern_choice.matrix2conv.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <section id="spyrit-misc-pattern-choice-matrix2conv">
+<h1>spyrit.misc.pattern_choice.matrix2conv<a class="headerlink" href="#spyrit-misc-pattern-choice-matrix2conv" title="Link to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="spyrit.misc.pattern_choice.matrix2conv">
+<span class="sig-prename descclassname"><span class="pre">spyrit.misc.pattern_choice.</span></span><span class="sig-name descname"><span class="pre">matrix2conv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Matrix</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/spyrit/misc/pattern_choice.html#matrix2conv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spyrit.misc.pattern_choice.matrix2conv" title="Link to this definition"></a></dt>
+<dd><p>Returns Convulution filter che each kernel correponds to a line of
+Matrix, that has been reshaped</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="spyrit.misc.pattern_choice.Hadamard_opt.html" class="btn btn-neutral float-left" title="spyrit.misc.pattern_choice.Hadamard_opt" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="spyrit.misc.pattern_choice.shift.html" class="btn btn-neutral float-right" title="spyrit.misc.pattern_choice.shift" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

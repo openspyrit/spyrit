@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.core.meas &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/thumbnail.css" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../../../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">spyrit.core.meas</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <h1>Source code for spyrit.core.meas</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">spyrit.misc.walsh_hadamard</span> <span class="kn">import</span> <span class="n">walsh2_torch</span><span class="p">,</span> <span class="n">walsh2_matrix</span>
+<span class="kn">from</span> <span class="nn">spyrit.misc.sampling</span> <span class="kn">import</span> <span class="n">Permutation_Matrix</span>
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="DynamicLinear">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.DynamicLinear.html#spyrit.core.meas.DynamicLinear">[docs]</a>
+<span class="k">class</span> <span class="nc">DynamicLinear</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simulates the measurement of a moving object using a measurement matrix.</span>
+
+<span class="sd">    Computes linear measurements :math:`y` from incoming images: :math:`y = Hx`,</span>
+<span class="sd">    where :math:`H` is a linear operator (matrix) and :math:`x` is a</span>
+<span class="sd">    batch of vectorized images representing a motion picture.</span>
+
+<span class="sd">    The class is constructed from a matrix :math:`H` of shape :math:`(M, N)`,</span>
+<span class="sd">    where :math:`N` represents the number of pixels in the image and</span>
+<span class="sd">    :math:`M` the number of measurements and the number of frames in the</span>
+<span class="sd">    animated object.</span>
+
+<span class="sd">    .. warning::</span>
+<span class="sd">        For each call, there must be **exactly** as many images in :math:`x` as</span>
+<span class="sd">        there are measurements in the linear operator used to initialize the class.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`H` (torch.tensor): measurement matrix (linear operator) with</span>
+<span class="sd">        shape :math:`(M, N)`.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        :attr:`H` (torch.nn.Parameter): The learnable measurement matrix of</span>
+<span class="sd">        shape :math:`(M,N)` initialized as :math:`H`.</span>
+
+<span class="sd">        :attr:`M` (int): Number of measurements performed by the linear operator.</span>
+<span class="sd">        It is initialized as the first dimension of :math:`H`.</span>
+
+<span class="sd">        :attr:`N` (int): Number of pixels in the image. It is initialized as the</span>
+<span class="sd">        second dimension of :math:`H`.</span>
+
+<span class="sd">        :attr:`h` (int): Image height :math:`h`. The image is assumed to be</span>
+<span class="sd">        square, i.e. :math:`h = \text{floor}(\sqrt{N})`. If not, please assign</span>
+<span class="sd">        :attr:`h` and :attr:`w` manually.</span>
+
+<span class="sd">        :attr:`w` (int): Image width :math:`w`. The image is assumed to be</span>
+<span class="sd">        square, i.e. :math:`w = \text{floor}(\sqrt{N})`. If not, please assign</span>
+<span class="sd">        :attr:`h` and :attr:`w` manually.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; H = np.random.random([400, 1600])</span>
+<span class="sd">        &gt;&gt;&gt; meas_op = DynamicLinear(H)</span>
+<span class="sd">        &gt;&gt;&gt; print(meas_op)</span>
+<span class="sd">        DynamicLinear(</span>
+<span class="sd">          (Image pixels): 1600</span>
+<span class="sd">          (H): torch.Size([400, 1600])</span>
+<span class="sd">          )</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">H</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="c1"># convert H from numpy to torch tensor if needed</span>
+        <span class="c1"># convert to float 32 for memory efficiency</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="n">H</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;Using a numpy array is deprecated. Please use a torch tensor instead.&quot;</span><span class="p">,</span>
+                <span class="ne">DeprecationWarning</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">H</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">type</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="c1"># nn.Parameter are sent to the device when using .to(device),</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">H</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">M</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;N (</span><span class="si">{</span><span class="n">H</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">) is not a square. Please assign self.h and self.w manually.&quot;</span>
+            <span class="p">)</span>
+
+<div class="viewcode-block" id="DynamicLinear.get_H">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.DynamicLinear.get_H.html#spyrit.core.meas.DynamicLinear.get_H">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_H</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Returns the attribute measurement matrix :math:`H`.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            Output: :math:`(M, N)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; H1 = np.random.random([400, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = Linear(H1)</span>
+<span class="sd">            &gt;&gt;&gt; H2 = meas_op.get_H()</span>
+<span class="sd">            &gt;&gt;&gt; print(H2.shape)</span>
+<span class="sd">            torch.Size([400, 1600])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="o">.</span><span class="n">data</span></div>
+
+
+<div class="viewcode-block" id="DynamicLinear.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.DynamicLinear.forward.html#spyrit.core.meas.DynamicLinear.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulates the measurement of a motion picture.</span>
+
+<span class="sd">        The output :math:`y` is computed as :math:`y = Hx`, where :math:`H` is</span>
+<span class="sd">        the measurement matrix and :math:`x` is a batch of vectorized (flattened)</span>
+<span class="sd">        images.</span>
+
+<span class="sd">        .. warning::</span>
+<span class="sd">            There must be **exactly** as many images as there are measurements</span>
+<span class="sd">            in the linear operator used to initialize the class, i.e.</span>
+<span class="sd">            `H.shape[-2] == x.shape[-2]`</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :math:`x`: Batch of vectorized (flattened) images.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :math:`x`: :math:`(*, M, N)`, where * denotes the batch size and</span>
+<span class="sd">            :math:`(M, N)` is the shape of the measurement matrix :math:`H`.</span>
+<span class="sd">            :math:`M` is the number of measurements (and frames) and :math:`N`</span>
+<span class="sd">            the number of pixels in the image.</span>
+
+<span class="sd">            :math:`output`: :math:`(*, M)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand([10, 400, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; H = np.random.random([400, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = DynamicLinear(H)</span>
+<span class="sd">            &gt;&gt;&gt; y = meas_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;ij,...ij-&gt;...i&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_H</span><span class="p">(),</span> <span class="n">x</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;which does not broadcast with previously seen size&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;The shape of the input x (</span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">) does not match the &quot;</span>
+                    <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;shape of the measurement matrix H (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">get_H</span><span class="p">()</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">).&quot;</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">e</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">s_begin</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(</span><span class="se">\n</span><span class="s2">  &quot;</span>
+        <span class="n">s_fill</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">  &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__attributeslist__</span><span class="p">()])</span>
+        <span class="n">s_end</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">  )&quot;</span>
+        <span class="k">return</span> <span class="n">s_begin</span> <span class="o">+</span> <span class="n">s_fill</span> <span class="o">+</span> <span class="n">s_end</span>
+
+    <span class="k">def</span> <span class="nf">__attributeslist__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[(</span><span class="s2">&quot;Image pixels&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;H&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="o">.</span><span class="n">shape</span><span class="p">)]</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="DynamicLinearSplit">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.DynamicLinearSplit.html#spyrit.core.meas.DynamicLinearSplit">[docs]</a>
+<span class="k">class</span> <span class="nc">DynamicLinearSplit</span><span class="p">(</span><span class="n">DynamicLinear</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simulates the measurement of a moving object using the positive and</span>
+<span class="sd">    negative components of the measurement matrix.</span>
+
+<span class="sd">    Computes linear measurements :math:`y` from incoming images: :math:`y = Px`,</span>
+<span class="sd">    where :math:`P` is a linear operator (matrix) and :math:`x` is a batch of</span>
+<span class="sd">    vectorized images representing a motion picture.</span>
+
+<span class="sd">    The matrix :math:`P` contains only positive values and is obtained by</span>
+<span class="sd">    splitting a given measurement matrix :math:`H` such that</span>
+<span class="sd">    :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`, where</span>
+<span class="sd">    :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.</span>
+
+<span class="sd">    The class is constructed from the :math:`M` by :math:`N` matrix :math:`H`,</span>
+<span class="sd">    where :math:`N` represents the number of pixels in the image and</span>
+<span class="sd">    :math:`M` the number of measurements.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :math:`H` (np.ndarray): measurement matrix (linear operator) with</span>
+<span class="sd">        shape :math:`(M, N)` where :math:`M` is the number of measurements and</span>
+<span class="sd">        :math:`N` the number of pixels in the image.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        :attr:`H` (torch.nn.Parameter): The learnable measurement matrix of</span>
+<span class="sd">        shape :math:`(M,N)`.</span>
+
+<span class="sd">        :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of</span>
+<span class="sd">        shape :math:`(2M, N)` initialized as</span>
+<span class="sd">        :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`</span>
+<span class="sd">        where :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`</span>
+
+<span class="sd">        :attr:`M` (int): Number of measurements performed by the linear operator.</span>
+<span class="sd">        It is initialized as the first dimension of :math:`H`.</span>
+
+<span class="sd">        :attr:`N` (int): Number of pixels in the image. It is initialized as the</span>
+<span class="sd">        second dimension of :math:`H`.</span>
+
+<span class="sd">        :attr:`h` (int): Image height :math:`h`. The image is assumed to be</span>
+<span class="sd">        square, i.e. :math:`h = \text{floor}(\sqrt{N})`. If not, please assign</span>
+<span class="sd">        :attr:`h` and :attr:`w` manually.</span>
+
+<span class="sd">        :attr:`w` (int): Image width :math:`w`. The image is assumed to be</span>
+<span class="sd">        square, i.e. :math:`w = \text{floor}(\sqrt{N})`. If not, please assign</span>
+<span class="sd">        :attr:`h` and :attr:`w` manually.</span>
+
+<span class="sd">    .. warning::</span>
+<span class="sd">        For each call, there must be **exactly** as many images in :math:`x` as</span>
+<span class="sd">        there are measurements in the linear operator used to initialize the class.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; H = np.array(np.random.random([400,1600]))</span>
+<span class="sd">        &gt;&gt;&gt; meas_op = DynamicLinearSplit(H)</span>
+<span class="sd">        &gt;&gt;&gt; print(meas_op)</span>
+<span class="sd">        DynamicLinearSplit(</span>
+<span class="sd">            (Image pixels): 1600</span>
+<span class="sd">            (H): torch.Size([400, 1600])</span>
+<span class="sd">            (P): torch.Size([800, 1600])</span>
+<span class="sd">            )</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">H</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">):</span>
+        <span class="c1"># initialize self.H</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">H</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="n">H</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;Using a numpy array is deprecated. Please use a torch tensor instead.&quot;</span><span class="p">,</span>
+                <span class="ne">DeprecationWarning</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">H</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">type</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
+
+        <span class="c1"># initialize self.P = [ H^+ ]</span>
+        <span class="c1">#                     [ H^- ]</span>
+        <span class="n">zero</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">H_pos</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">zero</span><span class="p">,</span> <span class="n">H</span><span class="p">)</span>
+        <span class="n">H_neg</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">zero</span><span class="p">,</span> <span class="o">-</span><span class="n">H</span><span class="p">)</span>
+        <span class="c1"># concatenate side by side, then reshape vertically</span>
+        <span class="n">P</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">H_pos</span><span class="p">,</span> <span class="n">H_neg</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">M</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+        <span class="n">P</span> <span class="o">=</span> <span class="n">P</span><span class="o">.</span><span class="n">type</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">)</span>  <span class="c1"># cast to float 32</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">P</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DynamicLinearSplit.get_P">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.DynamicLinearSplit.get_P.html#spyrit.core.meas.DynamicLinearSplit.get_P">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_P</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Returns the attribute measurement matrix :math:`P`.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            Output: :math:`(2M, N)`, where :math:`(M, N)` is the shape of the</span>
+<span class="sd">            measurement matrix :math:`H` given at initialization.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; H = np.random.random([400, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = LinearDynamicSplit(H)</span>
+<span class="sd">            &gt;&gt;&gt; P = meas_op.get_P()</span>
+<span class="sd">            &gt;&gt;&gt; print(P.shape)</span>
+<span class="sd">            torch.Size([800, 1600])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="o">.</span><span class="n">data</span></div>
+
+
+<div class="viewcode-block" id="DynamicLinearSplit.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.DynamicLinearSplit.forward.html#spyrit.core.meas.DynamicLinearSplit.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulates the measurement of a motion picture using :math:`P`.</span>
+
+<span class="sd">        The output :math:`y` is computed as :math:`y = Px`, where :math:`P` is</span>
+<span class="sd">        the measurement matrix and :math:`x` is a batch of vectorized (flattened)</span>
+<span class="sd">        images.</span>
+
+<span class="sd">        :math:`P` contains only positive values and is obtained by</span>
+<span class="sd">        splitting a given measurement matrix :math:`H` such that</span>
+<span class="sd">        :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`, where</span>
+<span class="sd">        :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.</span>
+
+<span class="sd">        The matrix :math:`H` can contain positive and negative values and is</span>
+<span class="sd">        given by the user at initialization.</span>
+
+<span class="sd">        .. warning::</span>
+<span class="sd">            There must be **exactly** as many images as there are measurements</span>
+<span class="sd">            in the linear operator used to initialize the class, i.e.</span>
+<span class="sd">            `P.shape[-2] == x.shape[-2]`</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :math:`x`: Batch of vectorized (flattened) images of shape</span>
+<span class="sd">            :math:`(*, 2M, N)` where * denotes the batch size, :math:`2M` the</span>
+<span class="sd">            number of measurements in the measurement matrix :math:`P` and</span>
+<span class="sd">            :math:`N` the number of pixels in the image.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :math:`x`: :math:`(*, 2M, N)`</span>
+
+<span class="sd">            :math:`P` has a shape of :math:`(2M, N)` where :math:`M` is the</span>
+<span class="sd">            number of measurements as defined by the first dimension of :math:`H`</span>
+<span class="sd">            and :math:`N` is the number of pixels in the image.</span>
+
+<span class="sd">            :math:`output`: :math:`(*, 2M)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand([10, 800, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; H = np.random.random([400, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = DynamicLinearSplit(H)</span>
+<span class="sd">            &gt;&gt;&gt; y = meas_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            torch.Size([10, 800])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;ij,...ij-&gt;...i&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_P</span><span class="p">(),</span> <span class="n">x</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;which does not broadcast with previously seen size&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;The shape of the input x (</span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">) does not match the &quot;</span>
+                    <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;shape of the measurement matrix P (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">get_P</span><span class="p">()</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">).&quot;</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">e</span></div>
+
+
+<div class="viewcode-block" id="DynamicLinearSplit.forward_H">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.DynamicLinearSplit.forward_H.html#spyrit.core.meas.DynamicLinearSplit.forward_H">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward_H</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulates the measurement of a motion picture using :math:`H`.</span>
+
+<span class="sd">        The output :math:`y` is computed as :math:`y = Hx`, where :math:`H` is</span>
+<span class="sd">        the measurement matrix and :math:`x` is a batch of vectorized (flattened)</span>
+<span class="sd">        images. The positive and negative components of the measurement matrix</span>
+<span class="sd">        are **not** used in this method.</span>
+
+<span class="sd">        The matrix :math:`H` can contain positive and negative values and is</span>
+<span class="sd">        given by the user at initialization.</span>
+
+<span class="sd">        .. warning::</span>
+<span class="sd">            There must be **exactly** as many images as there are measurements</span>
+<span class="sd">            in the linear operator used to initialize the class, i.e.</span>
+<span class="sd">            `H.shape[-2:] == x.shape[-2:]`</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :math:`x`: Batch of vectorized (flatten) images of shape</span>
+<span class="sd">            :math:`(*, M, N)` where * denotes the batch size, and :math:`(M, N)`</span>
+<span class="sd">            is the shape of the measurement matrix :math:`H`.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :math:`x`: :math:`(*, M, N)`</span>
+
+<span class="sd">            :math:`H` has a shape of :math:`(M, N)` where :math:`M` is the</span>
+<span class="sd">            number of measurements and :math:`N` is the number of pixels in the</span>
+<span class="sd">            image.</span>
+
+<span class="sd">            :math:`output`: :math:`(*, M)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.rand([10, 400, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; H = np.random.random([400, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = LinearDynamicSplit(H)</span>
+<span class="sd">            &gt;&gt;&gt; y = meas_op.forward_H(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">__attributeslist__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__attributeslist__</span><span class="p">()</span> <span class="o">+</span> <span class="p">[(</span><span class="s2">&quot;P&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="o">.</span><span class="n">shape</span><span class="p">)]</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="DynamicHadamSplit">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.DynamicHadamSplit.html#spyrit.core.meas.DynamicHadamSplit">[docs]</a>
+<span class="k">class</span> <span class="nc">DynamicHadamSplit</span><span class="p">(</span><span class="n">DynamicLinearSplit</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simulates the measurement of a moving object using the positive and</span>
+<span class="sd">    negative components of a Hadamard matrix.</span>
+
+<span class="sd">    Computes linear measurements from incoming images: :math:`y = Px`,</span>
+<span class="sd">    where :math:`P` is a linear operator (matrix) with positive entries and</span>
+<span class="sd">    :math:`x` is a batch of vectorized images representing a motion picture.</span>
+
+<span class="sd">    The class relies on a Hadamard-based matrix :math:`H` with shape :math:`(M,N)`</span>
+<span class="sd">    where :math:`N` represents the number of pixels in the image and</span>
+<span class="sd">    :math:`M \le N` the number of measurements. :math:`H` is obtained by</span>
+<span class="sd">    selecting a re-ordered subsample of :math:`M` rows of a &quot;full&quot; Hadamard</span>
+<span class="sd">    matrix :math:`F` with shape :math:`(N^2, N^2)`. :math:`N` must be a power</span>
+<span class="sd">    of 2.</span>
+
+<span class="sd">    The matrix :math:`P` is then obtained by splitting the matrix :math:`H`</span>
+<span class="sd">    such that :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`, where</span>
+<span class="sd">    :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`M` (int): Number of measurements</span>
+
+<span class="sd">        :attr:`h` (int): Image height :math:`h`, must be a power of 2. The</span>
+<span class="sd">        image is assumed to be square, so the number of pixels in the image is</span>
+<span class="sd">        :math:`N = h^2`.</span>
+
+<span class="sd">        :attr:`Ord` (np.ndarray): Order matrix with shape :math:`(h, h)` used to</span>
+<span class="sd">        select the rows of the full Hadamard matrix :math:`F`</span>
+<span class="sd">        compute the permutation matrix :math:`G^{T}` with shape :math:`(N, N)`</span>
+<span class="sd">        (see the :mod:`~spyrit.misc.sampling` submodule)</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        :attr:`H` (torch.nn.Parameter): The measurement matrix of shape</span>
+<span class="sd">        :math:`(M, h^2)`. It is initialized as a re-ordered subsample of the</span>
+<span class="sd">        rows of the &quot;full&quot; Hadamard matrix :math:`F` with shape :math:`(N^2, N^2)`.</span>
+
+<span class="sd">        :attr:`H_pinv` (torch.nn.Parameter): The pseudo inverse of the measurement</span>
+<span class="sd">        matrix of shape :math:`(h^2, M)`. It is initialized as</span>
+<span class="sd">        :math:`H^\dagger = \frac{1}{N}H^{T}` where :math:`N = h^2`.</span>
+
+<span class="sd">        :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of</span>
+<span class="sd">        shape :math:`(2M, h^2)` initialized as</span>
+<span class="sd">        :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`</span>
+<span class="sd">        where :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.</span>
+
+<span class="sd">        :attr:`Perm` (torch.nn.Parameter): The permutation matrix :math:`G^{T}`</span>
+<span class="sd">        that is used to re-order the subsample of rows of the &quot;full&quot; Hadamard</span>
+<span class="sd">        matrix :math:`F` according to descreasing value of the order matrix</span>
+<span class="sd">        :math:`Ord`. It has shape :math:`(N, N)` where :math:`N = h^2`.</span>
+
+<span class="sd">        :attr:`M` (int): Number of measurements performed by the linear operator.</span>
+
+<span class="sd">        :attr:`N` (int): Number of pixels in the image. It is initialized as</span>
+<span class="sd">        :math:`h^2`.</span>
+
+<span class="sd">        :attr:`h` (int): Image height :math:`h`.</span>
+
+<span class="sd">        :attr:`w` (int): Image width :math:`w`. The image is assumed to be</span>
+<span class="sd">        square, i.e. :math:`w = h`.</span>
+
+<span class="sd">    .. warning::</span>
+<span class="sd">        For each call, there must be **exactly** as many images in :math:`x` as</span>
+<span class="sd">        there are measurements in the linear operator used to initialize the class.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        The computation of a Hadamard transform :math:`Fx` benefits a fast</span>
+<span class="sd">        algorithm, as well as the computation of inverse Hadamard transforms.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        The matrix :math:`H` has shape :math:`(M, N)` with :math:`N = h^2`.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        :math:`H = H_{+} - H_{-}`</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; Ord = np.random.random([32,32])</span>
+<span class="sd">        &gt;&gt;&gt; meas_op = HadamSplitDynamic(400, 32, Ord)</span>
+<span class="sd">        &gt;&gt;&gt; print(meas_op)</span>
+<span class="sd">        HadamSplitDynamic(</span>
+<span class="sd">          (Image pixels): 1024</span>
+<span class="sd">          (H): torch.Size([400, 1024])</span>
+<span class="sd">          (P): torch.Size([800, 1024])</span>
+<span class="sd">          (Perm): torch.Size([1024, 1024])</span>
+<span class="sd">          )</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># ========================================================================= change this ????? ^</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">Ord</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="n">F</span> <span class="o">=</span> <span class="n">walsh2_matrix</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>  <span class="c1"># full matrix</span>
+        <span class="n">Perm</span> <span class="o">=</span> <span class="n">Permutation_Matrix</span><span class="p">(</span><span class="n">Ord</span><span class="p">)</span>
+        <span class="n">F</span> <span class="o">=</span> <span class="n">Perm</span> <span class="o">@</span> <span class="n">F</span>  <span class="c1"># If Perm is not learnt, could be computed much faster</span>
+        <span class="n">H</span> <span class="o">=</span> <span class="n">F</span><span class="p">[:</span><span class="n">M</span><span class="p">,</span> <span class="p">:]</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">h</span>  <span class="c1"># we assume a square image</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">H</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;h before&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">h</span><span class="p">)</span>
+
+        <span class="n">Perm</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">Perm</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>  <span class="c1"># float32</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Perm</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">Perm</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="c1"># overwrite self.h and self.w</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="n">h</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="n">w</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;h after&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">h</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DynamicHadamSplit.get_Perm">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.DynamicHadamSplit.get_Perm.html#spyrit.core.meas.DynamicHadamSplit.get_Perm">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_Perm</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Perm</span><span class="o">.</span><span class="n">data</span></div>
+
+
+    <span class="k">def</span> <span class="nf">__attributeslist__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__attributeslist__</span><span class="p">()</span> <span class="o">+</span> <span class="p">[(</span><span class="s2">&quot;Perm&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Perm</span><span class="o">.</span><span class="n">shape</span><span class="p">)]</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="Linear">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.Linear.html#spyrit.core.meas.Linear">[docs]</a>
+<span class="k">class</span> <span class="nc">Linear</span><span class="p">(</span><span class="n">DynamicLinear</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simulates the measurement of an still image using a measurement matrix.</span>
+
+<span class="sd">    Computes linear measurements from incoming images: :math:`y = Hx`,</span>
+<span class="sd">    where :math:`H` is a given linear operator (matrix) and :math:`x` is a</span>
+<span class="sd">    vectorized image or batch of images.</span>
+
+<span class="sd">    The class is constructed from a :math:`M` by :math:`N` matrix :math:`H`,</span>
+<span class="sd">    where :math:`N` represents the number of pixels in the image and</span>
+<span class="sd">    :math:`M` the number of measurements.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`H` (:type:`torch.tensor`): measurement matrix (linear operator) with shape :math:`(M, N)`.</span>
+
+<span class="sd">        :attr:`pinv` (Any): Option to have access to pseudo inverse solutions. If not</span>
+<span class="sd">        `None`, the pseudo inverse is initialized as :math:`H^\dagger` and</span>
+<span class="sd">        stored in the attribute :attr:`H_pinv`. Defaults to `None` (the pseudo</span>
+<span class="sd">        inverse is not initiliazed).</span>
+
+<span class="sd">        :attr:`reg` (float, optional): Regularization parameter (cutoff for small</span>
+<span class="sd">        singular values, see :mod:`numpy.linal.pinv`). Only relevant when</span>
+<span class="sd">        :attr:`pinv` is not `None`.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        :attr:`H` (torch.tensor): The learnable measurement matrix of shape</span>
+<span class="sd">        :math:`(M, N)` initialized as :math:`H`</span>
+
+<span class="sd">        :attr:`H_pinv` (torch.tensor, optional): The learnable adjoint measurement</span>
+<span class="sd">        matrix of shape :math:`(N, M)` initialized as :math:`H^\dagger`.</span>
+<span class="sd">        Only relevant when :attr:`pinv` is not `None`.</span>
+
+<span class="sd">        :attr:`M` (int): Number of measurements performed by the linear operator.</span>
+<span class="sd">        It is initialized as the first dimension of :math:`H`.</span>
+
+<span class="sd">        :attr:`N` (int): Number of pixels in the image. It is initialized as the</span>
+<span class="sd">        second dimension of :math:`H`.</span>
+
+<span class="sd">        :attr:`h` (int): Image height :math:`h`. The image is assumed to be</span>
+<span class="sd">        square, i.e. :math:`h = \text{floor}(\sqrt{N})`. If not, please assign</span>
+<span class="sd">        :attr:`h` and :attr:`w` manually.</span>
+
+<span class="sd">        :attr:`w` (int): Image width :math:`w`. The image is assumed to be</span>
+<span class="sd">        square, i.e. :math:`w = \text{floor}(\sqrt{N})`. If not, please assign</span>
+<span class="sd">        :attr:`h` and :attr:`w` manually.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        If you know the pseudo inverse of :math:`H` and want to store it, it is</span>
+<span class="sd">        best to initialize the class with :attr:`pinv` set to `None` and then</span>
+<span class="sd">        call :meth:`set_H_pinv` to store the pseudo inverse.</span>
+
+<span class="sd">    Example 1:</span>
+<span class="sd">        &gt;&gt;&gt; H = np.random.random([400, 1600])</span>
+<span class="sd">        &gt;&gt;&gt; meas_op = Linear(H, pinv=None)</span>
+<span class="sd">        &gt;&gt;&gt; print(meas_op)</span>
+<span class="sd">        Linear(</span>
+<span class="sd">          (Image pixels): 1600</span>
+<span class="sd">          (H): torch.Size([400, 1600])</span>
+<span class="sd">          (H_pinv): None</span>
+<span class="sd">          )</span>
+
+<span class="sd">    Example 2:</span>
+<span class="sd">        &gt;&gt;&gt; H = np.random.random([400, 1600])</span>
+<span class="sd">        &gt;&gt;&gt; meas_op = Linear(H, True)</span>
+<span class="sd">        &gt;&gt;&gt; print(meas_op)</span>
+<span class="sd">        Linear(</span>
+<span class="sd">          (Image pixels): 1600</span>
+<span class="sd">          (H): torch.Size([400, 1600])</span>
+<span class="sd">          (H_pinv): torch.Size([1600, 400])</span>
+<span class="sd">          )</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">H</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">pinv</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reg</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-15</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pinv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_H_pinv</span><span class="p">(</span><span class="n">reg</span><span class="o">=</span><span class="n">reg</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Linear.get_H_T">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.Linear.get_H_T.html#spyrit.core.meas.Linear.get_H_T">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_H_T</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the transpose of the measurement matrix :math:`H`.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            Output: :math:`(N, M)`, where :math:`N` is the number of pixels in</span>
+<span class="sd">            the image and :math:`M` the number of measurements.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; H1 = np.random.random([400, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = Linear(H1)</span>
+<span class="sd">            &gt;&gt;&gt; H2 = meas_op.get_H_T()</span>
+<span class="sd">            &gt;&gt;&gt; print(H2.shape)</span>
+<span class="sd">            torch.Size([400, 1600])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">H</span><span class="o">.</span><span class="n">T</span></div>
+
+
+<div class="viewcode-block" id="Linear.get_H_pinv">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.Linear.get_H_pinv.html#spyrit.core.meas.Linear.get_H_pinv">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_H_pinv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Returns the pseudo inverse of the measurement matrix :math:`H`.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            Output: :math:`(N, M)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; H1 = np.random.random([400, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = Linear(H1, True)</span>
+<span class="sd">            &gt;&gt;&gt; H2 = meas_op.get_H_pinv()</span>
+<span class="sd">            &gt;&gt;&gt; print(H2.shape)</span>
+<span class="sd">            torch.Size([1600, 400])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">H_pinv</span><span class="o">.</span><span class="n">data</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;has no attribute &#39;H_pinv&#39;&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+                    <span class="s2">&quot;The pseudo inverse has not been initialized. Please set it using self.set_H_pinv().&quot;</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">e</span></div>
+
+
+<div class="viewcode-block" id="Linear.set_H_pinv">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.Linear.set_H_pinv.html#spyrit.core.meas.Linear.set_H_pinv">[docs]</a>
+    <span class="k">def</span> <span class="nf">set_H_pinv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reg</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-15</span><span class="p">,</span> <span class="n">pinv</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stores in self.H_pinv the pseudo inverse of the measurement matrix :math:`H`.</span>
+
+<span class="sd">        If :attr:`pinv` is given, it is directly stored as the pseudo inverse.</span>
+<span class="sd">        The validity of the pseudo inverse is not checked. If :attr:`pinv` is</span>
+<span class="sd">        :obj:`None`, the pseudo inverse is computed from the existing</span>
+<span class="sd">        measurement matrix :math:`H` with regularization parameter :attr:`reg`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`reg` (float, optional): Cutoff for small singular values.</span>
+
+<span class="sd">            :attr:`H_pinv` (torch.tensor, optional): If given, the tensor is</span>
+<span class="sd">            directly stored as the pseudo inverse. No checks are performed.</span>
+<span class="sd">            Otherwise, the pseudo inverse is computed from the existing</span>
+<span class="sd">            measurement matrix :math:`H`.</span>
+
+<span class="sd">        .. note:</span>
+<span class="sd">            Only one of :math:`H_pinv` and :math:`reg` should be given. If both</span>
+<span class="sd">            are given, :math:`H_pinv` is used and :math:`reg` is ignored.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`H_pinv`: :math:`(N, M)`, where :math:`N` is the number of</span>
+<span class="sd">            pixels in the image and :math:`M` the number of measurements.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; H1 = torch.rand([400, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; H2 = torch.linalg.pinv(H1)</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = Linear(H1)</span>
+<span class="sd">            &gt;&gt;&gt; meas_op.set_H_pinv(H2)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">pinv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">H_pinv</span> <span class="o">=</span> <span class="n">pinv</span><span class="o">.</span><span class="n">type</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">)</span>  <span class="c1"># to float32</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">H_pinv</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">pinv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_H</span><span class="p">(),</span> <span class="n">rcond</span><span class="o">=</span><span class="n">reg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">H_pinv</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">H_pinv</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Linear.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.Linear.forward.html#spyrit.core.meas.Linear.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Applies linear transform to incoming images: :math:`y = Hx`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :math:`x` (torch.tensor): Batch of vectorized (flattened) images.</span>
+<span class="sd">            If x has more than 1 dimension, the linear measurement is applied</span>
+<span class="sd">            to each image in the batch.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :math:`x`: :math:`(*, N)` where * denotes the batch size and `N`</span>
+<span class="sd">            the total number of pixels in the image.</span>
+
+<span class="sd">            Output: :math:`(*, M)` where * denotes the batch size and `M`</span>
+<span class="sd">            the number of measurements.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; H = torch.randn([400, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = Linear(H)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.randn([10, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; y = meas_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># left multiplication with transpose is equivalent to right mult</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_H</span><span class="p">()</span><span class="o">.</span><span class="n">T</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Linear.adjoint">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.Linear.adjoint.html#spyrit.core.meas.Linear.adjoint">[docs]</a>
+    <span class="k">def</span> <span class="nf">adjoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Applies adjoint transform to incoming measurements :math:`y = H^{T}x`</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :math:`x` (torch.tensor): batch of measurement vectors. If x has</span>
+<span class="sd">            more than 1 dimension, the adjoint measurement is applied to each</span>
+<span class="sd">            measurement in the batch.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :math:`x`: :math:`(*, M)`</span>
+
+<span class="sd">            Output: :math:`(*, N)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; H = torch.randn([400, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = Linear(H)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.randn([10, 400]</span>
+<span class="sd">            &gt;&gt;&gt; y = meas_op.adjoint(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            torch.Size([10, 1600])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># left multiplication is equivalent to right mult with transpose</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_H_T</span><span class="p">()</span><span class="o">.</span><span class="n">T</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Linear.pinv">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.Linear.pinv.html#spyrit.core.meas.Linear.pinv">[docs]</a>
+    <span class="k">def</span> <span class="nf">pinv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Computes the pseudo inverse solution :math:`y = H^\dagger x`</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :math:`x` (torch.tensor): batch of measurement vectors. If x has</span>
+<span class="sd">            more than 1 dimension, the pseudo inverse is applied to each</span>
+<span class="sd">            image in the batch.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :math:`x`: :math:`(*, M)`</span>
+
+<span class="sd">            Output: :math:`(*, N)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; H = torch.randn([400, 1600])</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = Linear(H, True)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.randn([10, 400])</span>
+<span class="sd">            &gt;&gt;&gt; y = meas_op.pinv(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            torch.Size([10, 1600])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Pmat.transpose()*f</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_H_pinv</span><span class="p">()</span><span class="o">.</span><span class="n">T</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">__attributeslist__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__attributeslist__</span><span class="p">()</span> <span class="o">+</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s2">&quot;H_pinv&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">H_pinv</span><span class="o">.</span><span class="n">shape</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;H_pinv&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="p">]</span></div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="LinearSplit">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.LinearSplit.html#spyrit.core.meas.LinearSplit">[docs]</a>
+<span class="k">class</span> <span class="nc">LinearSplit</span><span class="p">(</span><span class="n">Linear</span><span class="p">,</span> <span class="n">DynamicLinearSplit</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simulates the measurement of a still image using the computed positive and</span>
+<span class="sd">    negative components of the measurement matrix.</span>
+
+<span class="sd">    Computes linear measurements from incoming images: :math:`y = Px`,</span>
+<span class="sd">    where :math:`P` is a linear operator (matrix) and :math:`x` is a</span>
+<span class="sd">    vectorized image or batch of vectorized images.</span>
+
+<span class="sd">    The matrix :math:`P` contains only positive values and is obtained by</span>
+<span class="sd">    splitting a measurement matrix :math:`H` such that</span>
+<span class="sd">    :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`, where</span>
+<span class="sd">    :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.</span>
+
+<span class="sd">    The class is constructed from the :math:`M` by :math:`N` matrix :math:`H`,</span>
+<span class="sd">    where :math:`N` represents the number of pixels in the image and</span>
+<span class="sd">    :math:`M` the number of measurements.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`H` (torch.tensor): measurement matrix (linear operator) with</span>
+<span class="sd">        shape :math:`(M, N)`, where :math:`M` is the number of measurements and</span>
+<span class="sd">        :math:`N` the number of pixels in the image.</span>
+
+<span class="sd">        :attr:`pinv` (Any): Option to have access to pseudo inverse solutions. If not</span>
+<span class="sd">        `None`, the pseudo inverse is initialized as :math:`H^\dagger` and</span>
+<span class="sd">        stored in the attribute :attr:`H_pinv`. Defaults to `None` (the pseudo</span>
+<span class="sd">        inverse is not initiliazed).</span>
+
+<span class="sd">        :attr:`reg` (float, optional): Regularization parameter (cutoff for small</span>
+<span class="sd">        singular values, see :mod:`torch.linalg.pinv`). Only relevant when</span>
+<span class="sd">        :attr:`pinv` is not `None`.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        :attr:`H` (torch.nn.Parameter): The learnable measurement matrix of</span>
+<span class="sd">        shape :math:`(M,N)`.</span>
+
+<span class="sd">        :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of</span>
+<span class="sd">        shape :math:`(2M, N)` initialized as</span>
+<span class="sd">        :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`</span>
+<span class="sd">        where :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`</span>
+
+<span class="sd">        :attr:`M` (int): Number of measurements performed by the linear operator.</span>
+<span class="sd">        It is initialized as the first dimension of :math:`H`.</span>
+
+<span class="sd">        :attr:`N` (int): Number of pixels in the image. It is initialized as the</span>
+<span class="sd">        second dimension of :math:`H`.</span>
+
+<span class="sd">        :attr:`h` (int): Image height :math:`h`. The image is assumed to be</span>
+<span class="sd">        square, i.e. :math:`h = \text{floor}(\sqrt{N})`. If not, please assign</span>
+<span class="sd">        :attr:`h` and :attr:`w` manually.</span>
+
+<span class="sd">        :attr:`w` (int): Image width :math:`w`. The image is assumed to be</span>
+<span class="sd">        square, i.e. :math:`w = \text{floor}(\sqrt{N})`. If not, please assign</span>
+<span class="sd">        :attr:`h` and :attr:`w` manually.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        If you know the pseudo inverse of :math:`H` and want to store it, it is</span>
+<span class="sd">        best to initialize the class with :attr:`pinv` set to `None` and then</span>
+<span class="sd">        call :meth:`set_H_pinv` to store the pseudo inverse.</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; H = torch.randn(400, 1600)</span>
+<span class="sd">        &gt;&gt;&gt; meas_op = LinearSplit(H, None)</span>
+<span class="sd">        &gt;&gt;&gt; print(meas_op)</span>
+<span class="sd">        LinearSplit(</span>
+<span class="sd">          (Image pixels): 1600</span>
+<span class="sd">          (H): torch.Size([400, 1600])</span>
+<span class="sd">          (P): torch.Size([800, 1600])</span>
+<span class="sd">          (H_pinv): None</span>
+<span class="sd">          )</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">H</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">pinv</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reg</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-15</span><span class="p">):</span>
+        <span class="c1"># initialize from DynamicLinearSplit __init__</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Linear</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">pinv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_H_pinv</span><span class="p">(</span><span class="n">reg</span><span class="p">)</span>
+
+<div class="viewcode-block" id="LinearSplit.forward">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.LinearSplit.forward.html#spyrit.core.meas.LinearSplit.forward">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Applies linear transform to incoming images: :math:`y = Px`.</span>
+
+<span class="sd">        This method uses the splitted measurement matrix :math:`P` to compute</span>
+<span class="sd">        the linear measurements from incoming images. :math:`P` contains only</span>
+<span class="sd">        positive values and is obtained by splitting a given measurement matrix</span>
+<span class="sd">        :math:`H` such that :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`,</span>
+<span class="sd">        where :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :math:`x` (torch.tensor): Batch of vectorized (flattened) images. If</span>
+<span class="sd">            x has more than 1 dimension, the linear measurement is applied to</span>
+<span class="sd">            each image in the batch.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :math:`x`: :math:`(*, N)` where * denotes the batch size and `N`</span>
+<span class="sd">            the total number of pixels in the image.</span>
+
+<span class="sd">            Output: :math:`(*, 2M)` where * denotes the batch size and `M`</span>
+<span class="sd">            the number of measurements.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; H = torch.randn(400, 1600)</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = LinearSplit(H)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.randn(10, 1600)</span>
+<span class="sd">            &gt;&gt;&gt; y = meas_op(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            torch.Size([10, 800])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_P</span><span class="p">()</span><span class="o">.</span><span class="n">T</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LinearSplit.forward_H">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.LinearSplit.forward_H.html#spyrit.core.meas.LinearSplit.forward_H">[docs]</a>
+    <span class="k">def</span> <span class="nf">forward_H</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Applies linear transform to incoming images: :math:`m = Hx`.</span>
+
+<span class="sd">        This method uses the measurement matrix :math:`H` to compute the linear</span>
+<span class="sd">        measurements from incoming images.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :attr:`x` (torch.tensor): Batch of vectorized (flatten) images. If</span>
+<span class="sd">            x has more than 1 dimension, the linear measurement is applied to</span>
+<span class="sd">            each image in the batch.</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :attr:`x`: :math:`(*, N)` where * denotes the batch size and `N`</span>
+<span class="sd">            the total number of pixels in the image.</span>
+
+<span class="sd">            Output: :math:`(*, M)` where * denotes the batch size and `M`</span>
+<span class="sd">            the number of measurements.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; H = torch.randn(400, 1600)</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = LinearSplit(H)</span>
+<span class="sd">            &gt;&gt;&gt; x = torch.randn(10, 1600)</span>
+<span class="sd">            &gt;&gt;&gt; y = meas_op.forward_H(x)</span>
+<span class="sd">            &gt;&gt;&gt; print(y.shape)</span>
+<span class="sd">            torch.Size([10, 400])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># call Linear.forward() method</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">LinearSplit</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># =============================================================================</span>
+<div class="viewcode-block" id="HadamSplit">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.HadamSplit.html#spyrit.core.meas.HadamSplit">[docs]</a>
+<span class="k">class</span> <span class="nc">HadamSplit</span><span class="p">(</span><span class="n">LinearSplit</span><span class="p">,</span> <span class="n">DynamicHadamSplit</span><span class="p">):</span>
+    <span class="c1"># =========================================================================</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simulates the measurement of a still image using the positive and</span>
+<span class="sd">    negative components of a Hadamard matrix.</span>
+
+<span class="sd">    Computes linear measurements from incoming images: :math:`y = Px`,</span>
+<span class="sd">    where :math:`P` is a linear operator (matrix) with positive entries and</span>
+<span class="sd">    :math:`x` is a vectorized image or a batch of images.</span>
+
+<span class="sd">    The class relies on a Hadamard-based matrix :math:`H` with shape :math:`(M,N)`</span>
+<span class="sd">    where :math:`N` represents the number of pixels in the image and</span>
+<span class="sd">    :math:`M \le N` the number of measurements. :math:`H` is obtained by</span>
+<span class="sd">    selecting a re-ordered subsample of :math:`M` rows of a &quot;full&quot; Hadamard</span>
+<span class="sd">    matrix :math:`F` with shape :math:`(N^2, N^2)`. :math:`N` must be a power</span>
+<span class="sd">    of 2.</span>
+
+<span class="sd">    The matrix :math:`P` is then obtained by splitting the matrix :math:`H`</span>
+<span class="sd">    such that :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`, where</span>
+<span class="sd">    :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        :attr:`M` (int): Number of measurements</span>
+
+<span class="sd">        :attr:`h` (int): Image height :math:`h`, must be a power of 2. The</span>
+<span class="sd">        image is assumed to be square, so the number of pixels in the image is</span>
+<span class="sd">        :math:`N = h^2`.</span>
+
+<span class="sd">        :attr:`Ord` (np.ndarray): Order matrix with shape :math:`(h, h)` used to</span>
+<span class="sd">        compute the permutation matrix :math:`G^{T}` with shape :math:`(N, N)`</span>
+<span class="sd">        (see the :mod:`~spyrit.misc.sampling` submodule)</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        :attr:`H` (torch.nn.Parameter): The measurement matrix of shape</span>
+<span class="sd">        :math:`(M, h^2)`. It is initialized as a re-ordered subsample of the</span>
+<span class="sd">        rows of the &quot;full&quot; Hadamard matrix :math:`F` with shape :math:`(N^2, N^2)`.</span>
+
+<span class="sd">        :attr:`H_pinv` (torch.nn.Parameter): The pseudo inverse of the measurement</span>
+<span class="sd">        matrix of shape :math:`(h^2, M)`. It is initialized as</span>
+<span class="sd">        :math:`H^\dagger = \frac{1}{N}H^{T}` where :math:`N = h^2`.</span>
+
+<span class="sd">        :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of</span>
+<span class="sd">        shape :math:`(2M, h^2)` initialized as</span>
+<span class="sd">        :math:`P = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}`</span>
+<span class="sd">        where :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.</span>
+
+<span class="sd">        :attr:`Perm` (torch.nn.Parameter): The permutation matrix :math:`G^{T}`</span>
+<span class="sd">        that is used to re-order the subsample of rows of the &quot;full&quot; Hadamard</span>
+<span class="sd">        matrix :math:`F` according to descreasing value of the order matrix</span>
+<span class="sd">        :math:`Ord`. It has shape :math:`(N, N)` where :math:`N = h^2`.</span>
+
+<span class="sd">        :attr:`M` (int): Number of measurements performed by the linear operator.</span>
+
+<span class="sd">        :attr:`N` (int): Number of pixels in the image. It is initialized as</span>
+<span class="sd">        :math:`h^2`.</span>
+
+<span class="sd">        :attr:`h` (int): Image height :math:`h`.</span>
+
+<span class="sd">        :attr:`w` (int): Image width :math:`w`. The image is assumed to be</span>
+<span class="sd">        square, i.e. :math:`w = h`.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        The computation of a Hadamard transform :math:`Fx` benefits a fast</span>
+<span class="sd">        algorithm, as well as the computation of inverse Hadamard transforms.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        The matrix H has shape :math:`(M,N)` with :math:`N = h^2`.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        :math:`H = H_{+} - H_{-}`</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; h = 32</span>
+<span class="sd">        &gt;&gt;&gt; Ord = torch.randn(h, h)</span>
+<span class="sd">        &gt;&gt;&gt; meas_op = HadamSplit(400, h, Ord)</span>
+<span class="sd">        &gt;&gt;&gt; print(meas_op)</span>
+<span class="sd">        HadamSplit(</span>
+<span class="sd">          (Image pixels): 1024</span>
+<span class="sd">          (H): torch.Size([400, 1024])</span>
+<span class="sd">          (P): torch.Size([800, 1024])</span>
+<span class="sd">          (Perm): torch.Size([1024, 1024])</span>
+<span class="sd">          (H_pinv): torch.Size([1024, 400])</span>
+<span class="sd">          )</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">Ord</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="c1"># initialize from DynamicHadamSplit (the MRO is not trivial here)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Linear</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">Ord</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_H_pinv</span><span class="p">(</span><span class="n">pinv</span><span class="o">=</span><span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_H_T</span><span class="p">())</span>
+
+<div class="viewcode-block" id="HadamSplit.inverse">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.core.meas.HadamSplit.inverse.html#spyrit.core.meas.HadamSplit.inverse">[docs]</a>
+    <span class="k">def</span> <span class="nf">inverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Inverse transform of Hadamard-domain images</span>
+<span class="sd">        :math:`x = H_{had}^{-1}G y` is a Hadamard matrix.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            :math:`x`:  batch of images in the Hadamard domain</span>
+
+<span class="sd">        Shape:</span>
+<span class="sd">            :math:`x`: :math:`(b*c, N)` with :math:`b` the batch size,</span>
+<span class="sd">            :math:`c` the number of channels, and :math:`N` the number of</span>
+<span class="sd">            pixels in the image.</span>
+
+<span class="sd">            Output: math:`(b*c, N)`</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; h = 32</span>
+<span class="sd">            &gt;&gt;&gt; Ord = torch.randn(h, h)</span>
+<span class="sd">            &gt;&gt;&gt; meas_op = HadamSplit(400, h, Ord)</span>
+<span class="sd">            &gt;&gt;&gt; y = torch.randn(10, h**2)</span>
+<span class="sd">            &gt;&gt;&gt; x = meas_op.inverse(y)</span>
+<span class="sd">            &gt;&gt;&gt; print(x.shape)</span>
+<span class="sd">            torch.Size([10, 1024])</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># permutations</span>
+        <span class="c1"># todo: check walsh2_S_fold_torch to speed up</span>
+        <span class="n">b</span><span class="p">,</span> <span class="n">N</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">Perm</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">h</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">)</span>
+        <span class="c1"># inverse of full transform</span>
+        <span class="c1"># todo: initialize with 1D transform to speed up</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">*</span> <span class="n">walsh2_torch</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

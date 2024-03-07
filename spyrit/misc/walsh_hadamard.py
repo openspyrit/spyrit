@@ -219,9 +219,41 @@ def walsh_matrix(n):
 
         >>> print(walsh_matrix(8))
     """
-    P = sequency_perm_matrix(n)
-    H = hadamard(n)
-    return P @ H
+    # P = sequency_perm_matrix(n)
+    # H = hadamard(n)                   # old way with matrix multiplication
+    # return P @ H
+
+    # check that the input is a power of 2
+    if n < 1:
+        lg2 = 0
+    else:
+        lg2 = int(math.log(n, 2))
+    if 2**lg2 != n:
+        raise ValueError("n must be an positive integer, and n must be " "a power of 2")
+
+    # define recursive function
+    def recursive_walsh(k):
+        if k >= 3:
+            j = k // 2
+            a = recursive_walsh(j)
+            out = np.empty((k, k), dtype=int)
+
+            # generate upper half of the matrix
+            out[:j, ::2] = a
+            out[:j, 1::2] = a
+            # by symmetry, fill in lower left corner
+            out[j:, :j] = out[:j, j:].T
+            # fill in lower right corner
+            alternate = np.tile([1, -1], j // 2)
+            out[j:, j:] = alternate * out[:j, j:][::-1, :]
+            return out
+
+        elif k == 2:
+            return np.array([[1, 1], [1, -1]])
+        else:
+            return np.array[[1]]
+
+    return recursive_walsh(n)
 
 
 def fwht(x, order=True):
@@ -646,10 +678,8 @@ def walsh2_matrix(n):
     Returns:
         H (np.ndarray): A n*n-by-n*n matrix
     """
-    H = np.zeros((n**2, n**2))
     H1d = walsh_matrix(n)
-    H = np.kron(H1d, H1d)
-    return H
+    return np.kron(H1d, H1d)
 
 
 def walsh2(X, H=None):
@@ -1278,11 +1308,12 @@ def walsh2_torch(im, H=None):
     """Return 2D Walsh-ordered Hadamard transform of an image
 
     Args:
-        im (torch.Tensor): Image, typically a B-by-C-by-W-by-H Tensor
-        H (torch.Tensor, optional): 1D Walsh-ordered Hadamard transformation matrix. A 2-D tensor of size W-by-H.
+        im (torch.tensor): Image, typically a B-by-C-by-W-by-H Tensor
+        H (torch.tensor, optional): 1D Walsh-ordered Hadamard transformation
+        matrix. A 2-D tensor of size W-by-H.
 
     Returns:
-        torch.Tensor: Hadamard transformed image. Same size as im
+        torch.tensor: Hadamard transformed image. Same size as im
 
     Examples:
         >>> im = torch.randn(256, 1, 64, 64)

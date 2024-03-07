@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>06. DCNet solution for split measurements &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/sg_README.css?v=78231cbc" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Bonus. Advanced methods - Colab" href="tuto_bonus_advanced_methods_colab.html" />
+    <link rel="prev" title="05. Acquisition operators (advanced) - Split measurements and subsampling" href="tuto_05_acquisition_split_measurements.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="tuto_01_acquisition_operators.html">01. Acquisition operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_02_pseudoinverse_linear.html">02. Pseudoinverse solution from linear measurements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_03_pseudoinverse_cnn_linear.html">03. Pseudoinverse solution + CNN denoising</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_04_train_pseudoinverse_cnn_linear.html">04. Train pseudoinverse solution + CNN denoising</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_05_acquisition_split_measurements.html">05. Acquisition operators (advanced) - Split measurements and subsampling</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">06. DCNet solution for split measurements</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#load-a-batch-of-images">Load a batch of images</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#forward-operators-for-split-measurements">Forward operators for split measurements</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pinvnet-network">PinvNet network</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dcnet-network">DCNet network</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tuto_bonus_advanced_methods_colab.html">Bonus. Advanced methods - Colab</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Tutorials</a></li>
+      <li class="breadcrumb-item active">06. DCNet solution for split measurements</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/gallery/tuto_06_dcnet_split_measurements.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-gallery-tuto-06-dcnet-split-measurements-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code</p>
+</div>
+<section class="sphx-glr-example-title" id="dcnet-solution-for-split-measurements">
+<span id="sphx-glr-gallery-tuto-06-dcnet-split-measurements-py"></span><h1>06. DCNet solution for split measurements<a class="headerlink" href="#dcnet-solution-for-split-measurements" title="Link to this heading"></a></h1>
+<p id="tuto-dcnet-split-measurements">This tutorial shows how to perform image reconstruction using DCNet (data completion network) with
+and without a trainable image denoiser. In the previous tutorial
+<a class="reference internal" href="tuto_05_acquisition_split_measurements.html#tuto-acquisition-split-measurements"><span class="std std-ref">Acquisition - split measurements</span></a>
+we showed how to handle split measurements for a Hadamard operator
+and how to perform a pseudo-inverse reconstruction with PinvNet.</p>
+<p>These tutorials load image samples from <cite>/images/</cite>.</p>
+<section id="load-a-batch-of-images">
+<h2>Load a batch of images<a class="headerlink" href="#load-a-batch-of-images" title="Link to this heading"></a></h2>
+<p>Images <span class="math notranslate nohighlight">\(x\)</span> for training neural networks expect values in [-1,1]. The images are normalized
+using the <code class="xref py py-func docutils literal notranslate"><span class="pre">transform_gray_norm()</span></code> function.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torchvision</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="kn">from</span> <span class="nn">spyrit.misc.disp</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.disp.imagesc.html#spyrit.misc.disp.imagesc" title="spyrit.misc.disp.imagesc" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">imagesc</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.misc.statistics</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.statistics.transform_gray_norm.html#spyrit.misc.statistics.transform_gray_norm" title="spyrit.misc.statistics.transform_gray_norm" class="sphx-glr-backref-module-spyrit-misc-statistics sphx-glr-backref-type-py-function"><span class="n">transform_gray_norm</span></a>
+
+<span class="c1"># sphinx_gallery_thumbnail_path = &#39;fig/dcnet.png&#39;</span>
+
+<span class="n">h</span> <span class="o">=</span> <span class="mi">64</span>  <span class="c1"># image size hxh</span>
+<span class="n">i</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Image index (modify to change the image)</span>
+<span class="n">spyritPath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+<span class="n">imgs_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">spyritPath</span><span class="p">,</span> <span class="s2">&quot;images/&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># Create a transform for natural images to normalized grayscale image tensors</span>
+<span class="n">transform</span> <span class="o">=</span> <a href="../_autosummary/spyrit.misc.statistics.transform_gray_norm.html#spyrit.misc.statistics.transform_gray_norm" title="spyrit.misc.statistics.transform_gray_norm" class="sphx-glr-backref-module-spyrit-misc-statistics sphx-glr-backref-type-py-function"><span class="n">transform_gray_norm</span></a><span class="p">(</span><span class="n">img_size</span><span class="o">=</span><span class="n">h</span><span class="p">)</span>
+
+<span class="c1"># Create dataset and loader (expects class folder &#39;images/test/&#39;)</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">ImageFolder</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">imgs_path</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">)</span>
+<span class="n">dataloader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+
+<span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">dataloader</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of input images: </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Select image</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span> <span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+<span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
+<span class="c1"># plot</span>
+<span class="n">x_plot</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<a href="../_autosummary/spyrit.misc.disp.imagesc.html#spyrit.misc.disp.imagesc" title="spyrit.misc.disp.imagesc" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">imagesc</span></a><span class="p">(</span><span class="n">x_plot</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="sa">r</span><span class="s2">&quot;$x$ in [-1, 1]&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="forward-operators-for-split-measurements">
+<h2>Forward operators for split measurements<a class="headerlink" href="#forward-operators-for-split-measurements" title="Link to this heading"></a></h2>
+<p>We consider noisy split measurements for a Hadamard operator and a
+“variance subsampling” strategy that preserves the coefficients with the largest variance,
+obtained from a previously estimated covariance matrix (for more details,
+refer to <a class="reference internal" href="tuto_05_acquisition_split_measurements.html#tuto-acquisition-split-measurements"><span class="std std-ref">Acquisition - split measurements</span></a>).</p>
+<p>First, we download the covariance matrix and load it.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">girder_client</span>
+
+<span class="c1"># api Rest url of the warehouse</span>
+<span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://pilot-warehouse.creatis.insa-lyon.fr/api/v1&quot;</span>
+
+<span class="c1"># Generate the warehouse client</span>
+<span class="n">gc</span> <span class="o">=</span> <span class="n">girder_client</span><span class="o">.</span><span class="n">GirderClient</span><span class="p">(</span><span class="n">apiUrl</span><span class="o">=</span><span class="n">url</span><span class="p">)</span>
+
+<span class="c1"># Download the covariance matrix and mean image</span>
+<span class="n">data_folder</span> <span class="o">=</span> <span class="s2">&quot;./stat/&quot;</span>
+<span class="n">dataId_list</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;63935b624d15dd536f0484a5&quot;</span><span class="p">,</span>  <span class="c1"># for reconstruction (imageNet, 64)</span>
+    <span class="s2">&quot;63935a224d15dd536f048496&quot;</span><span class="p">,</span>  <span class="c1"># for reconstruction (imageNet, 64)</span>
+<span class="p">]</span>
+<span class="n">cov_name</span> <span class="o">=</span> <span class="s2">&quot;./stat/Cov_64x64.npy&quot;</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">dataId</span> <span class="ow">in</span> <span class="n">dataId_list</span><span class="p">:</span>
+        <span class="n">myfile</span> <span class="o">=</span> <span class="n">gc</span><span class="o">.</span><span class="n">getFile</span><span class="p">(</span><span class="n">dataId</span><span class="p">)</span>
+        <span class="n">gc</span><span class="o">.</span><span class="n">downloadFile</span><span class="p">(</span><span class="n">dataId</span><span class="p">,</span> <span class="n">data_folder</span> <span class="o">+</span> <span class="n">myfile</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">])</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created </span><span class="si">{</span><span class="n">data_folder</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">Cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">cov_name</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cov matrix </span><span class="si">{</span><span class="n">cov_name</span><span class="si">}</span><span class="s2"> loaded&quot;</span><span class="p">)</span>
+<span class="k">except</span><span class="p">:</span>
+    <span class="n">Cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">h</span> <span class="o">*</span> <span class="n">h</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cov matrix </span><span class="si">{</span><span class="n">cov_name</span><span class="si">}</span><span class="s2"> not found! Set to the identity&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We define the measurement, noise and preprocessing operators and then
+simulate a noiseless measurement vector <span class="math notranslate nohighlight">\(y\)</span>. As in the previous tutorial,
+we simulate an accelerated acquisition by subsampling the measurement matrix
+by retaining only the first <span class="math notranslate nohighlight">\(M\)</span> rows of a Hadamard matrix <span class="math notranslate nohighlight">\(\textrm{Perm} H\)</span>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.meas</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.meas.HadamSplit.html#spyrit.core.meas.HadamSplit" title="spyrit.core.meas.HadamSplit" class="sphx-glr-backref-module-spyrit-core-meas sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">HadamSplit</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.core.noise</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.noise.Poisson.html#spyrit.core.noise.Poisson" title="spyrit.core.noise.Poisson" class="sphx-glr-backref-module-spyrit-core-noise sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Poisson</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.misc.sampling</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.sampling.meas2img2.html#spyrit.misc.sampling.meas2img2" title="spyrit.misc.sampling.meas2img2" class="sphx-glr-backref-module-spyrit-misc-sampling sphx-glr-backref-type-py-function"><span class="n">meas2img2</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.misc.statistics</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.statistics.Cov2Var.html#spyrit.misc.statistics.Cov2Var" title="spyrit.misc.statistics.Cov2Var" class="sphx-glr-backref-module-spyrit-misc-statistics sphx-glr-backref-type-py-function"><span class="n">Cov2Var</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.core.prep</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.prep.SplitPoisson.html#spyrit.core.prep.SplitPoisson" title="spyrit.core.prep.SplitPoisson" class="sphx-glr-backref-module-spyrit-core-prep sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">SplitPoisson</span></a>
+
+<span class="c1"># Measurement parameters</span>
+<span class="n">M</span> <span class="o">=</span> <span class="mi">64</span> <span class="o">*</span> <span class="mi">64</span> <span class="o">//</span> <span class="mi">4</span>  <span class="c1"># Number of measurements (here, 1/4 of the pixels)</span>
+<span class="n">alpha</span> <span class="o">=</span> <span class="mf">100.0</span>  <span class="c1"># number of photons</span>
+
+<span class="c1"># Ordering matrix</span>
+<span class="n">Ord</span> <span class="o">=</span> <a href="../_autosummary/spyrit.misc.statistics.Cov2Var.html#spyrit.misc.statistics.Cov2Var" title="spyrit.misc.statistics.Cov2Var" class="sphx-glr-backref-module-spyrit-misc-statistics sphx-glr-backref-type-py-function"><span class="n">Cov2Var</span></a><span class="p">(</span><span class="n">Cov</span><span class="p">)</span>
+
+<span class="c1"># Measurement and noise operators</span>
+<span class="n">meas_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.meas.HadamSplit.html#spyrit.core.meas.HadamSplit" title="spyrit.core.meas.HadamSplit" class="sphx-glr-backref-module-spyrit-core-meas sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">HadamSplit</span></a><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">Ord</span><span class="p">)</span>
+<span class="n">noise_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.noise.Poisson.html#spyrit.core.noise.Poisson" title="spyrit.core.noise.Poisson" class="sphx-glr-backref-module-spyrit-core-noise sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Poisson</span></a><span class="p">(</span><span class="n">meas_op</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+<span class="n">prep_op</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.prep.SplitPoisson.html#spyrit.core.prep.SplitPoisson" title="spyrit.core.prep.SplitPoisson" class="sphx-glr-backref-module-spyrit-core-prep sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">SplitPoisson</span></a><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">meas_op</span><span class="p">)</span>
+
+<span class="c1"># Vectorize image</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">b</span> <span class="o">*</span> <span class="n">c</span><span class="p">,</span> <span class="n">h</span> <span class="o">*</span> <span class="n">w</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Shape of vectorized image: </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Measurements</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">noise_op</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># a noisy measurement vector</span>
+<span class="n">m</span> <span class="o">=</span> <span class="n">prep_op</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>  <span class="c1"># preprocessed measurement vector</span>
+
+<span class="n">m_plot</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">m_plot</span> <span class="o">=</span> <a href="../_autosummary/spyrit.misc.sampling.meas2img2.html#spyrit.misc.sampling.meas2img2" title="spyrit.misc.sampling.meas2img2" class="sphx-glr-backref-module-spyrit-misc-sampling sphx-glr-backref-type-py-function"><span class="n">meas2img2</span></a><span class="p">(</span><span class="n">m_plot</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">Ord</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.imagesc.html#spyrit.misc.disp.imagesc" title="spyrit.misc.disp.imagesc" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">imagesc</span></a><span class="p">(</span><span class="n">m_plot</span><span class="p">,</span> <span class="sa">r</span><span class="s2">&quot;Measurements $m$&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="pinvnet-network">
+<h2>PinvNet network<a class="headerlink" href="#pinvnet-network" title="Link to this heading"></a></h2>
+<p>We reconstruct with the pseudo inverse using <a class="reference internal" href="../_autosummary/spyrit.core.recon.PinvNet.html#spyrit.core.recon.PinvNet" title="spyrit.core.recon.PinvNet"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.recon.PinvNet</span></code></a> class
+as in the previous tutorial. For this, we define the neural network and then perform the reconstruction.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.recon</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.recon.PinvNet.html#spyrit.core.recon.PinvNet" title="spyrit.core.recon.PinvNet" class="sphx-glr-backref-module-spyrit-core-recon sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">PinvNet</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.misc.disp</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">,</span> <a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a>
+
+<span class="c1"># Reconstruction with for Core module (linear net)</span>
+<span class="n">pinvnet</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.recon.PinvNet.html#spyrit.core.recon.PinvNet" title="spyrit.core.recon.PinvNet" class="sphx-glr-backref-module-spyrit-core-recon sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">PinvNet</span></a><span class="p">(</span><span class="n">noise_op</span><span class="p">,</span> <span class="n">prep_op</span><span class="p">)</span>
+
+<span class="c1"># use GPU, if available</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+
+<span class="c1"># Pseudo-inverse net</span>
+<span class="n">pinvnet</span> <span class="o">=</span> <span class="n">pinvnet</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+<span class="c1"># Reconstruction</span>
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+    <span class="n">z_invnet</span> <span class="o">=</span> <span class="n">pinvnet</span><span class="o">.</span><span class="n">reconstruct</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">))</span>  <span class="c1"># reconstruct from raw measurements</span>
+</pre></div>
+</div>
+</section>
+<section id="dcnet-network">
+<h2>DCNet network<a class="headerlink" href="#dcnet-network" title="Link to this heading"></a></h2>
+<p>We can improve PinvNet results by using the <em>denoised</em> completion network DCNet with the
+<a class="reference internal" href="../_autosummary/spyrit.core.recon.DCNet.html#spyrit.core.recon.DCNet" title="spyrit.core.recon.DCNet"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.recon.DCNet</span></code></a> class. It has four sequential steps:</p>
+<ol class="lowerroman simple">
+<li><p>denoising of the acquired measurements,</p></li>
+<li><p>estimation of the missing measurements from the denoised ones,</p></li>
+<li><p>mapping them to the image domain, and</p></li>
+<li><p>denoising in the image-domain.</p></li>
+</ol>
+<p>Only the last step involves learnable parameters.</p>
+<a class="reference internal image-reference" href="../_images/dcnet.png"><img alt="Sketch of the DCNet architecture" class="align-center" src="../_images/dcnet.png" style="width: 400px;" /></a>
+<p>For the denoiser, we compare the default unit matrix (no denoising) with the UNet denoiser
+with the <a class="reference internal" href="../_autosummary/spyrit.core.nnet.Unet.html#spyrit.core.nnet.Unet" title="spyrit.core.nnet.Unet"><code class="xref py py-class docutils literal notranslate"><span class="pre">spyrit.core.nnet.Unet</span></code></a> class. For the latter, we load the pretrained model
+weights.</p>
+<p>Without <em>learnable image-domain</em> denoising</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.recon</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.recon.DCNet.html#spyrit.core.recon.DCNet" title="spyrit.core.recon.DCNet" class="sphx-glr-backref-module-spyrit-core-recon sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">DCNet</span></a>
+<span class="kn">from</span> <span class="nn">spyrit.core.nnet</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.nnet.Unet.html#spyrit.core.nnet.Unet" title="spyrit.core.nnet.Unet" class="sphx-glr-backref-module-spyrit-core-nnet sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Unet</span></a>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">nn</span>
+
+<span class="c1"># Reconstruction with for DCNet (linear net)</span>
+<span class="n">dcnet</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.recon.DCNet.html#spyrit.core.recon.DCNet" title="spyrit.core.recon.DCNet" class="sphx-glr-backref-module-spyrit-core-recon sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">DCNet</span></a><span class="p">(</span><span class="n">noise_op</span><span class="p">,</span> <span class="n">prep_op</span><span class="p">,</span> <span class="n">Cov</span><span class="p">,</span> <span class="n">denoi</span><span class="o">=</span><span class="n">nn</span><span class="o">.</span><span class="n">Identity</span><span class="p">())</span>
+<span class="n">dcnet</span> <span class="o">=</span> <span class="n">dcnet</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+<span class="c1"># Reconstruction</span>
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+    <span class="n">z_dcnet</span> <span class="o">=</span> <span class="n">dcnet</span><span class="o">.</span><span class="n">reconstruct</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">))</span>  <span class="c1"># reconstruct from raw measurements</span>
+</pre></div>
+</div>
+<p>With a UNet denoising layer, we define the denoising network and
+then load the pretrained weights.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">spyrit.core.train</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.core.train.load_net.html#spyrit.core.train.load_net" title="spyrit.core.train.load_net" class="sphx-glr-backref-module-spyrit-core-train sphx-glr-backref-type-py-function"><span class="n">load_net</span></a>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">spyrit.misc.disp</span> <span class="kn">import</span> <a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">,</span> <a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a>
+
+<span class="c1"># Define UNet denoiser</span>
+<span class="n">denoi</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.nnet.Unet.html#spyrit.core.nnet.Unet" title="spyrit.core.nnet.Unet" class="sphx-glr-backref-module-spyrit-core-nnet sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">Unet</span></a><span class="p">()</span>
+
+<span class="c1"># Define DCNet (with UNet denoising)</span>
+<span class="n">dcnet_unet</span> <span class="o">=</span> <a href="../_autosummary/spyrit.core.recon.DCNet.html#spyrit.core.recon.DCNet" title="spyrit.core.recon.DCNet" class="sphx-glr-backref-module-spyrit-core-recon sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">DCNet</span></a><span class="p">(</span><span class="n">noise_op</span><span class="p">,</span> <span class="n">prep_op</span><span class="p">,</span> <span class="n">Cov</span><span class="p">,</span> <span class="n">denoi</span><span class="p">)</span>
+<span class="n">dcnet_unet</span> <span class="o">=</span> <span class="n">dcnet_unet</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+<span class="c1"># Load previously trained model</span>
+<span class="c1"># Download weights</span>
+<span class="n">url_unet</span> <span class="o">=</span> <span class="s2">&quot;https://drive.google.com/file/d/15PRRZj5OxKpn1iJw78lGwUUBtTbFco1l/view?usp=drive_link&quot;</span>
+<span class="n">model_path</span> <span class="o">=</span> <span class="s2">&quot;./model&quot;</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">model_unet_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+    <span class="n">model_path</span><span class="p">,</span>
+    <span class="s2">&quot;dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">load_unet</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">model_unet_path</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">gdown</span>
+
+        <span class="n">gdown</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="n">url_unet</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">.pth&quot;</span><span class="p">,</span> <span class="n">quiet</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fuzzy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model </span><span class="si">{</span><span class="n">model_unet_path</span><span class="si">}</span><span class="s2"> not found!&quot;</span><span class="p">)</span>
+        <span class="n">load_unet</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="k">if</span> <span class="n">load_unet</span><span class="p">:</span>
+    <span class="c1"># Load pretrained model</span>
+    <a href="../_autosummary/spyrit.core.train.load_net.html#spyrit.core.train.load_net" title="spyrit.core.train.load_net" class="sphx-glr-backref-module-spyrit-core-train sphx-glr-backref-type-py-function"><span class="n">load_net</span></a><span class="p">(</span><span class="n">model_path</span><span class="p">,</span> <span class="n">dcnet_unet</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2"> loaded.&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># Reconstruction</span>
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+    <span class="n">z_dcnet_unet</span> <span class="o">=</span> <span class="n">dcnet_unet</span><span class="o">.</span><span class="n">reconstruct</span><span class="p">(</span>
+        <span class="n">y</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="p">)</span>  <span class="c1"># reconstruct from raw measurements</span>
+</pre></div>
+</div>
+<p>We plot all results</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># plot reconstruction side by side</span>
+<span class="n">x_plot</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">x_plot2</span> <span class="o">=</span> <span class="n">z_invnet</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">x_plot3</span> <span class="o">=</span> <span class="n">z_dcnet</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">x_plot4</span> <span class="o">=</span> <span class="n">z_dcnet_unet</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+<span class="n">f</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+<span class="n">im1</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">x_plot</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Ground-truth image&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im1</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<span class="n">im2</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">x_plot2</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;PinvNet&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im2</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<span class="n">im3</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">x_plot3</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DCNet (without denoising)&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im3</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<span class="n">im4</span> <span class="o">=</span> <span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">x_plot4</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">)</span>
+<span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DCNet (UNet denoising)&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+<a href="../_autosummary/spyrit.misc.disp.noaxis.html#spyrit.misc.disp.noaxis" title="spyrit.misc.disp.noaxis" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">noaxis</span></a><span class="p">(</span><span class="n">axs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<a href="../_autosummary/spyrit.misc.disp.add_colorbar.html#spyrit.misc.disp.add_colorbar" title="spyrit.misc.disp.add_colorbar" class="sphx-glr-backref-module-spyrit-misc-disp sphx-glr-backref-type-py-function"><span class="n">add_colorbar</span></a><span class="p">(</span><span class="n">im4</span><span class="p">,</span> <span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Comparing results, PinvNet provides pixelized reconstruction, DCNet with no denoising
+leads to a smoother reconstruction, as expected by a Tikonov regularization, and
+DCNet with UNet denoising provides the best reconstruction.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In this tutorial, we have used DCNet with a UNet denoising layer for split measurements.
+We refer to <a class="reference external" href="https://github.com/openspyrit/spyrit-examples/tree/master/tutorial/tuto_core_2d_drunet.ipynb">spyrit-examples tutorials</a>
+for a comparison of different solutions for split measurements (pinvNet, DCNet and DRUNet).</p>
+</div>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-gallery-tuto-06-dcnet-split-measurements-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/ed78db17d49cf36d514c95d407b0a275/tuto_06_dcnet_split_measurements.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">tuto_06_dcnet_split_measurements.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/f7ae558bfc598f3c0b164f5732f352a0/tuto_06_dcnet_split_measurements.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">tuto_06_dcnet_split_measurements.py</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="tuto_05_acquisition_split_measurements.html" class="btn btn-neutral float-left" title="05. Acquisition operators (advanced) - Split measurements and subsampling" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="tuto_bonus_advanced_methods_colab.html" class="btn btn-neutral float-right" title="Bonus. Advanced methods - Colab" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

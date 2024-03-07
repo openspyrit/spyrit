@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.misc.pattern_choice &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/thumbnail.css" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../../../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.core.html">spyrit.core</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../_autosummary/spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">spyrit.misc.pattern_choice</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <h1>Source code for spyrit.misc.pattern_choice</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1">#   This software is distributed under the terms</span>
+<span class="c1">#   of the GNU Lesser General  Public Licence (LGPL)</span>
+<span class="c1">#   See LICENSE.md for further details</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span><span class="p">,</span> <span class="n">division</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<span class="kn">import</span> <span class="nn">torch.optim</span> <span class="k">as</span> <span class="nn">optim</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">import</span> <span class="nn">torchvision</span>
+<span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">datasets</span><span class="p">,</span> <span class="n">models</span><span class="p">,</span> <span class="n">transforms</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">import</span> <span class="nn">pywt</span>
+
+
+<span class="c1">########################################################################</span>
+<span class="c1"># 1. Define Abstract Pattern Class</span>
+<span class="c1"># ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</span>
+<span class="c1"># All Pattern Classes (Basis, Custom and optimized will)</span>
+<span class="c1"># inherit this abstract class. The only real abstract</span>
+<span class="c1"># method being the set_desired_patterns, and add_</span>
+<span class="c1"># desired pattern.</span>
+
+
+<div class="viewcode-block" id="Patterns">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Patterns.html#spyrit.misc.pattern_choice.Patterns">[docs]</a>
+<span class="k">class</span> <span class="nc">Patterns</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;split&quot;</span><span class="p">,</span> <span class="n">binarized</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">par</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">lvl</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dyn</span><span class="o">=</span><span class="mi">8</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">img_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="n">method</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">binarized</span> <span class="o">=</span> <span class="n">binarized</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">par</span> <span class="o">=</span> <span class="n">par</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lvl</span> <span class="o">=</span> <span class="n">lvl</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dyn</span> <span class="o">=</span> <span class="n">dyn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Q</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">img_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">img_size</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">img_size</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">P</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">img_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">steps</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Patterns.get_desired_pattern">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Patterns.get_desired_pattern.html#spyrit.misc.pattern_choice.Patterns.get_desired_pattern">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_desired_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span></div>
+
+
+<div class="viewcode-block" id="Patterns.get_all_desired_pattern">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Patterns.get_all_desired_pattern.html#spyrit.misc.pattern_choice.Patterns.get_all_desired_pattern">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_all_desired_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span></div>
+
+
+<div class="viewcode-block" id="Patterns.get_measurement_matrix">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Patterns.get_measurement_matrix.html#spyrit.misc.pattern_choice.Patterns.get_measurement_matrix">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_measurement_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span></div>
+
+
+<div class="viewcode-block" id="Patterns.set_measurement_matrix">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Patterns.set_measurement_matrix.html#spyrit.misc.pattern_choice.Patterns.set_measurement_matrix">[docs]</a>
+    <span class="k">def</span> <span class="nf">set_measurement_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="p">(</span><span class="n">next_P</span><span class="p">,</span> <span class="n">next_T</span><span class="p">)</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">method</span> <span class="o">+</span> <span class="s2">&quot;(self.Q, self.dyn)&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">P</span> <span class="o">=</span> <span class="n">next_P</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">next_T</span></div>
+
+
+<div class="viewcode-block" id="Patterns.save_measurement_matrix">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Patterns.save_measurement_matrix.html#spyrit.misc.pattern_choice.Patterns.save_measurement_matrix">[docs]</a>
+    <span class="k">def</span> <span class="nf">save_measurement_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">):</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">root</span> <span class="o">+</span> <span class="s2">&quot;T.npy&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">K</span><span class="p">):</span>
+            <span class="n">pat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">P</span><span class="o">.</span><span class="n">weight</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+            <span class="n">pattern</span> <span class="o">=</span> <span class="n">pat</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+            <span class="n">im</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+            <span class="n">im</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">root</span> <span class="o">+</span> <span class="s2">&quot;pat_</span><span class="si">{}</span><span class="s2">x</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.png&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Patterns.set_desired_pattern">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Patterns.set_desired_pattern.html#spyrit.misc.pattern_choice.Patterns.set_desired_pattern">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">set_desired_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">def_matrix</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="Patterns.add_desired_patterns">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Patterns.add_desired_patterns.html#spyrit.misc.pattern_choice.Patterns.add_desired_patterns">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">add_desired_patterns</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">def_matrix</span><span class="p">):</span>
+        <span class="k">pass</span></div>
+</div>
+
+
+
+<span class="c1">########################################################################</span>
+<span class="c1"># 2. Define children of that abstract class</span>
+<span class="c1"># ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</span>
+<span class="c1"># All Pattern Classes (Basis, Custom and optimized will)</span>
+<span class="c1"># inherit the abstract class Patterns and implement the two main</span>
+<span class="c1"># abstract methods</span>
+<span class="c1">#</span>
+
+
+<div class="viewcode-block" id="Basis_patterns">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Basis_patterns.html#spyrit.misc.pattern_choice.Basis_patterns">[docs]</a>
+<span class="k">class</span> <span class="nc">Basis_patterns</span><span class="p">(</span><span class="n">Patterns</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">basis</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;split&quot;</span><span class="p">,</span> <span class="n">binarized</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Basis_patterns</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;split&quot;</span><span class="p">,</span> <span class="n">binarized</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">basis</span> <span class="o">=</span> <span class="n">basis</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">img_size</span> <span class="o">=</span> <span class="n">img_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">img_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cumulated_indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">img_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">))</span>
+
+<div class="viewcode-block" id="Basis_patterns.add_desired_pattern">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Basis_patterns.add_desired_pattern.html#spyrit.misc.pattern_choice.Basis_patterns.add_desired_pattern">[docs]</a>
+    <span class="k">def</span> <span class="nf">add_desired_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">def_matrix</span><span class="p">):</span>
+        <span class="n">temp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">img_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">img_size</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indexes</span> <span class="o">+=</span> <span class="n">def_matrix</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cumulated</span> <span class="o">+=</span> <span class="n">def_matrix</span> <span class="o">+</span> <span class="n">temp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cumulated</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">I_old</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">Q</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">basis</span> <span class="o">+</span> <span class="s2">&quot;(def_matrix, self.par, self.lvl)&quot;</span><span class="p">)</span>
+        <span class="n">I_add</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">))</span>
+        <span class="n">I_new</span> <span class="o">=</span> <span class="n">I_old</span> <span class="o">+</span> <span class="n">I_add</span>
+
+        <span class="n">next_Q</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">I_new</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">img_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">bias</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">I_new</span><span class="p">)</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">weight</span><span class="p">[:</span><span class="n">I_old</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">weight</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">weight</span><span class="p">[</span><span class="n">I_old</span><span class="p">:,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">weight</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">Q</span> <span class="o">=</span> <span class="n">next_Q</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">steps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">I_old</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Basis_patterns.set_desired_pattern">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Basis_patterns.set_desired_pattern.html#spyrit.misc.pattern_choice.Basis_patterns.set_desired_pattern">[docs]</a>
+    <span class="k">def</span> <span class="nf">set_desired_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">def_matrix</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indexes</span> <span class="o">=</span> <span class="n">def_matrix</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cumulated</span> <span class="o">=</span> <span class="n">def_matrix</span>
+
+        <span class="n">next_Q</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">basis</span> <span class="o">+</span> <span class="s2">&quot;(def_matrix, self.par, self.lvl)&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">Q</span> <span class="o">=</span> <span class="n">next_Q</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">steps</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="Custom_patterns">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Custom_patterns.html#spyrit.misc.pattern_choice.Custom_patterns">[docs]</a>
+<span class="k">class</span> <span class="nc">Custom_patterns</span><span class="p">(</span><span class="n">Patterns</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">Q</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;split&quot;</span><span class="p">,</span> <span class="n">binarized</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Basis_patterns</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;split&quot;</span><span class="p">,</span> <span class="n">binarized</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">img_size</span> <span class="o">=</span> <span class="n">img_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Q</span> <span class="o">=</span> <span class="n">Q</span>
+
+<div class="viewcode-block" id="Custom_patterns.add_desired_pattern">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Custom_patterns.add_desired_pattern.html#spyrit.misc.pattern_choice.Custom_patterns.add_desired_pattern">[docs]</a>
+    <span class="k">def</span> <span class="nf">add_desired_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Q</span><span class="p">):</span>
+        <span class="n">I_old</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">I_add</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">I_new</span> <span class="o">=</span> <span class="n">I_old</span> <span class="o">+</span> <span class="n">I_add</span>
+
+        <span class="n">next_Q</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">I_new</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">img_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">bias</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">I_new</span><span class="p">)</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">weight</span><span class="p">[:</span><span class="n">I_old</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">weight</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">weight</span><span class="p">[</span><span class="n">I_old</span><span class="p">:,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">weight</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">Q</span> <span class="o">=</span> <span class="n">next_Q</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">steps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">I_old</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Custom_patterns.set_desired_pattern">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Custom_patterns.set_desired_pattern.html#spyrit.misc.pattern_choice.Custom_patterns.set_desired_pattern">[docs]</a>
+    <span class="k">def</span> <span class="nf">set_desired_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Q</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Q</span> <span class="o">=</span> <span class="n">Q</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">steps</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="Optimized_patterns">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Optimized_patterns.html#spyrit.misc.pattern_choice.Optimized_patterns">[docs]</a>
+<span class="k">class</span> <span class="nc">Optimized_patterns</span><span class="p">(</span><span class="n">Patterns</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">basis</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;split&quot;</span><span class="p">,</span> <span class="n">binarized</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Basis_patterns</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">img_size</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;split&quot;</span><span class="p">,</span> <span class="n">binarized</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">basis</span> <span class="o">=</span> <span class="n">basis</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">img_size</span> <span class="o">=</span> <span class="n">img_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">M</span> <span class="o">=</span> <span class="n">M</span>
+
+<div class="viewcode-block" id="Optimized_patterns.add_desired_pattern">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Optimized_patterns.add_desired_pattern.html#spyrit.misc.pattern_choice.Optimized_patterns.add_desired_pattern">[docs]</a>
+    <span class="k">def</span> <span class="nf">add_desired_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">M_prim</span><span class="p">):</span>
+        <span class="n">I_old</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">Q</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">basis</span> <span class="o">+</span> <span class="s2">&quot;_opt(M_prim, self.par, self.lvl)&quot;</span><span class="p">)</span>
+        <span class="n">I_add</span> <span class="o">=</span> <span class="n">M_prim</span>
+        <span class="n">I_new</span> <span class="o">=</span> <span class="n">I_old</span> <span class="o">+</span> <span class="n">I_add</span>
+
+        <span class="n">next_Q</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">I_new</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">img_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">bias</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">I_new</span><span class="p">)</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">weight</span><span class="p">[:</span><span class="n">I_old</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="o">.</span><span class="n">weight</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">weight</span><span class="p">[</span><span class="n">I_old</span><span class="p">:,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">weight</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">next_Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">Q</span> <span class="o">=</span> <span class="n">next_Q</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">steps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">I_old</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Optimized_patterns.set_desired_pattern">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Optimized_patterns.set_desired_pattern.html#spyrit.misc.pattern_choice.Optimized_patterns.set_desired_pattern">[docs]</a>
+    <span class="k">def</span> <span class="nf">set_desired_pattern</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">M</span><span class="p">):</span>
+        <span class="n">next_Q</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">basis</span> <span class="o">+</span> <span class="s2">&quot;_opt(M, self.par, self.lvl)&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">Q</span> <span class="o">=</span> <span class="n">next_Q</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">steps</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+</div>
+
+
+
+<span class="c1">########################################################################</span>
+<span class="c1"># 3. Define functions for basis pattern</span>
+<span class="c1"># ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</span>
+<span class="c1"># Return a convolution filter that contains all the basis</span>
+<span class="c1"># functions of a given transform.</span>
+<span class="c1">#</span>
+
+
+<div class="viewcode-block" id="Fourier">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Fourier.html#spyrit.misc.pattern_choice.Fourier">[docs]</a>
+<span class="k">def</span> <span class="nf">Fourier</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">,</span> <span class="n">par</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">lvl</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">I</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">def_matrix</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">I</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">nx</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">I</span><span class="p">)</span>
+    <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">)</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">I</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">pat</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">dft</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="n">Z</span><span class="p">),</span> <span class="n">flags</span><span class="o">=</span><span class="n">cv2</span><span class="o">.</span><span class="n">DFT_COMPLEX_OUTPUT</span><span class="p">)</span>
+        <span class="n">pat_real</span> <span class="o">=</span> <span class="n">pat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">pat_img</span> <span class="o">=</span> <span class="n">pat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">index</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">pat_real</span>
+        <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">pat_img</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">Q</span></div>
+
+
+
+<div class="viewcode-block" id="Hadamard">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Hadamard.html#spyrit.misc.pattern_choice.Hadamard">[docs]</a>
+<span class="k">def</span> <span class="nf">Hadamard</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">,</span> <span class="n">par</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">lvl</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">I</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">def_matrix</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">I</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">nx</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
+
+    <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">)</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">I</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="c1"># pat = torch.from_numpy(fht2(Z));</span>
+
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">pat</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">Q</span></div>
+
+
+
+<div class="viewcode-block" id="Haar">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Haar.html#spyrit.misc.pattern_choice.Haar">[docs]</a>
+<span class="k">def</span> <span class="nf">Haar</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">,</span> <span class="n">par</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">lvl</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">I</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">def_matrix</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">wave</span> <span class="o">=</span> <span class="s2">&quot;Haar&quot;</span>
+    <span class="n">md</span> <span class="o">=</span> <span class="s2">&quot;periodization&quot;</span>
+
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">I</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">nx</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
+
+    <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">)</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">I</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="n">pat_coefs</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">wavedec2</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span> <span class="n">wave</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">md</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">lvl</span><span class="p">)</span>
+        <span class="p">[</span><span class="n">temp</span><span class="p">,</span> <span class="n">arr</span><span class="p">]</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">coeffs_to_array</span><span class="p">(</span><span class="n">pat_coefs</span><span class="p">)</span>
+
+        <span class="n">pat_temp</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">array_to_coeffs</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span> <span class="n">arr</span><span class="p">,</span> <span class="n">output_format</span><span class="o">=</span><span class="s2">&quot;wavedec2&quot;</span><span class="p">)</span>
+        <span class="n">pat</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">waverec2</span><span class="p">(</span><span class="n">pat_temp</span><span class="p">,</span> <span class="n">wave</span><span class="p">)</span>
+        <span class="n">pat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">pat</span><span class="p">)</span>
+
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">pat</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">Q</span></div>
+
+
+
+<div class="viewcode-block" id="Daubechies">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Daubechies.html#spyrit.misc.pattern_choice.Daubechies">[docs]</a>
+<span class="k">def</span> <span class="nf">Daubechies</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">,</span> <span class="n">par</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">lvl</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">I</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">def_matrix</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">wave</span> <span class="o">=</span> <span class="s2">&quot;db&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">par</span><span class="p">)</span>
+    <span class="n">md</span> <span class="o">=</span> <span class="s2">&quot;periodization&quot;</span>
+
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">I</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">nx</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
+
+    <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">)</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">I</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="n">pat_coefs</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">wavedec2</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span> <span class="n">wave</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">md</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">lvl</span><span class="p">)</span>
+        <span class="p">[</span><span class="n">temp</span><span class="p">,</span> <span class="n">arr</span><span class="p">]</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">coeffs_to_array</span><span class="p">(</span><span class="n">pat_coefs</span><span class="p">)</span>
+
+        <span class="n">pat_temp</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">array_to_coeffs</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span> <span class="n">arr</span><span class="p">,</span> <span class="n">output_format</span><span class="o">=</span><span class="s2">&quot;wavedec2&quot;</span><span class="p">)</span>
+        <span class="n">pat</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">waverec2</span><span class="p">(</span><span class="n">pat_temp</span><span class="p">,</span> <span class="n">wave</span><span class="p">)</span>
+        <span class="n">pat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">pat</span><span class="p">)</span>
+
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">pat</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">Q</span></div>
+
+
+
+<span class="c1">########################################################################</span>
+<span class="c1"># 3. Define functions for optimized basis pattern</span>
+<span class="c1"># ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</span>
+<span class="c1"># Return a convolution filter that contains all the basis</span>
+<span class="c1"># funtions obtained through a training phase.</span>
+<span class="c1">#</span>
+
+
+<div class="viewcode-block" id="Fourier_opt">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Fourier_opt.html#spyrit.misc.pattern_choice.Fourier_opt">[docs]</a>
+<span class="k">def</span> <span class="nf">Fourier_opt</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">par</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">lvl</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">I</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">def_matrix</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">I</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">nx</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">I</span><span class="p">)</span>
+    <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">)</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">I</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">pat</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">dft</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="n">Z</span><span class="p">),</span> <span class="n">flags</span><span class="o">=</span><span class="n">cv2</span><span class="o">.</span><span class="n">DFT_COMPLEX_OUTPUT</span><span class="p">)</span>
+        <span class="n">pat_real</span> <span class="o">=</span> <span class="n">pat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">pat_img</span> <span class="o">=</span> <span class="n">pat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">index</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">pat_real</span>
+        <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">pat_img</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">Q</span></div>
+
+
+
+<div class="viewcode-block" id="Hadamard_opt">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Hadamard_opt.html#spyrit.misc.pattern_choice.Hadamard_opt">[docs]</a>
+<span class="k">def</span> <span class="nf">Hadamard_opt</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">par</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">lvl</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">I</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">def_matrix</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">I</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">nx</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
+
+    <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">)</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">I</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="c1"># pat = torch.from_numpy(fht2(Z));</span>
+
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">pat</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">Q</span></div>
+
+
+
+<div class="viewcode-block" id="Haar_opt">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Haar_opt.html#spyrit.misc.pattern_choice.Haar_opt">[docs]</a>
+<span class="k">def</span> <span class="nf">Haar_opt</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">par</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">lvl</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">I</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">def_matrix</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">wave</span> <span class="o">=</span> <span class="s2">&quot;Haar&quot;</span>
+    <span class="n">md</span> <span class="o">=</span> <span class="s2">&quot;periodization&quot;</span>
+
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">I</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">nx</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
+
+    <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">)</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">I</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="n">pat_coefs</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">wavedec2</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span> <span class="n">wave</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">md</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">lvl</span><span class="p">)</span>
+        <span class="p">[</span><span class="n">temp</span><span class="p">,</span> <span class="n">arr</span><span class="p">]</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">coeffs_to_array</span><span class="p">(</span><span class="n">pat_coefs</span><span class="p">)</span>
+
+        <span class="n">pat_temp</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">array_to_coeffs</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span> <span class="n">arr</span><span class="p">,</span> <span class="n">output_format</span><span class="o">=</span><span class="s2">&quot;wavedec2&quot;</span><span class="p">)</span>
+        <span class="n">pat</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">waverec2</span><span class="p">(</span><span class="n">pat_temp</span><span class="p">,</span> <span class="n">wave</span><span class="p">)</span>
+        <span class="n">pat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">pat</span><span class="p">)</span>
+
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">pat</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">Q</span></div>
+
+
+
+<div class="viewcode-block" id="Daubechies_opt">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.Daubechies_opt.html#spyrit.misc.pattern_choice.Daubechies_opt">[docs]</a>
+<span class="k">def</span> <span class="nf">Daubechies_opt</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">par</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">lvl</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+    <span class="n">I</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">))</span>
+    <span class="p">(</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">)</span> <span class="o">=</span> <span class="n">def_matrix</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">wave</span> <span class="o">=</span> <span class="s2">&quot;db&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">par</span><span class="p">)</span>
+    <span class="n">md</span> <span class="o">=</span> <span class="s2">&quot;periodization&quot;</span>
+
+    <span class="n">Q</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">I</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">nx</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">I</span><span class="p">)</span>
+
+    <span class="n">ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">def_matrix</span><span class="p">)</span>
+    <span class="n">Z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">I</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">j</span> <span class="o">=</span> <span class="n">ind</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="n">pat_coefs</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">wavedec2</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span> <span class="n">wave</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">md</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="n">lvl</span><span class="p">)</span>
+        <span class="p">[</span><span class="n">temp</span><span class="p">,</span> <span class="n">arr</span><span class="p">]</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">coeffs_to_array</span><span class="p">(</span><span class="n">pat_coefs</span><span class="p">)</span>
+
+        <span class="n">pat_temp</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">array_to_coeffs</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span> <span class="n">arr</span><span class="p">,</span> <span class="n">output_format</span><span class="o">=</span><span class="s2">&quot;wavedec2&quot;</span><span class="p">)</span>
+        <span class="n">pat</span> <span class="o">=</span> <span class="n">pywt</span><span class="o">.</span><span class="n">waverec2</span><span class="p">(</span><span class="n">pat_temp</span><span class="p">,</span> <span class="n">wave</span><span class="p">)</span>
+        <span class="n">pat</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">pat</span><span class="p">)</span>
+
+        <span class="n">Z</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">index</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">pat</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">Q</span></div>
+
+
+
+<span class="c1">########################################################################</span>
+<span class="c1"># 4. Define functions for pattern splitting and shifting</span>
+<span class="c1"># ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</span>
+<span class="c1"># Implements most used splitting and shifting models</span>
+<span class="c1">#</span>
+
+
+<div class="viewcode-block" id="split">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.split.html#spyrit.misc.pattern_choice.split">[docs]</a>
+<span class="k">def</span> <span class="nf">split</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">dyn</span><span class="p">):</span>
+    <span class="n">I</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">img_size</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">I</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">img_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">T_matrix</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">I</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">I</span><span class="p">))</span>
+    <span class="n">T</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">I</span><span class="p">,</span> <span class="n">I</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">I</span><span class="p">):</span>
+        <span class="n">pat</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="n">pat</span> <span class="o">=</span> <span class="n">pat</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">pat_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">img_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">))</span>
+        <span class="n">pat_neg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">img_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">))</span>
+        <span class="n">pat_pos</span><span class="p">[</span><span class="n">pat</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">pat</span><span class="p">[</span><span class="n">pat</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">pat_neg</span><span class="p">[</span><span class="n">pat</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">pat</span><span class="p">[</span><span class="n">pat</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">max_pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">pat_pos</span><span class="p">)</span>
+        <span class="n">max_neg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">pat_neg</span><span class="p">)</span>
+
+        <span class="n">pat_pos</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="n">dyn</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">pat_pos</span> <span class="o">/</span> <span class="n">max_pos</span> <span class="k">if</span> <span class="n">max_pos</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">pat_pos</span>
+        <span class="n">pat_neg</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="n">dyn</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">pat_neg</span> <span class="o">/</span> <span class="n">max_neg</span> <span class="k">if</span> <span class="n">max_neg</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">pat_neg</span>
+
+        <span class="n">T_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">max_pos</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="n">dyn</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">T_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">max_neg</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="n">dyn</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">P</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">pat_pos</span><span class="p">)</span>
+        <span class="n">P</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">2</span> <span class="o">*</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">pat_neg</span><span class="p">)</span>
+    <span class="n">P</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">P</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">T</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">T_matrix</span>
+    <span class="n">T</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+    <span class="n">T</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">P</span><span class="p">,</span> <span class="n">T</span></div>
+
+
+
+<div class="viewcode-block" id="shift">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.shift.html#spyrit.misc.pattern_choice.shift">[docs]</a>
+<span class="k">def</span> <span class="nf">shift</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">dyn</span><span class="p">):</span>
+    <span class="n">I</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">img_size</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">I</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">img_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">T</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">I</span><span class="p">,</span> <span class="n">I</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">I</span><span class="p">):</span>
+        <span class="n">pat</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="n">pat</span> <span class="o">=</span> <span class="n">pat</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">dc_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">pat</span><span class="p">)</span>
+
+        <span class="n">pat_ac</span> <span class="o">=</span> <span class="n">pat</span> <span class="o">-</span> <span class="n">dc_val</span>
+
+        <span class="n">max_ac</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">pat_ac</span><span class="p">)</span>
+        <span class="n">pat_ac</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="n">dyn</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">pat_ac</span> <span class="o">/</span> <span class="n">max_ac</span>
+
+        <span class="n">T</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">max_ac</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="n">dyn</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">T</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">I</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">max_ac</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="n">dyn</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">P</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">pat_ac</span><span class="p">)</span>
+    <span class="n">P</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">I</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="o">**</span><span class="n">dyn</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">img_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">)</span>
+    <span class="n">P</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">P</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">P</span><span class="p">,</span> <span class="n">T</span></div>
+
+
+
+<div class="viewcode-block" id="matrix2conv">
+<a class="viewcode-back" href="../../../_autosummary/spyrit.misc.pattern_choice.matrix2conv.html#spyrit.misc.pattern_choice.matrix2conv">[docs]</a>
+<span class="k">def</span> <span class="nf">matrix2conv</span><span class="p">(</span><span class="n">Matrix</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns Convulution filter che each kernel correponds to a line of</span>
+<span class="sd">    Matrix, that has been reshaped</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">M</span><span class="p">,</span> <span class="n">N</span> <span class="o">=</span> <span class="n">Matrix</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">img_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">N</span><span class="p">)))</span>
+
+    <span class="n">P</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">M</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">img_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">P</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">M</span><span class="p">):</span>
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">Matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:],</span> <span class="p">(</span><span class="n">img_size</span><span class="p">,</span> <span class="n">img_size</span><span class="p">))</span>
+        <span class="n">P</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+    <span class="n">P</span><span class="o">.</span><span class="n">bias</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">P</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="n">P</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>spyrit.core.prep.SplitPoisson &mdash; spyrit 2.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+      <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/sg_README.css?v=78231cbc" />
+
+
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=20623aea"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="spyrit.core.prep.SplitPoisson.denormalize_expe" href="spyrit.core.prep.SplitPoisson.denormalize_expe.html" />
+    <link rel="prev" title="spyrit.core.prep.DirectPoisson.sigma" href="spyrit.core.prep.DirectPoisson.sigma.html" />
+</head>
+
+<body class="wy-body-for-nav">
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+
+          <a href="../index.html" class="icon icon-home">
+            spyrit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Subpackages</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="spyrit.core.html">spyrit.core</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.meas.html">spyrit.core.meas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.nnet.html">spyrit.core.nnet</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.noise.html">spyrit.core.noise</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="spyrit.core.prep.html">spyrit.core.prep</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="spyrit.core.prep.DirectPoisson.html">spyrit.core.prep.DirectPoisson</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">spyrit.core.prep.SplitPoisson</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#spyrit.core.prep.SplitPoisson"><code class="docutils literal notranslate"><span class="pre">SplitPoisson</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="spyrit.core.prep.SplitPoisson.denormalize_expe.html">spyrit.core.prep.SplitPoisson.denormalize_expe</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spyrit.core.prep.SplitPoisson.forward.html">spyrit.core.prep.SplitPoisson.forward</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spyrit.core.prep.SplitPoisson.forward_expe.html">spyrit.core.prep.SplitPoisson.forward_expe</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spyrit.core.prep.SplitPoisson.set_expe.html">spyrit.core.prep.SplitPoisson.set_expe</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spyrit.core.prep.SplitPoisson.sigma.html">spyrit.core.prep.SplitPoisson.sigma</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spyrit.core.prep.SplitPoisson.sigma_expe.html">spyrit.core.prep.SplitPoisson.sigma_expe</a></li>
+<li class="toctree-l4"><a class="reference internal" href="spyrit.core.prep.SplitPoisson.sigma_from_image.html">spyrit.core.prep.SplitPoisson.sigma_from_image</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.recon.html">spyrit.core.recon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.time.html">spyrit.core.time</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spyrit.core.train.html">spyrit.core.train</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="spyrit.misc.html">spyrit.misc</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../gallery/index.html">Tutorials</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">spyrit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="spyrit.core.html">spyrit.core</a></li>
+          <li class="breadcrumb-item"><a href="spyrit.core.prep.html">spyrit.core.prep</a></li>
+      <li class="breadcrumb-item active">spyrit.core.prep.SplitPoisson</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/spyrit.core.prep.SplitPoisson.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+
+  <section id="spyrit-core-prep-splitpoisson">
+<h1>spyrit.core.prep.SplitPoisson<a class="headerlink" href="#spyrit-core-prep-splitpoisson" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="spyrit.core.prep.SplitPoisson">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">spyrit.core.prep.</span></span><span class="sig-name descname"><span class="pre">SplitPoisson</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meas_op</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/spyrit/core/prep.html#SplitPoisson"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spyrit.core.prep.SplitPoisson" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Preprocess the raw data acquired with a split measurement operator assuming
+Poisson noise.  It also compensates for the affine transformation applied
+to the images to get positive intensities.</p>
+<p>It computes <span class="math notranslate nohighlight">\(m = \frac{y_{+}-y_{-}}{\alpha} - H1\)</span> and the variance
+<span class="math notranslate nohighlight">\(var = \frac{2(y_{+} + y_{-})}{\alpha^{2}}\)</span>, where
+<span class="math notranslate nohighlight">\(y_{+} = H_{+}x\)</span> and <span class="math notranslate nohighlight">\(y_{-} = H_{-}x\)</span> are obtained using a
+split measurement operator (see <code class="xref py py-mod docutils literal notranslate"><span class="pre">spyrit.core.LinearSplit</span></code>),
+<span class="math notranslate nohighlight">\(\alpha\)</span> is the image intensity, and 1 is the all-ones vector.</p>
+<dl>
+<dt>Args:</dt><dd><p>alpha (float): maximun image intensity <span class="math notranslate nohighlight">\(\alpha\)</span> (in counts)</p>
+<p><code class="xref py py-attr docutils literal notranslate"><span class="pre">meas_op</span></code>: measurement operator (see <a class="reference internal" href="spyrit.core.meas.html#module-spyrit.core.meas" title="spyrit.core.meas"><code class="xref py py-mod docutils literal notranslate"><span class="pre">meas</span></code></a>)</p>
+</dd>
+<dt>Example:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">H</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">([</span><span class="mi">400</span><span class="p">,</span><span class="mi">32</span><span class="o">*</span><span class="mi">32</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">meas_op</span> <span class="o">=</span>  <span class="n">LinearSplit</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">split_op</span> <span class="o">=</span> <span class="n">SplitPoisson</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">meas_op</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd>
+<dt>Example 2:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">Perm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">([</span><span class="mi">32</span><span class="p">,</span><span class="mi">32</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">meas_op</span> <span class="o">=</span> <span class="n">HadamSplit</span><span class="p">(</span><span class="mi">400</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span>  <span class="n">Perm</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">split_op</span> <span class="o">=</span> <span class="n">SplitPoisson</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">meas_op</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="spyrit.core.prep.SplitPoisson.denormalize_expe.html#spyrit.core.prep.SplitPoisson.denormalize_expe" title="spyrit.core.prep.SplitPoisson.denormalize_expe"><code class="xref py py-obj docutils literal notranslate"><span class="pre">denormalize_expe</span></code></a>(x, beta, h, w)</p></td>
+<td><p>Denormalize images from the range [-1;1] to the range [0; <span class="math notranslate nohighlight">\(\beta\)</span>]</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="spyrit.core.prep.SplitPoisson.forward.html#spyrit.core.prep.SplitPoisson.forward" title="spyrit.core.prep.SplitPoisson.forward"><code class="xref py py-obj docutils literal notranslate"><span class="pre">forward</span></code></a>(x)</p></td>
+<td><p>Preprocess to compensates for image normalization and splitting of the measurement operator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="spyrit.core.prep.SplitPoisson.forward_expe.html#spyrit.core.prep.SplitPoisson.forward_expe" title="spyrit.core.prep.SplitPoisson.forward_expe"><code class="xref py py-obj docutils literal notranslate"><span class="pre">forward_expe</span></code></a>(x, meas_op)</p></td>
+<td><p>Preprocess to compensate for image normalization and splitting of the measurement operator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="spyrit.core.prep.SplitPoisson.set_expe.html#spyrit.core.prep.SplitPoisson.set_expe" title="spyrit.core.prep.SplitPoisson.set_expe"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_expe</span></code></a>([gain, mudark, sigdark, nbin])</p></td>
+<td><p>Sets experimental parameters of the sensor</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="spyrit.core.prep.SplitPoisson.sigma.html#spyrit.core.prep.SplitPoisson.sigma" title="spyrit.core.prep.SplitPoisson.sigma"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sigma</span></code></a>(x)</p></td>
+<td><p>Estimates the variance of the preprocessed measurements</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="spyrit.core.prep.SplitPoisson.sigma_expe.html#spyrit.core.prep.SplitPoisson.sigma_expe" title="spyrit.core.prep.SplitPoisson.sigma_expe"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sigma_expe</span></code></a>(x)</p></td>
+<td><p>Estimates the variance of the measurements that are compensated for splitting but <strong>NOT</strong> for image normalization</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="spyrit.core.prep.SplitPoisson.sigma_from_image.html#spyrit.core.prep.SplitPoisson.sigma_from_image" title="spyrit.core.prep.SplitPoisson.sigma_from_image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sigma_from_image</span></code></a>(x, meas_op)</p></td>
+<td><p>Estimates the variance of the preprocessed measurements corresponding to images through a measurement operator</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="spyrit.core.prep.DirectPoisson.sigma.html" class="btn btn-neutral float-left" title="spyrit.core.prep.DirectPoisson.sigma" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="spyrit.core.prep.SplitPoisson.denormalize_expe.html" class="btn btn-neutral float-right" title="spyrit.core.prep.SplitPoisson.denormalize_expe" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+</body>
+</html>
