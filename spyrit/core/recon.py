@@ -768,11 +768,13 @@ class DCNet(nn.Module):
 
 # =============================================================================
 class LearnedPGD(nn.Module):
-    r""" Pseudo inverse reconstruction network
-    
-    .. math:
-        
-        
+    r""" Learned Proximal Gradient Descent reconstruction network. 
+    Iterative algorithm that alternates between a gradient step and a proximal step, 
+    where the proximal operator is learned denoiser. The update rule is given by: 
+
+    :math:`x_{k+1} = prox(\hat{x_k} - step * H^T (Hx_k - y))=
+    denoi(\hat{x_k} - step * H^T (Hx_k - y))`
+
     Args:
         :attr:`noise`: Acquisition operator (see :class:`~spyrit.core.noise`) 
         
@@ -781,7 +783,39 @@ class LearnedPGD(nn.Module):
         :attr:`denoi` (optional): Image denoising operator 
         (see :class:`~spyrit.core.nnet`). 
         Default :class:`~spyrit.core.nnet.Identity`
-    
+
+        :attr:`iter_stop` (int): Number of iterations of the LPGD algorithm 
+        (commonly 3 to 10, trade-off between accuracy and speed). 
+        Default 3 (for speed and with higher accuracy than post-processing denoising)
+
+        :attr:`step` (float): Step size of the LPGD algorithm. Default is None, 
+        and it is estimated as the inverse of the Lipschitz constant of the gradient of the 
+        data fidelity term. 
+            - If :math:`meas_op.N` is available, the step size is estimated as 
+            :math:`step=1/L=1/\text{meas_op.N}`, true for Hadamard operators.
+            - If not, the step size is estimated from by computing 
+            the Lipschitz constant as the largest singular value of the 
+            Hessians, :math:`L=\lambda_{\max}(H^TH)`. If this fails, 
+            the step size is set to 1e-4.
+
+        :attr:`step_estimation` (bool): Default False. See :attr:`step` for details.
+
+        :attr:`step_grad` (bool): Default False. If True, the step size is learned
+        as a parameter of the network. Not tested yet.
+
+        :attr:`wls` (bool): Default False. If True, the data fidelity term is 
+        modified to be the weighted least squares (WLS) term, which approximates 
+        the Poisson likelihood. In this case, the data fidelity term is 
+        :math:`\|Hx-y\|^2_{C^{-1}}`, where :math:`C` is the covariance matrix. 
+        We assume that :math:`C` is diagonal, and the diagonal elements are 
+        the measurement noise variances, estimated from :class:`~spyrit.core.prep.sigma`. 
+
+        :attr:`gt` (torch.tensor): Ground-truth images. If available, the mean
+        squared error (MSE) is computed and logged. Default None.
+
+        :attr:`log_fidelity` (bool): Default False. If True, the data fidelity term
+        is logged for each iteration of the LPGD algorithm.
+
     Input / Output:
         :attr:`input`: Ground-truth images with shape :math:`(B,C,H,W)` 
         
@@ -796,7 +830,6 @@ class LearnedPGD(nn.Module):
         :class:`~spyrit.core.recon.PseudoInverse()`
         
         :attr:`Denoi`: Image denoising operator initialized as :attr:`denoi`
-
     
     Example:
         >>> B, C, H, M = 10, 1, 64, 64**2
@@ -816,6 +849,7 @@ class LearnedPGD(nn.Module):
                  prep, 
                  denoi=nn.Identity(), 
                  iter_stop=3, 
+                 step=None,
                  step_estimation=False,
                  step_grad=False, 
                  wls=False,
@@ -828,14 +862,20 @@ class LearnedPGD(nn.Module):
         self.denoi = denoi
         # LPGD algo
         self.iter_stop = iter_stop
-                
+
         # Step size
-        step = 1/noise.meas_op.N
+        if hasattr(noise.meas_op, 'N'):
+            step = 1/noise.meas_op.N
+        else:
+            # Estimate step size as 1/sv_max(H^TH); if failed, set to 1e-4
+            step_estimation = True
+            step = 1e-4
+        self.step_estimation = step_estimation
+
         if step_grad:
             self.step = nn.Parameter(torch.tensor(step), requires_grad=step_grad)
         else:
             self.step = step        
-        self.step_estimation = step_estimation
          
         # WLS
         self.wls = wls
@@ -978,13 +1018,17 @@ class LearnedPGD(nn.Module):
 
         if self.wls:
             # Get variance of the measurements
-            self.meas_variance = self.prep.sigma(x)
+            if hasattr(self.prep, 'sigma'):                
+                self.meas_variance = self.prep.sigma(x)
+            else:
+                print("WLS requires the variance of the measurements to be known!. Estimating var==m")
+                self.meas_variance = m
 
             # Normalize the stepsize to account for the variance
             self.step = self.step*torch.mean(self.meas_variance)
             #self.step = self.step*torch.min(self.meas_variance)
 
-        # Compute the stepsize from the singular values (convexity analysis)
+        # Compute the stepsize from the Lipschitz constant 
         if self.step_estimation:
             self.stepsize_gd()
 
