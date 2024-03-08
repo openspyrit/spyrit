@@ -815,28 +815,35 @@ class LearnedPGD(nn.Module):
     def __init__(self, noise, 
                  prep, 
                  denoi=nn.Identity(), 
-                 iter_stop=1, 
-                 gamma_grad=False, 
-                 wls=False,
+                 iter_stop=3, 
                  step_estimation=False,
-                 gt=None):
+                 step_grad=False, 
+                 wls=False,
+                 gt=None,
+                 log_fidelity = False):
         super().__init__()
-        # Step size
-        gamma = 1/noise.meas_op.N
-        if gamma_grad:
-            self.gamma = nn.Parameter(torch.tensor(gamma), requires_grad=gamma_grad)
-        else:
-            self.gamma = gamma        
-        self.iter_stop = iter_stop
         # nn.module
         self.acqu = noise 
         self.prep = prep
         self.denoi = denoi
-        #
-        self.log_inner_fidelity = False
-        self.wls = wls
+        # LPGD algo
+        self.iter_stop = iter_stop
+                
+        # Step size
+        step = 1/noise.meas_op.N
+        if step_grad:
+            self.step = nn.Parameter(torch.tensor(step), requires_grad=step_grad)
+        else:
+            self.step = step        
         self.step_estimation = step_estimation
-        # Ground truth available -> compute MSE
+         
+        # WLS
+        self.wls = wls
+        
+        # Log fidelity
+        self.log_fidelity = log_fidelity
+
+        # Log MSE (Ground truth available)
         if gt is not None:
             self.x_gt = nn.Parameter(torch.tensor(gt.reshape(gt.shape[0],-1)), requires_grad=False)
         else:
@@ -912,7 +919,7 @@ class LearnedPGD(nn.Module):
         
         return x
     
-    def singular_values(self):
+    def hessian_sv(self):
         H = self.acqu.meas_op.get_H()
         if self.wls:
             std_mat = 1/torch.sqrt(self.meas_variance)
@@ -926,17 +933,17 @@ class LearnedPGD(nn.Module):
         return s
 
     def stepsize_gd(self):
-        s = self.singular_values()
-        self.gamma = 2/(s.min()+s.max()) # Kressner, EPFL, GD #1/(2*s.max()**2)
+        s = self.hessian_sv()
+        self.step = 2/(s.min()+s.max()) # Kressner, EPFL, GD #1/(2*s.max()**2)
 
-    def data_fidelity(self, x, y):
+    def cost_fun(self, x, y):
         proj = self.acqu.meas_op.forward_H(x)
         res = proj - y
         if self.wls:
             res = res/torch.sqrt(self.meas_variance)
         return torch.linalg.norm(res) ** 2
 
-    def mse(self, x, x_gt):
+    def mse_fun(self, x, x_gt):
         return torch.linalg.norm(x - x_gt) 
 
     def reconstruct(self, x):
@@ -974,8 +981,8 @@ class LearnedPGD(nn.Module):
             self.meas_variance = self.prep.sigma(x)
 
             # Normalize the stepsize to account for the variance
-            self.gamma = self.gamma*torch.mean(self.meas_variance)
-            #self.gamma = self.gamma*torch.min(self.meas_variance)
+            self.step = self.step*torch.mean(self.meas_variance)
+            #self.step = self.step*torch.min(self.meas_variance)
 
         # Compute the stepsize from the singular values (convexity analysis)
         if self.step_estimation:
@@ -993,15 +1000,15 @@ class LearnedPGD(nn.Module):
             # zero init
             x = torch.zeros_like(x)
         
-        if self.log_inner_fidelity:
-            data_fidelity = []
+        if self.log_fidelity:
+            self.cost = []
             with torch.no_grad():
                 #data_fidelity.append(self.data_fidelity(torch.zeros_like(x), m).cpu().numpy().tolist())
-                data_fidelity.append(self.data_fidelity(x, m).cpu().numpy().tolist())
+                self.cost.append(self.cost_fun(x, m).cpu().numpy().tolist())
         if self.x_gt is not None:
-            mse = []
+            self.mse = []
             with torch.no_grad():
-                mse.append(self.mse(x, self.x_gt).cpu().numpy().tolist())
+                self.mse.append(self.mse_fun(x, self.x_gt).cpu().numpy().tolist())
 
         u = None
 
@@ -1010,26 +1017,24 @@ class LearnedPGD(nn.Module):
             res = self.acqu.meas_op.forward_H(x)-m
             if self.wls:
                 res = res/self.meas_variance
-            upd = self.gamma*self.acqu.meas_op.adjoint(res)
+            upd = self.step*self.acqu.meas_op.adjoint(res)
             x = x - upd
             x = x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
 
             # proximal step (prior)
             x = self.denoi(x)            
             x = x.view(bc,self.acqu.meas_op.N)
-            if self.log_inner_fidelity:
+            if self.log_fidelity:
                 with torch.no_grad():
-                    data_fidelity.append(self.data_fidelity(x, m).cpu().numpy().tolist())
+                    self.cost.append(self.cost_fun(x, m).cpu().numpy().tolist())
             # Compute mse if ground truth is field
             if self.x_gt is not None:
                 with torch.no_grad():
-                    mse.append(self.mse(x, self.x_gt).cpu().numpy().tolist())
+                    self.mse.append(self.mse_fun(x, self.x_gt).cpu().numpy().tolist())
 
-        if self.log_inner_fidelity:
-            print(f"Data fidelity: {(data_fidelity)}. Stepsize: {self.gamma}")
-            self.data_fidelity = data_fidelity
+        if self.log_fidelity:
+            print(f"Data fidelity: {(self.cost)}. Stepsize: {self.step}")
         if self.x_gt is not None:
-            print(f"|x - x_gt| = {mse}")
-            self.mse = mse
+            print(f"|x - x_gt| = {self.mse}")
         return x
     
