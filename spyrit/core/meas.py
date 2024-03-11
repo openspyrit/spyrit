@@ -7,6 +7,7 @@ import scipy.stats
 
 from spyrit.misc.walsh_hadamard import walsh2_torch, walsh2_matrix
 from spyrit.misc.sampling import Permutation_Matrix, sort_by_significance
+from spyrit.core.time import DeformationField, AffineDeformationField
 
 
 # =============================================================================
@@ -99,6 +100,66 @@ class DynamicLinear(nn.Module):
         """
         return self.H.data
 
+    def get_H_pinv(self) -> torch.tensor:
+        r"""Returns the pseudo inverse of the measurement matrix :math:`H`.
+
+        Shape:
+            Output: :math:`(N, M)`
+
+        Example:
+            >>> H1 = np.random.random([400, 1600])
+            >>> meas_op = Linear(H1, True)
+            >>> H2 = meas_op.get_H_pinv()
+            >>> print(H2.shape)
+            torch.Size([1600, 400])
+        """
+        try:
+            return self.H_pinv.data
+        except AttributeError as e:
+            if "has no attribute 'H_pinv'" in str(e):
+                raise AttributeError(
+                    "The pseudo inverse has not been initialized. Please set it using self.set_H_pinv()."
+                )
+            else:
+                raise e
+
+    def set_H_pinv(self, reg: float=1e-15, pinv: torch.tensor=None) -> None:
+        r"""
+        Stores in self.H_pinv the pseudo inverse of the measurement matrix :math:`H`.
+
+        If :attr:`pinv` is given, it is directly stored as the pseudo inverse.
+        The validity of the pseudo inverse is not checked. If :attr:`pinv` is
+        :obj:`False`, the pseudo inverse is computed from the existing
+        measurement matrix :math:`H` with regularization parameter :attr:`reg`.
+
+        Args:
+            :attr:`reg` (float, optional): Cutoff for small singular values.
+
+            :attr:`H_pinv` (torch.tensor, optional): If given, the tensor is
+            directly stored as the pseudo inverse. No checks are performed.
+            Otherwise, the pseudo inverse is computed from the existing
+            measurement matrix :math:`H`.
+
+        .. note:
+            Only one of :math:`H_pinv` and :math:`reg` should be given. If both
+            are given, :math:`H_pinv` is used and :math:`reg` is ignored.
+
+        Shape:
+            :attr:`H_pinv`: :math:`(N, M)`, where :math:`N` is the number of
+            pixels in the image and :math:`M` the number of measurements.
+
+        Example:
+            >>> H1 = torch.rand([400, 1600])
+            >>> H2 = torch.linalg.pinv(H1)
+            >>> meas_op = Linear(H1)
+            >>> meas_op.set_H_pinv(H2)
+        """
+        if pinv is not None:
+            H_pinv = pinv.type(torch.FloatTensor)  # to float32
+        else:
+            H_pinv = torch.linalg.pinv(self.get_H(), rcond=reg)
+        self.H_pinv = nn.Parameter(H_pinv, requires_grad=False)
+        
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
         Simulates the measurement of a motion picture.
@@ -144,11 +205,11 @@ class DynamicLinear(nn.Module):
 
     def __str__(self):
         s_begin = f"{self.__class__.__name__}(\n  "
-        s_fill = "\n  ".join([f"({k}): {v}" for k, v in self.__attributeslist__()])
+        s_fill = "\n  ".join([f"({k}): {v}" for k, v in self._attributeslist()])
         s_end = "\n  )"
         return s_begin + s_fill + s_end
 
-    def __attributeslist__(self):
+    def _attributeslist(self):
         return [("Image pixels", self.N), ("H", self.H.shape)]
 
 
@@ -349,8 +410,8 @@ class DynamicLinearSplit(DynamicLinear):
         """
         return super().forward(x)
 
-    def __attributeslist__(self):
-        return super().__attributeslist__() + [("P", self.P.shape)]
+    def _attributeslist(self):
+        return super()._attributeslist() + [("P", self.P.shape)]
 
 
 # =============================================================================
@@ -444,9 +505,7 @@ class DynamicHadamSplit(DynamicLinearSplit):
 
     def __init__(self, M: int, h: int, Ord: np.ndarray):
         F = walsh2_matrix(h)  # full matrix
-        H = sort_by_significance(F, Ord, "rows", False)[
-            :M, :
-        ]  # much faster than previously
+        H = sort_by_significance(F, Ord, "rows", False)[:M, :]  # much faster
         w = h  # we assume a square image
 
         super().__init__(torch.from_numpy(H))
@@ -546,7 +605,7 @@ class Linear(DynamicLinear):
           )
     """
 
-    def __init__(self, H: np.ndarray, pinv=False, reg: float = 1e-15):
+    def __init__(self, H: np.ndarray, pinv=False, reg: float=1e-15):
         super().__init__(H)
         if pinv:
             self.set_H_pinv(reg=reg)
@@ -567,66 +626,6 @@ class Linear(DynamicLinear):
             torch.Size([400, 1600])
         """
         return self.H.T
-
-    def get_H_pinv(self) -> torch.tensor:
-        r"""Returns the pseudo inverse of the measurement matrix :math:`H`.
-
-        Shape:
-            Output: :math:`(N, M)`
-
-        Example:
-            >>> H1 = np.random.random([400, 1600])
-            >>> meas_op = Linear(H1, True)
-            >>> H2 = meas_op.get_H_pinv()
-            >>> print(H2.shape)
-            torch.Size([1600, 400])
-        """
-        try:
-            return self.H_pinv.data
-        except AttributeError as e:
-            if "has no attribute 'H_pinv'" in str(e):
-                raise AttributeError(
-                    "The pseudo inverse has not been initialized. Please set it using self.set_H_pinv()."
-                )
-            else:
-                raise e
-
-    def set_H_pinv(self, reg: float = 1e-15, pinv: torch.tensor = None) -> None:
-        r"""
-        Stores in self.H_pinv the pseudo inverse of the measurement matrix :math:`H`.
-
-        If :attr:`pinv` is given, it is directly stored as the pseudo inverse.
-        The validity of the pseudo inverse is not checked. If :attr:`pinv` is
-        :obj:`False`, the pseudo inverse is computed from the existing
-        measurement matrix :math:`H` with regularization parameter :attr:`reg`.
-
-        Args:
-            :attr:`reg` (float, optional): Cutoff for small singular values.
-
-            :attr:`H_pinv` (torch.tensor, optional): If given, the tensor is
-            directly stored as the pseudo inverse. No checks are performed.
-            Otherwise, the pseudo inverse is computed from the existing
-            measurement matrix :math:`H`.
-
-        .. note:
-            Only one of :math:`H_pinv` and :math:`reg` should be given. If both
-            are given, :math:`H_pinv` is used and :math:`reg` is ignored.
-
-        Shape:
-            :attr:`H_pinv`: :math:`(N, M)`, where :math:`N` is the number of
-            pixels in the image and :math:`M` the number of measurements.
-
-        Example:
-            >>> H1 = torch.rand([400, 1600])
-            >>> H2 = torch.linalg.pinv(H1)
-            >>> meas_op = Linear(H1)
-            >>> meas_op.set_H_pinv(H2)
-        """
-        if pinv is not None:
-            H_pinv = pinv.type(torch.FloatTensor)  # to float32
-        else:
-            H_pinv = torch.linalg.pinv(self.get_H(), rcond=reg)
-        self.H_pinv = nn.Parameter(H_pinv, requires_grad=False)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Applies linear transform to incoming images: :math:`y = Hx`.
@@ -702,8 +701,8 @@ class Linear(DynamicLinear):
         # Pmat.transpose()*f
         return torch.matmul(x, self.get_H_pinv().T)
 
-    def __attributeslist__(self):
-        return super().__attributeslist__() + [
+    def _attributeslist(self):
+        return super()._attributeslist() + [
             ("H_pinv", self.H_pinv.shape if hasattr(self, "H_pinv") else None)
         ]
 
@@ -980,5 +979,55 @@ class HadamSplit(LinearSplit, DynamicHadamSplit):
         x = 1 / self.N * walsh2_torch(x)
         return x.view(b, N)
 
-    def __attributeslist__(self):
-        return super().__attributeslist__() + [("Perm", self.Ord.shape)]
+    def _attributeslist(self):
+        return super()._attributeslist() + [("Perm", self.Ord.shape)]
+
+
+# =============================================================================
+# Functions
+# =============================================================================
+
+def set_dyn_pinv(meas_op: DynamicLinear,
+                 motion: DeformationField,
+                 interp_mode: str='bilinear',
+                 # regularizer: str=None,
+                 reg: float=1e-15,
+                 ) -> None:
+    
+    # get full image shape, defined by motion
+    Nx_img, Ny_img = motion.Nx, motion.Ny
+    n_frames = motion.n_frames
+    
+    # get measurement matrix shape
+    Nx_meas = meas_op.w
+    Ny_meas = meas_op.h
+    n_meas = meas_op.M
+    
+    if Nx_meas * Ny_meas != meas_op.N:
+        raise ValueError(
+            f"The image size in the measurement operator is not a square. " +
+            "Please assign self.h and self.w manually."
+        )
+    
+    # get the measurement matrix
+    H = meas_op.get_H().view(n_meas, 1, Nx_meas, Ny_meas)
+        
+    # if the image is larger than the measurement matrix, we need to pad the
+    # measurement matrix with zeros
+    if (Nx_img > Nx_meas) or (Ny_img > Ny_meas):
+        pad_left = (Ny_img - Ny_meas) // 2
+        pad_right = Ny_img - Ny_meas - pad_left
+        pad_top = (Nx_img - Nx_meas) // 2
+        pad_bottom = Nx_img - Nx_meas - pad_top
+        
+        pad = nn.ConstantPad2d((pad_left, pad_right, pad_top, pad_bottom), 0)
+        H = pad(H)
+    
+    H_dyn_physical = motion(H, 0, meas_op.M, mode=interp_mode)  #########################
+    # is it the reciprocal motion we are looking for ?
+    
+    # find pseudo inverse according to regularizer
+    # first no regularizer
+    H_pinv = torch.linalg.pinv(H_dyn_physical, rcond=reg)
+    meas_op.set_H_pinv(pinv=H_pinv)
+        
