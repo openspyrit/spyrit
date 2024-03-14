@@ -200,9 +200,10 @@ def sort_by_significance(
         )
 
     import torch
+
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     if isinstance(sig, torch.Tensor):
-        # Alternative: 
+        # Alternative:
         # https://discuss.pytorch.org/t/when-using-torch-sort-how-do-i-assign-the-minimal-index-to-those-same-elements/33169/6
         sig_torch = True
         sig = sig.cpu().numpy()
@@ -221,7 +222,7 @@ def sort_by_significance(
         # now it corresponds to the permutation matrix
 
     sorted_arr = np.take(arr, reorder, axis_index)
-    if sig_torch and device.type == 'cuda':
+    if sig_torch and device.type == "cuda":
         sorted_arr = torch.from_numpy(sorted_arr).to(device)
     return sorted_arr
 
