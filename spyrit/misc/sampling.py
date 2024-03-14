@@ -199,6 +199,16 @@ def sort_by_significance(
             "number of rows or columns in arr"
         )
 
+    import torch
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    if isinstance(sig, torch.Tensor):
+        # Alternative: 
+        # https://discuss.pytorch.org/t/when-using-torch-sort-how-do-i-assign-the-minimal-index-to-those-same-elements/33169/6
+        sig_torch = True
+        sig = sig.cpu().numpy()
+        arr = arr.cpu().numpy()
+    else:
+        sig_torch = False
     reorder = rankdata(-sig, method="ordinal") - 1  # -1 to make it zero-based
     # reorder corresponds to the inverse permutation matrix
 
@@ -210,7 +220,10 @@ def sort_by_significance(
         reorder = reorder.argsort()
         # now it corresponds to the permutation matrix
 
-    return np.take(arr, reorder, axis_index)
+    sorted_arr = np.take(arr, reorder, axis_index)
+    if sig_torch and device.type == 'cuda':
+        sorted_arr = torch.from_numpy(sorted_arr).to(device)
+    return sorted_arr
 
 
 def reorder(meas: np.ndarray, Perm_acq: np.ndarray, Perm_rec: np.ndarray) -> np.ndarray:
