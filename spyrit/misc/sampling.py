@@ -198,8 +198,12 @@ def sort_by_significance(
             "The number of elements in sig must be equal to the "
             "number of rows or columns in arr"
         )
-
-    reorder = rankdata(-sig, method="ordinal") - 1  # -1 to make it zero-based
+    reorder = (-sig.flatten()).argsort().argsort()
+    # try:
+    #     sig = sig.cpu().numpy()
+    # except:
+    #     pass
+    # reorder = rankdata(-sig, method="ordinal") - 1  # -1 to make it zero-based
     # reorder corresponds to the inverse permutation matrix
 
     if (
@@ -209,8 +213,14 @@ def sort_by_significance(
     ):
         reorder = reorder.argsort()
         # now it corresponds to the permutation matrix
-
-    return np.take(arr, reorder, axis_index)
+        
+    if arr.ndim == 1:
+        return arr[reorder]
+    elif axis == "rows":
+        return arr[..., reorder, :]
+    else:
+        return arr[..., :, reorder]
+    # return np.take(arr, reorder, axis_index)
 
 
 def reorder(meas: np.ndarray, Perm_acq: np.ndarray, Perm_rec: np.ndarray) -> np.ndarray:
