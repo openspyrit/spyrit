@@ -520,7 +520,7 @@ class DynamicHadamSplit(DynamicLinearSplit):
         #######################################################################
         Perm = Permutation_Matrix(Ord)
         Perm = torch.from_numpy(Perm).float()  # float32
-        self.Perm = nn.Parameter(Perm, requires_grad=False)
+        self.Perm = nn.Parameter(Perm.T, requires_grad=False)
 
     def get_Perm(self) -> torch.tensor:
         warnings.warn(
