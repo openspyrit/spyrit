@@ -852,6 +852,7 @@ class LearnedPGD(nn.Module):
                  step=None,
                  step_estimation=False,
                  step_grad=False, 
+                 step_decay=1,
                  wls=False,
                  gt=None,
                  log_fidelity = False):
@@ -860,23 +861,17 @@ class LearnedPGD(nn.Module):
         self.acqu = noise 
         self.prep = prep
         self.denoi = denoi
+
         # LPGD algo
         self.iter_stop = iter_stop
-
-        # Step size
-        if hasattr(noise.meas_op, 'N'):
-            step = 1/noise.meas_op.N
-        else:
-            # Estimate step size as 1/sv_max(H^TH); if failed, set to 1e-4
-            step_estimation = True
-            step = 1e-4
+        self.step = step
         self.step_estimation = step_estimation
+        self.step_grad = step_grad
+        self.step_decay = step_decay
 
-        if step_grad:
-            self.step = nn.Parameter(torch.tensor(step), requires_grad=step_grad)
-        else:
-            self.step = step        
-         
+        # Init step size (estimate)
+        self.set_stepsize(step)
+        
         # WLS
         self.wls = wls
         
@@ -888,6 +883,26 @@ class LearnedPGD(nn.Module):
             self.x_gt = nn.Parameter(torch.tensor(gt.reshape(gt.shape[0],-1)), requires_grad=False)
         else:
             self.x_gt = None
+
+    def step_schedule(self, step):
+        if self.step_decay != 1:
+            step = [step*self.step_decay**i for i in range(self.iter_stop)]
+        return step
+
+    def set_stepsize(self, step):
+        if step is None:
+            # Stimate stepsize from Lipschitz constant
+            if hasattr(self.acqu.meas_op, 'N'):
+                step = 1/self.acqu.meas_op.N
+            else:
+                # Estimate step size as 1/sv_max(H^TH); if failed, set to 1e-4
+                self.step_estimation = True
+                step = 1e-4
+
+        step = self.step_schedule(step)
+        if self.step_grad:
+            step = nn.Parameter(torch.tensor(step), requires_grad=self.step_grad)
+        self.step = step        
 
     def forward(self, x):
         r""" Full pipeline of reconstrcution network
@@ -1043,6 +1058,9 @@ class LearnedPGD(nn.Module):
         else: 
             # zero init
             x = torch.zeros_like(x)
+
+        # Force to zero for now!!!
+        x = torch.zeros_like(x)
         
         if self.log_fidelity:
             self.cost = []
@@ -1061,7 +1079,7 @@ class LearnedPGD(nn.Module):
             res = self.acqu.meas_op.forward_H(x)-m
             if self.wls:
                 res = res/self.meas_variance
-            upd = self.step*self.acqu.meas_op.adjoint(res)
+            upd = self.step[i]*self.acqu.meas_op.adjoint(res)
             x = x - upd
             x = x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
 
@@ -1080,5 +1098,5 @@ class LearnedPGD(nn.Module):
             print(f"Data fidelity: {(self.cost)}. Stepsize: {self.step}")
         if self.x_gt is not None:
             print(f"|x - x_gt| = {self.mse}")
-        return x
+        return x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
     
