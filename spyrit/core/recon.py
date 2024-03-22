@@ -887,6 +887,10 @@ class LearnedPGD(nn.Module):
     def step_schedule(self, step):
         if self.step_decay != 1:
             step = [step*self.step_decay**i for i in range(self.iter_stop)]
+        elif self.iter_stop > 1:
+            step = [step for i in range(self.iter_stop)]
+        else:
+            step = [step]
         return step
 
     def set_stepsize(self, step):
@@ -1040,8 +1044,7 @@ class LearnedPGD(nn.Module):
                 self.meas_variance = m
 
             # Normalize the stepsize to account for the variance
-            self.step = self.step*torch.mean(self.meas_variance)
-            #self.step = self.step*torch.min(self.meas_variance)
+            self.step = [step*torch.min(self.meas_variance) for step in self.step]
 
         # Compute the stepsize from the Lipschitz constant 
         if self.step_estimation:
