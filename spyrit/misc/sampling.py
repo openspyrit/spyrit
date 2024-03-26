@@ -40,8 +40,8 @@ def meas2img(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
     """
     y = np.pad(meas, (0, Mat.size - len(meas)))
     # Perm = Permutation_Matrix(Mat)
-    # Img = np.dot(np.transpose(Perm), y).reshape(Mat.shape)
-    Img = sort_by_significance(y, Mat, axis="rows", use_inverse_permutation=True)
+    # Img = np.dot(np.transpose(Perm), y)  #.reshape(Mat.shape)
+    Img = sort_by_significance(y, Mat, axis="rows", inverse_permutation=True)
     return Img.reshape(Mat.shape)
 
 
@@ -66,7 +66,7 @@ def meas2img2(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
     y = np.pad(meas, ((0, Mat.size - len(meas)), (0, 0)))
     # Perm = Permutation_Matrix(Mat)
     # Img = Perm.T @ y
-    Img = sort_by_significance(y, Mat, axis="rows", use_inverse_permutation=True)
+    Img = sort_by_significance(y, Mat, axis="rows", inverse_permutation=True)
     Img = Img.reshape((Nx, Ny, B))
     return Img
 
@@ -87,7 +87,7 @@ def img2meas(Img: np.ndarray, Mat: np.ndarray) -> np.ndarray:
     # Perm = Permutation_Matrix(Mat)
     # meas = np.dot(Perm, np.ravel(Img))
     meas = sort_by_significance(
-        np.ravel(Img), Mat, axis="rows", use_inverse_permutation=False
+        np.ravel(Img), Mat, axis="rows", inverse_permutation=False
     )
     return meas
 
@@ -121,7 +121,7 @@ def sort_by_significance(
     arr: np.ndarray,
     sig: np.ndarray,
     axis: str = "rows",
-    use_inverse_permutation: bool = False,
+    inverse_permutation: bool = False,
 ) -> np.ndarray:
     """
     Returns an array ordered by decreasing significance along the specified
@@ -138,19 +138,19 @@ def sort_by_significance(
         sig = np.random.randn(h)
 
         # 1
-        y = sort_by_significance(arr, sig, axis='rows', use_inverse_permutation=False)
+        y = sort_by_significance(arr, sig, axis='rows', inverse_permutation=False)
         y = Permutation_Matrix(sig) @ arr
 
         # 2
-        y = sort_by_significance(arr, sig, axis='rows', use_inverse_permutation=True)
+        y = sort_by_significance(arr, sig, axis='rows', inverse_permutation=True)
         y = Permutation_Matrix(sig).T @ arr
 
         # 3
-        y = sort_by_significance(arr, sig, axis='cols', use_inverse_permutation=False)
+        y = sort_by_significance(arr, sig, axis='cols', inverse_permutation=False)
         y = arr @ Permutation_Matrix(sig)
 
         # 4
-        y = sort_by_significance(arr, sig, axis='cols', use_inverse_permutation=True)
+        y = sort_by_significance(arr, sig, axis='cols', inverse_permutation=True)
         y = arr @ Permutation_Matrix(sig).T
 
     .. note::
@@ -165,7 +165,7 @@ def sort_by_significance(
         axis (str, optional):
             Axis along which to order the array. Must be either 'rows' or
             'cols'. Defaults to 'rows'.
-        use_inverse_permutation (bool, optional):
+        inverse_permutation (bool, optional):
             If True, the permutation matrix is transposed before being used.
             This is equivalent to using the inverse permutation matrix.
             Defaults to False.
@@ -186,14 +186,13 @@ def sort_by_significance(
             Array :math:`arr` ordered by decreasing significance :math:`sig`
             along its rows or columns.
     """
-    if arr.ndim == 1:
-        axis = "cols"
     try:
-        axis_index = ["rows", "cols"].index(axis) - 2
+        axis_index = ["rows", "cols"].index(axis)
     except ValueError:
         raise ValueError(f"axis must be either 'rows' or 'cols', not {axis}")
 
-    if np.prod(sig.shape) != arr.shape[axis_index]:
+    # if it is a 1D array, just take the first dimension
+    if np.prod(sig.shape) != arr.shape[min(axis_index, arr.ndim - 1)]:
         raise ValueError(
             "The number of elements in sig must be equal to the "
             "number of rows or columns in arr"
@@ -208,8 +207,8 @@ def sort_by_significance(
 
     if (
         (axis == "rows")
-        and (not use_inverse_permutation)
-        or ((axis == "cols") and use_inverse_permutation)
+        and (not inverse_permutation)
+        or ((axis == "cols") and inverse_permutation)
     ):
         reorder = reorder.argsort()
         # now it corresponds to the permutation matrix
