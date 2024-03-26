@@ -183,7 +183,8 @@ class SplitPoisson(nn.Module):
         self.max = nn.MaxPool1d(self.N)
 
         self.register_buffer(
-            "H_ones", torch.matmul(torch.ones(1, self.N), meas_op.get_H_T())
+            "H_ones", torch.ones(1, self.N) @ meas_op.get_H_T()
+            #"H_ones", meas_op.H(torch.ones((1, self.N))) 
         )
 
     def forward(self, x: torch.tensor) -> torch.tensor:
