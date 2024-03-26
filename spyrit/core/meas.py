@@ -970,7 +970,8 @@ class HadamSplit(LinearSplit, DynamicHadamSplit):
         # todo: check walsh2_S_fold_torch to speed up
         b, N = x.shape
 
-        x = sort_by_significance(x, self.Ord, "cols", True)  # new way
+        # False because self.Perm is already permuted vvvvv
+        x = sort_by_significance(x, self.Ord, "cols", False)  # new way
         # x = x @ self.Perm.T                               # old way
 
         x = x.view(b, 1, self.h, self.w)
