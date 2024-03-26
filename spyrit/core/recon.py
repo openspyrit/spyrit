@@ -906,6 +906,8 @@ class LearnedPGD(nn.Module):
         step = self.step_schedule(step)
         if self.step_grad:
             step = nn.Parameter(torch.tensor(step), requires_grad=self.step_grad)
+        else:
+            step = torch.tensor(step)
         self.step = step        
 
     def forward(self, x):
@@ -1032,23 +1034,29 @@ class LearnedPGD(nn.Module):
         # Measurement to image domain mapping
         bc, _ = x.shape
         
+        # Compute the stepsize from the Lipschitz constant 
+        if self.step_estimation:
+            self.stepsize_gd()
+
+        step = self.step 
+
         # Preprocessing in the measurement domain
         m = self.prep(x) # shape x = [b*c, M]
 
         if self.wls:
             # Get variance of the measurements
             if hasattr(self.prep, 'sigma'):                
-                self.meas_variance = self.prep.sigma(x)
+                meas_variance = self.prep.sigma(x)
+                self.meas_variance = meas_variance
             else:
                 print("WLS requires the variance of the measurements to be known!. Estimating var==m")
-                self.meas_variance = m
+                meas_variance = m
 
             # Normalize the stepsize to account for the variance
-            self.step = [step*torch.min(self.meas_variance) for step in self.step]
-
-        # Compute the stepsize from the Lipschitz constant 
-        if self.step_estimation:
-            self.stepsize_gd()
+            meas_variance_img_min, _ = torch.min(meas_variance, 1) # 128
+            step = step.view(self.iter_stop,1).to(x.device)
+            # Multiply meas_variance_img_min and step 
+            step = meas_variance_img_min*step
 
         # If pinv method is defined
         if hasattr(self.acqu.meas_op, 'pinv'):
@@ -1081,8 +1089,10 @@ class LearnedPGD(nn.Module):
             # gradient step (data fidelity)
             res = self.acqu.meas_op.forward_H(x)-m
             if self.wls:
-                res = res/self.meas_variance
-            upd = self.step[i]*self.acqu.meas_op.adjoint(res)
+                res = res/meas_variance
+                upd = step[i].view(bc, 1)*self.acqu.meas_op.adjoint(res)
+            else:
+                upd = step[i]*self.acqu.meas_op.adjoint(res)
             x = x - upd
             x = x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
 
