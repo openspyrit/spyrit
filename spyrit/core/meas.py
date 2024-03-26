@@ -132,7 +132,7 @@ class DynamicLinear(nn.Module):
             else:
                 raise e
 
-    def set_H_pinv(self, reg: float=1e-15, pinv: torch.tensor=None) -> None:
+    def set_H_pinv(self, reg: float = 1e-15, pinv: torch.tensor = None) -> None:
         r"""
         Stores in self.H_pinv the pseudo inverse of the measurement matrix :math:`H`.
 
@@ -168,7 +168,7 @@ class DynamicLinear(nn.Module):
         else:
             H_pinv = torch.linalg.pinv(self.get_H(), rcond=reg)
         self.H_pinv = nn.Parameter(H_pinv, requires_grad=False)
-        
+
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
         Simulates the measurement of a motion picture.
@@ -614,7 +614,7 @@ class Linear(DynamicLinear):
           )
     """
 
-    def __init__(self, H: np.ndarray, pinv=False, reg: float=1e-15):
+    def __init__(self, H: np.ndarray, pinv=False, reg: float = 1e-15):
         super().__init__(H)
         if pinv:
             self.set_H_pinv(reg=reg)
@@ -997,31 +997,33 @@ class HadamSplit(LinearSplit, DynamicHadamSplit):
 # Functions
 # =============================================================================
 
-def set_dyn_pinv(meas_op: DynamicLinear,
-                 motion: DeformationField,
-                 interp_mode: str='bilinear',
-                 # regularizer: str=None,
-                 reg: float=1e-15,
-                 ) -> None:
-    
+
+def set_dyn_pinv(
+    meas_op: DynamicLinear,
+    motion: DeformationField,
+    interp_mode: str = "bilinear",
+    # regularizer: str=None,
+    reg: float = 1e-15,
+) -> None:
+
     # get full image shape, defined by motion
     Nx_img, Ny_img = motion.Nx, motion.Ny
     n_frames = motion.n_frames
-    
+
     # get measurement matrix shape
     Nx_meas = meas_op.w
     Ny_meas = meas_op.h
     n_meas = meas_op.M
-    
+
     if Nx_meas * Ny_meas != meas_op.N:
         raise ValueError(
-            f"The image size in the measurement operator is not a square. " +
-            "Please assign self.h and self.w manually."
+            f"The image size in the measurement operator is not a square. "
+            + "Please assign self.h and self.w manually."
         )
-    
+
     # get the measurement matrix
     H = meas_op.get_H().view(n_meas, 1, Nx_meas, Ny_meas)
-        
+
     # if the image is larger than the measurement matrix, we need to pad the
     # measurement matrix with zeros
     if (Nx_img > Nx_meas) or (Ny_img > Ny_meas):
@@ -1029,15 +1031,16 @@ def set_dyn_pinv(meas_op: DynamicLinear,
         pad_right = Ny_img - Ny_meas - pad_left
         pad_top = (Nx_img - Nx_meas) // 2
         pad_bottom = Nx_img - Nx_meas - pad_top
-        
+
         pad = nn.ConstantPad2d((pad_left, pad_right, pad_top, pad_bottom), 0)
         H = pad(H)
-    
-    H_dyn_physical = motion(H, 0, meas_op.M, mode=interp_mode)  #########################
+
+    H_dyn_physical = motion(
+        H, 0, meas_op.M, mode=interp_mode
+    )  #########################
     # is it the reciprocal motion we are looking for ?
-    
+
     # find pseudo inverse according to regularizer
     # first no regularizer
     H_pinv = torch.linalg.pinv(H_dyn_physical, rcond=reg)
     meas_op.set_H_pinv(pinv=H_pinv)
-        
