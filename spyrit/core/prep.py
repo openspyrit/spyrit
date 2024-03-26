@@ -1,8 +1,18 @@
+"""
+Preprocessing operators applying affine transformations to the measurements. 
+
+There are two classes in this module: :class:`DirectPoisson` and
+:class:`SplitPoisson`. The first one is used for direct measurements (i.e. 
+without splitting the measurement matrix in its positive and negative parts),
+while the second one is used for split measurements. 
+"""
+
+from typing import Union, Tuple
+
 import torch
 import torch.nn as nn
+
 from spyrit.core.meas import Linear, LinearSplit, HadamSplit  # , LinearRowSplit
-from typing import Union, Tuple
-import math
 
 
 # ==============================================================================
