@@ -1,8 +1,12 @@
-# ==================================================================================
+"""
+Neural network models for image denoising.
+"""
+
 # from __future__ import print_function, division
 import torch
 import torch.nn as nn
 from collections import OrderedDict
+import copy
 
 
 # =============================================================================

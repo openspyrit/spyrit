@@ -1,8 +1,18 @@
+"""
+Preprocessing operators applying affine transformations to the measurements.
+
+There are two classes in this module: :class:`DirectPoisson` and
+:class:`SplitPoisson`. The first one is used for direct measurements (i.e.
+without splitting the measurement matrix in its positive and negative parts),
+while the second one is used for split measurements.
+"""
+
+from typing import Union, Tuple
+
 import torch
 import torch.nn as nn
+
 from spyrit.core.meas import Linear, LinearSplit, HadamSplit  # , LinearRowSplit
-from typing import Union, Tuple
-import math
 
 
 # ==============================================================================
@@ -183,7 +193,9 @@ class SplitPoisson(nn.Module):
         self.max = nn.MaxPool1d(self.N)
 
         self.register_buffer(
-            "H_ones", torch.matmul(torch.ones(1, self.N), meas_op.get_H_T())
+            "H_ones",
+            torch.ones(1, self.N) @ meas_op.get_H_T(),
+            # "H_ones", meas_op.H(torch.ones((1, self.N)))
         )
 
     def forward(self, x: torch.tensor) -> torch.tensor:
