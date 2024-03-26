@@ -1,3 +1,12 @@
+"""
+Measurement operators, static and dynamic.
+
+There are six classes contained in this module, each representing a different
+type of measurement operator. Three of them are static, i.e. they are used to
+simulate measurements of still images, and three are dynamic, i.e. they are used
+to simulate measurements of moving objects, represented as a sequence of images.
+"""
+
 import warnings
 
 import torch
