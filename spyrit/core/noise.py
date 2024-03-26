@@ -1,15 +1,35 @@
+"""
+Noise models for simulating measurements in imaging.
+
+There are four classes in this module, that each simulate a different type of
+noise in the measurements. The classes simulate the following types of noise:
+
+- NoNoise: Simulates measurements with no noise
+
+- Poisson: Simulates measurements corrupted by Poisson noise (each pixel
+    receives a number of photons that follows a Poisson distribution)
+
+- PoissonApproxGauss: Simulates measurements corrupted by Poisson noise, but
+    approximates the Poisson distribution with a Gaussian distribution
+
+- PoissonApproxGaussSameNoise: Simulates measurements corrupted by Poisson
+    noise, but all measurements in a batch are corrupted with the same noise
+    sample (approximated by a Gaussian distribution)
+"""
+
+from typing import Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import poisson
+
 from spyrit.core.meas import Linear, LinearSplit, HadamSplit  # , LinearRowSplit
-from typing import Union
 
 
-# =====================================================================================================================
-# NoNoise
-# =====================================================================================================================
+# =============================================================================
 class NoNoise(nn.Module):
+    # =========================================================================
     r"""
     Simulates measurements from images in the range [0;1] by computing
     :math:`y = \frac{1}{2} H(1+x)`.
@@ -69,9 +89,9 @@ class NoNoise(nn.Module):
         return x
 
 
-# ==================================================================================
+# =============================================================================
 class Poisson(NoNoise):
-    # ==================================================================================
+    # =========================================================================
     r"""
     Simulates measurements corrupted by Poisson noise
 
@@ -177,9 +197,9 @@ class Poisson(NoNoise):
         return x
 
 
-# ==================================================================================
+# =============================================================================
 class PoissonApproxGauss(NoNoise):
-    # ==================================================================================
+    # =========================================================================
     r"""
     Simulates measurements corrupted by Poisson noise. To accelerate the
     computation, we consider a Gaussian approximation to the Poisson
@@ -285,9 +305,9 @@ class PoissonApproxGauss(NoNoise):
         return x
 
 
-# ==================================================================================
+# =============================================================================
 class PoissonApproxGaussSameNoise(NoNoise):
-    # ==================================================================================
+    # =========================================================================
     r"""
     Simulates measurements corrupted by Poisson noise. To accelerate the
     computation, we consider a Gaussian approximation to the Poisson

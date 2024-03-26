@@ -3,25 +3,33 @@
 #   of the GNU Lesser General  Public Licence (LGPL)
 #   See LICENSE.md for further details
 # -----------------------------------------------------------------------------
+
+"""
+Training functions for deep learning models.
+"""
+
 from __future__ import print_function, division
 import sys
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import numpy as np
-import torchvision
-from torchvision import datasets, models, transforms
-
 import os
-import matplotlib.pyplot as plt
 import time
-from pathlib import Path
 import datetime
 import copy
 import pickle
-import statistics
 from collections import OrderedDict
 import re
+
+# from pathlib import Path
+# import statistics
+
+import torch
+import torch.nn as nn
+import numpy as np
+import torchvision
+import matplotlib.pyplot as plt
+
+# import torch.optim as optim
+# from torchvision import datasets, models, transforms
+
 
 ######################################################################
 # 1. Visualize a few images from the training set
