@@ -6,12 +6,12 @@ noise in the measurements. The classes simulate the following types of noise:
 
 - NoNoise: Simulates measurements with no noise
 
-- Poisson: Simulates measurements corrupted by Poisson noise (each pixel 
+- Poisson: Simulates measurements corrupted by Poisson noise (each pixel
     receives a number of photons that follows a Poisson distribution)
-    
+
 - PoissonApproxGauss: Simulates measurements corrupted by Poisson noise, but
     approximates the Poisson distribution with a Gaussian distribution
-    
+
 - PoissonApproxGaussSameNoise: Simulates measurements corrupted by Poisson
     noise, but all measurements in a batch are corrupted with the same noise
     sample (approximated by a Gaussian distribution)
