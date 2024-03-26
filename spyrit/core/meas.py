@@ -12,11 +12,10 @@ import warnings
 import torch
 import torch.nn as nn
 import numpy as np
-import scipy.stats
 
 from spyrit.misc.walsh_hadamard import walsh2_torch, walsh2_matrix
 from spyrit.misc.sampling import Permutation_Matrix, sort_by_significance
-from spyrit.core.time import DeformationField, AffineDeformationField
+from spyrit.core.time import DeformationField
 
 
 # =============================================================================
