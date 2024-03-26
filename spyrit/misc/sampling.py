@@ -212,7 +212,7 @@ def sort_by_significance(
     ):
         reorder = reorder.argsort()
         # now it corresponds to the permutation matrix
-        
+
     if arr.ndim == 1:
         return arr[reorder]
     elif axis == "rows":
