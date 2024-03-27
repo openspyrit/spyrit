@@ -766,6 +766,16 @@ class DCNet(nn.Module):
         return x
 
 
+#%%===========================================================================================
+class PositiveParameters(nn.Module):
+# ===========================================================================================
+    def __init__(self, params, requires_grad=True):
+        super(PositiveParameters, self).__init__()
+        self.params = torch.tensor(params, requires_grad=requires_grad)
+        
+    def forward(self):
+        return  torch.abs(self.params)
+
 # =============================================================================
 class LearnedPGD(nn.Module):
     r""" Learned Proximal Gradient Descent reconstruction network. 
@@ -904,10 +914,8 @@ class LearnedPGD(nn.Module):
                 step = 1e-4
 
         step = self.step_schedule(step)
-        if self.step_grad:
-            step = nn.Parameter(torch.tensor(step), requires_grad=self.step_grad)
-        else:
-            step = torch.tensor(step)
+        #step = nn.Parameter(torch.tensor(step), requires_grad=self.step_grad)        
+        step = PositiveParameters(step, requires_grad=self.step_grad)
         self.step = step        
 
     def forward(self, x):
@@ -1039,6 +1047,8 @@ class LearnedPGD(nn.Module):
             self.stepsize_gd()
 
         step = self.step 
+        if not isinstance(step, torch.Tensor):
+            step = step.params
 
         # Preprocessing in the measurement domain
         m = self.prep(x) # shape x = [b*c, M]
