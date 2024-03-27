@@ -103,6 +103,9 @@ class TikhonovMeasurementPriorDiag(nn.Module):
     def __init__(self, sigma: np.array, M: int):
         super().__init__()
 
+        if isinstance(sigma, np.ndarray):
+            sigma = torch.from_numpy(sigma)
+
         N = sigma.shape[0]
 
         self.comp = nn.Linear(M, N - M, False)
@@ -112,15 +115,15 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         var_prior = sigma[diag_index]
         var_prior = var_prior[:M]
 
-        self.denoi.weight.data = torch.from_numpy(np.sqrt(var_prior))
+        self.denoi.weight.data = torch.sqrt(var_prior)
         self.denoi.weight.data = self.denoi.weight.data.float()
         self.denoi.weight.requires_grad = False
 
         Sigma1 = sigma[:M, :M]
         Sigma21 = sigma[M:, :M]
-        W = Sigma21 @ np.linalg.inv(Sigma1)
+        W = Sigma21 @ torch.linalg.inv(Sigma1)
 
-        self.comp.weight.data = torch.from_numpy(W)
+        self.comp.weight.data = W
         self.comp.weight.data = self.comp.weight.data.float()
         self.comp.weight.requires_grad = False
 
@@ -597,7 +600,7 @@ class DCNet(nn.Module):
         super().__init__()
         self.Acq = noise
         self.prep = prep
-        Perm = noise.meas_op.get_Perm().cpu().numpy().T
+        Perm = noise.meas_op.get_Perm().cpu().T #.numpy()
         sigma_perm = Perm @ sigma @ Perm.T
         self.tikho = TikhonovMeasurementPriorDiag(sigma_perm, noise.meas_op.M)
         self.denoi = denoi
