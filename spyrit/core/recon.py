@@ -859,6 +859,7 @@ class LearnedPGD(nn.Module):
                  prep, 
                  denoi=nn.Identity(), 
                  iter_stop=3, 
+                 x0=0,
                  step=None,
                  step_estimation=False,
                  step_grad=False, 
@@ -873,6 +874,7 @@ class LearnedPGD(nn.Module):
         self.denoi = denoi
 
         # LPGD algo
+        self.x0 = x0
         self.iter_stop = iter_stop
         self.step = step
         self.step_estimation = step_estimation
@@ -1069,19 +1071,20 @@ class LearnedPGD(nn.Module):
             step = meas_variance_img_min*step
 
         # If pinv method is defined
-        if hasattr(self.acqu.meas_op, 'pinv'):
-            x = self.acqu.meas_op.pinv(m)
+        if self.x0 != 0:
+            if hasattr(self.acqu.meas_op, 'pinv'):
+                x = self.acqu.meas_op.pinv(m)
 
-            # proximal step (prior)
-            x = x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
-            x = self.denoi(x)      
-            x = x.view(bc,self.acqu.meas_op.N)
+                # proximal step (prior)
+                x = x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
+                if isinstance(self.denoi, nn.ModuleList):
+                    x = self.denoi[0](x) 
+                else:
+                    x = self.denoi(x)      
+                x = x.view(bc,self.acqu.meas_op.N)
         else: 
             # zero init
-            x = torch.zeros_like(x)
-
-        # Force to zero for now!!!
-        x = torch.zeros_like(x)
+            x = torch.zeros((bc,self.acqu.meas_op.N), device=x.device)
         
         if self.log_fidelity:
             self.cost = []
@@ -1107,7 +1110,10 @@ class LearnedPGD(nn.Module):
             x = x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
 
             # proximal step (prior)
-            x = self.denoi(x)            
+            if isinstance(self.denoi, nn.ModuleList):
+                x = self.denoi[i](x)
+            else:
+                x = self.denoi(x)
             x = x.view(bc,self.acqu.meas_op.N)
             if self.log_fidelity:
                 with torch.no_grad():
