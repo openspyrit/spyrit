@@ -36,7 +36,7 @@ from spyrit.misc.statistics import transform_gray_norm
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "images/")
+imgs_path = os.path.join(spyritPath, "spyrit/tutorial/images/")
 
 
 # Create a transform for natural images to normalized grayscale image tensors
@@ -245,7 +245,7 @@ alpha = 100.0  # number of photons
 
 # "Naive subsampling"
 # Measurement and noise operators
-meas_nai_op = HadamSplit(M, h, Ord_nai)
+meas_nai_op = HadamSplit(M, h, torch.from_numpy(Ord_nai))
 noise_nai_op = Poisson(meas_nai_op, alpha)
 
 # Measurement operator
@@ -253,7 +253,7 @@ x = x.view(b * c, h * w)  # vectorized image
 y_nai = noise_nai_op(x)  # a noisy measurement vector
 
 # "Variance subsampling"
-meas_var_op = HadamSplit(M, h, Ord_var)
+meas_var_op = HadamSplit(M, h, torch.from_numpy(Ord_var))
 noise_var_op = Poisson(meas_var_op, alpha)
 y_var = noise_var_op(x)  # a noisy measurement vector
 
@@ -289,7 +289,7 @@ print(f"Shape of simulated measurements y: {y_var.shape}")
 #       m = \frac{2(y_+-y_-)}{\alpha} - P\mathbb{1},
 #
 # where :math:`y_+=H_+\tilde{x}` and :math:`y_-=H_-\tilde{x}`.
-# This in handled internally by the :class:`spyrit.core.prep.SplitPoisson` class.
+# This is handled internally by the :class:`spyrit.core.prep.SplitPoisson` class.
 
 ###############################################################################
 # We compute the preprocessing operator and the measurements vectors for
@@ -333,7 +333,7 @@ m_nai_nonoise = prep_nonoise_op(y_nai_nonoise)
 #######################################E########################################
 # We can now plot the three measurement vectors
 
-from spyrit.misc.sampling import meas2img2
+from spyrit.misc.sampling import meas2img2, meas2img
 
 # Plot the three measurement vectors
 m_plot = m_nai_nonoise.numpy()

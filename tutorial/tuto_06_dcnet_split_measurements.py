@@ -124,7 +124,7 @@ alpha = 100.0  # number of photons
 Ord = Cov2Var(Cov)
 
 # Measurement and noise operators
-meas_op = HadamSplit(M, h, Ord)
+meas_op = HadamSplit(M, h, torch.from_numpy(Ord))
 noise_op = Poisson(meas_op, alpha)
 prep_op = SplitPoisson(alpha, meas_op)
 
