@@ -14,7 +14,7 @@ import torch.nn as nn
 import numpy as np
 
 from spyrit.misc.walsh_hadamard import walsh2_torch, walsh2_matrix
-from spyrit.misc.sampling import Permutation_Matrix, sort_by_significance
+import spyrit.misc.sampling as samp
 from spyrit.core.time import DeformationField
 
 
@@ -60,7 +60,7 @@ class DynamicLinear(nn.Module):
         :attr:`h` and :attr:`w` manually.
 
     Example:
-        >>> H = np.random.random([400, 1600])
+        >>> H = torch.rand([400, 1600])
         >>> meas_op = DynamicLinear(H)
         >>> print(meas_op)
         DynamicLinear(
@@ -69,18 +69,28 @@ class DynamicLinear(nn.Module):
           )
     """
 
-    def __init__(self, H: torch.tensor):
+    def __init__(self, H: torch.tensor, Ord: torch.tensor=None):
+        
         super().__init__()
 
         # convert H from numpy to torch tensor if needed
-        # convert to float 32 for memory efficiency
         if isinstance(H, np.ndarray):
+        # convert to float 32 for memory efficiency
             H = torch.from_numpy(H)
             warnings.warn(
-                "Using a numpy array is deprecated. Please use a torch tensor instead.",
+                "The input H should be a torch tensor. Compatiblity with "+
+                "numpy arrays will be removed in future versions.",
                 DeprecationWarning,
             )
-        H = H.type(torch.float32)
+        H = H.to(torch.float32)
+        
+        if Ord is not None:
+            H, ind = samp.sort_by_significance(H, Ord, "rows", 
+                                               False, get_indices=True)
+        else:
+            ind = torch.arange(0, H.shape[0])
+        self.indices = nn.Parameter(ind.to(torch.int32), requires_grad=False)
+        
         # nn.Parameter are sent to the device when using .to(device),
         self.H = nn.Parameter(H, requires_grad=False)
 
@@ -100,7 +110,7 @@ class DynamicLinear(nn.Module):
             Output: :math:`(M, N)`
 
         Example:
-            >>> H1 = np.random.random([400, 1600])
+            >>> H1 = torch.rand([400, 1600])
             >>> meas_op = Linear(H1)
             >>> H2 = meas_op.get_H()
             >>> print(H2.shape)
@@ -115,7 +125,7 @@ class DynamicLinear(nn.Module):
             Output: :math:`(N, M)`
 
         Example:
-            >>> H1 = np.random.random([400, 1600])
+            >>> H1 = torch.rand([400, 1600])
             >>> meas_op = Linear(H1, True)
             >>> H2 = meas_op.get_H_pinv()
             >>> print(H2.shape)
@@ -131,7 +141,7 @@ class DynamicLinear(nn.Module):
             else:
                 raise e
 
-    def set_H_pinv(self, reg: float = 1e-15, pinv: torch.tensor = None) -> None:
+    def set_H_pinv(self, reg: float = 1e-15, pinv: torch.tensor=None) -> None:
         r"""
         Stores in self.H_pinv the pseudo inverse of the measurement matrix :math:`H`.
 
@@ -194,7 +204,7 @@ class DynamicLinear(nn.Module):
 
         Example:
             >>> x = torch.rand([10, 400, 1600])
-            >>> H = np.random.random([400, 1600])
+            >>> H = torch.rand([400, 1600])
             >>> meas_op = DynamicLinear(H)
             >>> y = meas_op(x)
             >>> print(y.shape)
@@ -210,6 +220,49 @@ class DynamicLinear(nn.Module):
                 )
             else:
                 raise e
+
+    def sort_by_indices(self, 
+                        x: torch.tensor, 
+                        axis: str='rows',
+                        inverse_permutation: bool=False
+                        ) -> torch.tensor:
+        """Reorder the rows or columns of a tensor according to the indices.
+        
+        The indices are stored in the attribute :attr:`self.indices` and are
+        used to reorder the rows or columns of the input tensor :math:`x`. The
+        indices give the order in which the rows or columns should be reordered.
+
+        ..note::
+            This method is identical to the function
+            :func:`~spyrit.misc.sampling.sort_by_indices`.
+
+        Args:
+            x (torch.tensor): 
+                Input tensor to be reordered. The tensor must have the same
+                number of rows or columns as the number of elements in the 
+                attribute :attr:`self.indices`.
+                
+            axis (str, optional): 
+                Axis along which to order the tensor. Must be either "rows" or
+                "cols". Defaults to "rows".
+            
+            inverse_permutation (bool, optional): *
+                If True, the permutation matrix is transposed before being used.
+                Defaults to False.
+
+        Raises:
+            ValueError: 
+                If axis is not "rows" or "cols".
+            
+            ValueError: 
+                If the number of rows or columns in x is not equal to the length
+                of the indices.
+
+        Returns:
+            torch.tensor: 
+                Tensor x with reordered rows or columns according to the indices.
+        """
+        return samp.sort_by_indices(x, self.indices, axis, inverse_permutation)
 
     def __str__(self):
         s_begin = f"{self.__class__.__name__}(\n  "
@@ -242,7 +295,7 @@ class DynamicLinearSplit(DynamicLinear):
     :math:`M` the number of measurements.
 
     Args:
-        :math:`H` (np.ndarray): measurement matrix (linear operator) with
+        :math:`H` (torch.tensor): measurement matrix (linear operator) with
         shape :math:`(M, N)` where :math:`M` is the number of measurements and
         :math:`N` the number of pixels in the image.
 
@@ -274,7 +327,7 @@ class DynamicLinearSplit(DynamicLinear):
         there are measurements in the linear operator used to initialize the class.
 
     Example:
-        >>> H = np.array(np.random.random([400,1600]))
+        >>> H = torch.rand([400,1600])
         >>> meas_op = DynamicLinearSplit(H)
         >>> print(meas_op)
         DynamicLinearSplit(
@@ -284,17 +337,9 @@ class DynamicLinearSplit(DynamicLinear):
             )
     """
 
-    def __init__(self, H: torch.tensor):
-        # initialize self.H
-        if isinstance(H, np.ndarray):
-            H = torch.from_numpy(H)
-            warnings.warn(
-                "Using a numpy array is deprecated. Please use a torch tensor instead.",
-                DeprecationWarning,
-            )
-        H = H.type(torch.float32)
-
-        super().__init__(H)
+    def __init__(self, H: torch.tensor, Ord: torch.tensor=None):
+        
+        super().__init__(H, Ord)
 
         # initialize self.P = [ H^+ ]
         #                     [ H^- ]
@@ -303,8 +348,7 @@ class DynamicLinearSplit(DynamicLinear):
         H_neg = torch.maximum(zero, -H)
         # concatenate side by side, then reshape vertically
         P = torch.cat([H_pos, H_neg], 1).view(2 * self.M, self.N)
-        P = P.type(torch.FloatTensor)  # cast to float 32
-        self.P = nn.Parameter(P, requires_grad=False)
+        self.P = nn.Parameter(P.to(torch.float32), requires_grad=False)
 
     def get_P(self) -> torch.tensor:
         r"""Returns the attribute measurement matrix :math:`P`.
@@ -314,7 +358,7 @@ class DynamicLinearSplit(DynamicLinear):
             measurement matrix :math:`H` given at initialization.
 
         Example:
-            >>> H = np.random.random([400, 1600])
+            >>> H = torch.rand([400, 1600])
             >>> meas_op = LinearDynamicSplit(H)
             >>> P = meas_op.get_P()
             >>> print(P.shape)
@@ -360,7 +404,7 @@ class DynamicLinearSplit(DynamicLinear):
 
         Example:
             >>> x = torch.rand([10, 800, 1600])
-            >>> H = np.random.random([400, 1600])
+            >>> H = torch.rand([400, 1600])
             >>> meas_op = DynamicLinearSplit(H)
             >>> y = meas_op(x)
             >>> print(y.shape)
@@ -410,7 +454,7 @@ class DynamicLinearSplit(DynamicLinear):
 
         Example:
             >>> x = torch.rand([10, 400, 1600])
-            >>> H = np.random.random([400, 1600])
+            >>> H = torch.rand([400, 1600])
             >>> meas_op = LinearDynamicSplit(H)
             >>> y = meas_op.forward_H(x)
             >>> print(y.shape)
@@ -451,7 +495,7 @@ class DynamicHadamSplit(DynamicLinearSplit):
         image is assumed to be square, so the number of pixels in the image is
         :math:`N = h^2`.
 
-        :attr:`Ord` (np.ndarray): Order matrix with shape :math:`(h, h)` used to
+        :attr:`Ord` (torch.tensor): Order matrix with shape :math:`(h, h)` used to
         select the rows of the full Hadamard matrix :math:`F`
         compute the permutation matrix :math:`G^{T}` with shape :math:`(N, N)`
         (see the :mod:`~spyrit.misc.sampling` submodule)
@@ -500,7 +544,7 @@ class DynamicHadamSplit(DynamicLinearSplit):
         :math:`H = H_{+} - H_{-}`
 
     Example:
-        >>> Ord = np.random.random([32,32])
+        >>> Ord = torch.rand([32,32])
         >>> meas_op = HadamSplitDynamic(400, 32, Ord)
         >>> print(meas_op)
         HadamSplitDynamic(
@@ -511,22 +555,31 @@ class DynamicHadamSplit(DynamicLinearSplit):
           )
     """
 
-    def __init__(self, M: int, h: int, Ord: np.ndarray):
-        F = walsh2_matrix(h)  # full matrix
-        H = sort_by_significance(F, Ord, "rows", False)[:M, :]  # much faster
-        w = h  # we assume a square image
+    def __init__(self, M: int, h: int, Ord: torch.tensor=None):
+        
+        F = torch.from_numpy(walsh2_matrix(h))  # full matrix, torch tensor
+        
+        if Ord is not None:
+            F, ind = samp.sort_by_significance(F, Ord, "rows", 
+                                               False, get_indices=True)
+        else:
+            ind = torch.arange(0, h**2)
+        
+        H = F[:M, :]
+        super().__init__(H, Ord=None)
 
-        super().__init__(torch.from_numpy(H))
-
+        # overwrite indices that have been set to torch.arange(0, h**2)
+        self.indices = nn.Parameter(ind.to(torch.int32), requires_grad=False)
+        
         # overwrite self.h and self.w   /!\   is it necessary?
         self.h = h
-        self.w = w
+        self.w = h
 
         #######################################################################
         # these lines can be deleted in a future version, along with the
         # method self.get_Perm()
         #######################################################################
-        Perm = Permutation_Matrix(Ord)
+        Perm = samp.Permutation_Matrix(Ord)
         Perm = torch.from_numpy(Perm).float()  # float32
         self.Perm = nn.Parameter(Perm.T, requires_grad=False)
 
@@ -593,7 +646,7 @@ class Linear(DynamicLinear):
         call :meth:`set_H_pinv` to store the pseudo inverse.
 
     Example 1:
-        >>> H = np.random.random([400, 1600])
+        >>> H = torch.rand([400, 1600])
         >>> meas_op = Linear(H, pinv=False)
         >>> print(meas_op)
         Linear(
@@ -603,7 +656,7 @@ class Linear(DynamicLinear):
           )
 
     Example 2:
-        >>> H = np.random.random([400, 1600])
+        >>> H = torch.rand([400, 1600])
         >>> meas_op = Linear(H, True)
         >>> print(meas_op)
         Linear(
@@ -613,8 +666,13 @@ class Linear(DynamicLinear):
           )
     """
 
-    def __init__(self, H: np.ndarray, pinv=False, reg: float = 1e-15):
-        super().__init__(H)
+    def __init__(self, 
+                 H: torch.tensor, 
+                 pinv: bool=False, 
+                 reg: float=1e-15, 
+                 Ord: torch.tensor=None
+                 ):
+        super().__init__(H, Ord)
         if pinv:
             self.set_H_pinv(reg=reg)
 
@@ -627,7 +685,7 @@ class Linear(DynamicLinear):
             the image and :math:`M` the number of measurements.
 
         Example:
-            >>> H1 = np.random.random([400, 1600])
+            >>> H1 = torch.rand([400, 1600])
             >>> meas_op = Linear(H1)
             >>> H2 = meas_op.get_H_T()
             >>> print(H2.shape)
@@ -789,9 +847,14 @@ class LinearSplit(Linear, DynamicLinearSplit):
           )
     """
 
-    def __init__(self, H: np.ndarray, pinv=False, reg: float = 1e-15):
+    def __init__(self,
+                 H: torch.tensor, 
+                 pinv:bool=False, 
+                 reg: float=1e-15,
+                 Ord: torch.tensor=None
+                 ):
         # initialize from DynamicLinearSplit __init__
-        super(Linear, self).__init__(H)
+        super(Linear, self).__init__(H, Ord)
         if pinv:
             self.set_H_pinv(reg)
 
@@ -885,7 +948,7 @@ class HadamSplit(LinearSplit, DynamicHadamSplit):
         image is assumed to be square, so the number of pixels in the image is
         :math:`N = h^2`.
 
-        :attr:`Ord` (np.ndarray): Order matrix with shape :math:`(h, h)` used to
+        :attr:`Ord` (torch.tensor): Order matrix with shape :math:`(h, h)` used to
         compute the permutation matrix :math:`G^{T}` with shape :math:`(N, N)`
         (see the :mod:`~spyrit.misc.sampling` submodule)
 
@@ -942,14 +1005,13 @@ class HadamSplit(LinearSplit, DynamicHadamSplit):
           )
     """
 
-    def __init__(self, M: int, h: int, Ord: np.ndarray):
+    def __init__(self, M: int, h: int, Ord: torch.tensor):
         # initialize from DynamicHadamSplit (the MRO is not trivial here)
         super(Linear, self).__init__(M, h, Ord)
         self.set_H_pinv(pinv=1 / self.N * self.get_H_T())
 
         # store Ord as attribute for use of self.inverse() method
-        Ord = torch.from_numpy(Ord).float()  # float32
-        self.Ord = nn.Parameter(Ord, requires_grad=False)
+        self.Ord = nn.Parameter(Ord.to(torch.float32), requires_grad=False)
 
     def inverse(self, x: torch.tensor) -> torch.tensor:
         r"""Inverse transform of Hadamard-domain images
@@ -978,8 +1040,8 @@ class HadamSplit(LinearSplit, DynamicHadamSplit):
         # todo: check walsh2_S_fold_torch to speed up
         b, N = x.shape
 
-        # False because self.Perm is already permuted vvvvv
-        x = sort_by_significance(x, self.Ord, "cols", False)  # new way
+        # False because self.Perm is already permuted 
+        x = self.sort_by_indices(x, "cols", False)  # new way
         # x = x @ self.Perm.T                               # old way
 
         x = x.view(b, 1, self.h, self.w)
