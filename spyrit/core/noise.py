@@ -45,13 +45,13 @@ class NoNoise(nn.Module):
         :mod:`~spyrit.core.meas` submodule)
 
     Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator
-        >>> H =np.random.random([400,32*32])
+        >>> H = torch.rand([400,32*32])
         >>> linear_op = Linear(H)
         >>> linear_acq = NoNoise(linear_op)
 
     Example 2: Using a :class:`~spyrit.core.meas.HadamSplit` measurement operator
-        >>> H = np.random.random([400,32*32])
-        >>> Perm = np.random.random([32*32,32*32])
+        >>> H = torch.rand([400,32*32])
+        >>> Perm = torch.rand([32*32,32*32])
         >>> split_op = HadamSplit(H, Perm, 32, 32)
         >>> split_acq = NoNoise(split_op)
     """
@@ -111,18 +111,18 @@ class Poisson(NoNoise):
         :attr:`alpha` (float): Image intensity (in photoelectrons)
 
     Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator
-        >>> H =np.random.random([400,32*32])
+        >>> H = torch.rand([400,32*32])
         >>> linear_op = Linear(H)
         >>> linear_acq = Poisson(linear_op, 10.0)
 
     Example 2: Using a :class:`~spyrit.core.meas.HadamSplit` measurement operator
-        >>> H = np.random.random([400,32*32])
-        >>> Perm = np.random.random([32*32,32*32])
+        >>> H = torch.rand([400,32*32])
+        >>> Perm = torch.rand([32*32,32*32])
         >>> split_op = HadamSplit(H, Perm, 32, 32)
         >>> split_acq = Poisson(split_op, 200.0)
 
     Example 3: Using a :class:`~spyrit.core.meas.LinearSplit` measurement operator
-        >>> H = np.random.rand(24,64)
+        >>> H = torch.rand(24,64)
         >>> split_row_op = LinearSplit(H)
         >>> split_acq = Poisson(split_row_op, 50.0)
     """
@@ -147,7 +147,7 @@ class Poisson(NoNoise):
             - :attr:`Output`: :math:`(*, M)`
 
         Example 1: Two noisy measurement vectors from a :class:`~spyrit.core.meas.Linear` measurement operator
-            >>> H = np.random.random([400,32*32])
+            >>> H = torch.rand([400,32*32])
             >>> meas_op = Linear(H)
             >>> noise_op = Poisson(meas_op, 10.0)
             >>> x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
@@ -161,7 +161,7 @@ class Poisson(NoNoise):
             Measurements in (2237.00 , 2880.00)
 
         Example 2: Two noisy measurement vectors from a :class:`~spyrit.core.meas.HadamSplit` operator
-            >>> Perm = np.random.random([32*32,32*32])
+            >>> Perm = torch.rand([32*32,32*32])
             >>> meas_op = HadamSplit(H, Perm, 32, 32)
             >>> noise_op = Poisson(meas_op, 200.0)
             >>> x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
@@ -175,7 +175,7 @@ class Poisson(NoNoise):
             Measurements in (0.00 , 55077.00)
 
         Example 3: Two noisy measurement vectors from a :class:`~spyrit.core.meas.LinearSplit` operator
-            >>> H = np.random.rand(24,64)
+            >>> H = torch.rand(24,64)
             >>> meas_op = LinearSplit(H)
             >>> noise_op = Poisson(meas_op, 50.0)
             >>> x = torch.FloatTensor(10, 64, 92).uniform_(-1, 1)
@@ -222,17 +222,17 @@ class PoissonApproxGauss(NoNoise):
         :attr:`alpha` (float): Image intensity (in photoelectrons)
 
     Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator
-        >>> H = np.random.random([400,32*32])
+        >>> H = torch.rand([400,32*32])
         >>> meas_op = Linear(H)
         >>> noise_op = PoissonApproxGauss(meas_op, 10.0)
 
     Example 2: Using a :class:`~spyrit.core.meas.HadamSplit` operator
-        >>> Perm = np.random.random([32*32,32*32])
+        >>> Perm = torch.rand([32*32,32*32])
         >>> meas_op = HadamSplit(H, Perm, 32, 32)
         >>> noise_op = PoissonApproxGauss(meas_op, 200.0)
 
     Example 3: Using a :class:`~spyrit.core.meas.LinearSplit` operator
-        >>> H = np.random.rand(24,64)
+        >>> H = torch.rand(24,64)
         >>> meas_op = LinearSplit(H)
         >>> noise_op = PoissonApproxGauss(meas_op, 50.0)
     """
@@ -257,7 +257,7 @@ class PoissonApproxGauss(NoNoise):
             - :attr:`Output`: :math:`(*, M)`
 
         Example 1: Two noisy measurement vectors from a :class:`~spyrit.core.meas.Linear` measurement operator
-            >>> H = np.random.random([400,32*32])
+            >>> H = torch.rand([400,32*32])
             >>> meas_op = Linear(H)
             >>> noise_op = PoissonApproxGauss(meas_op, 10.0)
             >>> x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
@@ -271,7 +271,7 @@ class PoissonApproxGauss(NoNoise):
             Measurements in (2226.49 , 2934.42)
 
         Example 2: Two noisy measurement vectors from a :class:`~spyrit.core.meas.HadamSplit` operator
-            >>> Perm = np.random.random([32*32,32*32])
+            >>> Perm = torch.rand([32*32,32*32])
             >>> meas_op = HadamSplit(H, Perm, 32, 32)
             >>> noise_op = PoissonApproxGauss(meas_op, 200.0)
             >>> x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
@@ -285,7 +285,7 @@ class PoissonApproxGauss(NoNoise):
             Measurements in (0.00 , 56216.86)
 
         Example 3: Two noisy measurement vectors from a :class:`~spyrit.core.meas.LinearSplit` operator
-            >>> H = np.random.rand(24,64)
+            >>> H = torch.rand(24,64)
             >>> meas_op = LinearSplit(H)
             >>> noise_op = PoissonApproxGauss(meas_op, 50.0)
             >>> x = torch.FloatTensor(10, 64, 92).uniform_(-1, 1)
@@ -331,12 +331,12 @@ class PoissonApproxGaussSameNoise(NoNoise):
         :attr:`alpha` (float): Image intensity (in photoelectrons)
 
     Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator
-        >>> H = np.random.random([400,32*32])
+        >>> H = torch.rand([400,32*32])
         >>> meas_op = Linear(H)
         >>> noise_op = PoissonApproxGaussSameNoise(meas_op, 10.0)
 
     Example 2: Using a :class:`~spyrit.core.meas.HadamSplit` operator
-        >>> Perm = np.random.random([32*32,32*32])
+        >>> Perm = torch.rand([32*32,32*32])
         >>> meas_op = HadamSplit(H, Perm, 32, 32)
         >>> noise_op = PoissonApproxGaussSameNoise(meas_op, 200.0)
     """
@@ -357,7 +357,7 @@ class PoissonApproxGaussSameNoise(NoNoise):
             - :attr:`Output`: :math:`(*, M)`
 
         Example 1: Two noisy measurement vectors from a :class:`~spyrit.core.meas.Linear` measurement operator
-            >>> H = np.random.random([400,32*32])
+            >>> H = torch.rand([400,32*32])
             >>> meas_op = Linear(H)
             >>> noise_op = PoissonApproxGaussSameNoise(meas_op, 10.0)
             >>> x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
@@ -371,7 +371,7 @@ class PoissonApproxGaussSameNoise(NoNoise):
             Measurements in (2226.49 , 2934.42)
 
         Example 2: Two noisy measurement vectors from a :class:`~spyrit.core.meas.HadamSplit` operator
-            >>> Perm = np.random.random([32*32,32*32])
+            >>> Perm = torch.rand([32*32,32*32])
             >>> meas_op = HadamSplit(H, Perm, 32, 32)
             >>> noise_op = PoissonApproxGaussSameNoise(meas_op, 200.0)
             >>> x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
