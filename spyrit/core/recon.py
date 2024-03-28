@@ -2,6 +2,8 @@
 Reconstruction methods and networks.
 """
 
+import warnings
+
 import math
 import torch
 import torch.nn as nn
@@ -21,8 +23,8 @@ class PseudoInverse(nn.Module):
     :math:`H` is the Moore-Penrose pseudo inverse of :math:`H`.
 
     Example:
-        >>> H = np.random.random([400,32*32])
-        >>> Perm = np.random.random([32*32,32*32])
+        >>> H = torch.rand([400,32*32])
+        >>> Perm = torch.rand([32*32,32*32])
         >>> meas_op =  HadamSplit(H, Perm, 32, 32)
         >>> y = torch.rand([85,400], dtype=torch.float)
         >>> pinv_op = PseudoInverse()
@@ -53,8 +55,8 @@ class PseudoInverse(nn.Module):
             :attr:`output`: :math:`(*, N)`
 
         Example:
-            >>> H = np.random.random([400,32*32])
-            >>> Perm = np.random.random([32*32,32*32])
+            >>> H = torch.rand([400,32*32])
+            >>> Perm = torch.rand([32*32,32*32])
             >>> meas_op =  HadamSplit(H, Perm, 32, 32)
             >>> y = torch.rand([85,400], dtype=torch.float)
             >>> pinv_op = PseudoInverse()
@@ -96,14 +98,19 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         :math:`\Sigma_1`.
 
     Example:
-        >>> sigma = np.random.random([32*32, 32*32])
+        >>> sigma = torch.rand([32*32, 32*32])
         >>> recon_op = TikhonovMeasurementPriorDiag(sigma, 400)
     """
 
-    def __init__(self, sigma: np.array, M: int):
+    def __init__(self, sigma: torch.tensor, M: int):
         super().__init__()
 
         if isinstance(sigma, np.ndarray):
+            warnings.warn(
+                "The input sigma should be a torch tensor. Compatiblity with "+
+                "numpy arrays will be removed in future versions.",
+                DeprecationWarning,
+            )
             sigma = torch.from_numpy(sigma)
 
         N = sigma.shape[0]
@@ -111,9 +118,7 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         self.comp = nn.Linear(M, N - M, False)
         self.denoi = Denoise_layer(M)
 
-        diag_index = np.diag_indices(N)
-        var_prior = sigma[diag_index]
-        var_prior = var_prior[:M]
+        var_prior = sigma.diag()[:M]
 
         self.denoi.weight.data = torch.sqrt(var_prior)
         self.denoi.weight.data = self.denoi.weight.data.float()
@@ -169,9 +174,9 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 
         Example:
             >>> B, H, M = 85, 32, 512
-            >>> sigma = np.random.random([H**2, H**2])
+            >>> sigma = torch.rand([H**2, H**2])
             >>> recon_op = TikhonovMeasurementPriorDiag(sigma, M)
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >> meas = HadamSplit(M, H, Ord)
             >>> y = torch.rand([B,M], dtype=torch.float)
             >>> x_0 = torch.zeros((B, H**2), dtype=torch.float)
@@ -334,7 +339,7 @@ class PinvNet(nn.Module):
 
     Example:
         >>> B, C, H, M = 10, 1, 64, 64**2
-        >>> Ord = np.ones((H,H))
+        >>> Ord = torch.ones((H,H))
         >>> meas = HadamSplit(M, H, Ord)
         >>> noise = NoNoise(meas)
         >>> prep = SplitPoisson(1.0, M, H*H)
@@ -367,7 +372,7 @@ class PinvNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
@@ -402,7 +407,7 @@ class PinvNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
@@ -430,7 +435,7 @@ class PinvNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H**2)
@@ -458,7 +463,7 @@ class PinvNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H**2)
@@ -484,7 +489,7 @@ class PinvNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H**2)
@@ -584,11 +589,11 @@ class DCNet(nn.Module):
 
     Example:
         >>> B, C, H, M = 10, 1, 64, 64**2
-        >>> Ord = np.ones((H,H))
+        >>> Ord = torch.ones((H,H))
         >>> meas = HadamSplit(M, H, Ord)
         >>> noise = NoNoise(meas)
         >>> prep = SplitPoisson(1.0, M, H*H)
-        >>> sigma = np.random.random([H**2, H**2])
+        >>> sigma = torch.rand([H**2, H**2])
         >>> recnet = DCNet(noise,prep,sigma)
         >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
         >>> z = recnet(x)
@@ -618,11 +623,11 @@ class DCNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = np.random.random([H**2, H**2])
+            >>> sigma = torch.rand([H**2, H**2])
             >>> recnet = DCNet(noise,prep,sigma)
             >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
             >>> z = recnet(x)
@@ -655,11 +660,11 @@ class DCNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = np.random.random([H**2, H**2])
+            >>> sigma = torch.rand([H**2, H**2])
             >>> recnet = DCNet(noise,prep,sigma)
             >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
             >>> z = recnet.acquire(x)
@@ -688,11 +693,11 @@ class DCNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = np.random.random([H**2, H**2])
+            >>> sigma = torch.rand([H**2, H**2])
             >>> recnet = DCNet(noise,prep,sigma)
             >>> x = torch.rand((B*C,2*M), dtype=torch.float)
             >>> z = recnet.reconstruct(x)
@@ -812,11 +817,11 @@ class DCDRUNet(DCNet):
 
     Example:
         >>> B, C, H, M = 10, 1, 64, 64**2
-        >>> Ord = np.ones((H,H))
+        >>> Ord = torch.ones((H,H))
         >>> meas = HadamSplit(M, H, Ord)
         >>> noise = NoNoise(meas)
         >>> prep = SplitPoisson(1.0, M, H*H)
-        >>> sigma = np.random.random([H**2, H**2])
+        >>> sigma = torch.rand([H**2, H**2])
         >>> n_channels = 1                   # 1 for grayscale image
         >>> model_drunet_path = './spyrit/drunet/model_zoo/drunet_gray.pth'
         >>> denoi_drunet = drunet(in_nc=n_channels+1, out_nc=n_channels, nc=[64, 128, 256, 512], nb=4, act_mode='R',
@@ -844,11 +849,11 @@ class DCDRUNet(DCNet):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = np.random.random([H**2, H**2])
+            >>> sigma = torch.rand([H**2, H**2])
             >>> n_channels = 1                   # 1 for grayscale image
             >>> model_drunet_path = './spyrit/drunet/model_zoo/drunet_gray.pth'
             >>> denoi_drunet = drunet(in_nc=n_channels+1, out_nc=n_channels, nc=[64, 128, 256, 512], nb=4, act_mode='R',
