@@ -1,5 +1,8 @@
-from scipy.stats import rankdata
+from typing import Union
+
+import torch
 import numpy as np
+from scipy.stats import rankdata
 
 
 # from /misc/statistics.py
@@ -117,17 +120,18 @@ def Permutation_Matrix(Mat: np.ndarray) -> np.ndarray:
     return P
 
 
-def sort_by_significance(
-    arr: np.ndarray,
-    sig: np.ndarray,
-    axis: str = "rows",
-    inverse_permutation: bool = False,
-) -> np.ndarray:
+def sort_by_significance(arr: Union[np.ndarray, torch.tensor],
+                         sig: Union[np.ndarray, torch.tensor],
+                         axis: str="rows",
+                         inverse_permutation: bool=False,
+                         get_indices: bool=False,
+                         ) -> Union[np.ndarray, torch.tensor]:
     """
     Returns an array ordered by decreasing significance along the specified
     dimension.
 
-    The significance values are given in the :math:`sig` array.
+    The significance values are given in the :math:`sig` array. The type of
+    the output is the same as the input array :math:`arr`.
 
     This function is equivalent to (but faster) :func:`Permutation_Matrix` and
     multiplying the input array by the permutation matrix. More specifically,
@@ -158,17 +162,25 @@ def sort_by_significance(
         elements in the flattened :math:`sig` array.
 
     Args:
-        arr (np.ndarray):
-            Array to be ordered by rows or columns.
-        sig (np.ndarray):
+        arr (np.ndarray or torch.tensor):
+            Array to be ordered by rows or columns. The output's type is 
+            the same as this parameter's type.
+            
+        sig (np.ndarray or torch.tensor):
             Array containing the significance values.
+            
         axis (str, optional):
             Axis along which to order the array. Must be either 'rows' or
             'cols'. Defaults to 'rows'.
+            
         inverse_permutation (bool, optional):
             If True, the permutation matrix is transposed before being used.
             This is equivalent to using the inverse permutation matrix.
             Defaults to False.
+            
+        get_indices (bool, optional):
+            If True, the function returns the indices of the significance
+            values in decreasing order. Defaults to False.
 
     Shape:
         - arr: :math:`(*, r, c)` or :math:`(c)`, where :math:`(*)` is any
@@ -182,9 +194,80 @@ def sort_by_significance(
         - Output: :math:`(*, r, c)` or :math:`(c)`
 
     Returns:
-        (np.ndarray):
-            Array :math:`arr` ordered by decreasing significance :math:`sig`
+        Tuple of np.ndarray or torch.tensor:
+        
+        - **Array** :math:`arr` ordered by decreasing significance :math:`sig`
             along its rows or columns.
+            
+        - **Indices** :math:`indices` of the significance values in decreasing
+            order. This is useful if you want to reorder other arrays in the
+            same way.
+    """
+    # compute indices in a stable way (otherwise quicksort messes up the order)
+    if isinstance(sig, torch.Tensor):
+        indices = torch.argsort(-sig.flatten(), stable=True)
+        if get_indices and isinstance(arr, np.ndarray):
+            indices = indices.numpy()   # both indices and arr are numpy arrays
+    elif isinstance(sig, np.ndarray):
+        indices = np.argsort(-sig.flatten(), kind="stable")
+        if get_indices and isinstance(arr, torch.Tensor):
+            indices = torch.from_numpy(indices) # both are torch tensors
+    else:
+        raise ValueError("indices must be a numpy array or a torch tensor")
+    
+    if get_indices:
+        return (sort_by_indices(arr, indices, axis, inverse_permutation), 
+                indices)
+    return sort_by_indices(arr, indices, axis, inverse_permutation)
+    
+    
+def sort_by_indices(arr: Union[np.ndarray, torch.tensor],
+                    indices: Union[np.ndarray, torch.tensor],
+                    axis: str="rows",
+                    inverse_permutation: bool=False,
+                    ) -> Union[np.ndarray, torch.tensor]:
+    """Returns an array ordered by the given indices along the specified axis.
+    
+    The indices are used to reorder the array along the specified axis. The
+    indices give the order in which the elements should be placed. The type of
+    the output is the same as the input array :math:`arr`.
+
+    Args:
+        arr (np.ndarray or torch.tensor): 
+            Array to be ordered by rows or columns. The output's type is 
+            the same as this parameter's type.
+            
+        indices (np.ndarray or torch.tensor): 
+            Array containing the indices of the elements in the order they
+            should be placed.
+        
+        axis (str, optional): 
+            Axis along which to order the array. Must be either "rows" or
+            "cols". Defaults to "rows".
+            
+        inverse_permutation (bool, optional): 
+            If True, the permutation matrix is transposed before being used.
+            Defaults to False.
+
+    Raises:
+        ValueError: 
+            If axis is not "rows" or "cols".
+        
+        ValueError: 
+            If the number of rows or columns in x is not equal to the length
+            of the indices.
+
+    Returns:
+        np.ndarray or torch.tensor: 
+            Array ordered by the given indices along the specified axis.
+            The type is the same as the input array arr.
+        
+    Example:
+        >>> arr = [[10, 20, 30], [100, 200, 300]]
+        >>> indices = [2, 0, 1]
+        >>> sort_by_indices(arr, indices, axis="cols")
+        array([[ 30,  10,  20],
+               [300, 100, 200]])
     """
     try:
         axis_index = ["rows", "cols"].index(axis)
@@ -192,24 +275,15 @@ def sort_by_significance(
         raise ValueError(f"axis must be either 'rows' or 'cols', not {axis}")
 
     # if it is a 1D array, just take the first dimension
-    if np.prod(sig.shape) != arr.shape[min(axis_index, arr.ndim - 1)]:
+    if len(indices.flatten()) != arr.shape[min(axis_index, arr.ndim - 1)]:
         raise ValueError(
-            "The number of elements in sig must be equal to the "
-            "number of rows or columns in arr"
+            "The number of rows or columns in x must be equal to the "
+            "length of the indices array."
         )
-    reorder = (-sig.flatten()).argsort().argsort()
-    # try:
-    #     sig = sig.cpu().numpy()
-    # except:
-    #     pass
-    # reorder = rankdata(-sig, method="ordinal") - 1  # -1 to make it zero-based
-    # reorder corresponds to the inverse permutation matrix
+    reorder = indices.argsort()
 
-    if (
-        (axis == "rows")
-        and (not inverse_permutation)
-        or ((axis == "cols") and inverse_permutation)
-    ):
+    if   ( ((axis == "rows") and (not inverse_permutation))
+        or ((axis == "cols") and inverse_permutation) ):
         reorder = reorder.argsort()
         # now it corresponds to the permutation matrix
 
@@ -217,10 +291,7 @@ def sort_by_significance(
         return arr[reorder]
     elif axis == "rows":
         return arr[..., reorder, :]
-    else:
-        return arr[..., :, reorder]
-    # return np.take(arr, reorder, axis_index)
-
+    return arr[..., :, reorder]
 
 def reorder(meas: np.ndarray, Perm_acq: np.ndarray, Perm_rec: np.ndarray) -> np.ndarray:
     r"""Reorder measurement vectors
