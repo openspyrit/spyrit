@@ -4,9 +4,7 @@ Author: Romain Phan
 """
 
 import torch
-import numpy as np
-
-from spyrit.core.time import DeformationField, AffineDeformationField
+import math
 
 from test_helpers import assert_test, assert_elementwise_equal
 
@@ -16,13 +14,14 @@ def test_core_time():
     print("\n*** Testing time.py ***")
 
     # =========================================================================
-    ## Test DeformationField
+    ## DeformationField
     print("DeformationField")
-    n_frames = 10
-    nx, ny = 64, 64
+    from spyrit.core.time import DeformationField
 
     # constructor
     print("\tconstructor... ", end="")
+    n_frames = 10
+    nx, ny = 64, 64
     matrix = torch.randn(n_frames, nx, ny, 2, dtype=torch.float)
     def_field = DeformationField(matrix)
     print("ok")
@@ -69,35 +68,30 @@ def test_core_time():
     )
     print("ok")
 
+
     # =========================================================================
-    ## Test AffineDeformationField
+    ## AffineDeformationField
     print("AffineDeformationField")
+    from spyrit.core.time import AffineDeformationField
 
     # constructor
     print("\tconstructor... ", end="")
     mat = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=torch.float)
-
     def f(t):
         return mat
-
     field = AffineDeformationField(f, 0, 0, 1, (64, 64))
     print("ok")
 
     # forward, test with a counter clockwise rotation
     print("\tforward... ", end="")
-
     def s(t):
-        return np.sin(2 * np.pi * t)
-
+        return math.sin(2 * math.pi * t)
     def c(t):
-        return np.cos(2 * np.pi * t)
-
+        return math.cos(2 * math.pi * t)
     def f(t):
         return torch.tensor([[c(t), -s(t), 0], [s(t), c(t), 0], [0, 0, 1]])
-
     img = torch.FloatTensor([[[1, 2], [3, 4]]])
     img_size = img.shape[-2:]
-
     # 4 frames, sampled at [0, 0.25, 0.5, 0.75]
     t0, t1, n_frames = 0, 0.75, 4
     field = AffineDeformationField(f, t0, t1, n_frames, img_size, align_corners=False)
@@ -129,6 +123,7 @@ def test_core_time():
     )
     print("ok")
 
+    # =========================================================================
     print("All tests passed for time.py")
     print("==============================")
     return True
