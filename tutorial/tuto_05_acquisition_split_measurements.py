@@ -36,7 +36,7 @@ from spyrit.misc.statistics import transform_gray_norm
 h = 64  # image size hxh
 i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "spyrit/tutorial/images/")
+imgs_path = os.path.join(spyritPath, "images/")
 
 
 # Create a transform for natural images to normalized grayscale image tensors
@@ -333,7 +333,7 @@ m_nai_nonoise = prep_nonoise_op(y_nai_nonoise)
 #######################################E########################################
 # We can now plot the three measurement vectors
 
-from spyrit.misc.sampling import meas2img2, meas2img
+from spyrit.misc.sampling import meas2img2
 
 # Plot the three measurement vectors
 m_plot = m_nai_nonoise.numpy()
