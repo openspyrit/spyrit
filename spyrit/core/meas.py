@@ -1008,10 +1008,7 @@ class HadamSplit(LinearSplit, DynamicHadamSplit):
     def __init__(self, M: int, h: int, Ord: torch.tensor):
         # initialize from DynamicHadamSplit (the MRO is not trivial here)
         super(Linear, self).__init__(M, h, Ord)
-        self.set_H_pinv(pinv=1 / self.N * self.get_H_T())
-
-        # store Ord as attribute for use of self.inverse() method
-        self.Ord = nn.Parameter(Ord.to(torch.float32), requires_grad=False)
+        self.set_H_pinv(pinv = 1 / self.N * self.get_H_T())
 
     def inverse(self, x: torch.tensor) -> torch.tensor:
         r"""Inverse transform of Hadamard-domain images
@@ -1049,9 +1046,6 @@ class HadamSplit(LinearSplit, DynamicHadamSplit):
         # todo: initialize with 1D transform to speed up
         x = 1 / self.N * walsh2_torch(x)
         return x.view(b, N)
-
-    def _attributeslist(self):
-        return super()._attributeslist() + [("Perm", self.Ord.shape)]
 
 
 # =============================================================================
