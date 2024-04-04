@@ -16,6 +16,7 @@ from spyrit.core.prep import DirectPoisson, SplitPoisson
 
 import spyrit.misc.sampling as samp
 
+
 # =============================================================================
 class PseudoInverse(nn.Module):
     # =========================================================================
@@ -111,8 +112,8 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 
         if isinstance(sigma, np.ndarray):
             warnings.warn(
-                "The input sigma should be a torch tensor. Compatiblity with "+
-                "numpy arrays will be removed in future versions.",
+                "The input sigma should be a torch tensor. Compatiblity with "
+                + "numpy arrays will be removed in future versions.",
                 DeprecationWarning,
             )
             sigma = torch.from_numpy(sigma)
@@ -450,11 +451,10 @@ class PinvNet(nn.Module):
             torch.Size([10, 1, 64, 64])
         """
         m = self.prep(y)
-        m = torch.nn.functional.pad(m, 
-                            (0, self.acqu.meas_op.N - self.acqu.meas_op.M))
+        m = torch.nn.functional.pad(m, (0, self.acqu.meas_op.N - self.acqu.meas_op.M))
         # z = m @ self.acqu.meas_op.get_Perm().T  # old way
         # new way, tested and working :
-        z = self.acqu.meas_op.sort_by_indices(m, 'cols', False)  
+        z = self.acqu.meas_op.sort_by_indices(m, "cols", False)
         return z.view(-1, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
     def reconstruct(self, x):
@@ -608,31 +608,32 @@ class DCNet(nn.Module):
         torch.Size([10, 1, 64, 64])
     """
 
-    def __init__(self, 
-                 noise: NoNoise, 
-                 prep: Union[DirectPoisson, SplitPoisson], 
-                 sigma: torch.tensor,
-                 denoi=nn.Identity()
-                 ):
+    def __init__(
+        self,
+        noise: NoNoise,
+        prep: Union[DirectPoisson, SplitPoisson],
+        sigma: torch.tensor,
+        denoi=nn.Identity(),
+    ):
         super().__init__()
         self.Acq = noise
         self.prep = prep
         self.denoi = denoi
         sigma = sigma.to(torch.float32)
-        
+
         # old way
         # Perm = noise.meas_op.get_Perm().cpu().T #.numpy()
         # sigma = Perm @ sigma @ Perm.T
-        
+
         # new way
         # Ord = noise.meas_op.Ord
         # Perm = torch.from_numpy(samp.Permutation_Matrix(noise.meas_op.Ord)).to(torch.float32)
         # sigma = samp.sort_by_significance(sigma, Ord, 'rows', True)
-        # sigma = samp.sort_by_significance(sigma, Ord, 'cols', False)        
-        sigma = noise.sort_by_indices(sigma, 'rows', False)
-        sigma = noise.sort_by_indices(sigma, 'cols', True)
+        # sigma = samp.sort_by_significance(sigma, Ord, 'cols', False)
+        sigma = noise.sort_by_indices(sigma, "rows", False)
+        sigma = noise.sort_by_indices(sigma, "cols", True)
         sigma_perm = sigma
-        
+
         # save in tikho
         self.tikho = TikhonovMeasurementPriorDiag(sigma_perm, noise.meas_op.M)
 

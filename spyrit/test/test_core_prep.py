@@ -3,6 +3,7 @@ Created on Wed Feb 15 15:19:24 2023
 
 @author: ducros & phan
 """
+
 import torch
 
 from spyrit.core.meas import Linear, LinearSplit, HadamSplit
@@ -11,21 +12,21 @@ from test_helpers import assert_test
 
 
 def test_core_prep():
-    
+
     print("\n*** Testing prep.py ***")
 
     # =========================================================================
     ## DirectPoisson
     print("DirectPoisson")
     from spyrit.core.prep import DirectPoisson
-    
+
     # constructor
     print("\tconstructor... ", end="")
     H = torch.rand([400, 32 * 32])
     meas_op = Linear(H)
     prep_op = DirectPoisson(1.0, meas_op)
     print("ok")
-    
+
     # forward
     print("\tforward... ", end="")
     x = torch.rand([10, 400], dtype=torch.float)
@@ -47,7 +48,6 @@ def test_core_prep():
     y = prep_op.denormalize_expe(x, beta, 32, 32)
     assert_test(y.shape, torch.Size([10, 1, 32, 32]), "Wrong matrix size")
     print("ok")
-
 
     # =========================================================================
     ## Test SplitPoisson
