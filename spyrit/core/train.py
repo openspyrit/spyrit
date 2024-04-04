@@ -808,6 +808,9 @@ def save_net(title, model):
 
 def load_net(title, model, device=None, strict=True):
     """Loads net defined by title"""
+    # if title.endswith(".pth"):
+    #     model_out_path = "{}".format(title)
+    # else:
     model_out_path = "{}.pth".format(title)
     try:
         if device is None:

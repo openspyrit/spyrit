@@ -117,7 +117,7 @@ print(f"Shape of the measurement matrix: {H.shape}")
 
 from spyrit.core.meas import Linear
 
-meas_op = Linear(H, pinv=True)
+meas_op = Linear(torch.from_numpy(H), pinv=True)
 
 # %%
 # Noiseless case
