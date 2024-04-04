@@ -88,13 +88,11 @@ class NoNoise(nn.Module):
         x = self.meas_op(x)
         return x
 
-    def sort_by_indices(self, 
-                        x: torch.tensor, 
-                        axis: str='rows',
-                        inverse_permutation: bool=False
-                        ) -> torch.tensor:
+    def sort_by_indices(
+        self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
+    ) -> torch.tensor:
         """Reorder the rows or columns of a tensor according to the indices.
-        
+
         The indices are stored in the attribute :attr:`self.meas_op.indices`
         and are used to reorder the rows or columns of the input tensor
         :math:`x`. The indices give the order in which the rows or columns
@@ -105,29 +103,29 @@ class NoNoise(nn.Module):
             :func:`~spyrit.misc.sampling.sort_by_indices`.
 
         Args:
-            x (torch.tensor): 
+            x (torch.tensor):
                 Input tensor to be reordered. The tensor must have the same
-                number of rows or columns as the number of elements in the 
+                number of rows or columns as the number of elements in the
                 attribute :attr:`self.indices`.
-                
-            axis (str, optional): 
+
+            axis (str, optional):
                 Axis along which to order the tensor. Must be either "rows" or
                 "cols". Defaults to "rows".
-            
+
             inverse_permutation (bool, optional): *
                 If True, the permutation matrix is transposed before being used.
                 Defaults to False.
 
         Raises:
-            ValueError: 
+            ValueError:
                 If axis is not "rows" or "cols".
-            
-            ValueError: 
+
+            ValueError:
                 If the number of rows or columns in x is not equal to the length
                 of the indices.
 
         Returns:
-            torch.tensor: 
+            torch.tensor:
                 Tensor x with reordered rows or columns according to the indices.
         """
         return self.meas_op.sort_by_indices(x, axis, inverse_permutation)
