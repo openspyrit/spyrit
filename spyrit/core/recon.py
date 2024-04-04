@@ -3,6 +3,7 @@ Reconstruction methods and networks.
 """
 
 import warnings
+from typing import Union
 
 import math
 import torch
@@ -10,7 +11,10 @@ import torch.nn as nn
 import numpy as np
 
 from spyrit.core.meas import HadamSplit
+from spyrit.core.noise import NoNoise
+from spyrit.core.prep import DirectPoisson, SplitPoisson
 
+import spyrit.misc.sampling as samp
 
 # =============================================================================
 class PseudoInverse(nn.Module):
@@ -446,8 +450,11 @@ class PinvNet(nn.Module):
             torch.Size([10, 1, 64, 64])
         """
         m = self.prep(y)
-        m = torch.nn.functional.pad(m, (0, self.acqu.meas_op.N - self.acqu.meas_op.M))
-        z = m @ self.acqu.meas_op.get_Perm().T
+        m = torch.nn.functional.pad(m, 
+                            (0, self.acqu.meas_op.N - self.acqu.meas_op.M))
+        # z = m @ self.acqu.meas_op.get_Perm().T  # old way
+        # new way, tested and working :
+        z = self.acqu.meas_op.sort_by_indices(m, 'cols', False)  
         return z.view(-1, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
     def reconstruct(self, x):
@@ -601,14 +608,33 @@ class DCNet(nn.Module):
         torch.Size([10, 1, 64, 64])
     """
 
-    def __init__(self, noise, prep, sigma, denoi=nn.Identity()):
+    def __init__(self, 
+                 noise: NoNoise, 
+                 prep: Union[DirectPoisson, SplitPoisson], 
+                 sigma: torch.tensor,
+                 denoi=nn.Identity()
+                 ):
         super().__init__()
         self.Acq = noise
         self.prep = prep
-        Perm = noise.meas_op.get_Perm().cpu().T #.numpy()
-        sigma_perm = Perm @ sigma @ Perm.T
-        self.tikho = TikhonovMeasurementPriorDiag(sigma_perm, noise.meas_op.M)
         self.denoi = denoi
+        sigma = sigma.to(torch.float32)
+        
+        # old way
+        # Perm = noise.meas_op.get_Perm().cpu().T #.numpy()
+        # sigma = Perm @ sigma @ Perm.T
+        
+        # new way
+        # Ord = noise.meas_op.Ord
+        # Perm = torch.from_numpy(samp.Permutation_Matrix(noise.meas_op.Ord)).to(torch.float32)
+        # sigma = samp.sort_by_significance(sigma, Ord, 'rows', True)
+        # sigma = samp.sort_by_significance(sigma, Ord, 'cols', False)        
+        sigma = noise.sort_by_indices(sigma, 'rows', False)
+        sigma = noise.sort_by_indices(sigma, 'cols', True)
+        sigma_perm = sigma
+        
+        # save in tikho
+        self.tikho = TikhonovMeasurementPriorDiag(sigma_perm, noise.meas_op.M)
 
     def forward(self, x):
         r"""Full pipeline of the reconstruction network
