@@ -68,7 +68,6 @@ def test_core_time():
     )
     print("ok")
 
-
     # =========================================================================
     ## AffineDeformationField
     print("AffineDeformationField")
@@ -77,19 +76,25 @@ def test_core_time():
     # constructor
     print("\tconstructor... ", end="")
     mat = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=torch.float)
+
     def f(t):
         return mat
+
     field = AffineDeformationField(f, 0, 0, 1, (64, 64))
     print("ok")
 
     # forward, test with a counter clockwise rotation
     print("\tforward... ", end="")
+
     def s(t):
         return math.sin(2 * math.pi * t)
+
     def c(t):
         return math.cos(2 * math.pi * t)
+
     def f(t):
         return torch.tensor([[c(t), -s(t), 0], [s(t), c(t), 0], [0, 0, 1]])
+
     img = torch.FloatTensor([[[1, 2], [3, 4]]])
     img_size = img.shape[-2:]
     # 4 frames, sampled at [0, 0.25, 0.5, 0.75]
