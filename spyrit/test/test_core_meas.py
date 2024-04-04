@@ -12,7 +12,7 @@ from test_helpers import assert_test
 def test_core_meas():
 
     print("\n*** Testing meas.py ***")
-    
+
     # =========================================================================
     ## Linear
     print("Linear")
@@ -44,12 +44,11 @@ def test_core_meas():
     assert_test(H.shape, torch.Size([400, 2500]), "Wrong get_mat size")
     print("ok")
 
-
     # =========================================================================
     ## LinearSplit
     print("LinearSplit")
     from spyrit.core.meas import LinearSplit
-    
+
     # constructor
     print("\tconstructor... ", end="")
     H = torch.rand(400, 2500)
@@ -82,7 +81,6 @@ def test_core_meas():
     H = meas_op.get_H()
     assert_test(H.shape, torch.Size([400, 2500]), "Wrong measurement matrix size")
     print("ok")
-
 
     # =========================================================================
     ## HadamSplit

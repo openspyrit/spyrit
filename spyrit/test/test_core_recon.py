@@ -19,7 +19,7 @@ def test_core_recon():
     ## PseudoInverse
     print("PseudoInverse")
     from spyrit.core.recon import PseudoInverse
-    
+
     # constructor
     print("\tconstructor... ", end="")
     recon_op = PseudoInverse()

@@ -12,7 +12,8 @@ Created on Wed Jan 15 16:37:27 2020
 @author: crombez
 """
 import warnings
-warnings.simplefilter('always', DeprecationWarning)
+
+warnings.simplefilter("always", DeprecationWarning)
 
 import numpy as np
 
@@ -31,7 +32,7 @@ def Permutation_Matrix(mat):
         P (np.ndarray): N^2-by-N^2 permutation matrix (boolean)
 
     .. warning::
-        This function is a duplicate of 
+        This function is a duplicate of
         :func:`spyrit.misc.sampling.Permutation_Matrix` and will be removed
         in a future release.
 
@@ -42,10 +43,10 @@ def Permutation_Matrix(mat):
         ``y = Permutation_Matrix(Ord) @ Mat``
     """
     warnings.warn(
-        "\nspyrit.misc.matrix_tools.Permutation_Matrix is deprecated and will" +
-        " be removed in a future release. Use\n" +
-        "spyrit.misc.sampling.Permutation_Matrix instead.",
-        DeprecationWarning
+        "\nspyrit.misc.matrix_tools.Permutation_Matrix is deprecated and will"
+        + " be removed in a future release. Use\n"
+        + "spyrit.misc.sampling.Permutation_Matrix instead.",
+        DeprecationWarning,
     )
     print(3)
     return samp.Permutation_Matrix(mat)

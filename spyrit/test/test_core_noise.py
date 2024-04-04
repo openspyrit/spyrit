@@ -12,7 +12,7 @@ from spyrit.core.meas import Linear, LinearSplit, HadamSplit  # , LinearRowSplit
 def test_core_noise():
 
     print("\n*** Testing noise.py ***")
-    
+
     # =========================================================================
     ## NoNoise
     print("NoNoise")
@@ -40,7 +40,6 @@ def test_core_noise():
     y = split_acq(x)
     assert_test(y.shape, torch.Size([10, 800]), "Wrong matrix size")
     print(f"ok - Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-
 
     # =========================================================================
     ## Poisson
@@ -101,7 +100,6 @@ def test_core_noise():
     y = noise_op(x)
     print(f"ok - Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
-
     # =========================================================================
     ## PoissonApproxGauss
     print("PoissonApproxGauss")
@@ -109,7 +107,7 @@ def test_core_noise():
 
     # EXAMPLE 1
     # constructor with Linear
-    print("\tconstructor with Linear... ", end="")	
+    print("\tconstructor with Linear... ", end="")
     H = torch.rand([400, 32 * 32])
     meas_op = Linear(H)
     noise_op = PoissonApproxGauss(meas_op, 10.0)
@@ -160,7 +158,6 @@ def test_core_noise():
     print("\tforward with LinearSplit example 2... ", end="")
     y = noise_op(x)
     print(f"ok - Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-
 
     # =========================================================================
     ## PoissonApproxGaussSameNoise
