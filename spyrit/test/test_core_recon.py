@@ -62,7 +62,7 @@ def test_core_recon():
     # constructor
     print("\tconstructor... ", end="")
     B, C, H, M = 10, 1, 64, 64**2
-    Ord = torch.ones((H, H))
+    Ord = torch.randn((H, H))
     meas = HadamSplit(M, H, Ord)
     noise = NoNoise(meas)
     prep = SplitPoisson(1.0, meas)
