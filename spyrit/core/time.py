@@ -23,12 +23,8 @@ Here, the two classes use and store the *inverse deformation field* :math:`u`
 as a class attribute.
 """
 
-import operator
-import warnings
-
 import torch
 import torch.nn as nn
-import numpy as np
 
 
 # =============================================================================

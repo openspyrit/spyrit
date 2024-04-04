@@ -2,12 +2,19 @@
 Reconstruction methods and networks.
 """
 
+import warnings
+from typing import Union
+
 import math
 import torch
 import torch.nn as nn
 import numpy as np
 
 from spyrit.core.meas import HadamSplit
+from spyrit.core.noise import NoNoise
+from spyrit.core.prep import DirectPoisson, SplitPoisson
+
+import spyrit.misc.sampling as samp
 
 
 # =============================================================================
@@ -21,8 +28,8 @@ class PseudoInverse(nn.Module):
     :math:`H` is the Moore-Penrose pseudo inverse of :math:`H`.
 
     Example:
-        >>> H = np.random.random([400,32*32])
-        >>> Perm = np.random.random([32*32,32*32])
+        >>> H = torch.rand([400,32*32])
+        >>> Perm = torch.rand([32*32,32*32])
         >>> meas_op =  HadamSplit(H, Perm, 32, 32)
         >>> y = torch.rand([85,400], dtype=torch.float)
         >>> pinv_op = PseudoInverse()
@@ -53,8 +60,8 @@ class PseudoInverse(nn.Module):
             :attr:`output`: :math:`(*, N)`
 
         Example:
-            >>> H = np.random.random([400,32*32])
-            >>> Perm = np.random.random([32*32,32*32])
+            >>> H = torch.rand([400,32*32])
+            >>> Perm = torch.rand([32*32,32*32])
             >>> meas_op =  HadamSplit(H, Perm, 32, 32)
             >>> y = torch.rand([85,400], dtype=torch.float)
             >>> pinv_op = PseudoInverse()
@@ -96,31 +103,37 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         :math:`\Sigma_1`.
 
     Example:
-        >>> sigma = np.random.random([32*32, 32*32])
+        >>> sigma = torch.rand([32*32, 32*32])
         >>> recon_op = TikhonovMeasurementPriorDiag(sigma, 400)
     """
 
-    def __init__(self, sigma: np.array, M: int):
+    def __init__(self, sigma: torch.tensor, M: int):
         super().__init__()
+
+        if isinstance(sigma, np.ndarray):
+            warnings.warn(
+                "The input sigma should be a torch tensor. Compatiblity with "
+                + "numpy arrays will be removed in future versions.",
+                DeprecationWarning,
+            )
+            sigma = torch.from_numpy(sigma)
 
         N = sigma.shape[0]
 
         self.comp = nn.Linear(M, N - M, False)
         self.denoi = Denoise_layer(M)
 
-        diag_index = np.diag_indices(N)
-        var_prior = sigma[diag_index]
-        var_prior = var_prior[:M]
+        var_prior = sigma.diag()[:M]
 
-        self.denoi.weight.data = torch.from_numpy(np.sqrt(var_prior))
+        self.denoi.weight.data = torch.sqrt(var_prior)
         self.denoi.weight.data = self.denoi.weight.data.float()
         self.denoi.weight.requires_grad = False
 
         Sigma1 = sigma[:M, :M]
         Sigma21 = sigma[M:, :M]
-        W = Sigma21 @ np.linalg.inv(Sigma1)
+        W = Sigma21 @ torch.linalg.inv(Sigma1)
 
-        self.comp.weight.data = torch.from_numpy(W)
+        self.comp.weight.data = W
         self.comp.weight.data = self.comp.weight.data.float()
         self.comp.weight.requires_grad = False
 
@@ -166,9 +179,9 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 
         Example:
             >>> B, H, M = 85, 32, 512
-            >>> sigma = np.random.random([H**2, H**2])
+            >>> sigma = torch.rand([H**2, H**2])
             >>> recon_op = TikhonovMeasurementPriorDiag(sigma, M)
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >> meas = HadamSplit(M, H, Ord)
             >>> y = torch.rand([B,M], dtype=torch.float)
             >>> x_0 = torch.zeros((B, H**2), dtype=torch.float)
@@ -331,7 +344,7 @@ class PinvNet(nn.Module):
 
     Example:
         >>> B, C, H, M = 10, 1, 64, 64**2
-        >>> Ord = np.ones((H,H))
+        >>> Ord = torch.ones((H,H))
         >>> meas = HadamSplit(M, H, Ord)
         >>> noise = NoNoise(meas)
         >>> prep = SplitPoisson(1.0, M, H*H)
@@ -364,7 +377,7 @@ class PinvNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
@@ -399,7 +412,7 @@ class PinvNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
@@ -427,7 +440,7 @@ class PinvNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H**2)
@@ -439,7 +452,9 @@ class PinvNet(nn.Module):
         """
         m = self.prep(y)
         m = torch.nn.functional.pad(m, (0, self.acqu.meas_op.N - self.acqu.meas_op.M))
-        z = m @ self.acqu.meas_op.get_Perm().T
+        # z = m @ self.acqu.meas_op.get_Perm().T  # old way
+        # new way, tested and working :
+        z = self.acqu.meas_op.sort_by_indices(m, "cols", False)
         return z.view(-1, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
     def reconstruct(self, x):
@@ -455,7 +470,7 @@ class PinvNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H**2)
@@ -481,7 +496,7 @@ class PinvNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H**2)
@@ -581,11 +596,11 @@ class DCNet(nn.Module):
 
     Example:
         >>> B, C, H, M = 10, 1, 64, 64**2
-        >>> Ord = np.ones((H,H))
+        >>> Ord = torch.ones((H,H))
         >>> meas = HadamSplit(M, H, Ord)
         >>> noise = NoNoise(meas)
         >>> prep = SplitPoisson(1.0, M, H*H)
-        >>> sigma = np.random.random([H**2, H**2])
+        >>> sigma = torch.rand([H**2, H**2])
         >>> recnet = DCNet(noise,prep,sigma)
         >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
         >>> z = recnet(x)
@@ -593,14 +608,34 @@ class DCNet(nn.Module):
         torch.Size([10, 1, 64, 64])
     """
 
-    def __init__(self, noise, prep, sigma, denoi=nn.Identity()):
+    def __init__(
+        self,
+        noise: NoNoise,
+        prep: Union[DirectPoisson, SplitPoisson],
+        sigma: torch.tensor,
+        denoi=nn.Identity(),
+    ):
         super().__init__()
         self.Acq = noise
         self.prep = prep
-        Perm = noise.meas_op.get_Perm().cpu().numpy().T
-        sigma_perm = Perm @ sigma @ Perm.T
-        self.tikho = TikhonovMeasurementPriorDiag(sigma_perm, noise.meas_op.M)
         self.denoi = denoi
+        sigma = sigma.to(torch.float32)
+
+        # old way
+        # Perm = noise.meas_op.get_Perm().cpu().T #.numpy()
+        # sigma = Perm @ sigma @ Perm.T
+
+        # new way
+        # Ord = noise.meas_op.Ord
+        # Perm = torch.from_numpy(samp.Permutation_Matrix(noise.meas_op.Ord)).to(torch.float32)
+        # sigma = samp.sort_by_significance(sigma, Ord, 'rows', True)
+        # sigma = samp.sort_by_significance(sigma, Ord, 'cols', False)
+        sigma = noise.sort_by_indices(sigma, "rows", False)
+        sigma = noise.sort_by_indices(sigma, "cols", True)
+        sigma_perm = sigma
+
+        # save in tikho
+        self.tikho = TikhonovMeasurementPriorDiag(sigma_perm, noise.meas_op.M)
 
     def forward(self, x):
         r"""Full pipeline of the reconstruction network
@@ -615,11 +650,11 @@ class DCNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = np.random.random([H**2, H**2])
+            >>> sigma = torch.rand([H**2, H**2])
             >>> recnet = DCNet(noise,prep,sigma)
             >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
             >>> z = recnet(x)
@@ -652,11 +687,11 @@ class DCNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = np.random.random([H**2, H**2])
+            >>> sigma = torch.rand([H**2, H**2])
             >>> recnet = DCNet(noise,prep,sigma)
             >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
             >>> z = recnet.acquire(x)
@@ -685,11 +720,11 @@ class DCNet(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = np.random.random([H**2, H**2])
+            >>> sigma = torch.rand([H**2, H**2])
             >>> recnet = DCNet(noise,prep,sigma)
             >>> x = torch.rand((B*C,2*M), dtype=torch.float)
             >>> z = recnet.reconstruct(x)
@@ -809,11 +844,11 @@ class DCDRUNet(DCNet):
 
     Example:
         >>> B, C, H, M = 10, 1, 64, 64**2
-        >>> Ord = np.ones((H,H))
+        >>> Ord = torch.ones((H,H))
         >>> meas = HadamSplit(M, H, Ord)
         >>> noise = NoNoise(meas)
         >>> prep = SplitPoisson(1.0, M, H*H)
-        >>> sigma = np.random.random([H**2, H**2])
+        >>> sigma = torch.rand([H**2, H**2])
         >>> n_channels = 1                   # 1 for grayscale image
         >>> model_drunet_path = './spyrit/drunet/model_zoo/drunet_gray.pth'
         >>> denoi_drunet = drunet(in_nc=n_channels+1, out_nc=n_channels, nc=[64, 128, 256, 512], nb=4, act_mode='R',
@@ -841,11 +876,11 @@ class DCDRUNet(DCNet):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = np.random.random([H**2, H**2])
+            >>> sigma = torch.rand([H**2, H**2])
             >>> n_channels = 1                   # 1 for grayscale image
             >>> model_drunet_path = './spyrit/drunet/model_zoo/drunet_gray.pth'
             >>> denoi_drunet = drunet(in_nc=n_channels+1, out_nc=n_channels, nc=[64, 128, 256, 512], nb=4, act_mode='R',

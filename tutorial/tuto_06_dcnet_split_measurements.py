@@ -92,6 +92,9 @@ dataId_list = [
 cov_name = "./stat/Cov_64x64.npy"
 
 try:
+    Cov = np.load(cov_name)
+    print(f"Cov matrix {cov_name} loaded")
+except FileNotFoundError:
     for dataId in dataId_list:
         myfile = gc.getFile(dataId)
         gc.downloadFile(dataId, data_folder + myfile["name"])
@@ -124,7 +127,7 @@ alpha = 100.0  # number of photons
 Ord = Cov2Var(Cov)
 
 # Measurement and noise operators
-meas_op = HadamSplit(M, h, Ord)
+meas_op = HadamSplit(M, h, torch.from_numpy(Ord))
 noise_op = Poisson(meas_op, alpha)
 prep_op = SplitPoisson(alpha, meas_op)
 
@@ -200,7 +203,7 @@ from spyrit.core.nnet import Unet
 from torch import nn
 
 # Reconstruction with for DCNet (linear net)
-dcnet = DCNet(noise_op, prep_op, Cov, denoi=nn.Identity())
+dcnet = DCNet(noise_op, prep_op, torch.from_numpy(Cov), denoi=nn.Identity())
 dcnet = dcnet.to(device)
 
 # Reconstruction
@@ -219,7 +222,7 @@ from spyrit.misc.disp import add_colorbar, noaxis
 denoi = Unet()
 
 # Define DCNet (with UNet denoising)
-dcnet_unet = DCNet(noise_op, prep_op, Cov, denoi)
+dcnet_unet = DCNet(noise_op, prep_op, torch.from_numpy(Cov), denoi)
 dcnet_unet = dcnet_unet.to(device)
 
 # Load previously trained model
@@ -239,15 +242,15 @@ if os.path.exists(model_unet_path) is False:
     try:
         import gdown
 
-        gdown.download(url_unet, f"{model_path}.pth", quiet=False, fuzzy=True)
+        gdown.download(url_unet, f"{model_unet_path}.pth", quiet=False, fuzzy=True)
     except:
         print(f"Model {model_unet_path} not found!")
         load_unet = False
 
 if load_unet:
     # Load pretrained model
-    load_net(model_path, dcnet_unet, device, False)
-    print(f"Model {model_path} loaded.")
+    load_net(model_unet_path, dcnet_unet, device, False)
+    # print(f"Model {model_unet_path} loaded.")
 
 
 # Reconstruction
@@ -264,7 +267,6 @@ x_plot = x.view(-1, h, h).cpu().numpy()
 x_plot2 = z_invnet.view(-1, h, h).cpu().numpy()
 x_plot3 = z_dcnet.view(-1, h, h).cpu().numpy()
 x_plot4 = z_dcnet_unet.view(-1, h, h).cpu().numpy()
-
 f, axs = plt.subplots(2, 2, figsize=(10, 10))
 im1 = axs[0, 0].imshow(x_plot[0, :, :], cmap="gray")
 axs[0, 0].set_title("Ground-truth image", fontsize=16)
