@@ -262,6 +262,7 @@ class DynamicLinear(nn.Module):
             torch.tensor: 
                 Tensor x with reordered rows or columns according to the indices.
         """
+        x = x.to(self.indices.device)
         return samp.sort_by_indices(x, self.indices, axis, inverse_permutation)
 
     def __str__(self):
@@ -568,9 +569,9 @@ class DynamicHadamSplit(DynamicLinearSplit):
         H = F[:M, :]
         super().__init__(H, Ord=None)
 
-        # overwrite indices that have been set to torch.arange(0, h**2)
+        # overwrite indices that have been set in super().__init__()
         self.indices = nn.Parameter(ind.to(torch.int32), requires_grad=False)
-        
+        # self.Ord = Ord
         # overwrite self.h and self.w   /!\   is it necessary?
         self.h = h
         self.w = h
@@ -580,7 +581,7 @@ class DynamicHadamSplit(DynamicLinearSplit):
         # method self.get_Perm()
         #######################################################################
         Perm = samp.Permutation_Matrix(Ord)
-        Perm = torch.from_numpy(Perm).float()  # float32
+        Perm = torch.from_numpy(Perm).to(torch.float32)
         self.Perm = nn.Parameter(Perm.T, requires_grad=False)
 
     def get_Perm(self) -> torch.tensor:
