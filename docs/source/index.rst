@@ -6,38 +6,37 @@
 SPyRiT's documentation
 ==================================
 
-SPyRiT is a `PyTorch <https://pytorch.org/>`_-based package for deep image
-reconstruction. While it is primarily designed for single-pixel image
-reconstruction, it can solve other linear reconstruction problems.
+SPyRiT is a `PyTorch <https://pytorch.org/>`_-based deep image reconstruction
+package primarily designed for single-pixel imaging.
 
 SPyRiT allows to simulate measurements and perform image reconstruction using
-a full-network structure. It takes a normalized image as input and performs
-data simulation and image reconstruction in a single forward pass or in separate steps.
-A full-network generally comprises a measurement operator, a noise operator,
-a preprocessing operator, a reconstruction operator, and a learnable neural network.
-All operators inherit from PyTorch `nn.Module` class, which allows to easily
-combine them into a full-network.
+a full network structure. It takes a normalized image as input and performs
+data simulation and image reconstruction in a single forward pass or in
+separate steps. A full network generally consists of a measurement operator, a
+noise operator, a preprocessing operator, a reconstruction operator, and a
+learnable neural network. All operators inherit from PyTorch's `nn.Module`
+class, which allows them to be easily combined into a full network.
 
 .. image:: fig/full.png
    :width: 800
    :align: center
 
 
-
-The full network contains two main parts: a Physics Simulation part that
-simulates measurements :math:`y` from images :math:`x`, and a Reconstruction part
-that estimates the unknown image :math:`x*` from measurements :math:`y`.
-
-
-The Physics Simulation part is composed of a Measurement operator (:math:`N`)
-and a Noise operator (:math:`P`).
+The complete network contains two main parts: a physics simulation part that
+simulates measurements from images, and a reconstruction part that estimates
+the unknown image from measurements.
 
 
-The Reconstruction part is composed of a Preprocessing operator (:math:`B`) that
-gives the preprocessed measurements :math:`m` from the noisy measurements :math:`y`,
-a Reconstruction operator (:math:`R`) that estimates the unknown image :math:`x*` from
-the preprocessed measurements :math:`m`, and an optional Neural Network (:math:`G_{\theta}`)
-that can be trained to improve the reconstruction quality.
+The Physics Simulation part consists of a Measurement operator
+(:math:`\mathcal{N}`) and a Noise operator (:math:`\mathcal{P}`).
+
+
+The reconstruction part consists of a preprocessing  (:math:`\mathcal{B}`) that
+produces the pre-processed measurements from the noisy measurements, a
+reconstruction operator (:math:`\mathcal{R}`) that estimates the unknown image
+from the pre-processed measurements, and an optional neural network
+(:math:`\mathcal{G_{\theta}}`) that can be trained to improve the
+reconstruction quality.
 
 
 
@@ -56,48 +55,56 @@ Single-pixel imaging
 Modelling of the measurements
 -----------------------------------
 
-**Single-pixel imaging** aims to recover an image :math:`x\in\Re^N` from a few noisy scalar products :math:`y\in\Re^M`, where :math:`M\ll N`. We model the acquisition as
+**Single-pixel imaging** aims to recover an image :math:`x\in\Re^N` from a few
+noisy scalar products :math:`y\in\Re^M`, where :math:`M\ll N`. We model the
+acquisition as
 
       :math:`y = (\mathcal{N} \circ \mathcal{P})(x),`
 
-where :math:`\mathcal{P}` is a linear operator, :math:`\mathcal{N}` is a noise operator, and :math:`\circ` denotes the composition of operators.
+where :math:`\mathcal{P}` is a linear operator, :math:`\mathcal{N}` is a noise
+operator, and :math:`\circ` denotes the composition of operators.
 
 Image reconstruction
 -----------------------------------
 
-Learning-based reconstruction approaches estimate the unknown image as :math:`x^* = \mathcal{I}_\theta(y)`,
-where :math:`\mathcal{I}_\theta` represents the parameters that are learned during a training phase.
-In the case of supervised learning, **the training phase** solves
+Learning-based reconstruction approaches estimate the unknown image as
+:math:`x^* = \mathcal{I}_\theta(y)`, where :math:`\mathcal{I}_\theta`
+represents the parameters that are learned during a training phase. In the case
+of supervised learning, **the training phase** solves
 
       :math:`\min_{\theta}{\sum_i \mathcal{L}\left(x_i,\mathcal{I}_\theta(y_i)\right)},`
 
-where :math:`\mathcal{L}` is the training loss between the true image :math:`x` and
-its estimation, and :math:`\{x_i,y_i\}_i` is a set of training pairs.
+where :math:`\mathcal{L}` is the training loss between the true image :math:`x`
+and its estimate, and :math:`\{x_i,y_i\}_i` is a set of training pairs.
 
-We consider the typical **reconstruction operator** :math:`\mathcal{I}_\theta` that can be written as follows:
+Consider the typical **reconstruction operator** :math:`\mathcal{I}_\theta`
+which can be written as:
 
       :math:`\mathcal{I}_\theta = \mathcal{G}_\theta \circ \mathcal{R} \circ \mathcal{B},`
 
-where :math:`\mathcal{B}` is a preprocessing operator, :math:`\mathcal{R}` is a (standard) linear reconstruction operator,
-and :math:`\mathcal{G}_\theta` is a neural network that can be learnt during the training phase.
-Alternatively, :math:`\mathcal{R}` can be simply "plugged". In this case, its training is performed beforehand.
+where :math:`\mathcal{B}` is a preprocessing operator, :math:`\mathcal{R}` is
+a (standard) linear reconstruction operator, and :math:`\mathcal{G}_\theta` is
+a neural network that can be trained during the training phase. Alternatively,
+:math:`\mathcal{R}` can be simply "plugged". In this case, it is trained
+beforehand.
 
-Introducing the **full network**, a forward pass can be written as follows:
+To introduce the **full network**, a forward pass can be written as follows:
 
       :math:`F_{\theta}(x) = (\mathcal{G}_\theta \circ \mathcal{R} \circ \mathcal{B} \circ \mathcal{N} \circ \mathcal{P})(x).`
 
-The full network can be trained using a database that contains images only:
+The full network can be trained using a database containing only images:
 
       :math:`\min_{\theta}{\sum_i \mathcal{L}\left(x_i,\mathcal{F}_\theta(x_i)\right)}.`
 
-This pipeline allows to simulate noisy data on the fly, which provides data
-augmentation while avoiding storage of the measurements.
+This pipeline allows noisy data to be simulated on the fly, providing data
+augmentation while avoiding storing the measurements.
 
 
 Package structure
 -----------------------------------
 
-The main functionalities of SPyRiT are implemented in the :class:`spyrit.core` subpackage, which contains six submodules:
+The main functionalities of SPyRiT are implemented in the subpackage
+:class:`spyrit.core` , which contains six submodules:
 
 1. **Measurement operators (meas)** compute linear measurements :math:`\mathcal{P}x` from
    images :math:`x`, where :math:`\mathcal{P}` is a linear operator (matrix) and :math:`x`
