@@ -6,6 +6,7 @@ __pycache__
 *.sh
 *.ipynb
 *.npy
+*.pth
 
 #folders
 data
@@ -17,7 +18,9 @@ spyrit.egg-info
 stats_walsh
 **/.ipynb_checkpoints/*
 docs/source/_build*
+docs/source/
 model/
 runs/
 spyrit/drunet/
 !spyrit/images/tuto/*.png
+spyrit/tutorial/
