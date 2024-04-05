@@ -11,26 +11,45 @@ Created on Wed Jan 15 16:37:27 2020
 
 @author: crombez
 """
+import warnings
+
+warnings.simplefilter("always", DeprecationWarning)
+
 import numpy as np
-from scipy.stats import rankdata
+
+import spyrit.misc.sampling as samp
 
 
 def Permutation_Matrix(mat):
-    r"""Returns permutation matrix from sampling map
+    r"""
+        Returns permutation matrix from sampling matrix
 
     Args:
-        mat: sampling map, where high value means high significance.
+        Mat (np.ndarray):
+            N-by-N sampling matrix, where high values indicate high significance.
 
-    Shape:
-        - Input: (n,n)
-        - Output: (n*n, n*n)
+    Returns:
+        P (np.ndarray): N^2-by-N^2 permutation matrix (boolean)
+
+    .. warning::
+        This function is a duplicate of
+        :func:`spyrit.misc.sampling.Permutation_Matrix` and will be removed
+        in a future release.
+
+    .. note::
+        Consider using :func:`sort_by_significance` for increased
+        computational performance if using :func:`Permutation_Matrix` to
+        reorder a matrix as follows:
+        ``y = Permutation_Matrix(Ord) @ Mat``
     """
-    (nx, ny) = mat.shape
-    Reorder = rankdata(-mat, method="ordinal")
-    Columns = np.array(range(nx * ny))
-    P = np.zeros((nx * ny, nx * ny))
-    P[Reorder - 1, Columns] = 1
-    return P
+    warnings.warn(
+        "\nspyrit.misc.matrix_tools.Permutation_Matrix is deprecated and will"
+        + " be removed in a future release. Use\n"
+        + "spyrit.misc.sampling.Permutation_Matrix instead.",
+        DeprecationWarning,
+    )
+    print(3)
+    return samp.Permutation_Matrix(mat)
 
 
 def expend_vect(Vect, N1, N2):  # Expened a vectors of siez N1 to N2

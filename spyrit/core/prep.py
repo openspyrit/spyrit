@@ -1,8 +1,18 @@
+"""
+Preprocessing operators applying affine transformations to the measurements.
+
+There are two classes in this module: :class:`DirectPoisson` and
+:class:`SplitPoisson`. The first one is used for direct measurements (i.e.
+without splitting the measurement matrix in its positive and negative parts),
+while the second one is used for split measurements.
+"""
+
+from typing import Union, Tuple
+
 import torch
 import torch.nn as nn
+
 from spyrit.core.meas import Linear, LinearSplit, HadamSplit  # , LinearRowSplit
-from typing import Union, Tuple
-import math
 
 
 # ==============================================================================
@@ -25,7 +35,7 @@ class DirectPoisson(nn.Module):
 
 
     Example:
-        >>> H = np.random.random([400,32*32])
+        >>> H = torch.rand([400,32*32])
         >>> meas_op =  Linear(H)
         >>> prep_op = DirectPoisson(1.0, meas_op)
 
@@ -60,7 +70,7 @@ class DirectPoisson(nn.Module):
 
         Example:
             >>> x = torch.rand([10,400], dtype=torch.float)
-            >>> H = np.random.random([400,32*32])
+            >>> H = torch.rand([400,32*32])
             >>> meas_op =  Linear(H)
             >>> prep_op = DirectPoisson(1.0, meas_op)
             >>> m = prep_op(x)
@@ -161,12 +171,12 @@ class SplitPoisson(nn.Module):
 
 
     Example:
-        >>> H = np.random.random([400,32*32])
+        >>> H = torch.rand([400,32*32])
         >>> meas_op =  LinearSplit(H)
         >>> split_op = SplitPoisson(10, meas_op)
 
     Example 2:
-        >>> Perm = np.random.random([32,32])
+        >>> Perm = torch.rand([32,32])
         >>> meas_op = HadamSplit(400, 32,  Perm)
         >>> split_op = SplitPoisson(10, meas_op)
 
@@ -183,7 +193,9 @@ class SplitPoisson(nn.Module):
         self.max = nn.MaxPool1d(self.N)
 
         self.register_buffer(
-            "H_ones", torch.matmul(torch.ones(1, self.N), meas_op.get_H_T())
+            "H_ones",
+            torch.ones(1, self.N) @ meas_op.get_H_T(),
+            # "H_ones", meas_op.H(torch.ones((1, self.N)))
         )
 
     def forward(self, x: torch.tensor) -> torch.tensor:
@@ -206,7 +218,7 @@ class SplitPoisson(nn.Module):
 
         Example:
             >>> x = torch.rand([10,2*400], dtype=torch.float)
-            >>> H = np.random.random([400,32*32])
+            >>> H = torch.rand([400,32*32])
             >>> meas_op =  LinearSplit(H)
             >>> split_op = SplitPoisson(10, meas_op)
             >>> m = split_op(x)
@@ -215,7 +227,7 @@ class SplitPoisson(nn.Module):
 
         Example 2:
             >>> x = torch.rand([10,2*400], dtype=torch.float)
-            >>> Perm = np.random.random([32,32])
+            >>> Perm = torch.rand([32,32])
             >>> meas_op = HadamSplit(400, 32,  Perm)
             >>> split_op = SplitPoisson(10, meas_op)
             >>> m = split_op(x)
@@ -269,7 +281,7 @@ class SplitPoisson(nn.Module):
 
         Example:
             >>> x = torch.rand([10,2*400], dtype=torch.float)
-            >>> Perm = np.random.random([32,32])
+            >>> Perm = torch.rand([32,32])
             >>> meas_op = HadamSplit(400, 32,  Perm)
             >>> split_op = SplitPoisson(10, meas_op)
             >>> m, alpha = split_op.forward_expe(x, meas_op)
@@ -398,7 +410,7 @@ class SplitPoisson(nn.Module):
 
         Example:
             >>> x = torch.rand([10,2*400], dtype=torch.float)
-            >>> Perm = np.random.random([32,32])
+            >>> Perm = torch.rand([32,32])
             >>> meas_op = HadamSplit(400, 32,  Perm)
             >>> split_op = SplitPoisson(10, meas_op)
             >>> v = split_op.sigma_from_image(x, meas_op)
@@ -504,8 +516,8 @@ class SplitPoisson(nn.Module):
 
 #         Example:
 #             >>> x = torch.rand([10,48,64], dtype=torch.float)
-#             >>> H_pos = np.random.random([24,64])
-#             >>> H_neg = np.random.random([24,64])
+#             >>> H_pos = torch.rand([24,64])
+#             >>> H_neg = torch.rand([24,64])
 #             >>> meas_op = LinearSplit(H_pos, H_neg)
 #             >>> m = split_op(x, meas_op)
 #             >>> print(m.shape)

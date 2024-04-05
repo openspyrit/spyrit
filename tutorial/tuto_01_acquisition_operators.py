@@ -35,7 +35,6 @@ import os
 
 import torch
 import torchvision
-import numpy as np
 import matplotlib.pyplot as plt
 
 from spyrit.misc.disp import imagesc
@@ -112,7 +111,7 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 from spyrit.core.meas import Linear
 from spyrit.core.noise import NoNoise
 
-meas_op = Linear(np.eye(h * h))
+meas_op = Linear(torch.eye(h * h))
 noise_op = NoNoise(meas_op)
 
 ###############################################################################
@@ -221,12 +220,6 @@ noaxis(axs)
 # %%
 # Preprocessing measurements corrupted by Poisson noise
 # -----------------------------------------------------------------------------
-
-###############################################################################
-# .. image:: ../fig/noise_op.png
-#    :width: 400
-#    :align: center
-#    :alt: Example of Noise operator
 
 ###############################################################################
 # We consider the :class:`spyrit.core.prep.DirectPoisson` class that intends

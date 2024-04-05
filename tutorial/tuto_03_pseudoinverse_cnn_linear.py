@@ -99,7 +99,7 @@ imagesc(Sampling_map, "low-frequency sampling map")
 
 from spyrit.core.meas import Linear
 
-meas_op = Linear(H, pinv=True)
+meas_op = Linear(torch.from_numpy(H), pinv=True)
 
 # %%
 # Noiseless case

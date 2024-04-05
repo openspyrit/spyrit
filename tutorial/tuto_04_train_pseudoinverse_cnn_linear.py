@@ -135,7 +135,7 @@ from spyrit.core.meas import Linear
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import DirectPoisson
 
-meas_op = Linear(H, pinv=True)
+meas_op = Linear(torch.from_numpy(H), pinv=True)
 noise = NoNoise(meas_op)
 N0 = 1.0  # Mean maximum total number of photons
 prep = DirectPoisson(N0, meas_op)  # "Undo" the NoNoise operator

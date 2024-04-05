@@ -1,137 +1,157 @@
-# -*- coding: utf-8 -*-
+"""
+Test for module recon.py
+"""
 
-# %% PseudoInverse
-import numpy as np
 import torch
+
+from test_helpers import assert_test
+
 from spyrit.core.meas import HadamSplit
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import SplitPoisson
-from spyrit.core.recon import PseudoInverse
-from test_helpers import assert_test
 
 
 def test_core_recon():
 
     print("\n*** Testing recon.py ***")
-    # EXAMPLE 1
-    # constructor
-    recon_op = PseudoInverse()
 
-    # forward
-    Ord = np.random.random([32, 32])
+    # =========================================================================
+    ## PseudoInverse
+    print("PseudoInverse")
+    from spyrit.core.recon import PseudoInverse
+
+    # constructor
+    print("\tconstructor... ", end="")
+    recon_op = PseudoInverse()
+    print("ok")
+
+    # EXAMPLE 1
+    # forward from random measurement
+    print("\tforward from random measurement... ", end="")
+    Ord = torch.rand([32, 32])
     meas_op = HadamSplit(400, 32, Ord)
     y = torch.rand([85, 400], dtype=torch.float)
-
     x = recon_op(y, meas_op)
-    print(x.shape)
     assert_test(x.shape, torch.Size([85, 1024]), "Wrong forward size")
+    print("ok")
 
     # EXAMPLE 2
-    # constructor
-    M = 64
-    H = 64
+    # forward from measured random image
+    print("\tforward from measured random image... ", end="")
     B = 1
-
-    Ord = np.random.random([H, H])
+    H = 64
+    img = torch.FloatTensor(B, H**2).uniform_(-1, 1)
+    Ord = torch.rand([H, H])
+    M = 64
     meas_op = HadamSplit(M, H, Ord)
     noise_op = NoNoise(meas_op)
+    y = noise_op(img)
     split_op = SplitPoisson(1.0, meas_op)
-    recon_op = PseudoInverse()
-
-    x = torch.FloatTensor(B, H**2).uniform_(-1, 1)
-    y = noise_op(x)
     m = split_op(y)
+    recon_op = PseudoInverse()
     z = recon_op(m, meas_op)
-    print(z.shape)
     assert_test(z.shape, torch.Size([1, 4096]), "Wrong recon size")
-    tensor_test = torch.linalg.norm(x - z) / torch.linalg.norm(x)
-    print(tensor_test)
-    # assert_test(tensor_test, 0.9902, "Wrong tensor value")
+    tensor_test = torch.linalg.norm(img - z) / torch.linalg.norm(img)
+    print(f"ok - {tensor_test=}")
 
-    # %% PinvNet
+    # =========================================================================
+    ## PinvNet
+    print("PinvNet")
     from spyrit.core.recon import PinvNet
 
-    # EXAMPLE
     # constructor
+    print("\tconstructor... ", end="")
     B, C, H, M = 10, 1, 64, 64**2
-    Ord = np.ones((H, H))
+    Ord = torch.randn((H, H))
     meas = HadamSplit(M, H, Ord)
     noise = NoNoise(meas)
     prep = SplitPoisson(1.0, meas)
     recnet = PinvNet(noise, prep)
+    print("ok")
 
     # forward
+    print("\tforward... ", end="")
     x = torch.FloatTensor(B, C, H, H).uniform_(-1, 1)
     z = recnet(x)
-    print(z.shape)
     assert_test(z.shape, torch.Size([10, 1, 64, 64]), "Wrong recon size")
     tensor_test = torch.linalg.norm(x - z) / torch.linalg.norm(x)
-    print(tensor_test)
-    # assert_test(tensor_test, tensor(5.8252e-06), "Wrong tensor value")
+    print(f"ok - {tensor_test=}")
 
     # meas2img
+    print("\tmeas2img... ", end="")
     x = torch.rand(B * C, 2 * M)
     z = recnet.meas2img(x)
-    print(z.shape)
     assert_test(z.shape, torch.Size([10, 1, 64, 64]), "Wrong recon size")
+    print("ok")
 
     # acquire
+    print("\tacquire... ", end="")
     x = torch.FloatTensor(B, C, H, H).uniform_(-1, 1)
     z = recnet.acquire(x)
-    print(z.shape)
     assert_test(z.shape, torch.Size([10, 8192]), "Wrong recon size")
+    print("ok")
 
     # reconstruct
+    print("\treconstruct... ", end="")
     x = torch.rand((B * C, 2 * M), dtype=torch.float)
     z = recnet.reconstruct(x)
-    print(z.shape)
     assert_test(z.shape, torch.Size([10, 1, 64, 64]), "Wrong recon size")
+    print("ok")
 
-    # %% TikhonovMeasurementPriorDiag
+    # =========================================================================
+    ## TikhonovMeasurementPriorDiag
+    print("TikhonovMeasurementPriorDiag")
     from spyrit.core.recon import TikhonovMeasurementPriorDiag
 
-    B, H, M = 85, 32, 512
-
     # constructor
-    sigma = np.random.random([H**2, H**2])
+    print("\tconstructor... ", end="")
+    B, H, M = 85, 32, 512
+    sigma = torch.rand([H**2, H**2])
     recon = TikhonovMeasurementPriorDiag(sigma, M)
+    print("ok")
 
     # forward
-    Ord = np.ones((H, H))
+    print("\tforward... ", end="")
+    Ord = torch.ones((H, H))
     meas = HadamSplit(M, H, Ord)
     y = torch.rand([B, M], dtype=torch.float)
     x_0 = torch.zeros((B, H**2), dtype=torch.float)
     var = torch.zeros((B, M), dtype=torch.float)
-
     x = recon(y, x_0, var, meas)
-    print(x.shape)
     assert_test(x.shape, torch.Size([85, 1024]), "Wrong recon size")
+    print("ok")
 
-    # %% DCNet
+    # =========================================================================
+    ## DCNet
+    print("DCNet")
     from spyrit.core.recon import DCNet
 
-    B, C, H, M = 10, 1, 64, 64**2 // 2
-
     # constructor
-    Ord = np.ones((H, H))
+    print("\tconstructor... ", end="")
+    B, C, H, M = 10, 1, 64, 64**2 // 2
+    Ord = torch.ones((H, H))
     meas = HadamSplit(M, H, Ord)
     noise = NoNoise(meas)
     prep = SplitPoisson(1.0, meas)
-    sigma = np.random.random([H**2, H**2])
+    sigma = torch.rand([H**2, H**2])
     recnet = DCNet(noise, prep, sigma)
+    print("ok")
 
     # forward
+    print("\tforward... ", end="")
     x = torch.FloatTensor(B, C, H, H).uniform_(-1, 1)
     z = recnet(x)
-    print(z.shape)
     assert_test(z.shape, torch.Size([10, 1, 64, 64]), "Wrong recon size")
+    print("ok")
 
     # reconstruct
+    print("\treconstruct... ", end="")
     x = torch.rand((B * C, 2 * M), dtype=torch.float)
     z = recnet.reconstruct(x)
-    print(z.shape)
     assert_test(z.shape, torch.Size([10, 1, 64, 64]), "Wrong recon size")
+    print("ok")
 
+    # =========================================================================
     print("All tests passed for recon.py")
     print("===============================")
     return True
