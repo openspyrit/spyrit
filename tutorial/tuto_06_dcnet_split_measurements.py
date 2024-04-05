@@ -3,7 +3,8 @@ r"""
 =========================================
 .. _tuto_dcnet_split_measurements:
 
-This tutorial shows how to perform image reconstruction using DCNet (data completion network) with
+This tutorial shows how to perform image reconstruction using DCNet (denoised
+completion network) with
 and without a trainable image denoiser. In the previous tutorial
 :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`
 we showed how to handle split measurements for a Hadamard operator
