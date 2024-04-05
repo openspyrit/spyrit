@@ -866,7 +866,8 @@ class LearnedPGD(nn.Module):
                  step_decay=1,
                  wls=False,
                  gt=None,
-                 log_fidelity = False):
+                 log_fidelity = False, 
+                 res_learn = False):
         super().__init__()
         # nn.module
         self.acqu = noise 
@@ -880,6 +881,7 @@ class LearnedPGD(nn.Module):
         self.step_estimation = step_estimation
         self.step_grad = step_grad
         self.step_decay = step_decay
+        self.res_learn = res_learn
 
         # Init step size (estimate)
         self.set_stepsize(step)
@@ -1082,9 +1084,12 @@ class LearnedPGD(nn.Module):
                 else:
                     x = self.denoi(x)      
                 x = x.view(bc,self.acqu.meas_op.N)
+            if self.res_learn:
+                z0 = x.detach().clone()
+                z0 = z0.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
         else: 
             # zero init
-            x = torch.zeros((bc,self.acqu.meas_op.N), device=x.device)
+            x = torch.zeros((bc,self.acqu.meas_op.N), device=x.device)        
         
         if self.log_fidelity:
             self.cost = []
@@ -1109,6 +1114,10 @@ class LearnedPGD(nn.Module):
             x = x - upd
             x = x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
 
+            if i == 0 and self.res_learn and self.x0 == 0:
+                # if x0 does not exist
+                z0 = x.detach().clone()
+
             # proximal step (prior)
             if isinstance(self.denoi, nn.ModuleList):
                 x = self.denoi[i](x)
@@ -1127,5 +1136,10 @@ class LearnedPGD(nn.Module):
             print(f"Data fidelity: {(self.cost)}. Stepsize: {self.step}")
         if self.x_gt is not None:
             print(f"|x - x_gt| = {self.mse}")
-        return x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
+        
+        x = x.view(bc,1,self.acqu.meas_op.h,self.acqu.meas_op.w)
+        if self.res_learn:
+            # z=x-step*grad(L), x = P(z), x_end = z0 + P(z)
+            x = x + z0
+        return x 
     
