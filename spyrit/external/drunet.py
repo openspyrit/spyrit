@@ -42,21 +42,21 @@ class UNetRes(nn.Module):
                 ResBlock(nc[0], nc[0], bias=False, mode="C" + act_mode + "C")
                 for _ in range(nb)
             ],
-            downsample_block(nc[0], nc[1], bias=False, mode="2"),
+            downsample_block(nc[0], nc[1], bias=False, mode="2")
         )
         self.m_down2 = sequential(
             *[
                 ResBlock(nc[1], nc[1], bias=False, mode="C" + act_mode + "C")
                 for _ in range(nb)
             ],
-            downsample_block(nc[1], nc[2], bias=False, mode="2"),
+            downsample_block(nc[1], nc[2], bias=False, mode="2")
         )
         self.m_down3 = sequential(
             *[
                 ResBlock(nc[2], nc[2], bias=False, mode="C" + act_mode + "C")
                 for _ in range(nb)
             ],
-            downsample_block(nc[2], nc[3], bias=False, mode="2"),
+            downsample_block(nc[2], nc[3], bias=False, mode="2")
         )
 
         self.m_body = sequential(
@@ -83,21 +83,21 @@ class UNetRes(nn.Module):
             *[
                 ResBlock(nc[2], nc[2], bias=False, mode="C" + act_mode + "C")
                 for _ in range(nb)
-            ],
+            ]
         )
         self.m_up2 = sequential(
             upsample_block(nc[2], nc[1], bias=False, mode="2"),
             *[
                 ResBlock(nc[1], nc[1], bias=False, mode="C" + act_mode + "C")
                 for _ in range(nb)
-            ],
+            ]
         )
         self.m_up1 = sequential(
             upsample_block(nc[1], nc[0], bias=False, mode="2"),
             *[
                 ResBlock(nc[0], nc[0], bias=False, mode="C" + act_mode + "C")
                 for _ in range(nb)
-            ],
+            ]
         )
 
         self.m_tail = conv(nc[0], out_nc, bias=False, mode="C")
@@ -114,6 +114,49 @@ class UNetRes(nn.Module):
         x = self.m_tail(x + x1)
 
         return x
+
+class DRUNet(UNetRes):
+    def __init__(self, noise_level=5, n_channels=1, nc=[64, 128, 256, 512], nb=4, act_mode='R', downsample_mode='strideconv', upsample_mode='convtranspose'):
+        super(DRUNet, self).__init__(n_channels+1, n_channels, nc, nb, act_mode, downsample_mode, upsample_mode)
+        self.register_buffer('noise_level', torch.FloatTensor([noise_level/255.]))
+
+    def forward(self, x):
+        # Image domain denoising
+        x = self.concat_noise_map(x)
+
+        # Pass input images through the network
+        x = super(DRUNet, self).forward(x)             
+        return x        
+
+    def concat_noise_map(self, x):
+        r""" Concatenation of noise level map to reconstructed images
+            
+        Args:
+            :attr:`x`: reconstructed images from the reconstruction layer
+        
+        Shape:
+            :attr:`x`: reconstructed images with shape :math:`(BC,1,H,W)`
+            
+            :attr:`output`: reconstructed images with concatenated noise level map with shape :math:`(BC,2,H,W)`
+        """
+
+        b, c, h, w = x.shape
+        x = 0.5*(x + 1)
+        x = torch.cat((x, self.noise_level.expand(b, 1, h, w)), dim=1)
+        return x 
+
+    def set_noise_level(self, noise_level):
+        r""" Reset noise level value
+            
+        Args:
+            :attr:`noise_level`: noise level value in the range [0, 255] 
+        
+        Shape:
+            :attr:`noise_level`: float value noise level :math:`(1)`
+            
+            :attr:`output`: noise level tensor with shape :math:`(1)`
+        """
+        self.noise_level = torch.FloatTensor([noise_level/255.]).to(self.noise_level.device)
 
 
 # ----------------------------------------------
