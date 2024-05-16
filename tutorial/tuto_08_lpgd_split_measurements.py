@@ -73,8 +73,8 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We consider noisy split measurements for a Hadamard operator and a simple 
-# rectangular subsampling” strategy 
+# We consider noisy split measurements for a Hadamard operator and a simple
+# rectangular subsampling” strategy
 # (for more details, refer to :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`).
 
 ###############################################################################
