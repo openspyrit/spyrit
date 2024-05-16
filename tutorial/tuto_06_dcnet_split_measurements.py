@@ -5,11 +5,7 @@ r"""
 .. _tuto_dcnet_split_measurements:
 
 This tutorial shows how to perform image reconstruction using DCNet (denoised
-completion network) with
-and without a trainable image denoiser. In the previous tutorial
-:ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`
-we showed how to handle split measurements for a Hadamard operator
-and how to perform a pseudo-inverse reconstruction with PinvNet.
+completion network) with a trainable image denoiser. In the next tutorial, we will plug a DRUNet into a DCNet, which requires no training.
 
 .. image:: ../fig/tuto6.png
    :width: 600
@@ -24,8 +20,7 @@ These tutorials load image samples from `/images/`.
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
-# using the :func:`transform_gray_norm` function.
+# Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized using the :func:`transform_gray_norm` function.
 
 import os
 
@@ -69,10 +64,7 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We consider noisy split measurements for a Hadamard operator and a
-# "variance subsampling" strategy that preserves the coefficients with the largest variance,
-# obtained from a previously estimated covariance matrix (for more details,
-# refer to :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`).
+# We consider noisy split measurements for a Hadamard operator and the "variance subsampling" strategy that preserves the coefficients with the largest variance (for more details, refer to :ref:`Tutorial 05 <tuto_acquisition_split_measurements>`).
 
 ###############################################################################
 # First, we download the covariance matrix and load it.
@@ -109,11 +101,8 @@ except:
     Cov = np.eye(h * h)
     print(f"Cov matrix {cov_name} not found! Set to the identity")
 
-###############################################################################
-# We define the measurement, noise and preprocessing operators and then
-# simulate a noiseless measurement vector :math:`y`. As in the previous tutorial,
-# we simulate an accelerated acquisition by subsampling the measurement matrix
-# by retaining only the first :math:`M` rows of a Hadamard matrix :math:`\textrm{Perm} H`.
+######################################################################
+# Then, we define the measurement, noise and preprocessing operators and simulate a noisy measurement vector. As in :ref:`Tutorial 05 <tuto_acquisition_split_measurements>`, we simulate an accelerated acquisition by subsampling the measurement vector by retaining only the first rows of a permuted Hadamard matrix.
 
 from spyrit.core.meas import HadamSplit
 from spyrit.core.noise import Poisson
@@ -146,56 +135,51 @@ m_plot = meas2img2(m_plot.T, Ord)
 imagesc(m_plot, r"Measurements $m$")
 
 # %%
-# PinvNet network
+# Pseudo inverse solution
 # -----------------------------------------------------------------------------
 
-###############################################################################
-# We reconstruct with the pseudo inverse using :class:`spyrit.core.recon.PinvNet` class
-# as in the previous tutorial. For this, we define the neural network and then perform the reconstruction.
+######################################################################
+# We reconstruct with the pseudo inverse using :class:`spyrit.core.recon.PinvNet` class as in the previous tutorial.
 from spyrit.core.recon import PinvNet
 from spyrit.misc.disp import add_colorbar, noaxis
 
-# Reconstruction with for Core module (linear net)
+# Instantiate a PinvNet (with no denoising by default)
 pinvnet = PinvNet(noise_op, prep_op)
 
-# use GPU, if available
+# Use GPU, if available
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-# Pseudo-inverse net
 pinvnet = pinvnet.to(device)
+y = y.to(device)
 
 # Reconstruction
 with torch.no_grad():
-    z_invnet = pinvnet.reconstruct(y.to(device))  # reconstruct from raw measurements
+    z_invnet = pinvnet.reconstruct(y)  # reconstruct from raw measurements
 
 # %%
-# DCNet network
+# Denoised completion network (DCNet)
 # -----------------------------------------------------------------------------
 
-###############################################################################
-# We can improve PinvNet results by using the *denoised* completion network DCNet with the
-# :class:`spyrit.core.recon.DCNet` class. It has four sequential steps:
+######################################################################
+# We can improve PinvNet results by using the *denoised* completion network DCNet with the :class:`spyrit.core.recon.DCNet` class. It has four sequential steps:
 #
-# i) denoising of the acquired measurements,
+# i) Denoising of the measurements.
 #
-# ii) estimation of the missing measurements from the denoised ones,
+# ii) Estimation of the missing measurements from the denoised ones.
 #
-# iii) mapping them to the image domain, and
+# iii) Mapping them to the image domain.
 #
-# iv) denoising in the image-domain.
+# iv) (Learned) Denoising in the image-domain.
 #
-# Only the last step involves learnable parameters.
+# Only the last step involves learnable parameters, while the first three steps approximately solve
 
-###############################################################################
+######################################################################
 # .. image:: ../fig/dcnet.png
 #    :width: 400
 #    :align: center
 #    :alt: Sketch of the DCNet architecture
 
-###############################################################################
-# For the denoiser, we compare the default unit matrix (no denoising) with the UNet denoiser
-# with the :class:`spyrit.core.nnet.Unet` class. For the latter, we load the pretrained model
-# weights.
+######################################################################
+# For the denoiser, we compare the default unit matrix (no denoising) with the UNet denoiser with the :class:`spyrit.core.nnet.Unet` class. For the latter, we load the pretrained model weights.
 
 ###############################################################################
 # Without *learnable image-domain* denoising

@@ -3,23 +3,16 @@ r"""
 ==========================
 .. _tuto_dcdrunet_split_measurements:
 
-This tutorial shows how to perform image reconstruction with DCNet
-(data completion network) and DRUNet denoiser,
-for single-pixel imaging. DRUNet is a pretrained plug-and-play (PnP) denoising network
-that has been pretrained for a wide range of noise levels and admits the noise level
-as an input. Thus, it requires no training while providing state-of-the-art postprocessing
-performance.
+This tutorial shows how to perform image reconstruction using a DCNet (data completion network) that includes a DRUNet denoiser. DRUNet is a pretrained plug-and-play (PnP) denoising network that has been pretrained for a wide range of noise levels. DRUNet admits the noise level as an input. Contratry to the DCNet described in :ref:`Tutorial 6 <tuto_dcnet_split_measurements>`, it requires no training.
 
-As in previous tutorials, we consider split Hadamard operator and poisson noise
-(see :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`).
+As in previous tutorials, we consider a split Hadamard operator and measurements orrupted by Poisson noise
+(see :ref:`Tutorial 5 <tuto_acquisition_split_measurements>`).
 """
 
 ###############################################################################
 # .. note::
 #
-#       DRUNet has been taken from https://github.com/cszn/DPIR
-#       Deep Plug-and-Play Image Restoration (DPIR) toolbox
-#       June 2023
+#       DRUNet has been taken from the `Deep Plug-and-Play Image Restoration (DPIR) toolbox <https://github.com/cszn/DPIR>` (June 2023)
 
 ###############################################################################
 # .. rubric:: References for DRUNet
