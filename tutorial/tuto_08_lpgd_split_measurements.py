@@ -24,6 +24,8 @@ Descent (LPGD) for split measurements.
 # and :math:`\mathcal{G}_{\theta}` is a denoising network with
 # learnable parameters :math:`\theta`.
 
+# sphinx_gallery_thumbnail_path = 'fig/lpgd.png'
+
 import numpy as np
 import os
 from spyrit.misc.disp import imagesc
@@ -71,48 +73,15 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We consider noisy split measurements for a Hadamard operator and a
-# “variance subsampling” strategy that preserves the coefficients with the
-# largest variance, obtained from a previously estimated covariance matrix
+# We consider noisy split measurements for a Hadamard operator and a simple 
+# rectangular subsampling” strategy 
 # (for more details, refer to :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`).
-
-###############################################################################
-# First, we download the covariance matrix and load it.
-
-import girder_client
-
-# api Rest url of the warehouse
-url = "https://pilot-warehouse.creatis.insa-lyon.fr/api/v1"
-
-# Generate the warehouse client
-gc = girder_client.GirderClient(apiUrl=url)
-
-# Download the covariance matrix and mean image
-data_folder = "./stat/"
-dataId_list = [
-    "63935b624d15dd536f0484a5",  # for reconstruction (imageNet, 64)
-    "63935a224d15dd536f048496",  # for reconstruction (imageNet, 64)
-]
-cov_name = "./stat/Cov_64x64.npy"
-
-try:
-    for dataId in dataId_list:
-        myfile = gc.getFile(dataId)
-        gc.downloadFile(dataId, data_folder + myfile["name"])
-
-    print(f"Created {data_folder}")
-
-    Cov = np.load(cov_name)
-    print(f"Cov matrix {cov_name} loaded")
-except:
-    Cov = np.eye(h * h)
-    print(f"Cov matrix {cov_name} not found! Set to the identity")
 
 ###############################################################################
 # We define the measurement, noise and preprocessing operators and then
 # simulate a measurement vector :math:`y` corrupted by Poisson noise. As in the previous tutorial,
 # we simulate an accelerated acquisition by subsampling the measurement matrix
-# by retaining only the first :math:`M` rows of a Hadamard matrix :math:`\textrm{Perm} H`.
+# by retaining only the first rows of a Hadamard matrix.
 
 from spyrit.core.meas import HadamSplit
 from spyrit.core.noise import Poisson
@@ -149,7 +118,6 @@ m_plot = m.detach().numpy()
 m_plot = meas2img2(m_plot.T, Ord_rec)
 imagesc(m_plot, r"Measurements $m$")
 
-
 ###############################################################################
 # We define the LearnedPGD network by providing the measurement, noise and preprocessing operators,
 # the denoiser and other optional parameters to the class :class:`spyrit.core.recon.LearnedPGD`.
@@ -159,6 +127,12 @@ imagesc(m_plot, r"Measurements $m$")
 # For the optional parameters, we use three iterations and a step size decay
 # factor of 0.9, which worked well on this data (this should match the parameters
 # used during training).
+
+###############################################################################
+# .. image:: ../fig/lpgd.png
+#    :width: 600
+#    :align: center
+#    :alt: Sketch of the network architecture for LearnedPGD
 
 from spyrit.core.nnet import Unet
 from spyrit.core.recon import LearnedPGD
