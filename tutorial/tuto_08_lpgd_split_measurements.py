@@ -147,33 +147,30 @@ denoi = Unet()
 lpgd_net = LearnedPGD(noise_op, prep_op, denoi, iter_stop=3, step_decay=0.9)
 
 ###############################################################################
-# Now, we load download the pretrained weights of the Unet network and load them into the LPGD network.
+# Now, we load download the pretrained weights and load them into the LPGD network.
 
 from spyrit.core.train import load_net
 
-# Load previously trained model where only Unet is trained
 # Download weights
-url_unet = "https://drive.google.com/file/d/1ki_cJQEwBWrpDhtE7-HoSEoY8oJUnUz5/view?usp=drive_link"
 model_path = "./model"
 if os.path.exists(model_path) is False:
     os.mkdir(model_path)
     print(f"Created {model_path}")
-model_unet_path = os.path.join(
+
+url_lpgd = "https://drive.google.com/file/d/1ki_cJQEwBWrpDhtE7-HoSEoY8oJUnUz5/view?usp=drive_link"
+model_net_path = os.path.join(
     model_path,
     "lpgd_unet_imagenet_N0_10_m_hadam-split_N_128_M_4096_epo_30_lr_0.001_sss_10_sdr_0.5_bs_128_reg_1e-07_uit_3_sdec0-9.pth",
 )
 
-if os.path.exists(model_unet_path) is False:
-    try:
-        import gdown
-
-        gdown.download(url_unet, model_unet_path, quiet=False, fuzzy=True)
-    except:
-        print(f"Model {model_unet_path} not found!")
-        load_unet = False
+try:
+    import gdown
+    gdown.download(url_lpgd, model_net_path, quiet=False, fuzzy=True)
+except:
+    print(f"Model not downloaded from {model_net_path}")
 
 # Load pretrained weights to the model
-load_net(model_unet_path, lpgd_net, device, strict=False)
+load_net(model_net_path, lpgd_net, device, strict=False)
 
 lpgd_net.eval()
 lpgd_net.to(device)
@@ -202,3 +199,5 @@ im2 = axs[1].imshow(x_plot2[0, :, :], cmap="gray")
 axs[1].set_title("LPGD", fontsize=16)
 noaxis(axs[1])
 add_colorbar(im2, "bottom")
+
+plt.show()
