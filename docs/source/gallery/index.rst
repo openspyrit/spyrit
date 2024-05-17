@@ -23,7 +23,9 @@ on a specific part of the pipeline.
 
 * :ref:`Tutorial 5 <sphx_glr_gallery_tuto_05_acquisition_split_measurements.py>` introduces a new type of measurement operator ('Split') that simulates positive and negative measurements
 
-* :ref:`Tutorial 6 <sphx_glr_gallery_tuto_06_dcnet_split_measurements.py>` uses a Data Completion Network with a trainable image denoiser to improve the results obtained in Tutorial 5
+* :ref:`Tutorial 6 <sphx_glr_gallery_tuto_06_dcnet_split_measurements.py>` uses a Data Completion Network (DCNet) with a trainable image denoiser to improve the results obtained in Tutorial 5
+
+* :ref:`Tutorial 7 <sphx_glr_gallery_tuto_dcdrunet_split_measurements.py>` uses DCNeta with a pretrained plug-and-play DR-UNet denoiser which allows to add the noise level as an input parameter
 
 * Explore :ref:`Bonus Tutorial <sphx_glr_gallery_tuto_bonus_advanced_methods_colab.py>` if you want to go deeper in understanding the capabilities of Spyrit
 
