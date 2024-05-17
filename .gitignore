@@ -21,3 +21,4 @@ model/
 runs/
 spyrit/drunet/
 !spyrit/images/tuto/*.png
+docs/source/html
