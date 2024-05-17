@@ -227,7 +227,7 @@ with torch.no_grad():
     )  # reconstruct from raw measurements
 
 ###############################################################################
-# We can set other noise levels and reconstruct the images to see how 
+# We can set other noise levels and reconstruct the images to see how
 # a higher noise level increases the blurring effect.
 
 from spyrit.misc.disp import add_colorbar, noaxis
