@@ -163,7 +163,7 @@ imagesc(m_plot, r"Measurements $m$")
 
 ###############################################################################
 # .. image:: ../fig/drunet.png
-#    :width: 400
+#    :width: 600
 #    :align: center
 #    :alt: Sketch of the network architecture with a DRUNet denoising layer
 
