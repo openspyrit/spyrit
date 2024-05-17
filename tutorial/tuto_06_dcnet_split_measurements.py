@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 r"""
-06. DCNet solution for split measurements
+06. DCNet solution for spliEt measurements
 =========================================
 .. _tuto_dcnet_split_measurements:
 
@@ -239,21 +239,14 @@ model_unet_path = os.path.join(
     "dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth",
 )
 
-load_unet = True
-if os.path.exists(model_unet_path) is False:
-    try:
-        import gdown
+try:
+    import gdown
+    gdown.download(url_unet, model_unet_path, quiet=False, fuzzy=True)
+except:
+    print(f"Model not downloaded from {model_unet_path}")
 
-        gdown.download(url_unet, f"{model_unet_path}.pth", quiet=False, fuzzy=True)
-    except:
-        print(f"Model {model_unet_path} not found!")
-        load_unet = False
-
-if load_unet:
-    # Load pretrained model
-    load_net(model_unet_path, dcnet_unet, device, False)
-    # print(f"Model {model_unet_path} loaded.")
-
+# Load pretrained model
+load_net(model_unet_path, dcnet_unet, device, False)
 
 # Reconstruction
 with torch.no_grad():
