@@ -162,7 +162,7 @@ imagesc(m_plot, r"Measurements $m$")
 # a noise level map to the input.
 
 ###############################################################################
-# .. image:: fig/drunet.png
+# .. image:: ../fig/drunet.png
 #    :width: 400
 #    :align: center
 #    :alt: Sketch of the network architecture with a DRUNet denoising layer
