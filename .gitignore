@@ -23,3 +23,6 @@ spyrit/drunet/
 !spyrit/images/tuto/*.png
 docs/source/html
 docs/source/_autosummary
+docs/source/_static
+docs/source/api
+docs/source/gallery
