@@ -22,3 +22,4 @@ runs/
 spyrit/drunet/
 !spyrit/images/tuto/*.png
 docs/source/html
+docs/source/_autosummary
