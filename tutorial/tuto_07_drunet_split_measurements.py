@@ -227,32 +227,41 @@ with torch.no_grad():
     )  # reconstruct from raw measurements
 
 ###############################################################################
-# We can set another noise level and reconstruct another image.
+# We can set other noise levels and reconstruct the images to see how 
+# a higher noise level increases the blurring effect.
 
 from spyrit.misc.disp import add_colorbar, noaxis
 
-# Set noise level
-noise_level_2 = 3
-denoi_drunet.set_noise_level(noise_level_2)
-
+# Set new noise levels and reconstruct
 with torch.no_grad():
-    # reconstruct from raw measurements
+    noise_level_2 = 1
+    denoi_drunet.set_noise_level(noise_level_2)
     z_dcnet_drunet_2 = dcnet_drunet.reconstruct(y.to(device))
+
+    noise_level_3 = 20
+    denoi_drunet.set_noise_level(noise_level_3)
+    z_dcnet_drunet_3 = dcnet_drunet.reconstruct(y.to(device))
 
 # Plot the two reconstructions
 x_plot = z_dcnet_drunet.view(-1, h, h).cpu().numpy()
 x_plot2 = z_dcnet_drunet_2.view(-1, h, h).cpu().numpy()
+x_plot3 = z_dcnet_drunet_3.view(-1, h, h).cpu().numpy()
 
-f, axs = plt.subplots(1, 2, figsize=(10, 5))
-im1 = axs[0].imshow(x_plot[0, :, :], cmap="gray")
-axs[0].set_title(f"DCNET with DRUNet\n (n map={noise_level})", fontsize=16)
+f, axs = plt.subplots(1, 3, figsize=(10, 5))
+im1 = axs[0].imshow(x_plot2[0, :, :], cmap="gray")
+axs[0].set_title(f"DCNET with DRUNet\n (n map={noise_level_2})", fontsize=16)
 noaxis(axs[0])
 add_colorbar(im1, "bottom")
 
-im2 = axs[1].imshow(x_plot2[0, :, :], cmap="gray")
-axs[1].set_title(f"DCNET with DRUNet\n (n map={noise_level_2})", fontsize=16)
+im2 = axs[1].imshow(x_plot[0, :, :], cmap="gray")
+axs[1].set_title(f"DCNET with DRUNet\n (n map={noise_level})", fontsize=16)
 noaxis(axs[1])
 add_colorbar(im2, "bottom")
+
+im3 = axs[2].imshow(x_plot3[0, :, :], cmap="gray")
+axs[2].set_title(f"DCNET with DRUNet\n (n map={noise_level_3})", fontsize=16)
+noaxis(axs[2])
+add_colorbar(im3, "bottom")
 
 # %%
 # DRUNet denoising
