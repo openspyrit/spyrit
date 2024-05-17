@@ -165,6 +165,7 @@ model_net_path = os.path.join(
 
 try:
     import gdown
+
     gdown.download(url_lpgd, model_net_path, quiet=False, fuzzy=True)
 except:
     print(f"Model not downloaded from {model_net_path}")

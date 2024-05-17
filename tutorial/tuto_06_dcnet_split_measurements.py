@@ -241,6 +241,7 @@ model_unet_path = os.path.join(
 
 try:
     import gdown
+
     gdown.download(url_unet, model_unet_path, quiet=False, fuzzy=True)
 except:
     print(f"Model not downloaded from {model_unet_path}")
