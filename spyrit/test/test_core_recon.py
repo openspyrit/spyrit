@@ -71,7 +71,8 @@ def test_core_recon():
     H_matrix = torch.rand([M, M])
     meas_op = DynamicLinear(H_matrix)
     # deformation field
-    field = AffineDeformationField(rotate, 0.25, M//4, M, (H,H))
+    time_vector = torch.linspace(0.25, M//4, M)
+    field = AffineDeformationField(rotate, time_vector, (H,H))
     img_motion = field(img)
     # measurement
     y = meas_op(img_motion)
@@ -90,7 +91,8 @@ def test_core_recon():
     # no particular order, keep native
     meas_op = DynamicHadamSplit(M, H)
     # deformation field
-    field = AffineDeformationField(rotate, 0.25, M//2, 2*M, (H,H))
+    time_vector = torch.linspace(0.25, M//2, 2*M)
+    field = AffineDeformationField(rotate, time_vector, (H,H))
     img_motion = field(img)
     # measurement
     y = meas_op(img_motion)
@@ -106,7 +108,8 @@ def test_core_recon():
     # inverse from moving object, DynamicLinear, comparing measurements
     print("\tInverse from moving object, DynamicLinear, comparing measurements... ", end="")
     # more random field, keep same image
-    field = AffineDeformationField(rotate, 0, math.e**2, M, (H,H))
+    time_vector = torch.linspace(0, math.e**2, M)
+    field = AffineDeformationField(rotate, time_vector, (H,H))
     img_motion = field(img)
     # measurement
     meas_op = DynamicLinear(H_matrix)
@@ -120,7 +123,8 @@ def test_core_recon():
     # Inverse from moving object, DynamicHadamSplit, comparing measurements
     print("\tInverse from moving object, DynamicHadamSplit, comparing measurements... ", end="")
     # field
-    field = AffineDeformationField(rotate, 0, math.e**2, 2*M, (H,H))
+    time_vector = torch.linspace(0, math.e**2, 2*M)
+    field = AffineDeformationField(rotate, time_vector, (H,H))
     img_motion = field(img)
     # measurement
     meas_op = DynamicHadamSplit(M, H)

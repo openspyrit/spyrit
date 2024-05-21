@@ -256,7 +256,8 @@ def test_core_meas():
     # deformation field that flips the image in x/y axis
     def f(t):
         return -torch.eye(3, dtype=torch.float64)
-    field = AffineDeformationField(f, 0, 1, n_frames=400, img_shape=(50, 50))
+    time_vector = torch.linspace(0, 1, 400)
+    field = AffineDeformationField(f, time_vector, img_shape=(50, 50))
     meas_op.build_H_dyn(field)
     assert_close_all(meas_op.H, H.flip(1), "Wrong dynamic measurement matrix",
                      atol=1e-6)
