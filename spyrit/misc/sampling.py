@@ -30,7 +30,7 @@ def img2mask(Mat: np.ndarray, M: int):
 
 # from /former/_model_Had_DCAN.py
 def meas2img(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
-    r"""Returns measurement image from a single measurement vector or from a 
+    r"""Returns measurement image from a single measurement vector or from a
     batch of measurement vectors. This function is particulatly useful if the
     number of measurements is less than the number of pixels in the image, i.e.
     the image is undersampled.
@@ -38,8 +38,8 @@ def meas2img(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
     Args:
         meas : `np.ndarray` with shape :math:`(M)` or :math:`(B, M)` where
         :math:`B` is the batch size and :math:`M` is the length of the
-        measurement vector. 
-        
+        measurement vector.
+
         Mat : `np.ndarray` with shape :math:`(N,N)`. Sampling matrix, where
         high values indicate high significance. It must be tha matrix used to
         generate the measurement vector.
@@ -51,17 +51,16 @@ def meas2img(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
     # # Perm = Permutation_Matrix(Mat)
     # # Img = np.dot(np.transpose(Perm), y)  #.reshape(Mat.shape)
     # return Img.reshape(Mat.shape)
-    
+
     # y = np.pad(meas, ((0, 0), (0, Mat.size - meas.shape[0]))[2-meas.ndim:])
     ndim = meas.ndim
     if ndim == 1:
         meas = meas.reshape(1, -1)
     # meas is of shape (B, M), B is batch size
     y_padded = np.zeros((meas.shape[0], Mat.size))
-    y_padded[:, :meas.shape[1]] = meas
-    Img = sort_by_significance(y_padded, Mat, axis="cols",
-                               inverse_permutation=False)
-    return Img.reshape((-1, *Mat.shape)[2-ndim:])
+    y_padded[:, : meas.shape[1]] = meas
+    Img = sort_by_significance(y_padded, Mat, axis="cols", inverse_permutation=False)
+    return Img.reshape((-1, *Mat.shape)[2 - ndim :])
 
 
 def meas2img2(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
@@ -84,9 +83,10 @@ def meas2img2(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
             Set of :math:`B` images of shape :math:`(N,N)`
     """
     warnings.warn(
-        "This function is deprecated. Use `spyrit.misc.sampling.meas2img` " +
-        "instead. Beware the batch dimension has moved.",
-        DeprecationWarning)
+        "This function is deprecated. Use `spyrit.misc.sampling.meas2img` "
+        + "instead. Beware the batch dimension has moved.",
+        DeprecationWarning,
+    )
     return meas2img(np.moveaxis(meas, 0, -1), Mat)
     # M, B = meas.shape
     # Nx, Ny = Mat.shape
@@ -150,9 +150,9 @@ def Permutation_Matrix(Mat: np.ndarray) -> np.ndarray:
 def sort_by_significance(
     arr: Union[np.ndarray, torch.tensor],
     sig: Union[np.ndarray, torch.tensor],
-    axis: str="rows",
-    inverse_permutation: bool=False,
-    get_indices: bool=False,
+    axis: str = "rows",
+    inverse_permutation: bool = False,
+    get_indices: bool = False,
 ) -> Union[np.ndarray, torch.tensor]:
     """
     Returns an array ordered by decreasing significance along the specified
@@ -251,15 +251,15 @@ def sort_by_significance(
 def reindex(
     values: Union[np.ndarray, torch.tensor],
     indices: Union[np.ndarray, torch.tensor],
-    axis: str="rows",
-    inverse_permutation: bool=False,
+    axis: str = "rows",
+    inverse_permutation: bool = False,
 ) -> Union[np.ndarray, torch.tensor]:
     """Sorts a tensor along a specified axis using the indices tensor.
-    
+
     The indices tensor contains the new indices of the elements in the values
     tensor. `values[0]` will be placed at the index `indices[0]`, `values[1]`
     at `indices[1]`, and so on.
-    
+
     .. note::
         This function can be called with either torch tensors or numpy arrays.
         The output will have the same type as the input.
@@ -294,7 +294,7 @@ def reindex(
     reindices = indices.argsort()
 
     # cols corresponds to last dimension
-    if axis == 'cols' or values.ndim == 1:
+    if axis == "cols" or values.ndim == 1:
         if inverse_permutation:
             return values[..., reindices.argsort()]
         return values[..., reindices]
@@ -302,7 +302,7 @@ def reindex(
     # rows corresponds to second-to-last dimension
     # because it is equivalent to sorting along the last dimension of the
     # transposed tensor, we need to transpose (inverse) the permutation
-    elif axis == 'rows':
+    elif axis == "rows":
         inverse_permutation = not inverse_permutation
         if inverse_permutation:
             return values[..., reindices.argsort(), :]

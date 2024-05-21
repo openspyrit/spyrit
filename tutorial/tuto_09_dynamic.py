@@ -8,7 +8,7 @@ of a moving object. There are three steps in this process:
 
 1. First, a still image is deformed to generate multiple frames. This step
 simulates movement of the object. The module :mod:`spyrit.core.time` is used
-to warp images. 
+to warp images.
 
 2. Second, the measurement is performed on the series of frames. The 'Dynamic'
 classes from :mod:`spyrit.core.meas` are used.
@@ -26,7 +26,6 @@ detailed explanation of each class is included at the end of the case study.
    :alt: Dynamic measurement and reconstruction steps
 """
 
-
 # %%
 # 1. Example: warping an image to generate a motion picture
 # -----------------------------------------------------------------------------
@@ -41,7 +40,7 @@ detailed explanation of each class is included at the end of the case study.
 # correspond to a Hadamard matrix of size 32x32. It is the center of the image
 # that will be measured with those patterns. This leaves a border of 9 pixels
 # on each side of the image, allowing for the object to move in and out of the
-# measurement area. 
+# measurement area.
 
 import os
 
@@ -55,7 +54,7 @@ from spyrit.misc.statistics import transform_gray_norm
 # sphinx_gallery_thumbnail_path = 'fig/tuto9.png'
 
 img_size = 50  # full image side's size in pixels
-meas_size = 32 # measurement pattern side's size in pixels (Hadamard matrix)
+meas_size = 32  # measurement pattern side's size in pixels (Hadamard matrix)
 img_shape = (img_size, img_size)
 meas_shape = (meas_size, meas_size)
 i = 1  # Image index (modify to change the image)
@@ -86,8 +85,8 @@ imagesc(x_plot, r"Original image $x$ in [-1, 1]")
 # 1.b Example: defining an affine transformation
 # =============================================================================
 # Here we will define an affine transformation using a matrix and the class
-# :class:`spyrit.core.time.AffineDeformationField`. 
-# 
+# :class:`spyrit.core.time.AffineDeformationField`.
+#
 # This class takes 3 arguments:
 # a function :math:`f(t) = Mat`, where :math:`t` represents the time
 # at which :math:`f` is evaluated, and :math:`Mat` is the `(3,3)` matrix that
@@ -103,15 +102,24 @@ from spyrit.core.time import AffineDeformationField
 
 # we want to define a deformation similar to that see in [ref to Thomas].
 
-a = 0.2 # amplitude
-omega = math.pi # angular speed
-def s(t): return 1 + a*math.sin(t * omega) # base function for f
+a = 0.2  # amplitude
+omega = math.pi  # angular speed
+
+
+def s(t):
+    return 1 + a * math.sin(t * omega)  # base function for f
+
+
 def f(t):
-    return torch.tensor([
-        [1/s(t), 0,    0],
-        [0,      s(t), 0],
-        [0,      0,    0],
-    ], dtype=torch.float64)
+    return torch.tensor(
+        [
+            [1 / s(t), 0, 0],
+            [0, s(t), 0],
+            [0, 0, 0],
+        ],
+        dtype=torch.float64,
+    )
+
 
 ###############################################################################
 # .. note::
@@ -119,29 +127,29 @@ def f(t):
 #       output dtype set to `float64`, so that computations are as accurate
 #       as possible. This is especially true for large images.
 #
-# Next, we will create the time vector and define the image shape. 
-# 
+# Next, we will create the time vector and define the image shape.
+#
 # The measurement size (the size of the Hadamard patterns applied to the image)
 # detemrines the number of measurements - if there is no subsampling. The
 # number of patterns must match the number of frames of the motion picture. It
 # is for this reason that the number of frames is set to the square of the
 # measurement size.
 
-time_vector = torch.linspace(0, 10, 2 * meas_size**2) # *2 because of the splitting
+time_vector = torch.linspace(0, 10, 2 * meas_size**2)  # *2 because of the splitting
 
 aff_field = AffineDeformationField(f, time_vector, img_shape)
 
-# %% 
+# %%
 # 1.c Example: warping the image
 # =============================================================================
 # Now that the field is defined, we can warp the image. Spyrit works mostly
 # with vectorized images, and warping images is no exception. Currently, the
 # classes :class:`spyrit.core.time.AffineDeformationField` and
 # :class:`spyrit.core.time.DeformationField` can only warp a single image at a
-# time. 
+# time.
 
 # Reshape the image from (b,c,h,w) to (c, h*w)
-x = x.view(c, h*w)
+x = x.view(c, h * w)
 
 x_motion = aff_field(x, 0, 2 * meas_size**2)
 c, n_frames, n_pixels = x_motion.shape
@@ -178,6 +186,7 @@ for f in frames:
 
 from spyrit.core.noise import NoNoise
 from spyrit.core.meas import DynamicHadamSplit
+
 meas_op = DynamicHadamSplit(M=meas_size**2, h=meas_size, Ord=None, img_shape=img_shape)
 
 # show the measurement matrix H
@@ -197,7 +206,7 @@ imagesc(meas_op.H_static.cpu().numpy(), "Measurement matrix")
 y = meas_op(x_motion)
 
 # show the measurement vector
-imagesc(y.view((meas_size*2, meas_size)).cpu().numpy(), "Measurement vector")
+imagesc(y.view((meas_size * 2, meas_size)).cpu().numpy(), "Measurement vector")
 
 
 # %%
@@ -215,17 +224,17 @@ imagesc(y.view((meas_size*2, meas_size)).cpu().numpy(), "Measurement vector")
 # The dynamic measurement matrix (:math:`H_dyn`) is defined as the measurement
 # matrix that would give the same measurement vector :math:`y` as the one
 # computed before when applied to a still image :math:`x_ref`. To build the
-# dynamic measurement matrix, we need the measurement patterns and the 
+# dynamic measurement matrix, we need the measurement patterns and the
 # deformation field. In this case, the deformation field is known, but in some
 # cases it might have to be estimated.
-# 
+#
 # The dynamic measurement matrix `H_dyn` is built from the measurement operator
 # itself.
 
 # compute the dynamic measurement matrix
-print("H_dyn computed:", hasattr(meas_op, 'H_dyn'))
-meas_op.build_H_dyn(aff_field, mode='bilinear')
-print("H_dyn computed:", hasattr(meas_op, 'H_dyn'))
+print("H_dyn computed:", hasattr(meas_op, "H_dyn"))
+meas_op.build_H_dyn(aff_field, mode="bilinear")
+print("H_dyn computed:", hasattr(meas_op, "H_dyn"))
 
 # recommended way
 print("H_dyn shape:", meas_op.H_dyn.shape)
@@ -246,9 +255,9 @@ print("H_dyn is same as H:", (meas_op.H == meas_op.H_dyn).all())
 # our dynamic measurement matrix:
 
 # compute the pseudo-inverse using the requested regularizers
-print("H_dyn_pinv computed:", hasattr(meas_op, 'H_dyn_pinv'))
-meas_op.build_H_dyn_pinv(reg='L2', eta=1e-6)
-print("H_dyn_pinv computed:", hasattr(meas_op, 'H_dyn_pinv'))
+print("H_dyn_pinv computed:", hasattr(meas_op, "H_dyn_pinv"))
+meas_op.build_H_dyn_pinv(reg="L2", eta=1e-6)
+print("H_dyn_pinv computed:", hasattr(meas_op, "H_dyn_pinv"))
 
 # recommended way
 print("H_dyn_pinv shape:", meas_op.H_dyn_pinv.shape)
@@ -271,6 +280,7 @@ print("H_dyn_pinv is same as H_pinv:", (meas_op.H_dyn_pinv == meas_op.H_pinv).al
 x_hat1 = meas_op.pinv(y)
 # using a PseudoInverse instance, no difference
 from spyrit.core.recon import PseudoInverse
+
 recon_op = PseudoInverse()
 x_hat2 = recon_op(y, meas_op)
 
@@ -279,28 +289,34 @@ print("x_hat1 shape:", x_hat1.shape)
 
 # show the reconstructed image and the difference with the original image
 imagesc(x_hat1.view(img_shape), "Reconstructed image with pinv")
-imagesc(x_plot.view(img_shape) - x_hat1.view(img_shape), "Difference between original\nand reconstructed image")
+imagesc(
+    x_plot.view(img_shape) - x_hat1.view(img_shape),
+    "Difference between original\nand reconstructed image",
+)
 
 ###############################################################################
 # It is possible to reconstruct the original image without having to compute
 # the pseudo-inverse but using the least-squares function that is provided in
-# torch: :func:`torch.linalg.lstsq`. 
-# 
+# torch: :func:`torch.linalg.lstsq`.
+#
 # This allows for a much faster reconstruction if you need to reconstruct only
 # once, but is much slower if you need to reconstruct an image with the same
 # parameters (measurement patterns and deformation field) more than 5-10 times.
 
 # delete the H_dyn_pinv attribute
-print("H_dyn_pinv computed:", hasattr(meas_op, 'H_dyn_pinv'))
+print("H_dyn_pinv computed:", hasattr(meas_op, "H_dyn_pinv"))
 del meas_op.H_dyn_pinv
-print("H_dyn_pinv computed:", hasattr(meas_op, 'H_dyn_pinv'))
+print("H_dyn_pinv computed:", hasattr(meas_op, "H_dyn_pinv"))
 
 # use the pinv method directly, can specify reg and eta
-x_hat3 = meas_op.pinv(y, reg='L1', eta=1e-6)
+x_hat3 = meas_op.pinv(y, reg="L1", eta=1e-6)
 
 # show the reconstructed image and the difference with the original image
 imagesc(x_hat3.view(img_shape), "Reconstructed image with lstsq")
-imagesc(x_plot.view(img_shape) - x_hat3.view(img_shape), "Difference between original\nand reconstructed image")
+imagesc(
+    x_plot.view(img_shape) - x_hat3.view(img_shape),
+    "Difference between original\nand reconstructed image",
+)
 
 
 # %%
@@ -317,32 +333,38 @@ imagesc(x_plot.view(img_shape) - x_hat3.view(img_shape), "Difference between ori
 # the deformation field itself of shape :math:`(n_frames,h,w,2)`, where
 # :math:`n_frames` is the number of frames, and :math:`h` and :math:`w` are the
 # height and width of the image. The last dimension represents the 2D
-# pixel from where to interpolate the new pixel value at the coordinate 
-# :math:`(h,w)`. 
+# pixel from where to interpolate the new pixel value at the coordinate
+# :math:`(h,w)`.
 #
 # We will first use an instance of :class:`spyrit.core.time.AffineDeformationField`
 # to create the deformation field. Then, a separate instance of
-# :class:`spyrit.core.time.DeformationField` will be created using the 
+# :class:`spyrit.core.time.DeformationField` will be created using the
 # deformation field from the affine deformation field.
 
 from spyrit.core.time import DeformationField
 
 # define a rotation function
-omega = 2*math.pi # angular velocity
+omega = 2 * math.pi  # angular velocity
+
+
 def rot(t):
-    ans = torch.tensor([
-        [math.cos(t*omega), -math.sin(t*omega), 0],
-        [math.sin(t*omega),  math.cos(t*omega), 0],
-        [0,                 0,                1]
-    ], dtype=torch.float64) # it is recommended to use float64
+    ans = torch.tensor(
+        [
+            [math.cos(t * omega), -math.sin(t * omega), 0],
+            [math.sin(t * omega), math.cos(t * omega), 0],
+            [0, 0, 1],
+        ],
+        dtype=torch.float64,
+    )  # it is recommended to use float64
     return ans
+
 
 # create a time vector of length 100 (change this to fit your needs)
 t0 = 0
 t1 = 10
 n_frames = 100
 time_vector = torch.linspace(t0, t1, n_frames)
-img_shape = (50, 50) # image shape
+img_shape = (50, 50)  # image shape
 
 # create the affine deformation field
 aff_field2 = AffineDeformationField(rot, time_vector, img_shape)

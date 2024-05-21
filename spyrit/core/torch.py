@@ -21,18 +21,19 @@ import numpy as np
 # Walsh / Hadamard -related functions
 # =============================================================================
 
+
 def assert_power_of_2(n, raise_error=True):
     """Asserts that n is a power of 2.
-    
+
     Args:
         n (int): The number to check.
-        
+
         raise_error (bool, optional): Whether to raise an error if n is not a
         power of 2 or not. Default is True.
-    
+
     Raises:
         ValueError: If n is not a power of 2 and if raise_error is True.
-    
+
     Returns:
         bool: True if n is a power of 2, False otherwise.
     """
@@ -47,41 +48,42 @@ def assert_power_of_2(n, raise_error=True):
     return False
 
 
-def finite_diff_mat(n, boundary='dirichlet'):
+def finite_diff_mat(n, boundary="dirichlet"):
     """
-    Creates a finite difference matrix of shape :math:`(n^2,n^2)` for a 2D 
+    Creates a finite difference matrix of shape :math:`(n^2,n^2)` for a 2D
     image of shape :math:`(n,n)`.
-    
+
     Args:
         :attr:`n` (int): The size of the image.
-        
+
         :attr:`boundary` (str, optional): The boundary condition to use.
         Must be one of 'dirichlet', 'neumann', 'periodic', 'symmetric' or
         'antisymmetric'. Default is 'neumann'.
-    
+
     Returns:
         :class:`torch.sparse.FloatTensor`: The finite difference matrix.
     """
-    
+
     # nombre de blocs: height
     # taille de chaque bloc: width
-    
+
     # max number of elements in the diagonal
     # height, width = shape
     N = n**2
     # here are all the possible matrices. Please add to this list if you
     # want to add a new boundary condition
     valid_boundaries = [
-        'dirichlet',
-        'neumann',
-        'periodic',
-        'symmetric',
-        'antisymmetric',
+        "dirichlet",
+        "neumann",
+        "periodic",
+        "symmetric",
+        "antisymmetric",
     ]
     if boundary not in valid_boundaries:
-        raise ValueError("Invalid boundary condition. Must be one of {}."
-                         .format(valid_boundaries))
-        
+        raise ValueError(
+            "Invalid boundary condition. Must be one of {}.".format(valid_boundaries)
+        )
+
     # auxiliary function to create sparse matrix
     def _spdiags(diagonals, offsets, shape):
         """
@@ -89,52 +91,52 @@ def finite_diff_mat(n, boundary='dirichlet'):
             - diagonals is a list of 1D tensors (does not need to be a tensor)
             - offsets is a list of integers (does not need to be a tensor)
             - shape is unchanged (a tuple)
-            
+
         Most notably:
             - Using a positive offset, the first element of the matrix diagonal
             is the first element of the provided diagonal. torch.sparse.spdiags
             introduces an offset of k when using a positive offset k.
         """
         # if offset > 0, roll to keep first element in 'dia' displayed
-        diags = torch.stack([dia.roll(off) if off > 0
-                             else dia 
-                             for dia, off in zip(diagonals, offsets)])
+        diags = torch.stack(
+            [dia.roll(off) if off > 0 else dia for dia, off in zip(diagonals, offsets)]
+        )
         offsets = torch.tensor(offsets)
         return torch.sparse.spdiags(diags, offsets, shape)
-    
+
     # create common diagonals
-    ones = torch.ones(n,n).flatten()
-    ones_0right = torch.ones(n,n)
-    ones_0right[:,-1] = 0
+    ones = torch.ones(n, n).flatten()
+    ones_0right = torch.ones(n, n)
+    ones_0right[:, -1] = 0
     ones_0right = ones_0right.flatten()
-    
-    if boundary == 'dirichlet':
+
+    if boundary == "dirichlet":
         Dx = _spdiags([ones, -ones], [0, -n], (N, N))
         Dy = _spdiags([ones, -ones_0right], [0, -1], (N, N))
-        
-    elif boundary == 'neumann':
+
+    elif boundary == "neumann":
         ones_0left = ones_0right.roll(1)
         ones_0top = ones_0left.reshape(n, n).T.flatten()
         Dx = _spdiags([ones_0top, -ones], [0, -n], (N, N))
         Dy = _spdiags([ones_0left, -ones_0right], [0, -1], (N, N))
 
-    elif boundary == 'periodic':
+    elif boundary == "periodic":
         zeros_1left = (1 - ones_0right).roll(1)
-        Dx = _spdiags([ones, -ones, -ones], [0, -n, N-n], (N, N))
-        Dy = _spdiags([ones, -ones_0right, -zeros_1left], [0, -1, n-1], (N, N))
-    
-    elif boundary == 'symmetric':
+        Dx = _spdiags([ones, -ones, -ones], [0, -n, N - n], (N, N))
+        Dy = _spdiags([ones, -ones_0right, -zeros_1left], [0, -1, n - 1], (N, N))
+
+    elif boundary == "symmetric":
         zeros_1left = (1 - ones_0right).roll(1)
         zeros_1top = zeros_1left.reshape(n, n).T.flatten()
         Dx = _spdiags([ones, -ones, -zeros_1top], [0, -n, n], (N, N))
-        Dy = _spdiags([ones, -ones_0right, -zeros_1left], [0, -1, n-1],(N, N))
-    
-    elif boundary == 'antisymmetric':
+        Dy = _spdiags([ones, -ones_0right, -zeros_1left], [0, -1, n - 1], (N, N))
+
+    elif boundary == "antisymmetric":
         zeros_1left = (1 - ones_0right).roll(1)
         zeros_1top = zeros_1left.reshape(n, n).T.flatten()
         Dx = _spdiags([ones, -ones, zeros_1top], [0, -n, n], (N, N))
         Dy = _spdiags([ones, -ones_0right, zeros_1left], [0, -1, 1], (N, N))
-    
+
     return Dx, Dy
 
 
@@ -144,16 +146,16 @@ def walsh_matrix(n):
 
     Args:
         n (int): Order of the Hadamard matrix. Must be a power of two.
-        
+
     Raises:
         ValueError: If n is not a positive integer or if n is not a power of 2.
-    
+
     Returns:
         torch.tensor: A n-by-n matrix representing the Walsh-ordered Hadamard
         matrix.
     """
     assert_power_of_2(n, raise_error=True)
-    
+
     # define recursive function
     def recursive_walsh(k):
         if k >= 3:
@@ -171,9 +173,9 @@ def walsh_matrix(n):
             out[j:, j:] = alternate * (out[:j, j:]).flip(0)
             return out
         elif k == 2:
-            return torch.tensor([[1., 1.], [1., -1.]])
+            return torch.tensor([[1.0, 1.0], [1.0, -1.0]])
         else:
-            return torch.tensor([[1.]])
+            return torch.tensor([[1.0]])
 
     return recursive_walsh(n)
 
@@ -202,17 +204,17 @@ def walsh2_torch(img, H=None):
         img (torch.tensor): Image to transform. Must have a shape of
         :math:`(*, h, w)` where :math:`h` and :math:`w` are the image height
         and width. The image must be square, i.e. :math:`h = w`. The image
-        height and width must be a power of two. 
+        height and width must be a power of two.
 
         H (torch.tensor, optional): 1D Walsh-ordered Hadamard transformation
         matrix. Specify this if you have already calculated the transformation
-        matrix, or leave this field to `None` to have the transformation matrix 
+        matrix, or leave this field to `None` to have the transformation matrix
         calculated. Defaults to None.
 
     Returns:
         torch.tensor: Hadamard-transformed image. Has same shape as input
         image.
-    
+
     Example:
         >>> img = torch.rand(1, 3, 64, 64) # (batch, channels, height, width)
         >>> img_transformed = walsh2_torch(img)
@@ -229,14 +231,15 @@ def walsh2_torch(img, H=None):
 # Permutations and Sorting
 # =============================================================================
 
-def reindex( # previously sort_by_indices
+
+def reindex(  # previously sort_by_indices
     values: torch.tensor,
     indices: torch.tensor,
-    axis: str='rows',
-    inverse_permutation: bool=False
+    axis: str = "rows",
+    inverse_permutation: bool = False,
 ) -> torch.tensor:
     """Sorts a tensor along a specified axis using the indices tensor.
-    
+
     The indices tensor contains the new indices of the elements in the values
     tensor. `values[0]` will be placed at the index `indices[0]`, `values[1]`
     at `indices[1]`, and so on.
@@ -244,23 +247,23 @@ def reindex( # previously sort_by_indices
     Args:
         values (torch.tensor): The tensor to sort. Can be 1D, 2D, or any
         multi-dimensional batch of 2D tensors.
-        
+
         indices (torch.tensor): Tensor containing the new indices of the
-        elements contained in `values`. 
-        
+        elements contained in `values`.
+
         axis (str, optional): The axis to sort along. Must be either 'rows' or
         'cols'. If `values` is 1D, `axis` is not used. Default is 'rows'.
-        
+
         inverse_permutation (bool, optional): Whether to apply the permutation
         inverse. Default is False.
-    
+
     Raises:
         ValueError: If `axis` is not 'rows' or 'cols'.
 
     Returns:
         torch.tensor: The sorted tensor by the given indices along the
         specified axis.
-    
+
     Example:
         >>> values = torch.tensor([[10, 20, 30], [100, 200, 300]])
         >>> indices = torch.tensor([2, 0, 1])
@@ -275,7 +278,7 @@ def reindex( # previously sort_by_indices
     reindices = indices.argsort()
 
     # cols corresponds to last dimension
-    if axis == 'cols' or values.ndim == 1:
+    if axis == "cols" or values.ndim == 1:
         if inverse_permutation:
             return values[..., reindices.argsort()]
         return values[..., reindices]
@@ -283,7 +286,7 @@ def reindex( # previously sort_by_indices
     # rows corresponds to second-to-last dimension
     # because it is equivalent to sorting along the last dimension of the
     # transposed tensor, we need to transpose (inverse) the permutation
-    elif axis == 'rows':
+    elif axis == "rows":
         inverse_permutation = not inverse_permutation
         if inverse_permutation:
             return values[..., reindices.argsort(), :]
@@ -295,44 +298,44 @@ def reindex( # previously sort_by_indices
 def sort_by_significance(
     values: torch.tensor,
     sig: torch.tensor,
-    axis: str='rows',
-    inverse_permutation: bool=False,
-    get_indices: bool=False
+    axis: str = "rows",
+    inverse_permutation: bool = False,
+    get_indices: bool = False,
 ) -> torch.tensor:
-    """Returns a tensor sorted by decreasing significance of its elements as 
+    """Returns a tensor sorted by decreasing significance of its elements as
     determined by the significance tensor.
-    
+
     The element in the `values` tensor whose significance is the highest will
     be placed first, followed by the element with the second highest
     significance, and so on. The significance tensor `sig` must have the same
     shape as `values` along the specified axis.
-    
+
     .. note::
         This function is equivalent to (but much faster than) the following
         code::
-        
+
         from spyrit.core.torch import Permutation_Matrix
-        
+
         h = 64
         values = torch.randn(2*h, h)
         sig_rows = torch.randn(2*h)
         sig_cols = torch.randn(h)
-        
+
         # 1
         y1 = sort_by_significance(values, sig_rows, 'rows', False)
         y2 = Permutation_Matrix(sig_rows) @ values
         assert torch.allclose(y1, y2) # True
-        
+
         # 2
         y1 = sort_by_significance(values, sig_rows, 'rows', True)
         y2 = Permutation_Matrix(sig_rows).T @ values
         assert torch.allclose(y1, y2) # True
-        
+
         # 3
         y1 = sort_by_significance(values, sig_cols, 'cols', False)
         y2 = values @ Permutation_Matrix(sig_cols)
         assert torch.allclose(y1, y2) # True
-        
+
         # 4
         y1 = sort_by_significance(values, sig_cols, 'cols', True)
         y2 = values @ Permutation_Matrix(sig_cols).T
@@ -341,17 +344,17 @@ def sort_by_significance(
     Args:
         values (torch.tensor): Tensor to sort by significance. Can be 1D, 2D,
         or any multi-dimensional batch of 2D tensors.
-        
+
         sig (torch.tensor): Significance tensor. Its length must be equal to
         the number of rows or columns in `values` depending on the specified
         axis.
-        
+
         axis (str, optional): Axis along which to sort. Must be either 'rows'
         or 'cols'. Default is 'rows'.
-        
+
         inverse_permutation (bool, optional): If True, the inverse permutation
         is applied. Default is False.
-        
+
         get_indices (bool, optional): If True, the function will return the
         indices tensor used to sort the values tensor. Default is False.
 
@@ -369,21 +372,21 @@ def sort_by_significance(
 
 def Permutation_Matrix(sig: torch.tensor) -> torch.tensor:
     """Returns a permutation matrix based on the significance tensor.
-    
+
     The permutation matrix is a square matrix whose rows or columns are
     permuted based on the significance tensor. The permutation matrix is
     used to sort a tensor by decreasing significance of its elements.
-    
+
     Args:
         sig (torch.tensor): Significance tensor. Its length must be equal to
         the number of rows or columns in the tensor to be sorted. If it is not
         a 1D tensor, it is flattened.
-    
+
     Returns:
         torch.tensor: Permutation matrix of shape `(n, n)` based on the
         significance tensor, where `n` is the length of the significance
         tensor.
-    
+
     Example:
         >>> sig = torch.tensor([0.1, 0.4, 0.2, 0.3])
         >>> Permutation_Matrix(sig)
@@ -400,32 +403,34 @@ def Permutation_Matrix(sig: torch.tensor) -> torch.tensor:
 # Image Processing
 # =============================================================================
 
-def center_crop(img: torch.tensor, 
-                out_shape: tuple,
-                in_shape: tuple=None, 
-                ) -> torch.tensor:
+
+def center_crop(
+    img: torch.tensor,
+    out_shape: tuple,
+    in_shape: tuple = None,
+) -> torch.tensor:
     """Crops the center of an image to the specified shape.
-    
+
     This function uses the `torchvision.transforms.CenterCrop` class to crop
     the center of an image to the specified shape. This function can however
     crop images that are vectorized (flattened, 1D) by specifying the input
     shape.
-    
+
     Args:
         img (torch.tensor): Image to crop. If the image is vectorized, the
         input shape must be specified.
-        
+
         out_shape (tuple): Shape of the output image after cropping. Must be
         a tuple of two integers (height, width).
-        
+
         in_shape (tuple, optional): Shape of the input image, must be specified
         if and only if the input image is vectorized. Must be a tuple of two
         integers (height, width). If None, the input is supposed to be a 2D
         image. Defaults to None.
-    
+
     Returns:
         torch.tensor: Cropped image. It has the same number of dimensions as
-        the input image. 
+        the input image.
     """
     # if img has shape (..., h*w), reshape it to (..., h, w)
     img_shape = img.shape
@@ -437,19 +442,20 @@ def center_crop(img: torch.tensor,
     return img_cropped
 
 
-def center_pad(img: torch.tensor, 
-               out_shape: tuple,
-               in_shape: tuple=None, 
-               ) -> torch.tensor:
+def center_pad(
+    img: torch.tensor,
+    out_shape: tuple,
+    in_shape: tuple = None,
+) -> torch.tensor:
     """Pads an image to the specified shape by centering it.
 
     Args:
         img (torch.tensor): Image to pad. If the image is vectorized, the
         input shape must be specified.
-        
+
         out_shape (tuple): Shape of the output image after padding. Must be
         a tuple of two integers (height, width).
-        
+
         in_shape (tuple, optional): Shape of the input image, must be specified
         if and only if the input image is vectorized. Must be a tuple of two
         integers (height, width). If None, the input is supposed to be a 2D
@@ -466,14 +472,14 @@ def center_pad(img: torch.tensor,
     else:
         img = img.reshape(*img_shape[:-1], *in_shape)
         reshape = True
-        
+
     pad_top = (out_shape[0] - in_shape[0]) // 2
     pad_bottom = out_shape[0] - in_shape[0] - pad_top
     pad_left = (out_shape[1] - in_shape[1]) // 2
     pad_right = out_shape[1] - in_shape[1] - pad_left
     padding = (pad_left, pad_right, pad_top, pad_bottom)
     img_padded = nn.ConstantPad2d(padding, 0)(img)
-    
+
     if reshape:
         img_padded = img_padded.reshape(*img_shape[:-1], -1)
     return img_padded
