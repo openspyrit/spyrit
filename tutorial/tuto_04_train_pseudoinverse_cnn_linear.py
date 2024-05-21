@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 r"""
 04. Train pseudoinverse solution + CNN denoising
 ================================================
