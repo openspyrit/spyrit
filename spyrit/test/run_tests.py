@@ -6,15 +6,16 @@ from test_core_time import test_core_time
 
 
 def run_tests():
+    # order matters ! Please change it if you have failing tests
     test_core_meas()
     test_core_noise()
     test_core_prep()
-    test_core_recon()
     test_core_time()
+    test_core_recon() # must be after time
 
 
 if __name__ == "__main__":
     run_tests()
     print("==================================================================")
-    print("              All tests passed for all core modules")
+    print("              All tests passed for all core modules!              ")
     print("==================================================================")
