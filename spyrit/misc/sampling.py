@@ -1,4 +1,5 @@
 from typing import Union
+import warnings
 
 import torch
 import numpy as np
@@ -29,29 +30,48 @@ def img2mask(Mat: np.ndarray, M: int):
 
 # from /former/_model_Had_DCAN.py
 def meas2img(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
-    """Return measurement image from a single measurement vector
+    r"""Returns measurement image from a single measurement vector or from a 
+    batch of measurement vectors. This function is particulatly useful if the
+    number of measurements is less than the number of pixels in the image, i.e.
+    the image is undersampled.
 
     Args:
-        meas : `np.ndarray` with shape :math:`(M,)`
-            Measurement vector of length :math:`M \le N^2`.
-        Mat : `np.ndarray` with shape :math:`(N,N)`
-            Sampling matrix, where high values indicate high significance.
+        meas : `np.ndarray` with shape :math:`(M)` or :math:`(B, M)` where
+        :math:`B` is the batch size and :math:`M` is the length of the
+        measurement vector. 
+        
+        Mat : `np.ndarray` with shape :math:`(N,N)`. Sampling matrix, where
+        high values indicate high significance. It must be tha matrix used to
+        generate the measurement vector.
 
     Returns:
-        Img : `np.ndarray` with shape :math:`(N,N,)`
-            N-by-N measurement image
+        Img : `np.ndarray` with shape :math:`(N,N,)`. N-by-N measurement image
     """
-    y = np.pad(meas, (0, Mat.size - len(meas)))
-    # Perm = Permutation_Matrix(Mat)
-    # Img = np.dot(np.transpose(Perm), y)  #.reshape(Mat.shape)
-    Img = sort_by_significance(y, Mat, axis="rows", inverse_permutation=True)
-    return Img.reshape(Mat.shape)
+    # y = np.pad(meas, (0, Mat.size - len(meas)))
+    # # Perm = Permutation_Matrix(Mat)
+    # # Img = np.dot(np.transpose(Perm), y)  #.reshape(Mat.shape)
+    # return Img.reshape(Mat.shape)
+    
+    # y = np.pad(meas, ((0, 0), (0, Mat.size - meas.shape[0]))[2-meas.ndim:])
+    ndim = meas.ndim
+    if ndim == 1:
+        meas = meas.reshape(1, -1)
+    # meas is of shape (B, M), B is batch size
+    y_padded = np.zeros((meas.shape[0], Mat.size))
+    y_padded[:, :meas.shape[1]] = meas
+    Img = sort_by_significance(y_padded, Mat, axis="cols",
+                               inverse_permutation=False)
+    return Img.reshape((-1, *Mat.shape)[2-ndim:])
 
 
 def meas2img2(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
     """Return multiple measurement images from multiple measurement vectors.
     It is essentially the same as `meas2img`, but the `meas` argument is
     two-dimensional.
+
+    .. warning::
+        This function is deprecated. Use `spyrit.misc.sampling.meas2img` instead.
+        In meas2img, the batch dimension comes first: (B, M) instead of (M, B).
 
     Args:
         meas : `np.ndarray` with shape :math:`(M,B)`
@@ -63,15 +83,20 @@ def meas2img2(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
         Img : `np.ndarray` with shape :math:`(N,N,B)`
             Set of :math:`B` images of shape :math:`(N,N)`
     """
-    M, B = meas.shape
-    Nx, Ny = Mat.shape
+    warnings.warn(
+        "This function is deprecated. Use `spyrit.misc.sampling.meas2img` " +
+        "instead. Beware the batch dimension has moved.",
+        DeprecationWarning)
+    return meas2img(np.moveaxis(meas, 0, -1), Mat)
+    # M, B = meas.shape
+    # Nx, Ny = Mat.shape
 
-    y = np.pad(meas, ((0, Mat.size - len(meas)), (0, 0)))
-    # Perm = Permutation_Matrix(Mat)
-    # Img = Perm.T @ y
-    Img = sort_by_significance(y, Mat, axis="rows", inverse_permutation=True)
-    Img = Img.reshape((Nx, Ny, B))
-    return Img
+    # y = np.pad(meas, ((0, Mat.size - len(meas)), (0, 0)))
+    # # Perm = Permutation_Matrix(Mat)
+    # # Img = Perm.T @ y
+    # Img = sort_by_significance(y, Mat, axis="rows", inverse_permutation=True)
+    # Img = Img.reshape((Nx, Ny, B))
+    # return Img
 
 
 def img2meas(Img: np.ndarray, Mat: np.ndarray) -> np.ndarray:
@@ -112,20 +137,22 @@ def Permutation_Matrix(Mat: np.ndarray) -> np.ndarray:
         reorder a matrix as follows:
         ``y = Permutation_Matrix(Ord) @ Mat``
     """
-    (nx, ny) = Mat.shape
-    Reorder = rankdata(-Mat, method="ordinal")
-    Columns = np.array(range(nx * ny))
-    P = np.zeros((nx * ny, nx * ny))
-    P[Reorder - 1, Columns] = 1
-    return P
+    indices = np.argsort(-Mat.flatten(), kind="stable")
+    return np.eye(len(Mat.flatten()))[indices]
+    # (nx, ny) = Mat.shape
+    # Reorder = rankdata(-Mat, method="ordinal")
+    # Columns = np.array(range(nx * ny))
+    # P = np.zeros((nx * ny, nx * ny))
+    # P[Reorder - 1, Columns] = 1
+    # return P
 
 
 def sort_by_significance(
     arr: Union[np.ndarray, torch.tensor],
     sig: Union[np.ndarray, torch.tensor],
-    axis: str = "rows",
-    inverse_permutation: bool = False,
-    get_indices: bool = False,
+    axis: str="rows",
+    inverse_permutation: bool=False,
+    get_indices: bool=False,
 ) -> Union[np.ndarray, torch.tensor]:
     """
     Returns an array ordered by decreasing significance along the specified
@@ -217,83 +244,71 @@ def sort_by_significance(
         raise ValueError("indices must be a numpy array or a torch tensor")
 
     if get_indices:
-        return (sort_by_indices(arr, indices, axis, inverse_permutation), indices)
-    return sort_by_indices(arr, indices, axis, inverse_permutation)
+        return (reindex(arr, indices, axis, inverse_permutation), indices)
+    return reindex(arr, indices, axis, inverse_permutation)
 
 
-def sort_by_indices(
-    arr: Union[np.ndarray, torch.tensor],
+def reindex(
+    values: Union[np.ndarray, torch.tensor],
     indices: Union[np.ndarray, torch.tensor],
-    axis: str = "rows",
-    inverse_permutation: bool = False,
+    axis: str="rows",
+    inverse_permutation: bool=False,
 ) -> Union[np.ndarray, torch.tensor]:
-    """Returns an array ordered by the given indices along the specified axis.
-
-    The indices are used to reorder the array along the specified axis. The
-    indices give the order in which the elements should be placed. The type of
-    the output is the same as the input array :math:`arr`.
+    """Sorts a tensor along a specified axis using the indices tensor.
+    
+    The indices tensor contains the new indices of the elements in the values
+    tensor. `values[0]` will be placed at the index `indices[0]`, `values[1]`
+    at `indices[1]`, and so on.
+    
+    .. note::
+        This function can be called with either torch tensors or numpy arrays.
+        The output will have the same type as the input.
 
     Args:
-        arr (np.ndarray or torch.tensor):
-            Array to be ordered by rows or columns. The output's type is
-            the same as this parameter's type.
+        values (np.ndarray or torch.tensor): Array to sort. Can be 1D, 2D, or any
+        multi-dimensional batch of 2D arrays.
 
-        indices (np.ndarray or torch.tensor):
-            Array containing the indices of the elements in the order they
-            should be placed.
+        indices (np.ndarray or torch.tensor): Array containing the new indices
+        of the elements contained in `values`.
 
-        axis (str, optional):
-            Axis along which to order the array. Must be either "rows" or
-            "cols". Defaults to "rows".
+        axis (str, optional): The axis to sort along. Must be either 'rows' or
+        'cols'. If `values` is 1D, `axis` is not used. Default is 'rows'.
 
-        inverse_permutation (bool, optional):
-            If True, the permutation matrix is transposed before being used.
-            Defaults to False.
+        inverse_permutation (bool, optional): Whether to apply the permutation
+        inverse. Default is False.
 
     Raises:
-        ValueError:
-            If axis is not "rows" or "cols".
-
-        ValueError:
-            If the number of rows or columns in x is not equal to the length
-            of the indices.
+        ValueError: If `axis` is not 'rows' or 'cols'.
 
     Returns:
-        np.ndarray or torch.tensor:
-            Array ordered by the given indices along the specified axis.
-            The type is the same as the input array arr.
+        np.ndarray or torch.tensor: Array ordered by the given indices along
+        the specified axis. The type is the same as the input array `values`.
 
     Example:
-        >>> arr = [[10, 20, 30], [100, 200, 300]]
-        >>> indices = [2, 0, 1]
-        >>> sort_by_indices(arr, indices, axis="cols")
-        array([[ 30,  10,  20],
-               [300, 100, 200]])
+        >>> values = np.array([[10, 20, 30], [100, 200, 300]])
+        >>> indices =  np.array(2, 0, 1])
+        >>> reindex(values, indices, axis="cols")
+        array([[ 20,  30,  10],
+               [200, 300, 100]])
     """
-    try:
-        axis_index = ["rows", "cols"].index(axis)
-    except ValueError:
-        raise ValueError(f"axis must be either 'rows' or 'cols', not {axis}")
+    reindices = indices.argsort()
 
-    # if it is a 1D array, just take the first dimension
-    if len(indices.flatten()) != arr.shape[min(axis_index, arr.ndim - 1)]:
-        raise ValueError(
-            "The number of rows or columns in x must be equal to the "
-            "length of the indices array."
-        )
-    reorder = indices.argsort()
+    # cols corresponds to last dimension
+    if axis == 'cols' or values.ndim == 1:
+        if inverse_permutation:
+            return values[..., reindices.argsort()]
+        return values[..., reindices]
 
-    if ((axis == "rows") and (not inverse_permutation)) or (
-        (axis == "cols") and inverse_permutation
-    ):
-        reorder = reorder.argsort()
-        # now it corresponds to the permutation matrix
-
-    if arr.ndim == 1:
-        return arr[reorder]
-    elif axis == "rows":
-        return arr[..., reorder, :]
-    return arr[..., :, reorder]
+    # rows corresponds to second-to-last dimension
+    # because it is equivalent to sorting along the last dimension of the
+    # transposed tensor, we need to transpose (inverse) the permutation
+    elif axis == 'rows':
+        inverse_permutation = not inverse_permutation
+        if inverse_permutation:
+            return values[..., reindices.argsort(), :]
+        return values[..., reindices, :]
+    else:
+        raise ValueError("Invalid axis. Must be 'rows' or 'cols'.")
 
 
 def reorder(meas: np.ndarray, Perm_acq: np.ndarray, Perm_rec: np.ndarray) -> np.ndarray:
