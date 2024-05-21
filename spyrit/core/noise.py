@@ -88,7 +88,7 @@ class NoNoise(nn.Module):
         x = self.meas_op(x)
         return x
 
-    def sort_by_indices(
+    def reindex(
         self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
     ) -> torch.tensor:
         """Reorder the rows or columns of a tensor according to the indices.
@@ -100,7 +100,7 @@ class NoNoise(nn.Module):
 
         ..note::
             This method is identical to the function
-            :func:`~spyrit.misc.sampling.sort_by_indices`.
+            :func:`~spyrit.core.torch.reindex`.
 
         Args:
             x (torch.tensor):
@@ -128,7 +128,7 @@ class NoNoise(nn.Module):
             torch.tensor:
                 Tensor x with reordered rows or columns according to the indices.
         """
-        return self.meas_op.sort_by_indices(x, axis, inverse_permutation)
+        return self.meas_op.reindex(x, axis, inverse_permutation)
 
 
 # =============================================================================
