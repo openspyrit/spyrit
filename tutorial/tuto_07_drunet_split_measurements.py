@@ -6,6 +6,7 @@ r"""
 
 This tutorial shows how to perform image reconstruction using a DCNet (data completion network) that includes a `DRUNet denoiser <https://github.com/cszn/DPIR>`_. DRUNet is a pretrained plug-and-play denoising network that has been pretrained for a wide range of noise levels. DRUNet admits the noise level as an input. Contratry to the DCNet described in :ref:`Tutorial 6 <tuto_dcnet_split_measurements>`, it requires no training.
 """
+
 ######################################################################
 # .. figure:: ../fig/drunet.png
 #    :width: 600
@@ -137,7 +138,7 @@ imagesc(m_plot, r"Measurements $m$")
 # ====================================================================
 
 ######################################################################
-# DRUNet is defined by the :class:`spyrit.external.drunet.DRUNet` class. This class inherits from the original :class:`spyrit.external.drunet.UNetRes` class introduced in [ZhLZ21]_, with some modifications to handle different noise levels. 
+# DRUNet is defined by the :class:`spyrit.external.drunet.DRUNet` class. This class inherits from the original :class:`spyrit.external.drunet.UNetRes` class introduced in [ZhLZ21]_, with some modifications to handle different noise levels.
 
 ###############################################################################
 # We instantiate the DRUNet by providing the noise level, which is expected to be in [0, 255], and the number of channels. The larger the noise level, the higher the denoising.
@@ -184,7 +185,7 @@ except:
 from spyrit.core.recon import DCNet
 
 dcnet_drunet = DCNet(noise_op, prep_op, torch.from_numpy(Cov), denoi=denoi_drunet)
-dcnet_drunet = dcnet_drunet.to(device) # Use GPU, if available
+dcnet_drunet = dcnet_drunet.to(device)  # Use GPU, if available
 
 ######################################################################
 # Then, we reconstruct the image from the noisy measurements.
@@ -193,7 +194,7 @@ with torch.no_grad():
     z_dcnet_drunet = dcnet_drunet.reconstruct(y.to(device))
 
 # %%
-# Tunning of the denoising 
+# Tunning of the denoising
 # ====================================================================
 
 ######################################################################
@@ -203,7 +204,7 @@ noise_level_2 = 1
 noise_level_3 = 20
 
 with torch.no_grad():
-    
+
     denoi_drunet.set_noise_level(noise_level_2)
     z_dcnet_drunet_2 = dcnet_drunet.reconstruct(y.to(device))
 
@@ -239,13 +240,13 @@ add_colorbar(im3, "bottom")
 # ====================================================================
 
 ##############################################################################
-# First, we consider DCNet without denoising in the image domain (default behaviour) 
+# First, we consider DCNet without denoising in the image domain (default behaviour)
 
 dcnet = DCNet(noise_op, prep_op, torch.from_numpy(Cov))
 dcnet = dcnet.to(device)
 
 with torch.no_grad():
-    z_dcnet = dcnet.reconstruct(y.to(device))  
+    z_dcnet = dcnet.reconstruct(y.to(device))
 
 ######################################################################
 # Then, we instantiate DRUNet using the original class :class:`spyrit.external.drunet.UNetRes`.
@@ -272,7 +273,9 @@ x_sample = 0.5 * (z_dcnet + 1).cpu()
 
 #
 x_sample = torch.cat(
-    (x_sample,torch.FloatTensor([noise_level / 255.0]).repeat(
+    (
+        x_sample,
+        torch.FloatTensor([noise_level / 255.0]).repeat(
             1, 1, x_sample.shape[2], x_sample.shape[3]
         ),
     ),

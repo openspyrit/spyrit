@@ -28,6 +28,7 @@ This tutorial shows how to perform image reconstruction using the denoised compl
 
 # sphinx_gallery_thumbnail_path = 'fig/tuto6.png'
 import os
+
 spyritPath = os.getcwd()
 imgs_path = os.path.join(spyritPath, "images/")
 
@@ -146,6 +147,7 @@ imagesc(m_plot, r"Measurements $m$")
 
 # Instantiate a PinvNet (with no denoising by default)
 from spyrit.core.recon import PinvNet
+
 pinvnet = PinvNet(noise_op, prep_op)
 
 # Use GPU, if available
@@ -155,7 +157,7 @@ y = y.to(device)
 
 # Reconstruction
 with torch.no_grad():
-    z_invnet = pinvnet.reconstruct(y)  
+    z_invnet = pinvnet.reconstruct(y)
 
 # %%
 # Denoised completion network (DCNet)
@@ -194,9 +196,10 @@ with torch.no_grad():
 # where :math:`\Sigma` is a covariance prior and :math:`\Sigma_\alpha` is the noise covariance. Denoised completation can be performed using  the :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag` class (see documentation for more details).
 
 ######################################################################
-# In practice, it is more convenient to use the :class:`spyrit.core.recon.DCNet` class, which relies on a forward operator, a preprocessing operator, and a covariance prior. 
+# In practice, it is more convenient to use the :class:`spyrit.core.recon.DCNet` class, which relies on a forward operator, a preprocessing operator, and a covariance prior.
 
 from spyrit.core.recon import DCNet
+
 dcnet = DCNet(noise_op, prep_op, torch.from_numpy(Cov))
 
 # Use GPU, if available
@@ -258,9 +261,9 @@ if load_unet:
 ######################################################################
 # We reconstruct the image
 with torch.no_grad():
-    z_dcnet_unet = dcnet_unet.reconstruct(y)  
+    z_dcnet_unet = dcnet_unet.reconstruct(y)
 
-#%%
+# %%
 # Results
 # =========================================
 
