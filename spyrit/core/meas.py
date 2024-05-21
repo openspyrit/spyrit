@@ -366,7 +366,7 @@ class Linear(_Base):
         return self._param_H_static.data
     @property
     def H(self) -> torch.tensor:
-        return self.H_static[:self.M, :]
+        return self.H_static
     @property
     def H_pinv(self) -> torch.tensor:
         return self._param_H_static_pinv.data
