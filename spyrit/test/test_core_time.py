@@ -25,7 +25,7 @@ def test_core_time():
     matrix = torch.randn(n_frames, ny, nx, 2, dtype=torch.float64)
     def_field = DeformationField(matrix)
     print("ok")
-    
+
     # constructor with rectangular size
     print("\tconstructor with rectangular size... ", end="")
     n_frames = 10
@@ -33,7 +33,9 @@ def test_core_time():
     matrix = torch.randn(n_frames, height, width, 2, dtype=torch.float64)
     def_field = DeformationField(matrix)
     assert_shape(
-        def_field.inverse_grid_frames.shape, torch.Size([10, 32, 64, 2]), "Wrong constructor with rectangular size"
+        def_field.inverse_grid_frames.shape,
+        torch.Size([10, 32, 64, 2]),
+        "Wrong constructor with rectangular size",
     )
     print("ok")
 
@@ -41,19 +43,19 @@ def test_core_time():
     print("\tforward greyscale... ", end="")
     matrix = torch.randn(n_frames, ny, nx, 2, dtype=torch.float64)
     def_field = DeformationField(matrix)
-    img = torch.randn(1, nx*ny, dtype=torch.float64)
+    img = torch.randn(1, nx * ny, dtype=torch.float64)
     warped_img = def_field(img, 0, n_frames)
     assert_shape(
-        warped_img.shape, torch.Size([1, 10, nx*ny]), "Wrong forward greyscale size"
+        warped_img.shape, torch.Size([1, 10, nx * ny]), "Wrong forward greyscale size"
     )
     print("ok")
 
     # forward color (3D)
     print("\tforward color... ", end="")
-    img = torch.randn(3, nx*ny, dtype=torch.float64)
+    img = torch.randn(3, nx * ny, dtype=torch.float64)
     warped_img = def_field(img, 0, n_frames)
     assert_shape(
-        warped_img.shape, torch.Size([3, 10, nx*ny]), "Wrong forward color size"
+        warped_img.shape, torch.Size([3, 10, nx * ny]), "Wrong forward color size"
     )
     print("ok")
 
@@ -72,8 +74,8 @@ def test_core_time():
     print("\tforward rotating clockwise... ", end="")
     img = torch.tensor([[1, 2, 3, 4]], dtype=torch.float64)
     v = torch.tensor(
-        [[[[-1.0, 1.0], [-1.0, -1.0]], [[1.0, 1.0], [1.0, -1.0]]]], 
-        dtype=torch.float64)
+        [[[[-1.0, 1.0], [-1.0, -1.0]], [[1.0, 1.0], [1.0, -1.0]]]], dtype=torch.float64
+    )
     field = DeformationField(v)
     warped_img = field(img, 0, 1)
     assert_equal_all(
@@ -91,20 +93,27 @@ def test_core_time():
     # constructor
     print("\tconstructor... ", end="")
     mat = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=torch.float64)
+
     def f(t):
         return mat
+
     field = AffineDeformationField(f, torch.arange(10), (64, 64))
     print("ok")
 
     # forward, test with a counter clockwise rotation
     print("\tforward... ", end="")
+
     def s(t):
         return math.sin(2 * math.pi * t)
+
     def c(t):
         return math.cos(2 * math.pi * t)
+
     def f(t):
-        return torch.tensor([[c(t), -s(t), 0], [s(t), c(t), 0], [0, 0, 1]],
-                            dtype=torch.float64)
+        return torch.tensor(
+            [[c(t), -s(t), 0], [s(t), c(t), 0], [0, 0, 1]], dtype=torch.float64
+        )
+
     img = torch.tensor([[1, 2, 3, 4]], dtype=torch.float64)
     img_size = (2, 2)
     # 4 frames, sampled at [0, 0.25, 0.5, 0.75]
@@ -112,12 +121,15 @@ def test_core_time():
     time_vector = torch.tensor([0, 0.25, 0.5, 0.75])
     field = AffineDeformationField(f, time_vector, img_size)
     warped_img = field(img, 0, n_frames, "bilinear")
-    expected_img = torch.tensor([
-            [1., 2, 3, 4],
-            [2., 4, 1, 3],
-            [4., 3, 2, 1],
-            [3., 1, 4, 2],
-        ], dtype=torch.float64)
+    expected_img = torch.tensor(
+        [
+            [1.0, 2, 3, 4],
+            [2.0, 4, 1, 3],
+            [4.0, 3, 2, 1],
+            [3.0, 1, 4, 2],
+        ],
+        dtype=torch.float64,
+    )
     assert_close_all(warped_img, expected_img, "Wrong forward 4 images")
     print("ok")
 

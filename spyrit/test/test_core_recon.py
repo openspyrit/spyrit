@@ -1,8 +1,10 @@
 """
 Test for module recon.py
 """
+
 import warnings
-warnings.filterwarnings("ignore", message='The dynamic measurement')
+
+warnings.filterwarnings("ignore", message="The dynamic measurement")
 
 import torch
 import math
@@ -57,13 +59,18 @@ def test_core_recon():
 
     # inverse from moving objcet, DynamicLinear, comparing images
     print("\tInverse from moving object, DynamicLinear, comparing images... ", end="")
+
     def rotate(t):
-        ans = torch.tensor([
-            [math.cos(t*2*math.pi), -math.sin(t*2*math.pi), 0],
-            [math.sin(t*2*math.pi), math.cos(t*2*math.pi), 0],
-            [0, 0, 1]
-        ], dtype=torch.float64)
+        ans = torch.tensor(
+            [
+                [math.cos(t * 2 * math.pi), -math.sin(t * 2 * math.pi), 0],
+                [math.sin(t * 2 * math.pi), math.cos(t * 2 * math.pi), 0],
+                [0, 0, 1],
+            ],
+            dtype=torch.float64,
+        )
         return ans
+
     channels = 1
     H = 16
     img = torch.DoubleTensor(channels, H**2).uniform_(-1, 1)
@@ -71,7 +78,7 @@ def test_core_recon():
     H_matrix = torch.rand([M, M])
     meas_op = DynamicLinear(H_matrix)
     # deformation field
-    field = AffineDeformationField(rotate, 0.25, M//4, M, (H,H))
+    field = AffineDeformationField(rotate, 0.25, M // 4, M, (H, H))
     img_motion = field(img)
     # measurement
     y = meas_op(img_motion)
@@ -86,11 +93,13 @@ def test_core_recon():
     print("ok")
 
     # Inverse from moving object, DynamicHadamSplit, comparing images
-    print("\tInverse from moving object, DynamicHadamSplit, comparing images... ", end="")
+    print(
+        "\tInverse from moving object, DynamicHadamSplit, comparing images... ", end=""
+    )
     # no particular order, keep native
     meas_op = DynamicHadamSplit(M, H)
     # deformation field
-    field = AffineDeformationField(rotate, 0.25, M//2, 2*M, (H,H))
+    field = AffineDeformationField(rotate, 0.25, M // 2, 2 * M, (H, H))
     img_motion = field(img)
     # measurement
     y = meas_op(img_motion)
@@ -104,9 +113,12 @@ def test_core_recon():
     print("ok")
 
     # inverse from moving object, DynamicLinear, comparing measurements
-    print("\tInverse from moving object, DynamicLinear, comparing measurements... ", end="")
+    print(
+        "\tInverse from moving object, DynamicLinear, comparing measurements... ",
+        end="",
+    )
     # more random field, keep same image
-    field = AffineDeformationField(rotate, 0, math.e**2, M, (H,H))
+    field = AffineDeformationField(rotate, 0, math.e**2, M, (H, H))
     img_motion = field(img)
     # measurement
     meas_op = DynamicLinear(H_matrix)
@@ -118,9 +130,12 @@ def test_core_recon():
     print("ok")
 
     # Inverse from moving object, DynamicHadamSplit, comparing measurements
-    print("\tInverse from moving object, DynamicHadamSplit, comparing measurements... ", end="")
+    print(
+        "\tInverse from moving object, DynamicHadamSplit, comparing measurements... ",
+        end="",
+    )
     # field
-    field = AffineDeformationField(rotate, 0, math.e**2, 2*M, (H,H))
+    field = AffineDeformationField(rotate, 0, math.e**2, 2 * M, (H, H))
     img_motion = field(img)
     # measurement
     meas_op = DynamicHadamSplit(M, H)
@@ -132,7 +147,6 @@ def test_core_recon():
     y_hat = z @ meas_op.H_dyn.T.to(z.dtype)
     assert_close_all(y, y_hat, "Wrong recon value", atol=1e-5)
     print("ok")
-    
 
     # =========================================================================
     ## PinvNet
@@ -178,7 +192,6 @@ def test_core_recon():
     assert_shape(z.shape, torch.Size([10, 1, 64, 64]), "Wrong recon size")
     print("ok")
 
-
     # =========================================================================
     ## TikhonovMeasurementPriorDiag
     print("TikhonovMeasurementPriorDiag")
@@ -201,7 +214,6 @@ def test_core_recon():
     x = recon(y, x_0, var, meas)
     assert_shape(x.shape, torch.Size([85, 1024]), "Wrong recon size")
     print("ok")
-
 
     # =========================================================================
     ## DCNet
@@ -232,7 +244,6 @@ def test_core_recon():
     z = recnet.reconstruct(x)
     assert_shape(z.shape, torch.Size([10, 1, 64, 64]), "Wrong recon size")
     print("ok")
-
 
     # =========================================================================
     print("All tests passed for recon.py")

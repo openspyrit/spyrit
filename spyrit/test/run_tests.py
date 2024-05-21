@@ -11,7 +11,7 @@ def run_tests():
     test_core_noise()
     test_core_prep()
     test_core_time()
-    test_core_recon() # must be after time
+    test_core_recon()  # must be after time
 
 
 if __name__ == "__main__":

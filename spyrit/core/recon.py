@@ -17,7 +17,7 @@ from spyrit.core.time import DeformationField
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import DirectPoisson, SplitPoisson
 
-warnings.filterwarnings('ignore', '.*Sparse CSR tensor support is in beta state.*')
+warnings.filterwarnings("ignore", ".*Sparse CSR tensor support is in beta state.*")
 
 
 # =============================================================================
@@ -44,10 +44,11 @@ class PseudoInverse(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, 
-                x: torch.tensor, 
-                meas_op: Union[Linear, DynamicLinear], 
-                ) -> torch.tensor:
+    def forward(
+        self,
+        x: torch.tensor,
+        meas_op: Union[Linear, DynamicLinear],
+    ) -> torch.tensor:
         r"""Computes pseudo-inverse of measurements.
 
         Args:

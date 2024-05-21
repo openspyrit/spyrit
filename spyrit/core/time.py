@@ -78,21 +78,24 @@ class DeformationField(nn.Module):
 
     def __init__(self, inverse_grid_frames: torch.tensor):
         super().__init__()
-        
+
         if inverse_grid_frames.dtype == torch.float32:
             if self.__class__ == DeformationField:
-                msg = ("Consider using float64 when storing the deformation "
-                       "field in inverse_grid_frames for greater accuracy.")
+                msg = (
+                    "Consider using float64 when storing the deformation "
+                    "field in inverse_grid_frames for greater accuracy."
+                )
             if self.__class__ == AffineDeformationField:
-                msg = ("Consider using float64 when defining the output type "
-                       "of the affine transformation matrix "
-                       "inverse_field_matrix for greater accuracy.")
+                msg = (
+                    "Consider using float64 when defining the output type "
+                    "of the affine transformation matrix "
+                    "inverse_field_matrix for greater accuracy."
+                )
             warnings.warn(msg, UserWarning)
-                
+
         # store as nn.Parameter
         self.inverse_grid_frames = nn.Parameter(
-            inverse_grid_frames,
-            requires_grad=False
+            inverse_grid_frames, requires_grad=False
         )
         # set other properties / inv_grid_frames has shape (n_frames, H, W, 2)
         self.align_corners = True
@@ -105,12 +108,13 @@ class DeformationField(nn.Module):
     def field(self) -> torch.tensor:
         return self.inverse_grid_frames.data
 
-    def forward(self,
-                img: torch.tensor, 
-                n0: int=0, 
-                n1: int=None, 
-                mode: str="bilinear",
-                ) -> torch.tensor:
+    def forward(
+        self,
+        img: torch.tensor,
+        n0: int = 0,
+        n1: int = None,
+        mode: str = "bilinear",
+    ) -> torch.tensor:
         r"""
         Warps a vectorized image or batch of vectorized images with the stored
         *inverse deformation field* :math:`u`.
@@ -120,7 +124,7 @@ class DeformationField(nn.Module):
         sliced between the frames :math:`n0` (included) and :math:`n1` (excluded).
         :math:`u` is the field that maps the pixels of the *deformed image* to
         the pixels of the *original image*.
-        
+
         This method assumes the vectorzed image has the same number of pixels
         as the deformation field.
 
@@ -166,7 +170,7 @@ class DeformationField(nn.Module):
             channels, and :math:`h` and :math:`w` are the number of pixels
             along the heigth and width of the image respectively.
 
-            :attr:`output`: :math:`(|n1-n0|,c,h,w)` 
+            :attr:`output`: :math:`(|n1-n0|,c,h,w)`
 
         Example 1: Rotating a 2x2 B&W image by 90 degrees counter-clockwise, using one
         frame
@@ -184,13 +188,13 @@ class DeformationField(nn.Module):
         # check that the image has the correct number of dimensions
         if img.ndim != 2:
             raise ValueError(
-                f"img has incorrect number of dimensions: {img.ndim}, must " +
-                "have 2: (channels, n_pixels)."
+                f"img has incorrect number of dimensions: {img.ndim}, must "
+                + "have 2: (channels, n_pixels)."
             )
-        
+
         if n1 is None:
             n1 = self.n_frames
-        
+
         # get the right slice of the inverse deformation field
         n_frames = abs(n1 - n0)
         if n1 < n0:
@@ -201,12 +205,14 @@ class DeformationField(nn.Module):
             sel_inv_grid_frames = self.inverse_grid_frames[n0:n1, :, :, :]
 
         # img has current shape (c, n_pixels), make it (n_frames, c, h, w)
-        img_frames = img.unsqueeze(0).expand(n_frames, *img.shape).view(
-            n_frames, img.shape[0], self.img_h, self.img_w
+        img_frames = (
+            img.unsqueeze(0)
+            .expand(n_frames, *img.shape)
+            .view(n_frames, img.shape[0], self.img_h, self.img_w)
         )
         # img has current shape (c, h, w), make it (n_frames, c, h, w)
         # img_frames = img.unsqueeze(0).expand(n_frames, *img.shape)
-        
+
         out = nn.functional.grid_sample(
             img_frames.to(sel_inv_grid_frames.dtype),
             sel_inv_grid_frames,
@@ -217,10 +223,11 @@ class DeformationField(nn.Module):
         return out.reshape(img.shape[-2], n_frames, img.shape[-1])
 
     def _attributeslist(self):
-        a = [("field shape", self.inverse_grid_frames.shape),
-             ("n_frames", self.n_frames),
-             ("img_shape", self.img_shape),
-             ]
+        a = [
+            ("field shape", self.inverse_grid_frames.shape),
+            ("n_frames", self.n_frames),
+            ("img_shape", self.img_shape),
+        ]
         return a
 
     def __repr__(self):
@@ -322,11 +329,9 @@ class AffineDeformationField(DeformationField):
 
         self.inverse_field_matrix = inverse_field_matrix
         self.time_vector = time_vector
-        self.align_corners = True # keep this for _generate_inv_grid_frames 
+        self.align_corners = True  # keep this for _generate_inv_grid_frames
 
-        super().__init__(
-            self._generate_inv_grid_frames(img_shape)
-        )
+        super().__init__(self._generate_inv_grid_frames(img_shape))
 
     def _generate_inv_grid_frames(
         self,
@@ -362,14 +367,19 @@ class AffineDeformationField(DeformationField):
 
         # get a batch of matrices of shape (n_frames, 2, 3)
         inv_mat_frames = torch.stack(
-            [self.inverse_field_matrix(t)[:2, :] # need only the first 2 rows
-                                      for t in self.time_vector])
+            [
+                self.inverse_field_matrix(t)[:2, :]  # need only the first 2 rows
+                for t in self.time_vector
+            ]
+        )
         # inv_grid_frames = torch.round(inv_mat_frames, decimals=6)
-        
+
         # use them to generate the grid
         inv_grid_frames = nn.functional.affine_grid(
             inv_mat_frames,
-            torch.Size((len(self.time_vector), 1, *grid_shape)),  # n_channels has no effect
-            align_corners = self.align_corners,
+            torch.Size(
+                (len(self.time_vector), 1, *grid_shape)
+            ),  # n_channels has no effect
+            align_corners=self.align_corners,
         )
         return inv_grid_frames
