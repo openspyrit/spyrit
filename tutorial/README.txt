@@ -11,29 +11,28 @@ these tutorials can be found on `this page`_ of the Spyrit GitHub.
 Below is a diagram of the entire image processing pipeline. Each tutorial
 focuseson a specific part of the pipeline.
 
-* :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_acquisition_operators.py>` focuses
-on the measurement operators, with or without noise
+* :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_acquisition_operators.py>` focuses on the measurement operators, with or without noise
 
-* :ref:`Tutorial 2 <sphx_glr_gallery_tuto_02_pseudoinverse_linear.py>` explains
-the pseudo-inverse reconstruction process from the (possibly noisy)
+* :ref:`Tutorial 2 <sphx_glr_gallery_tuto_02_pseudoinverse_linear.py>` explains the pseudo-inverse reconstruction process from the (possibly noisy)
 measurements
 
-* :ref:`Tutorial 3 <sphx_glr_gallery_tuto_03_pseudoinverse_cnn_linear.py>` uses
-a CNN to denoise the image if necessary
+* :ref:`Tutorial 3 <sphx_glr_gallery_tuto_03_pseudoinverse_cnn_linear.py>` uses a CNN to denoise the image if necessary
 
-* :ref:`Tutorial 4 <sphx_glr_gallery_tuto_04_train_pseudoinverse_cnn_linear.py>`
-is used to train the CNN introduced in Tutorial 3
+* :ref:`Tutorial 4 <sphx_glr_gallery_tuto_04_train_pseudoinverse_cnn_linear.py>` is used to train the CNN introduced in Tutorial 3
 
-* :ref:`Tutorial 5 <sphx_glr_gallery_tuto_05_acquisition_split_measurements.py>`
-introduces a new type of measurement operator ('split') that simulates positive
+* :ref:`Tutorial 5 <sphx_glr_gallery_tuto_05_acquisition_split_measurements.py>` introduces a new type of measurement operator ('split') that simulates positive
 and negative measurements
 
-* :ref:`Tutorial 6 <sphx_glr_gallery_tuto_06_dcnet_split_measurements.py>` uses
-a Denoised Completion Network with a trainable image denoiser to improve the
+* :ref:`Tutorial 6 <sphx_glr_gallery_tuto_06_dcnet_split_measurements.py>` uses a Denoised Completion Network with a trainable image denoiser to improve the
 results obtained in Tutorial 5
 
-* Explore :ref:`Bonus Tutorial <sphx_glr_gallery_tuto_bonus_advanced_methods_colab.py>`
-if you want to go deeper into Spyrit's capabilities
+* :ref:`Tutorial 7 <sphx_glr_gallery_tuto_07_drunet_split_measurements.py>` shows how to perform image reconstruction using a pretrained plug-and-play denoising network.
+
+* :ref:`Tutorial 8 <>` shows how to perform image reconstruction using a learnt proximal gradient descent.
+
+* :ref:`Tutorial 9 <sphx_glr_gallery_tuto_09_dynamic.py>` explains motion simulation from an image, dynamic measurements and reconstruction.
+
+* Explore :ref:`Bonus Tutorial <sphx_glr_gallery_tuto_bonus_advanced_methods_colab.py>` if you want to go deeper into Spyrit's capabilities
 
 
 .. image:: ../fig/full.png
