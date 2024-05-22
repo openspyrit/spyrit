@@ -14,11 +14,12 @@ to warp images.
 classes from :mod:`spyrit.core.meas` are used.
 
 3. Third, the reconstruction from pesudo-inverse matrices is used to reconstruct
-the original image.
+the motion-compensated image.
 
 This tutorial will present an example in which all three steps will be
-explained in an example. To understand the specificities of each class, a more
-detailed explanation of each class is included at the end of the case study.
+explained in an example. To understand the specificities of the module
+:mod:`spyrit.core.time`, a more detailed explanation is included at the end
+of the example.
 
 .. image:: ../fig/tuto9.png
    :width: 600
@@ -34,14 +35,10 @@ detailed explanation of each class is included at the end of the case study.
 # This tutorial loads example images from the relative folder `/images/`.
 
 # %%
-# 1.a Example: load an image from a batch of images
+# 1.a Load an image from a batch of images
 # -----------------------------------------------------------------------------
-# This part is identical to other tutorials, but for the image size. Here, we
-# consider a square image of side 50 pixels, and the measurement patterns will
-# correspond to a Hadamard matrix of size 32x32. It is the center of the image
-# that will be measured with those patterns. This leaves a border of 9 pixels
-# on each side of the image, allowing for the object to move in and out of the
-# measurement area.
+# This part is identical to other tutorials. We consider an image of size
+# 64x64 pixels. 
 
 import os
 
@@ -54,8 +51,8 @@ from spyrit.misc.statistics import transform_gray_norm
 
 # sphinx_gallery_thumbnail_path = 'fig/tuto9.png'
 
-img_size = 50  # full image side's size in pixels
-meas_size = 32  # measurement pattern side's size in pixels (Hadamard matrix)
+img_size = 64  # full image side's size in pixels
+meas_size = 64  # measurement pattern side's size in pixels (Hadamard matrix)
 img_shape = (img_size, img_size)
 meas_shape = (meas_size, meas_size)
 i = 1  # Image index (modify to change the image)
@@ -79,11 +76,11 @@ x = x.detach().clone()
 b, c, h, w = x.shape
 
 # plot
-x_plot = x.view(img_size, img_size).cpu()
+x_plot = x.view(img_shape).cpu()
 imagesc(x_plot, r"Original image $x$ in [-1, 1]")
 
 # %%
-# 1.b Example: defining an affine transformation
+# 1.b Define an affine transformation
 # -----------------------------------------------------------------------------
 # Here we will define an affine transformation using a matrix and the class
 # :class:`spyrit.core.time.AffineDeformationField`.
@@ -106,10 +103,8 @@ from spyrit.core.time import AffineDeformationField
 a = 0.2  # amplitude
 omega = math.pi  # angular speed
 
-
 def s(t):
     return 1 + a * math.sin(t * omega)  # base function for f
-
 
 def f(t):
     return torch.tensor(
@@ -121,7 +116,6 @@ def f(t):
         dtype=torch.float64,
     )
 
-
 ###############################################################################
 # .. note::
 #       It is recommended when building the function :math:`f` to have its
@@ -131,17 +125,17 @@ def f(t):
 # Next, we will create the time vector and define the image shape.
 #
 # The measurement size (the size of the Hadamard patterns applied to the image)
-# detemrines the number of measurements - if there is no subsampling. The
+# determines the number of measurements - if there is no subsampling. The
 # number of patterns must match the number of frames of the motion picture. It
 # is for this reason that the number of frames is set to the square of the
 # measurement size.
 
-time_vector = torch.linspace(0, 10, 2 * meas_size**2)  # *2 because of the splitting
+time_vector = torch.linspace(0, 10, (meas_size**2) *2)  # *2 because of the splitting
 
 aff_field = AffineDeformationField(f, time_vector, img_shape)
 
 # %%
-# 1.c Example: warping the image
+# 1.c Warp the image
 # -----------------------------------------------------------------------------
 # Now that the field is defined, we can warp the image. Spyrit works mostly
 # with vectorized images, and warping images is no exception. Currently, the
@@ -149,16 +143,26 @@ aff_field = AffineDeformationField(f, time_vector, img_shape)
 # :class:`spyrit.core.time.DeformationField` can only warp a single image at a
 # time.
 
+import matplotlib.pyplot as plt
+from spyrit.misc.disp import add_colorbar
+
 # Reshape the image from (b,c,h,w) to (c, h*w)
 x = x.view(c, h * w)
 
-x_motion = aff_field(x, 0, 2 * meas_size**2)
+x_motion = aff_field(x, 0, (meas_size**2) *2)
 c, n_frames, n_pixels = x_motion.shape
 
 # show random frames
-frames = [100, 300]
-for f in frames:
-    imagesc(x_motion[0, f, :].view(img_shape).cpu().numpy(), f"Frame {f}")
+frames = [400, 1200]
+
+plot, axes = plt.subplots(1, len(frames), figsize=(10, 5))
+
+for i, f in enumerate(frames):
+    im = axes[i].imshow(x_motion[0, f, :].view(img_shape).cpu().numpy(), cmap="gray")
+    axes[i].set_title(f"Frame {f}")
+    add_colorbar(im, "right", size="20%")
+plot.tight_layout()
+plt.show()
 
 
 # %%
@@ -173,7 +177,7 @@ for f in frames:
 # unavailable.
 
 # %%
-# 2.a Example: defining the dynamic measurement operator
+# 2.a Define the measurement operator
 # -----------------------------------------------------------------------------
 # The class :class:`spyrit.core.meas.DynamicHadamSplit` is the mirror class of
 # :class:`spyrit.core.meas.HadamardSplit`. The difference is that the dynamic
@@ -185,19 +189,18 @@ for f in frames:
 # may want to set the number of patterns to the number of frames using the
 # parameter `M`.
 
-from spyrit.core.noise import NoNoise
 from spyrit.core.meas import DynamicHadamSplit
 
 meas_op = DynamicHadamSplit(M=meas_size**2, h=meas_size, Ord=None, img_shape=img_shape)
 
 # show the measurement matrix H
-imagesc(meas_op.H_static.cpu().numpy(), "Measurement matrix")
-
-# if we wanted to apply NoNoise, we would do it here
-# noise = NoNoise(meas_op) (not available yet)
+print("Shape of the measurement matrix H:", meas_op.H_static.shape)
+# as we are using split measurements, it is the matrix P that is effectively
+# used when computing the measurements
+print("Shape of the measurement matrix P:", meas_op.P.shape)
 
 # %%
-# 2.b Example: measuring the moving object
+# 2.b Measure the moving object
 # -----------------------------------------------------------------------------
 # Now that the measurement operator is defined, we can measure the moving
 # object. As with the static case, this is done by using the implicit forward
@@ -211,37 +214,67 @@ imagesc(y.view((meas_size * 2, meas_size)).cpu().numpy(), "Measurement vector")
 
 
 # %%
-# 3. Example: reconstructing the still image
+# 3. Example: reconstructing the motion-compensated image
 # *****************************************************************************
-# In this section, we will reconstruct the still image from the measurements.
+# In this section, we will reconstruct the motion-compensated image from the measurements.
 # This is done by combining the information contained in the measurement
-# patterns and in the deformation field. The class
-# :class:`spyrit.core.meas.DynamicHadamSplit` (and the other dynamic classes)
-# can handle the dynamic reconstruction through various methods.
+# patterns and in the deformation field. This theoretical work has been
+# explained in [1]_ and [2]_. The reconstruction follows the physical
+# discretization of the problem, thus avoiding to warp the Hadamard patterns.
+# The class :class:`spyrit.core.meas.DynamicHadamSplit` (and the other dynamic classes)
+# handle the dynamic reconstruction through various methods.
 
 # %%
-# 3.a Example: computing the dynamic measurement matrix
+# 3.a Compute the dynamic measurement matrix
 # -----------------------------------------------------------------------------
-# The dynamic measurement matrix (:math:`H_dyn`) is defined as the measurement
+# The dynamic measurement matrix :math:`H_{dyn}` is defined as the measurement
 # matrix that would give the same measurement vector :math:`y` as the one
-# computed before when applied to a still image :math:`x_ref`. To build the
-# dynamic measurement matrix, we need the measurement patterns and the
+# computed before when applied to a still image :math:`x_{ref}`:
+#
+# .. math::
+#     y = H_{dyn} x_{ref}
+# 
+# Or, following the notations from [2]_, :math:`m = H_{dyn} f_{ref}`. 
+# 
+# To build the # dynamic measurement matrix, we need the measurement patterns and the
 # deformation field. In this case, the deformation field is known, but in some
 # cases it might have to be estimated.
 #
-# The dynamic measurement matrix `H_dyn` is built from the measurement operator
-# itself.
+# The dynamic measurement matrix `H_dyn` is built using the measurement
+# operator itself.
 
 # compute the dynamic measurement matrix
 print("H_dyn computed:", hasattr(meas_op, "H_dyn"))
 meas_op.build_H_dyn(aff_field, mode="bilinear")
 print("H_dyn computed:", hasattr(meas_op, "H_dyn"))
 
+###############################################################################
+# .. important::
+#   Because :math:`P` is the actual matrix used for measuring, the attribute
+#   :attr:`H_dyn` is computed using the matrix :math:`P`. This can be seen in
+#   their shapes, which are the transpose of each other.
+
 # recommended way
 print("H_dyn shape:", meas_op.H_dyn.shape)
+print("P shape:", meas_op.P.shape)
 # NOT recommended, can cause confusions
 print("H shape:", meas_op.H.shape)
 print("H_dyn is same as H:", (meas_op.H == meas_op.H_dyn).all())
+
+# show P and H_dyn side by side
+
+plot, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+
+im1 = ax1.imshow(meas_op.P.cpu().numpy(), vmin=0, vmax=1.5, cmap="gray")
+ax1.set_title("Measurement matrix P")
+add_colorbar(im1, "right", size="20%")
+
+im2 = ax2.imshow(meas_op.H_dyn.cpu().numpy(), vmin=0, vmax=1.5, cmap="gray")
+ax2.set_title("Dynamic measurement matrix H_dyn")
+add_colorbar(im2, "right", size="20%")
+
+plot.tight_layout()
+plt.show()
 
 ###############################################################################
 # This method adds to the measurement operator a new attribute named
@@ -249,11 +282,11 @@ print("H_dyn is same as H:", (meas_op.H == meas_op.H_dyn).all())
 # compatibility reasons, although it is NOT recommended.
 
 # %%
-# 3.b Example: reconstruct the original undeformed image
+# 3.b Reconstruct the motion-compensated image
 # -----------------------------------------------------------------------------
 # Now that the dynamic measurement matrix has been computed, we can reconstruct
-# the original image. To do this, we can first compute the pseudo-inverse of
-# our dynamic measurement matrix:
+# the motion-compensated image. To do this, we can first compute the pseudo-inverse
+# of our dynamic measurement matrix:
 
 # compute the pseudo-inverse using the requested regularizers
 print("H_dyn_pinv computed:", hasattr(meas_op, "H_dyn_pinv"))
@@ -273,51 +306,48 @@ print("H_dyn_pinv is same as H_pinv:", (meas_op.H_dyn_pinv == meas_op.H_pinv).al
 # is not recommended.
 #
 # Once the pseudo-inverse has been computed, we can simply call the method
-# :meth:`pinv` associated with some measurements to reconstruct the original
+# :meth:`pinv` associated with some measurements to reconstruct the motion-compensated
 # image. As with the static case, this can also be done through the class
 # :class:`spyrit.core.recon.PseudoInverse`
 
 # using self.pinv directly
 x_hat1 = meas_op.pinv(y)
+print("x_hat1 shape:", x_hat1.shape)
+
 # using a PseudoInverse instance, no difference
 from spyrit.core.recon import PseudoInverse
-
 recon_op = PseudoInverse()
 x_hat2 = recon_op(y, meas_op)
 
 print("x_hat1 and x_hat2 are equal:", (x_hat1 == x_hat2).all())
-print("x_hat1 shape:", x_hat1.shape)
 
-# show the reconstructed image and the difference with the original image
-imagesc(x_hat1.view(img_shape), "Reconstructed image with pinv")
-imagesc(
-    x_plot.view(img_shape) - x_hat1.view(img_shape),
-    "Difference between original\nand reconstructed image",
-)
+# show the motion-compensated image and the difference with the original image
+
+plot, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+
+im1 = ax1.imshow(x_hat1.view(img_shape), cmap="gray")
+ax1.set_title("Motion-compensated image, using pinv")
+add_colorbar(im1, "right", size="20%")
+
+im2 = ax2.imshow(x_plot.view(img_shape) - x_hat1.view(img_shape), cmap="gray")
+ax2.set_title("Difference between original and motion-compensated image")
+add_colorbar(im2, "right", size="20%")
+
+plot.tight_layout()
+plt.show()
+
+# imagesc(x_hat1.view(img_shape), "Motion-compensated image, using pinv")
+# imagesc(x_plot.view(img_shape) - x_hat1.view(img_shape),
+#     "Difference between original\nand motion-compensated image",
+# )
 
 ###############################################################################
-# It is possible to reconstruct the original image without having to compute
-# the pseudo-inverse but using the least-squares function that is provided in
-# torch: :func:`torch.linalg.lstsq`.
-#
-# This allows for a much faster reconstruction if you need to reconstruct only
-# once, but is much slower if you need to reconstruct an image with the same
-# parameters (measurement patterns and deformation field) more than 5-10 times.
-
-# delete the H_dyn_pinv attribute
-print("H_dyn_pinv computed:", hasattr(meas_op, "H_dyn_pinv"))
-del meas_op.H_dyn_pinv
-print("H_dyn_pinv computed:", hasattr(meas_op, "H_dyn_pinv"))
-
-# use the pinv method directly, can specify reg and eta
-x_hat3 = meas_op.pinv(y, reg="L1", eta=1e-6)
-
-# show the reconstructed image and the difference with the original image
-imagesc(x_hat3.view(img_shape), "Reconstructed image with lstsq")
-imagesc(
-    x_plot.view(img_shape) - x_hat3.view(img_shape),
-    "Difference between original\nand reconstructed image",
-)
+# .. important::
+#   As with static reconstruction, it is possible to reconstruct the
+#   motion-compensated image without having to compute the pseudo-inverse 
+#   explicitly. Calling the method :meth:`pinv` while the attribute
+#   :attr:`H_dyn_pinv` is not defined will result in using the least-squares
+#   function provided in torch: :func:`torch.linalg.lstsq`. 
 
 
 # %%
@@ -347,18 +377,13 @@ from spyrit.core.time import DeformationField
 # define a rotation function
 omega = 2 * math.pi  # angular velocity
 
-
 def rot(t):
-    ans = torch.tensor(
-        [
+    ans = torch.tensor([
             [math.cos(t * omega), -math.sin(t * omega), 0],
             [math.sin(t * omega), math.cos(t * omega), 0],
             [0, 0, 1],
-        ],
-        dtype=torch.float64,
-    )  # it is recommended to use float64
+        ], dtype=torch.float64)  # it is recommended to use float64
     return ans
-
 
 # create a time vector of length 100 (change this to fit your needs)
 t0 = 0
@@ -384,3 +409,9 @@ def_field = DeformationField(field)
 
 # def_field and aff_field2 are the same
 print("def_field and aff_field2 are the same:", (def_field == aff_field2))
+
+###############################################################################
+# .. rubric:: References for dynamic reconstruction
+#
+# .. [1] Thomas Maitre, Elie Bretin, L. Mahieu-Williame, Michaël Sdika, Nicolas Ducros. Hybrid single-pixel camera for dynamic hyperspectral imaging. 2023. hal-04310110
+# .. [2] (MICCAI 2024 Early Acceptance) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros, Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View without Warping the Patterns. 2024. hal-04533981
