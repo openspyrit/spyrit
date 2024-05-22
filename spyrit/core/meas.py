@@ -805,7 +805,7 @@ class DynamicLinear(_Base):
           (H): torch.Size([400, 1600])
           )
     """
-    
+
     # Class variable
     _measurement_mode = "static"
 
