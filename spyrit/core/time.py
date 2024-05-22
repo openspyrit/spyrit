@@ -24,7 +24,6 @@ as a class attribute.
 """
 
 import warnings
-from collections.abc import Callable
 
 import torch
 import torch.nn as nn
@@ -320,7 +319,7 @@ class AffineDeformationField(DeformationField):
 
     def __init__(
         self,
-        inverse_field_matrix: Callable[[float], torch.DoubleTensor],
+        inverse_field_matrix,
         time_vector: torch.tensor,
         # t1: float,
         # n_frames: int,
