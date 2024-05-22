@@ -367,11 +367,6 @@ class Linear(_Base):
             self.set_H_pinv(rtol=rtol)
 
     @property
-    def H_static(self) -> torch.tensor:
-        # For name consistency across dynamic & static versions
-        return self._param_H_static.data
-
-    @property
     def H(self) -> torch.tensor:
         return self.H_static
 
