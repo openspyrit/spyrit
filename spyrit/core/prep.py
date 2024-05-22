@@ -12,7 +12,7 @@ from typing import Union, Tuple
 import torch
 import torch.nn as nn
 
-from spyrit.core.meas import Linear, LinearSplit, HadamSplit  # , LinearRowSplit
+from spyrit.core.meas import LinearSplit, HadamSplit # , Linear
 
 
 # ==============================================================================

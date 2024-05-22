@@ -7,13 +7,11 @@ from typing import Union
 
 import math
 import torch
-import torchvision
+# import torchvision
 import torch.nn as nn
 import numpy as np
 
-import spyrit.core.torch as spytorch
 from spyrit.core.meas import Linear, DynamicLinear, HadamSplit
-from spyrit.core.time import DeformationField
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import DirectPoisson, SplitPoisson
 
