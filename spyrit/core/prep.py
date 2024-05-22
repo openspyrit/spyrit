@@ -194,7 +194,8 @@ class SplitPoisson(nn.Module):
 
         self.register_buffer(
             "H_ones",
-            torch.ones(1, self.N) @ meas_op.get_H_T(),
+            meas_op.forward_H(torch.ones((1, self.N))),
+            # torch.ones(1, self.N) @ meas_op.H.T,
             # "H_ones", meas_op.H(torch.ones((1, self.N)))
         )
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 r"""
 05. Acquisition operators (advanced) - Split measurements and subsampling
 =========================================================================
@@ -334,22 +333,19 @@ m_nai_nonoise = prep_nonoise_op(y_nai_nonoise)
 #######################################E########################################
 # We can now plot the three measurement vectors
 
-from spyrit.misc.sampling import meas2img2
+from spyrit.misc.sampling import meas2img
 
 # Plot the three measurement vectors
 m_plot = m_nai_nonoise.numpy()
-m_plot = meas2img2(m_plot.T, Ord_nai)
-m_plot = np.moveaxis(m_plot, -1, 0)
+m_plot = meas2img(m_plot, Ord_nai)
 m_plot_max = np.max(m_plot[0, :, :])
 m_plot_min = np.min(m_plot[0, :, :])
 
 m_plot2 = m_nai.numpy()
-m_plot2 = meas2img2(m_plot2.T, Ord_nai)
-m_plot2 = np.moveaxis(m_plot2, -1, 0)
+m_plot2 = meas2img(m_plot2, Ord_nai)
 
 m_plot3 = m_var.numpy()
-m_plot3 = meas2img2(m_plot3.T, Ord_var)
-m_plot3 = np.moveaxis(m_plot3, -1, 0)
+m_plot3 = meas2img(m_plot3, Ord_var)
 
 f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 7))
 im1 = ax1.imshow(m_plot[0, :, :], cmap="gray")

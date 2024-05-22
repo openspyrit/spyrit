@@ -14,6 +14,7 @@ from scipy import signal
 from scipy import misc
 from scipy import sparse
 import torch
+import math
 
 
 def display_vid(video, fps, title="", colormap=plt.cm.gray):

@@ -48,7 +48,6 @@ def Permutation_Matrix(mat):
         + "spyrit.misc.sampling.Permutation_Matrix instead.",
         DeprecationWarning,
     )
-    print(3)
     return samp.Permutation_Matrix(mat)
 
 

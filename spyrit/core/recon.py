@@ -7,14 +7,17 @@ from typing import Union
 
 import math
 import torch
+import torchvision
 import torch.nn as nn
 import numpy as np
 
-from spyrit.core.meas import HadamSplit
+import spyrit.core.torch as spytorch
+from spyrit.core.meas import Linear, DynamicLinear, HadamSplit
+from spyrit.core.time import DeformationField
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import DirectPoisson, SplitPoisson
 
-import spyrit.misc.sampling as samp
+warnings.filterwarnings("ignore", ".*Sparse CSR tensor support is in beta state.*")
 
 
 # =============================================================================
@@ -41,7 +44,11 @@ class PseudoInverse(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, x: torch.tensor, meas_op) -> torch.tensor:
+    def forward(
+        self,
+        x: torch.tensor,
+        meas_op: Union[Linear, DynamicLinear],
+    ) -> torch.tensor:
         r"""Computes pseudo-inverse of measurements.
 
         Args:
@@ -454,7 +461,7 @@ class PinvNet(nn.Module):
         m = torch.nn.functional.pad(m, (0, self.acqu.meas_op.N - self.acqu.meas_op.M))
         # z = m @ self.acqu.meas_op.get_Perm().T  # old way
         # new way, tested and working :
-        z = self.acqu.meas_op.sort_by_indices(m, "cols", False)
+        z = self.acqu.meas_op.reindex(m, "cols", False)
         return z.view(-1, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
     def reconstruct(self, x):
@@ -630,8 +637,8 @@ class DCNet(nn.Module):
         # Perm = torch.from_numpy(samp.Permutation_Matrix(noise.meas_op.Ord)).to(torch.float32)
         # sigma = samp.sort_by_significance(sigma, Ord, 'rows', True)
         # sigma = samp.sort_by_significance(sigma, Ord, 'cols', False)
-        sigma = noise.sort_by_indices(sigma, "rows", False)
-        sigma = noise.sort_by_indices(sigma, "cols", True)
+        sigma = noise.reindex(sigma, "rows", False)
+        sigma = noise.reindex(sigma, "cols", True)
         sigma_perm = sigma
 
         # save in tikho

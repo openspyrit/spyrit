@@ -63,6 +63,7 @@ https://spyrit.readthedocs.io/
 * Sebastien Crombez
 * Nicolas Ducros - [Website](https://www.creatis.insa-lyon.fr/~ducros/WebPage/index.html)
 * Antonio Tomas Lorente Mur - [Website]( https://sites.google.com/view/antonio-lorente-mur/)
+* Romain Phan
 * Fadoua Taia-Alaoui
 
 # How to cite?
