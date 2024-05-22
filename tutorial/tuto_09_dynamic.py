@@ -32,6 +32,7 @@ detailed explanation of each class is included at the end of the case study.
 
 ###############################################################################
 # This tutorial loads example images from the relative folder `/images/`.
+
 # %%
 # 1.a Example: load an image from a batch of images
 # -----------------------------------------------------------------------------
@@ -217,7 +218,7 @@ imagesc(y.view((meas_size * 2, meas_size)).cpu().numpy(), "Measurement vector")
 # patterns and in the deformation field. The class
 # :class:`spyrit.core.meas.DynamicHadamSplit` (and the other dynamic classes)
 # can handle the dynamic reconstruction through various methods.
-#
+
 # %%
 # 3.a Example: computing the dynamic measurement matrix
 # -----------------------------------------------------------------------------
