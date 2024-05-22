@@ -117,7 +117,7 @@ alpha = 100.0  # number of photons
 
 # Measurement and noise operators
 Ord = Cov2Var(Cov)
-meas_op = HadamSplit(M, h, Ord)
+meas_op = HadamSplit(M, h, torch.from_numpy(Ord))
 noise_op = Poisson(meas_op, alpha)
 prep_op = SplitPoisson(alpha, meas_op)
 
@@ -131,7 +131,7 @@ m = prep_op(y)  # preprocessed measurement vector
 
 m_plot = m.detach().numpy()
 m_plot = meas2img2(m_plot.T, Ord)
-imagesc(m_plot, r"Measurements $m$")
+imagesc(m_plot[0, :, :], r"Measurements $m$")
 
 # %%
 # DRUNet denoising
