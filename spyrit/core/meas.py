@@ -263,7 +263,7 @@ class _Base(nn.Module):
             ("H_dyn", "hasattr(self, 'H_dyn')", DynamicLinear),
             ("img_shape", "self.img_shape", DynamicLinear),
             ("H_pinv", "hasattr(self, 'H_pinv')", _Base),
-            ("P.shape", "self.P.shape", Union[LinearSplit, DynamicLinearSplit]),
+            ("P.shape", "self.P.shape", (LinearSplit, DynamicLinearSplit)),
         ]
         return _list
 
@@ -353,6 +353,9 @@ class Linear(_Base):
           (H_pinv): torch.Size([1600, 400])
           )
     """
+
+    # Class variable
+    _measurement_mode = "static"
 
     def __init__(
         self,
@@ -802,6 +805,9 @@ class DynamicLinear(_Base):
           (H): torch.Size([400, 1600])
           )
     """
+    
+    # Class variable
+    _measurement_mode = "static"
 
     def __init__(
         self,
