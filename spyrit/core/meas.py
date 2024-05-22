@@ -25,7 +25,6 @@ purposes and should not be used directly. The inheritance tree is as follows::
 """
 
 import warnings
-from typing import Union
 
 import math
 import torch
