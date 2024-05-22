@@ -1,6 +1,6 @@
 r"""
 09. Acquisition and reconstruction in dynamic conditions
-==========================
+========================================================
 .. _tuto_dynamic:
 
 This tutorial explains how to simulate dynamic measurement and reconstruction
@@ -28,13 +28,13 @@ detailed explanation of each class is included at the end of the case study.
 
 # %%
 # 1. Example: warping an image to generate a motion picture
-# -----------------------------------------------------------------------------
+# *****************************************************************************
 
 ###############################################################################
 # This tutorial loads example images from the relative folder `/images/`.
 # %%
 # 1.a Example: load an image from a batch of images
-# =============================================================================
+# -----------------------------------------------------------------------------
 # This part is identical to other tutorials, but for the image size. Here, we
 # consider a square image of side 50 pixels, and the measurement patterns will
 # correspond to a Hadamard matrix of size 32x32. It is the center of the image
@@ -83,7 +83,7 @@ imagesc(x_plot, r"Original image $x$ in [-1, 1]")
 
 # %%
 # 1.b Example: defining an affine transformation
-# =============================================================================
+# -----------------------------------------------------------------------------
 # Here we will define an affine transformation using a matrix and the class
 # :class:`spyrit.core.time.AffineDeformationField`.
 #
@@ -141,7 +141,7 @@ aff_field = AffineDeformationField(f, time_vector, img_shape)
 
 # %%
 # 1.c Example: warping the image
-# =============================================================================
+# -----------------------------------------------------------------------------
 # Now that the field is defined, we can warp the image. Spyrit works mostly
 # with vectorized images, and warping images is no exception. Currently, the
 # classes :class:`spyrit.core.time.AffineDeformationField` and
@@ -162,7 +162,7 @@ for f in frames:
 
 # %%
 # 2. Example: measuring the moving object
-# -----------------------------------------------------------------------------
+# *****************************************************************************
 # In this section, we will simulate the measurement of the moving object. We
 # will use a full Hadamard matrix (no subsampling) to measure the object. The
 # best option when using a Hadamard matrix is to use the class
@@ -173,7 +173,7 @@ for f in frames:
 
 # %%
 # 2.a Example: defining the dynamic measurement operator
-# =============================================================================
+# -----------------------------------------------------------------------------
 # The class :class:`spyrit.core.meas.DynamicHadamSplit` is the mirror class of
 # :class:`spyrit.core.meas.HadamardSplit`. The difference is that the dynamic
 # will apply a different measurement pattern to each frame. There must
@@ -197,7 +197,7 @@ imagesc(meas_op.H_static.cpu().numpy(), "Measurement matrix")
 
 # %%
 # 2.b Example: measuring the moving object
-# =============================================================================
+# -----------------------------------------------------------------------------
 # Now that the measurement operator is defined, we can measure the moving
 # object. As with the static case, this is done by using the implicit forward
 # method.
@@ -211,7 +211,7 @@ imagesc(y.view((meas_size * 2, meas_size)).cpu().numpy(), "Measurement vector")
 
 # %%
 # 3. Example: reconstructing the still image
-# -----------------------------------------------------------------------------
+# *****************************************************************************
 # In this section, we will reconstruct the still image from the measurements.
 # This is done by combining the information contained in the measurement
 # patterns and in the deformation field. The class
@@ -220,7 +220,7 @@ imagesc(y.view((meas_size * 2, meas_size)).cpu().numpy(), "Measurement vector")
 #
 # %%
 # 3.a Example: computing the dynamic measurement matrix
-# =============================================================================
+# -----------------------------------------------------------------------------
 # The dynamic measurement matrix (:math:`H_dyn`) is defined as the measurement
 # matrix that would give the same measurement vector :math:`y` as the one
 # computed before when applied to a still image :math:`x_ref`. To build the
@@ -249,7 +249,7 @@ print("H_dyn is same as H:", (meas_op.H == meas_op.H_dyn).all())
 
 # %%
 # 3.b Example: reconstruct the original undeformed image
-# =============================================================================
+# -----------------------------------------------------------------------------
 # Now that the dynamic measurement matrix has been computed, we can reconstruct
 # the original image. To do this, we can first compute the pseudo-inverse of
 # our dynamic measurement matrix:
@@ -321,7 +321,7 @@ imagesc(
 
 # %%
 # 4. Warping detailed explanation
-# -----------------------------------------------------------------------------
+# *****************************************************************************
 # This tutorial uses the class :class:`spyrit.core.time.AffineDeformationField`
 # to simulate the movement of a still image. This class is a subclass of
 # :class:`spyrit.core.time.DeformationField`, which can be used to deform an
