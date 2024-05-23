@@ -353,9 +353,6 @@ class Linear(_Base):
           )
     """
 
-    # Class variable
-    _measurement_mode = "static"
-
     def __init__(
         self,
         H: torch.tensor,
@@ -385,6 +382,14 @@ class Linear(_Base):
     @H_pinv.deleter
     def H_pinv(self) -> None:
         del self._param_H_static_pinv
+
+    # Deprecated method - included for backwards compatibility but to remove
+    def get_H(self) -> torch.tensor:
+        warnings.warn(
+            "The method get_H() is deprecated and will be removed in a future "
+            + "version. Please use the attribute self.H instead."
+        )
+        return self.H
 
     def set_H_pinv(self, rtol: float = None) -> None:
         """Used to set the pseudo inverse of the measurement matrix :math:`H`
