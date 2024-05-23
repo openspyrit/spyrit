@@ -38,7 +38,7 @@ of the example.
 # 1.a Load an image from a batch of images
 # -----------------------------------------------------------------------------
 # This part is identical to other tutorials. We consider an image of size
-# 64x64 pixels. 
+# 32x32 pixels. 
 
 import os
 
@@ -51,8 +51,8 @@ from spyrit.misc.statistics import transform_gray_norm
 
 # sphinx_gallery_thumbnail_path = 'fig/tuto9.png'
 
-img_size = 64  # full image side's size in pixels
-meas_size = 64  # measurement pattern side's size in pixels (Hadamard matrix)
+img_size = 32  # full image side's size in pixels
+meas_size = 32  # measurement pattern side's size in pixels (Hadamard matrix)
 img_shape = (img_size, img_size)
 meas_shape = (meas_size, meas_size)
 i = 1  # Image index (modify to change the image)
@@ -265,12 +265,12 @@ print("H_dyn is same as H:", (meas_op.H == meas_op.H_dyn).all())
 
 plot, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10))
 
-im1 = ax1.imshow(meas_op.P.cpu().numpy()[:2000, :], vmin=0, vmax=1.5, cmap="gray")
-ax1.set_title("Measurement matrix P, first 2000 rows")
+im1 = ax1.imshow(meas_op.P.cpu().numpy(), vmin=0, vmax=1.5, cmap="gray")
+ax1.set_title("Measurement matrix P")
 add_colorbar(im1, "right", size="20%")
 
-im2 = ax2.imshow(meas_op.H_dyn.cpu().numpy()[:2000, :], vmin=0, vmax=1.5, cmap="gray")
-ax2.set_title("Dynamic measurement matrix H_dyn, first 2000 rows")
+im2 = ax2.imshow(meas_op.H_dyn.cpu().numpy(), vmin=0, vmax=1.5, cmap="gray")
+ax2.set_title("Dynamic measurement matrix H_dyn")
 add_colorbar(im2, "right", size="20%")
 
 plot.tight_layout()
