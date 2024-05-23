@@ -8,17 +8,17 @@
 ## Changes to come in a future version
 <details open>
 <summary>spyrit.core</summary>
-    * .meas  
-        \- self.H_adjoint for static classes  
-        \- self.get_H() for static classes  
+* .meas  
+\- self.H_adjoint for static classes  
+\- self.get_H() for static classes  
 </details>
 
 <details open>
 <summary>spyrit.misc</summary>
-        * .matrix_tools  
-            \- Permutation_Matrix()  
-        * .sampling  
-            \- meas2img2()  
+* .matrix_tools  
+\- Permutation_Matrix()  
+* .sampling  
+\- meas2img2()  
 </details>
 
 <details>
