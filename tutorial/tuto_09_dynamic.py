@@ -7,7 +7,7 @@ This tutorial explains how to simulate dynamic measurement and reconstruction
 of a moving object. There are three steps in this process:
 
 1. First, a still image is deformed to generate multiple frames. This step
-simulates movement of the object. The module :mod:`spyrit.core.time` is used
+simulates movement of the object. The module :mod:`spyrit.core.warp` is used
 to warp images.
 
 2. Second, the measurement is performed on the series of frames. The 'Dynamic'
@@ -18,7 +18,7 @@ the motion-compensated image.
 
 This tutorial will present an example in which all three steps will be
 explained in an example. To understand the specificities of the module
-:mod:`spyrit.core.time`, a more detailed explanation is included at the end
+:mod:`spyrit.core.warp`, a more detailed explanation is included at the end
 of the example.
 
 .. image:: ../fig/tuto9.png
@@ -83,7 +83,7 @@ imagesc(x_plot, r"Original image $x$ in [-1, 1]")
 # 1.b Define an affine transformation
 # -----------------------------------------------------------------------------
 # Here we will define an affine transformation using a matrix and the class
-# :class:`spyrit.core.time.AffineDeformationField`.
+# :class:`spyrit.core.warp.AffineDeformationField`.
 #
 # This class takes 3 arguments:
 # a function :math:`f(t) = Mat`, where :math:`t` represents the time
@@ -96,7 +96,7 @@ imagesc(x_plot, r"Original image $x$ in [-1, 1]")
 #
 # Let's first see th construction of the function :math:`f`.
 
-from spyrit.core.time import AffineDeformationField
+from spyrit.core.warp import AffineDeformationField
 
 # we want to define a deformation similar to that see in [ref to Thomas].
 
@@ -139,8 +139,8 @@ aff_field = AffineDeformationField(f, time_vector, img_shape)
 # -----------------------------------------------------------------------------
 # Now that the field is defined, we can warp the image. Spyrit works mostly
 # with vectorized images, and warping images is no exception. Currently, the
-# classes :class:`spyrit.core.time.AffineDeformationField` and
-# :class:`spyrit.core.time.DeformationField` can only warp a single image at a
+# classes :class:`spyrit.core.warp.AffineDeformationField` and
+# :class:`spyrit.core.warp.DeformationField` can only warp a single image at a
 # time.
 
 import matplotlib.pyplot as plt
@@ -353,26 +353,26 @@ plt.show()
 # %%
 # 4. Warping detailed explanation
 # *****************************************************************************
-# This tutorial uses the class :class:`spyrit.core.time.AffineDeformationField`
+# This tutorial uses the class :class:`spyrit.core.warp.AffineDeformationField`
 # to simulate the movement of a still image. This class is a subclass of
-# :class:`spyrit.core.time.DeformationField`, which can be used to deform an
+# :class:`spyrit.core.warp.DeformationField`, which can be used to deform an
 # image in a more general manner. This is particularly useful for experimental
 # setups where the deformation is estimated from real measurements.
 #
 # Here, we provide an example of how to use the class
-# :class:`spyrit.core.time.DeformationField`. The class takes one argument:
+# :class:`spyrit.core.warp.DeformationField`. The class takes one argument:
 # the deformation field itself of shape :math:`(n_frames,h,w,2)`, where
 # :math:`n_frames` is the number of frames, and :math:`h` and :math:`w` are the
 # height and width of the image. The last dimension represents the 2D
 # pixel from where to interpolate the new pixel value at the coordinate
 # :math:`(h,w)`.
 #
-# We will first use an instance of :class:`spyrit.core.time.AffineDeformationField`
+# We will first use an instance of :class:`spyrit.core.warp.AffineDeformationField`
 # to create the deformation field. Then, a separate instance of
-# :class:`spyrit.core.time.DeformationField` will be created using the
+# :class:`spyrit.core.warp.DeformationField` will be created using the
 # deformation field from the affine deformation field.
 
-from spyrit.core.time import DeformationField
+from spyrit.core.warp import DeformationField
 
 # define a rotation function
 omega = 2 * math.pi  # angular velocity
@@ -398,7 +398,7 @@ aff_field2 = AffineDeformationField(rot, time_vector, img_shape)
 ###############################################################################
 # Now that the affine deformation field is created, we can access the
 # deformation field through the attribute :attr:`field`. Its value can then be
-# used to create a new instance of :class:`spyrit.core.time.DeformationField`.
+# used to create a new instance of :class:`spyrit.core.warp.DeformationField`.
 
 # get the deformation field
 field = aff_field2.field

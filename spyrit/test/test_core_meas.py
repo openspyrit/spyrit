@@ -241,7 +241,7 @@ def test_core_meas():
     print("ok")
 
     # Build dynamic measurement matrix
-    from spyrit.core.time import AffineDeformationField
+    from spyrit.core.warp import AffineDeformationField
 
     print("\tBuild dynamic measurement matrix... ", end="")
     H = torch.rand(400, 2500, dtype=torch.float64)

@@ -13,7 +13,7 @@ from test_helpers import *
 from spyrit.core.meas import HadamSplit, DynamicLinear, DynamicHadamSplit
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import SplitPoisson
-from spyrit.core.time import AffineDeformationField
+from spyrit.core.warp import AffineDeformationField
 
 
 def test_core_recon():

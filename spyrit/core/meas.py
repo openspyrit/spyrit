@@ -30,7 +30,7 @@ import math
 import torch
 import torch.nn as nn
 
-from spyrit.core.time import DeformationField
+from spyrit.core.warp import DeformationField
 import spyrit.core.torch as spytorch
 
 
