@@ -263,14 +263,14 @@ print("H_dyn is same as H:", (meas_op.H == meas_op.H_dyn).all())
 
 # show P and H_dyn side by side
 
-plot, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+plot, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10))
 
-im1 = ax1.imshow(meas_op.P.cpu().numpy(), vmin=0, vmax=1.5, cmap="gray")
-ax1.set_title("Measurement matrix P")
+im1 = ax1.imshow(meas_op.P.cpu().numpy()[:2000, :], vmin=0, vmax=1.5, cmap="gray")
+ax1.set_title("Measurement matrix P, first 2000 rows")
 add_colorbar(im1, "right", size="20%")
 
-im2 = ax2.imshow(meas_op.H_dyn.cpu().numpy(), vmin=0, vmax=1.5, cmap="gray")
-ax2.set_title("Dynamic measurement matrix H_dyn")
+im2 = ax2.imshow(meas_op.H_dyn.cpu().numpy()[:2000, :], vmin=0, vmax=1.5, cmap="gray")
+ax2.set_title("Dynamic measurement matrix H_dyn, first 2000 rows")
 add_colorbar(im2, "right", size="20%")
 
 plot.tight_layout()
