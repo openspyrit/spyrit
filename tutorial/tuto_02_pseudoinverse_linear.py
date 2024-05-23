@@ -182,7 +182,7 @@ imagesc(m_plot, "Preprocessed measurements (no noise)")
 # measurements :attr:`y`. The first consists of explicitly computing the
 # pseudo inverse of the measurement matrix :attr:`H` and applying it to the
 # measurements. The second computes a least-squares solution using :func:`torch.linalg.lstsq`
-# to compute the pseudo inverse solution. 
+# to compute the pseudo inverse solution.
 # The choice is made automatically: if the measurement operator has a pseudo-inverse
 # already computed, it is used; otherwise, the least-squares solution is used.
 #
@@ -201,12 +201,12 @@ from spyrit.core.recon import PseudoInverse
 recon_op = PseudoInverse()
 
 # Reconstruction
-x_rec1 = recon_op(y, meas_op) # equivalent to: meas_op.pinv(y)
+x_rec1 = recon_op(y, meas_op)  # equivalent to: meas_op.pinv(y)
 
 ###############################################################################
 # Second way: calling pinv method from the Linear operator
 # The code is very similar to the previous case, but we need to make sure the
-# measurement operator has no pseudo-inverse computed. We can also specify 
+# measurement operator has no pseudo-inverse computed. We can also specify
 # regularization parameters for the least-squares solution when calling
 # `recon_op`.
 
@@ -216,7 +216,7 @@ del meas_op.H_pinv  # delete the pseudo-inverse
 print(f"Pseudo-inverse computed: {hasattr(meas_op, 'H_pinv')}")
 
 # Reconstruction
-x_rec2 = recon_op(y, meas_op, reg='L1', eta=1e-6)
+x_rec2 = recon_op(y, meas_op, reg="L1", eta=1e-6)
 
 # restore the pseudo-inverse
 meas_op.H_pinv = temp

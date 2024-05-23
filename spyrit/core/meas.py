@@ -381,7 +381,7 @@ class Linear(_Base):
         self._param_H_static_pinv = nn.Parameter(
             value.to(torch.float64), requires_grad=False
         )
-    
+
     @H_pinv.deleter
     def H_pinv(self) -> None:
         del self._param_H_static_pinv
@@ -868,7 +868,7 @@ class DynamicLinear(_Base):
     def H_pinv(self) -> torch.tensor:
         """Dynamic pseudo-inverse H_pinv. Equal to self.H_dyn_pinv."""
         return self.H_dyn_pinv
-    
+
     @H_pinv.deleter
     def H_pinv(self) -> None:
         del self._param_H_dyn_pinv
