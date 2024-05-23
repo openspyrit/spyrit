@@ -7,13 +7,12 @@ from typing import Union
 
 import math
 import torch
-import torchvision
+
+# import torchvision
 import torch.nn as nn
 import numpy as np
 
-import spyrit.core.torch as spytorch
 from spyrit.core.meas import Linear, DynamicLinear, HadamSplit
-from spyrit.core.time import DeformationField
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import DirectPoisson, SplitPoisson
 
@@ -48,6 +47,7 @@ class PseudoInverse(nn.Module):
         self,
         x: torch.tensor,
         meas_op: Union[Linear, DynamicLinear],
+        **kwargs,
     ) -> torch.tensor:
         r"""Computes pseudo-inverse of measurements.
 
@@ -76,7 +76,7 @@ class PseudoInverse(nn.Module):
             >>> print(x.shape)
             torch.Size([85, 1024])
         """
-        return meas_op.pinv(x)
+        return meas_op.pinv(x, **kwargs)
 
 
 # =============================================================================

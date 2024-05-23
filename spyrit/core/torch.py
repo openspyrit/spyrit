@@ -7,14 +7,11 @@ in the spyrit.core modules. It mirrors the the spyrit.misc most used
 functions, but using pytorch tensors instead of numpy arrays.
 """
 
-import warnings
+# import warnings
 
 import torch
 import torch.nn as nn
 import torchvision
-import math
-import scipy
-import numpy as np
 
 
 # =============================================================================

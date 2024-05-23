@@ -25,13 +25,12 @@ purposes and should not be used directly. The inheritance tree is as follows::
 """
 
 import warnings
-from typing import Union
 
 import math
 import torch
 import torch.nn as nn
 
-from spyrit.core.time import DeformationField
+from spyrit.core.warp import DeformationField
 import spyrit.core.torch as spytorch
 
 
@@ -382,6 +381,10 @@ class Linear(_Base):
         self._param_H_static_pinv = nn.Parameter(
             value.to(torch.float64), requires_grad=False
         )
+
+    @H_pinv.deleter
+    def H_pinv(self) -> None:
+        del self._param_H_static_pinv
 
     def set_H_pinv(self, rtol: float = None) -> None:
         """Used to set the pseudo inverse of the measurement matrix :math:`H`
@@ -865,6 +868,10 @@ class DynamicLinear(_Base):
     def H_pinv(self) -> torch.tensor:
         """Dynamic pseudo-inverse H_pinv. Equal to self.H_dyn_pinv."""
         return self.H_dyn_pinv
+
+    @H_pinv.deleter
+    def H_pinv(self) -> None:
+        del self._param_H_dyn_pinv
 
     @property
     def H_dyn_pinv(self) -> torch.tensor:

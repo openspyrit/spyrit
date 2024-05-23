@@ -107,7 +107,7 @@ except:
 
 from spyrit.core.meas import HadamSplit
 from spyrit.core.noise import Poisson
-from spyrit.misc.sampling import meas2img2
+from spyrit.misc.sampling import meas2img
 from spyrit.misc.statistics import Cov2Var
 from spyrit.core.prep import SplitPoisson
 
@@ -130,7 +130,7 @@ y = noise_op(x)  # a noisy measurement vector
 m = prep_op(y)  # preprocessed measurement vector
 
 m_plot = m.detach().numpy()
-m_plot = meas2img2(m_plot.T, Ord)
+m_plot = meas2img(m_plot, Ord)
 imagesc(m_plot[0, :, :], r"Measurements $m$")
 
 # %%

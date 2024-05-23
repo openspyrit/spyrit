@@ -1,5 +1,5 @@
 """
-Test for module time.py
+Test for module warp.py
 Author: Romain Phan
 """
 
@@ -9,14 +9,14 @@ import math
 from test_helpers import *
 
 
-def test_core_time():
+def test_core_warp():
 
-    print("\n*** Testing time.py ***")
+    print("\n*** Testing warp.py ***")
 
     # =========================================================================
     ## DeformationField
     print("DeformationField")
-    from spyrit.core.time import DeformationField
+    from spyrit.core.warp import DeformationField
 
     # constructor
     print("\tconstructor... ", end="")
@@ -88,7 +88,7 @@ def test_core_time():
     # =========================================================================
     ## AffineDeformationField
     print("AffineDeformationField")
-    from spyrit.core.time import AffineDeformationField
+    from spyrit.core.warp import AffineDeformationField
 
     # constructor
     print("\tconstructor... ", end="")
@@ -146,10 +146,10 @@ def test_core_time():
     # print("ok")
 
     # =========================================================================
-    print("All tests passed for time.py")
+    print("All tests passed for warp.py")
     print("==============================")
     return True
 
 
 if __name__ == "__main__":
-    test_core_time()
+    test_core_warp()
