@@ -153,7 +153,7 @@ x_motion = aff_field(x, 0, (meas_size**2) *2)
 c, n_frames, n_pixels = x_motion.shape
 
 # show random frames
-frames = [400, 1200]
+frames = [100, 300]
 
 plot, axes = plt.subplots(1, len(frames), figsize=(10, 5))
 
@@ -263,7 +263,7 @@ print("H_dyn is same as H:", (meas_op.H == meas_op.H_dyn).all())
 
 # show P and H_dyn side by side
 
-plot, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10))
+plot, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 6))
 
 im1 = ax1.imshow(meas_op.P.cpu().numpy(), vmin=0, vmax=1.5, cmap="gray")
 ax1.set_title("Measurement matrix P")
@@ -333,7 +333,7 @@ im2 = ax2.imshow(x_plot.view(img_shape) - x_hat1.view(img_shape), cmap="gray")
 ax2.set_title("Difference between original and motion-compensated image")
 add_colorbar(im2, "right", size="20%")
 
-plot.tight_layout()
+# plot.tight_layout()
 plt.show()
 
 # imagesc(x_hat1.view(img_shape), "Motion-compensated image, using pinv")
