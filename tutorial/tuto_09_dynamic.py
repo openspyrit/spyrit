@@ -38,7 +38,7 @@ of the example.
 # 1.a Load an image from a batch of images
 # -----------------------------------------------------------------------------
 # This part is identical to other tutorials. We consider an image of size
-# 32x32 pixels. 
+# 32x32 pixels.
 
 import os
 
@@ -103,8 +103,10 @@ from spyrit.core.warp import AffineDeformationField
 a = 0.2  # amplitude
 omega = math.pi  # angular speed
 
+
 def s(t):
     return 1 + a * math.sin(t * omega)  # base function for f
+
 
 def f(t):
     return torch.tensor(
@@ -115,6 +117,7 @@ def f(t):
         ],
         dtype=torch.float64,
     )
+
 
 ###############################################################################
 # .. note::
@@ -130,7 +133,7 @@ def f(t):
 # is for this reason that the number of frames is set to the square of the
 # measurement size.
 
-time_vector = torch.linspace(0, 10, (meas_size**2) *2)  # *2 because of the splitting
+time_vector = torch.linspace(0, 10, (meas_size**2) * 2)  # *2 because of the splitting
 
 aff_field = AffineDeformationField(f, time_vector, img_shape)
 
@@ -149,7 +152,7 @@ from spyrit.misc.disp import add_colorbar
 # Reshape the image from (b,c,h,w) to (c, h*w)
 x = x.view(c, h * w)
 
-x_motion = aff_field(x, 0, (meas_size**2) *2)
+x_motion = aff_field(x, 0, (meas_size**2) * 2)
 c, n_frames, n_pixels = x_motion.shape
 
 # show random frames
@@ -233,9 +236,9 @@ imagesc(y.view((meas_size * 2, meas_size)).cpu().numpy(), "Measurement vector")
 #
 # .. math::
 #     y = H_{dyn} x_{ref}
-# 
-# Or, following the notations from [2]_, :math:`m = H_{dyn} f_{ref}`. 
-# 
+#
+# Or, following the notations from [2]_, :math:`m = H_{dyn} f_{ref}`.
+#
 # To build the # dynamic measurement matrix, we need the measurement patterns and the
 # deformation field. In this case, the deformation field is known, but in some
 # cases it might have to be estimated.
@@ -316,6 +319,7 @@ print("x_hat1 shape:", x_hat1.shape)
 
 # using a PseudoInverse instance, no difference
 from spyrit.core.recon import PseudoInverse
+
 recon_op = PseudoInverse()
 x_hat2 = recon_op(y, meas_op)
 
@@ -344,10 +348,10 @@ plt.show()
 ###############################################################################
 # .. important::
 #   As with static reconstruction, it is possible to reconstruct the
-#   motion-compensated image without having to compute the pseudo-inverse 
+#   motion-compensated image without having to compute the pseudo-inverse
 #   explicitly. Calling the method :meth:`pinv` while the attribute
 #   :attr:`H_dyn_pinv` is not defined will result in using the least-squares
-#   function provided in torch: :func:`torch.linalg.lstsq`. 
+#   function provided in torch: :func:`torch.linalg.lstsq`.
 
 
 # %%
@@ -377,13 +381,18 @@ from spyrit.core.warp import DeformationField
 # define a rotation function
 omega = 2 * math.pi  # angular velocity
 
+
 def rot(t):
-    ans = torch.tensor([
+    ans = torch.tensor(
+        [
             [math.cos(t * omega), -math.sin(t * omega), 0],
             [math.sin(t * omega), math.cos(t * omega), 0],
             [0, 0, 1],
-        ], dtype=torch.float64)  # it is recommended to use float64
+        ],
+        dtype=torch.float64,
+    )  # it is recommended to use float64
     return ans
+
 
 # create a time vector of length 100 (change this to fit your needs)
 t0 = 0
