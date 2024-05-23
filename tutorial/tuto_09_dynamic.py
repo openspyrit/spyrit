@@ -326,11 +326,11 @@ print("x_hat1 and x_hat2 are equal:", (x_hat1 == x_hat2).all())
 plot, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
 
 im1 = ax1.imshow(x_hat1.view(img_shape), cmap="gray")
-ax1.set_title("Motion-compensated image, using pinv")
+ax1.set_title("Motion-compensated image,\nusing pinv")
 add_colorbar(im1, "right", size="20%")
 
 im2 = ax2.imshow(x_plot.view(img_shape) - x_hat1.view(img_shape), cmap="gray")
-ax2.set_title("Difference between original and motion-compensated image")
+ax2.set_title("Difference between original\nand motion-compensated image")
 add_colorbar(im2, "right", size="20%")
 
 # plot.tight_layout()
@@ -414,4 +414,5 @@ print("def_field and aff_field2 are the same:", (def_field == aff_field2))
 # .. rubric:: References for dynamic reconstruction
 #
 # .. [1] Thomas Maitre, Elie Bretin, L. Mahieu-Williame, Michaël Sdika, Nicolas Ducros. Hybrid single-pixel camera for dynamic hyperspectral imaging. 2023. hal-04310110
-# .. [2] (MICCAI 2024 Early Acceptance) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros, Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View without Warping the Patterns. 2024. hal-04533981
+
+# .. [2] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros, Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View without Warping the Patterns. 2024. hal-04533981
