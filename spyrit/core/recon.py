@@ -46,6 +46,7 @@ class PseudoInverse(nn.Module):
         self,
         x: torch.tensor,
         meas_op: Union[Linear, DynamicLinear],
+        **kwargs,
     ) -> torch.tensor:
         r"""Computes pseudo-inverse of measurements.
 
@@ -74,7 +75,7 @@ class PseudoInverse(nn.Module):
             >>> print(x.shape)
             torch.Size([85, 1024])
         """
-        return meas_op.pinv(x)
+        return meas_op.pinv(x, **kwargs)
 
 
 # =============================================================================
