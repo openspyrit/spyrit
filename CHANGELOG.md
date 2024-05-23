@@ -8,7 +8,7 @@
 ## Changes to come in a future version
 <details open>
 <summary>spyrit.core</summary>
-* .meas  
+- .meas  
 \- self.H_adjoint for static classes  
 \- self.get_H() for static classes  
 </details>
