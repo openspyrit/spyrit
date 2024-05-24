@@ -24,14 +24,14 @@ This tutorial illustrate the three steps through a simple example. Details about
 """
 
 # %%
-# 1. Example: warping an image to generate a video
+# 1. Generate a video by warping a reference image
 # ***********************************************************************
 
 #######################################################################
 # 
 
 # %%
-# 1.a Load an image from a batch of images
+# Load an image from a batch of images
 # -----------------------------------------------------------------------
 # As in the other tutorials, we load images from the `/images/` folder. Here, we consider a 32x32 image for simplicity.
 
@@ -75,7 +75,7 @@ x_plot = x.view(img_shape).cpu()
 imagesc(x_plot, r"Original image $x$ in [-1, 1]")
 
 # %%
-# 1.b Define an affine warping
+# Define an affine warping
 # --------------------------------------------------------------------
 
 ######################################################################
@@ -122,7 +122,7 @@ aff_field = AffineDeformationField(f, time_vector, img_shape)
 
 
 # %%
-# 1.c Warp the image
+# Warp the image
 # ----------------------------------------------------------------------------- 
 # 
 # Warping works with vectorized images. So, we first reshape the image from `(b,c,h,w)` to `(c, h*w)`
@@ -164,7 +164,7 @@ plt.show()
 #   For the moment, no noise can be applied to the dynamic measurement operators. This will be available in a future release. As a consequence, the preprocessing operators are also unavailable.
 
 # %%
-# Instantiate a dynamic measurement operator
+# Instantiation of a dynamic measurement operator
 # -----------------------------------------------------------------------------
 # The :class:`~spyrit.core.meas.DynamicHadamSplit` class is the counterpart of the 
 # :class:`~spyrit.core.meas.HadamardSplit` class for dynamic scenes. The dynamic measurement operator considers a different frame for each of the measurement patterns. Therefore, the number of frames in the video must be the same as the number of measurement patterns .
@@ -184,54 +184,57 @@ print("Shape of the measurement matrix P:", meas_op.P.shape)
 #   If there are too many frames in your video, you may want to use only the first frames of it. If there are too many patterns in your acquisition operator, you may want to reduce this number by setting the parameter :attr:`M`.
 
 # %%
-# Simulate
+# Simulation
 # -----------------------------------------------------------------------------
 # As in the static case, this is done by calling (implicitly) forward method.
 y = meas_op(x_motion)
 
+######################################################################
 # Plot the measurements
 imagesc(y.view((meas_size * 2, meas_size)).cpu().numpy(), "Measurement vector")
 
 # %%
-# 3. Example: reconstructing the motion-compensated image
+# 3. Reconstruction of the motion-compensated (reference) image
 # *****************************************************************************
-# In this section, we will reconstruct the motion-compensated image from the measurements.
-# This is done by combining the information contained in the measurement
-# patterns and in the deformation field. This theoretical work has been
-# explained in [1]_ and [2]_. The reconstruction follows the physical
-# discretization of the problem, thus avoiding to warp the Hadamard patterns.
-# The class :class:`spyrit.core.meas.DynamicHadamSplit` (and the other dynamic classes)
-# handle the dynamic reconstruction through various methods.
+# In this section, we reconstruct the motion-compensated (reference) image from the dynamic measurements.
+# This a two-step approach:
+#
+#   #. Construction of a dynamic forward matrix that combines the knowledge of the measurement patterns and the deformation field.
+#
+#   #. Resolution of a linear problem based on the dynamic forward matrix. 
+#
+# For details, refer to [1]_ and [2]_.
+# 
 
 # %%
-# 3.a Compute the dynamic measurement matrix
+# Computation of the dynamic measurement matrix
 # -----------------------------------------------------------------------------
-# The dynamic measurement matrix :math:`H_{dyn}` is defined as the measurement
-# matrix that would give the same measurement vector :math:`y` as the one
-# computed before when applied to a still image :math:`x_{ref}`:
+# The dynamic measurement matrix :math:`H_{\rm dyn}` is defined as the measurement matrix that gives the dynamic measurement vector :math:`y` from the reference image :math:`x_{\rm ref}`
 #
 # .. math::
-#     y = H_{dyn} x_{ref}
+#     y = H_{\rm dyn} x_{\rm ref}
 #
-# Or, following the notations from [2]_, :math:`m = H_{dyn} f_{ref}`.
-#
-# To build the # dynamic measurement matrix, we need the measurement patterns and the
-# deformation field. In this case, the deformation field is known, but in some
-# cases it might have to be estimated.
-#
-# The dynamic measurement matrix `H_dyn` is built using the measurement
-# operator itself.
-
-# compute the dynamic measurement matrix
+# The dynamic measurement matrix is built by calling the :meth:`build_H_dyn` method of the measurement operator, given a deformation field.
 print("H_dyn computed:", hasattr(meas_op, "H_dyn"))
+
 meas_op.build_H_dyn(aff_field, mode="bilinear")
 print("H_dyn computed:", hasattr(meas_op, "H_dyn"))
 
 ###############################################################################
+# This method adds to the measurement operator a new attribute named
+# :attr:`H_dyn`. It can also be accessed using the attribute name :attr:`H` for
+# compatibility reasons, although it is NOT recommended.
+
+######################################################################
+# .. note:: There are different strategies for building :math:`H_{\rm dyn}`. Here, we consider the method described in [2]_ that avoids warping the Hadamard patterns. 
+
+######################################################################
+# .. note:: Here, the deformation field is known. In the general case, it will have to be estimated.
+
+
+###############################################################################
 # .. important::
-#   Because :math:`P` is the actual matrix used for measuring, the attribute
-#   :attr:`H_dyn` is computed using the matrix :math:`P`. This can be seen in
-#   their shapes, which are the transpose of each other.
+#    The dynamic measurement matrix :attr:`H_dyn` is computed from the actual measurement matrix :math:`P` that is obtained by splitting the Hadamard matrix (see :ref:`Tutorial 5 <tuto_acquisition_split_measurements>`). This can be seen by checking their shapes, which are the transpose of each other.
 
 # recommended way
 print("H_dyn shape:", meas_op.H_dyn.shape)
@@ -240,7 +243,8 @@ print("P shape:", meas_op.P.shape)
 print("H shape:", meas_op.H.shape)
 print("H_dyn is same as H:", (meas_op.H == meas_op.H_dyn).all())
 
-# show P and H_dyn side by side
+###############################################################################
+# We plot the actual and dynamic measurement matrix
 
 plot, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 6))
 
@@ -255,79 +259,51 @@ add_colorbar(im2, "right", size="20%")
 plot.tight_layout()
 plt.show()
 
-###############################################################################
-# This method adds to the measurement operator a new attribute named
-# :attr:`H_dyn`. It can also be accessed using the attribute name :attr:`H` for
-# compatibility reasons, although it is NOT recommended.
-
 # %%
-# 3.b Reconstruct the motion-compensated image
+# Reconstruction
 # -----------------------------------------------------------------------------
-# Now that the dynamic measurement matrix has been computed, we can reconstruct
-# the motion-compensated image. To do this, we can first compute the pseudo-inverse
-# of our dynamic measurement matrix:
+# We first compute the pseudo-inverse of the dynamic measurement matrix by calling the :meth:`build_H_dyn_pinv` method that allows regularization.
 
-# compute the pseudo-inverse using the requested regularizers
 print("H_dyn_pinv computed:", hasattr(meas_op, "H_dyn_pinv"))
 meas_op.build_H_dyn_pinv(reg="L2", eta=1e-6)
 print("H_dyn_pinv computed:", hasattr(meas_op, "H_dyn_pinv"))
 
-# recommended way
-print("H_dyn_pinv shape:", meas_op.H_dyn_pinv.shape)
-# NOT recommended, can cause confusions
-print("H_pinv shape", meas_op.H_pinv.shape)
-print("H_dyn_pinv is same as H_pinv:", (meas_op.H_dyn_pinv == meas_op.H_pinv).all())
-
 ###############################################################################
-# This creates a new attribute :attr:`H_dyn_pinv` in which is stored the
-# pseudo-inverse of :attr:`H_dyn`. As before, the same tensor can be accessed
-# through the attribute :attr:`H_pinv` for compatibility reasons, although it
-# is not recommended.
+# This creates a new attribute :attr:`H_dyn_pinv` that stores the pseudo-inverse of :attr:`H_dyn`. As before, the same tensor can be accessed  through the attribute :attr:`H_pinv`, for compatibility reasons, although it is *not* recommended.
 #
-# Once the pseudo-inverse has been computed, we can simply call the method
-# :meth:`pinv` associated with some measurements to reconstruct the motion-compensated
-# image. As with the static case, this can also be done through the class
-# :class:`spyrit.core.recon.PseudoInverse`
+# Next, we simply call the :meth:`pinv` method. 
 
-# using self.pinv directly
 x_hat1 = meas_op.pinv(y)
 print("x_hat1 shape:", x_hat1.shape)
 
-# using a PseudoInverse instance, no difference
-from spyrit.core.recon import PseudoInverse
+###############################################################################
+# As in the static case, this can also be done through using :class:`spyrit.core.recon.PseudoInverse` class.
 
+from spyrit.core.recon import PseudoInverse
 recon_op = PseudoInverse()
 x_hat2 = recon_op(y, meas_op)
 
 print("x_hat1 and x_hat2 are equal:", (x_hat1 == x_hat2).all())
 
-# show the motion-compensated image and the difference with the original image
+###############################################################################
+# We finally plot the reconstructed image and its difference with the ground-truth image
 
 plot, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
 
 im1 = ax1.imshow(x_hat1.view(img_shape), cmap="gray")
-ax1.set_title("Motion-compensated image,\nusing pinv")
+ax1.set_title("Reconstructed image")
 add_colorbar(im1, "right", size="20%")
 
 im2 = ax2.imshow(x_plot.view(img_shape) - x_hat1.view(img_shape), cmap="gray")
-ax2.set_title("Difference between original\nand motion-compensated image")
+ax2.set_title("Reconstruction error")
 add_colorbar(im2, "right", size="20%")
 
 # plot.tight_layout()
 plt.show()
 
-# imagesc(x_hat1.view(img_shape), "Motion-compensated image, using pinv")
-# imagesc(x_plot.view(img_shape) - x_hat1.view(img_shape),
-#     "Difference between original\nand motion-compensated image",
-# )
-
 ###############################################################################
-# .. important::
-#   As with static reconstruction, it is possible to reconstruct the
-#   motion-compensated image without having to compute the pseudo-inverse
-#   explicitly. Calling the method :meth:`pinv` while the attribute
-#   :attr:`H_dyn_pinv` is not defined will result in using the least-squares
-#   function provided in torch: :func:`torch.linalg.lstsq`.
+# .. note::
+#   As with static reconstruction, it is possible to reconstruct the motion-compensated image without having to compute the pseudo-inverse explicitly. Calling the method :meth:`pinv` while the attribute :attr:`H_dyn_pinv` is not defined will result in using the :func:`torch.linalg.lstsq` solver.
 
 
 # %%
