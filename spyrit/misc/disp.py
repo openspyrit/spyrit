@@ -175,7 +175,7 @@ def imagesc(
         cax = plt.axes([0.85, 0.1, 0.075, 0.8])
         plt.colorbar(cax=cax, orientation="vertical")
 
-    fig.tight_layout()
+    # fig.tight_layout() # it raises warnings in some cases
     if show is True:
         plt.show()
 

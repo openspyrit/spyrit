@@ -117,14 +117,6 @@ class TikhonovMeasurementPriorDiag(nn.Module):
     def __init__(self, sigma: torch.tensor, M: int):
         super().__init__()
 
-        if isinstance(sigma, np.ndarray):
-            warnings.warn(
-                "The input sigma should be a torch tensor. Compatiblity with "
-                + "numpy arrays will be removed in future versions.",
-                DeprecationWarning,
-            )
-            sigma = torch.from_numpy(sigma)
-
         N = sigma.shape[0]
 
         self.comp = nn.Linear(M, N - M, False)
@@ -138,7 +130,8 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 
         Sigma1 = sigma[:M, :M]
         Sigma21 = sigma[M:, :M]
-        W = Sigma21 @ torch.linalg.inv(Sigma1)
+        # W = Sigma21 @ torch.linalg.inv(Sigma1)
+        W = torch.linalg.solve(Sigma1.T, Sigma21.T).T
 
         self.comp.weight.data = W
         self.comp.weight.data = self.comp.weight.data.float()
