@@ -1,44 +1,39 @@
 r"""
-09. Acquisition and reconstruction in dynamic conditions
+09. Acquisition and reconstruction of dynamic scenes
 ========================================================
 .. _tuto_dynamic:
 
-This tutorial explains how to simulate dynamic measurement and reconstruction
-of a moving object. There are three steps in this process:
+This tutorial explains how to reconstruct a motion-compensated image from a dynamic scene. 
 
-1. First, a still image is deformed to generate multiple frames. This step
-simulates movement of the object. The module :mod:`spyrit.core.warp` is used
-to warp images.
-
-2. Second, the measurement is performed on the series of frames. The 'Dynamic'
-classes from :mod:`spyrit.core.meas` are used.
-
-3. Third, the reconstruction from pesudo-inverse matrices is used to reconstruct
-the motion-compensated image.
-
-This tutorial will present an example in which all three steps will be
-explained in an example. To understand the specificities of the module
-:mod:`spyrit.core.warp`, a more detailed explanation is included at the end
-of the example.
-
-.. image:: ../fig/tuto9.png
+.. figure:: ../fig/tuto9.png
    :width: 600
    :align: center
    :alt: Dynamic measurement and reconstruction steps
+
+   Overview of the dynamic pipeline
+
+There are three steps in the process:
+
+    #. Simulation of the dynamic scene. The :mod:`spyrit.core.warp` module can generate multiple frames by warping a static image, given a motion model or deformation field.
+
+    #. Simulation of the measurement. The dynamic classes from :mod:`spyrit.core.meas` can simulate the sequence of measurement corresponding to the time frames. 
+
+    #. Reconstruction of a motion-compensated image from the sequence of measurement.
+
+This tutorial illustrate the three steps through a simple example. Details about the :mod:`spyrit.core.warp` module are included at the end of the example.
 """
 
 # %%
-# 1. Example: warping an image to generate a motion picture
-# *****************************************************************************
+# 1. Example: warping an image to generate a video
+# ***********************************************************************
 
-###############################################################################
-# This tutorial loads example images from the relative folder `/images/`.
+#######################################################################
+# 
 
 # %%
 # 1.a Load an image from a batch of images
-# -----------------------------------------------------------------------------
-# This part is identical to other tutorials. We consider an image of size
-# 32x32 pixels.
+# -----------------------------------------------------------------------
+# As in the other tutorials, we load images from the `/images/` folder. Here, we consider a 32x32 image for simplicity.
 
 import os
 
@@ -80,33 +75,25 @@ x_plot = x.view(img_shape).cpu()
 imagesc(x_plot, r"Original image $x$ in [-1, 1]")
 
 # %%
-# 1.b Define an affine transformation
-# -----------------------------------------------------------------------------
-# Here we will define an affine transformation using a matrix and the class
-# :class:`spyrit.core.warp.AffineDeformationField`.
-#
-# This class takes 3 arguments:
-# a function :math:`f(t) = Mat`, where :math:`t` represents the time
-# at which :math:`f` is evaluated, and :math:`Mat` is the `(3,3)` matrix that
-# represents the affine transformation. For more details about these matrices,
-# check out `this wiki page <https://en.wikipedia.org/wiki/Affine_transformation#Image_transformation>`_.
-# The two other arguments are a list of times :math:`(t_0, ... , t_n)` at
-# which to evaluate the fuction :math:`f`, and the image size (used to
-# determine the grid size) :math:`(height, width)`.
-#
-# Let's first see th construction of the function :math:`f`.
+# 1.b Define an affine warping
+# --------------------------------------------------------------------
 
-from spyrit.core.warp import AffineDeformationField
+######################################################################
+# We define an affine transformations using the :class:`spyrit.core.warp.AffineDeformationField` class, which is instantiated using 3 arguments:
+#   * a function :math:`f(t)`, where :math:`t` represents time, 
+#   * a list of times :math:`(t_0, ... , t_n)` where :math:`f` is evaluated, 
+#   * the image size (used to determine the grid size) :math:`(height, width)`.
+# 
+# The :math:`f(t)` function is a 3x3 matrix-valued function that represents the affine transformation. For more details, see `here <https://en.wikipedia.org/wiki/Affine_transformation#Image_transformation>`_.
 
-# we want to define a deformation similar to that see in [ref to Thomas].
+######################################################################
+# First, we define :math:`f` as in [1]_ and [2]_.
 
 a = 0.2  # amplitude
 omega = math.pi  # angular speed
 
-
 def s(t):
     return 1 + a * math.sin(t * omega)  # base function for f
-
 
 def f(t):
     return torch.tensor(
@@ -121,41 +108,40 @@ def f(t):
 
 ###############################################################################
 # .. note::
-#       It is recommended when building the function :math:`f` to have its
-#       output dtype set to `float64`, so that computations are as accurate
-#       as possible. This is especially true for large images.
-#
-# Next, we will create the time vector and define the image shape.
-#
-# The measurement size (the size of the Hadamard patterns applied to the image)
-# determines the number of measurements - if there is no subsampling. The
-# number of patterns must match the number of frames of the motion picture. It
-# is for this reason that the number of frames is set to the square of the
-# measurement size.
+#       Especially for large images, it is recommended to set the dtype of the output of :math:`f` to :class:`torch.float64` to reduce numerical errors.
 
+###############################################################################
+# Next, we create the time vector, define the image shape, and compute the deformation field.
+from spyrit.core.warp import AffineDeformationField
 time_vector = torch.linspace(0, 10, (meas_size**2) * 2)  # *2 because of the splitting
-
 aff_field = AffineDeformationField(f, time_vector, img_shape)
+
+###############################################################################
+# .. note::
+#   The number of measurement patterns must match the number of frames of the video. Therefore, we set the number of frames to the square of the measurement size.
+
 
 # %%
 # 1.c Warp the image
-# -----------------------------------------------------------------------------
-# Now that the field is defined, we can warp the image. Spyrit works mostly
-# with vectorized images, and warping images is no exception. Currently, the
-# classes :class:`spyrit.core.warp.AffineDeformationField` and
-# :class:`spyrit.core.warp.DeformationField` can only warp a single image at a
-# time.
-
-import matplotlib.pyplot as plt
-from spyrit.misc.disp import add_colorbar
-
-# Reshape the image from (b,c,h,w) to (c, h*w)
+# ----------------------------------------------------------------------------- 
+# 
+# Warping works with vectorized images. So, we first reshape the image from `(b,c,h,w)` to `(c, h*w)`
 x = x.view(c, h * w)
 
+######################################################################
+# We can now warp the image
 x_motion = aff_field(x, 0, (meas_size**2) * 2)
 c, n_frames, n_pixels = x_motion.shape
 
-# show random frames
+######################################################################
+# .. note::
+#   Currently, the :class:`~spyrit.core.warp.AffineDeformationField` and :class:`~spyrit.core.warp.DeformationField` can only warp a single image at a time.
+
+######################################################################
+# Plot two time frames
+import matplotlib.pyplot as plt
+from spyrit.misc.disp import add_colorbar
+
 frames = [100, 300]
 
 plot, axes = plt.subplots(1, len(frames), figsize=(10, 5))
@@ -169,28 +155,19 @@ plt.show()
 
 
 # %%
-# 2. Example: measuring the moving object
+# 2. Simulation of the measurements
 # *****************************************************************************
-# In this section, we will simulate the measurement of the moving object. We
-# will use a full Hadamard matrix (no subsampling) to measure the object. The
-# best option when using a Hadamard matrix is to use the class
-# :class:`spyrit.core.meas.DynamicHadamSplit`. For the moment, no noise can be
-# applied to the dynamic measurement operators. This will be available in a
-# future release. As a consequence, the preprocessing operators are also
-# unavailable.
+# In this section, we simulate the acquisition of the previous video. We consider a full Hadamard matrix (no subsampling) using the :class:`spyrit.core.meas.DynamicHadamSplit` class. 
+
+#######################################################################
+# .. note::
+#   For the moment, no noise can be applied to the dynamic measurement operators. This will be available in a future release. As a consequence, the preprocessing operators are also unavailable.
 
 # %%
-# 2.a Define the measurement operator
+# Instantiate a dynamic measurement operator
 # -----------------------------------------------------------------------------
-# The class :class:`spyrit.core.meas.DynamicHadamSplit` is the mirror class of
-# :class:`spyrit.core.meas.HadamardSplit`. The difference is that the dynamic
-# will apply a different measurement pattern to each frame. There must
-# therefore be as many patterns as there are frames.
-#
-# If you have too many frames in your motion picture, you may want to use only
-# the first frames of the motion picture. If you have too many patterns, you
-# may want to set the number of patterns to the number of frames using the
-# parameter `M`.
+# The :class:`~spyrit.core.meas.DynamicHadamSplit` class is the counterpart of the 
+# :class:`~spyrit.core.meas.HadamardSplit` class for dynamic scenes. The dynamic measurement operator considers a different frame for each of the measurement patterns. Therefore, the number of frames in the video must be the same as the number of measurement patterns .
 
 from spyrit.core.meas import DynamicHadamSplit
 
@@ -202,19 +179,18 @@ print("Shape of the measurement matrix H:", meas_op.H_static.shape)
 # used when computing the measurements
 print("Shape of the measurement matrix P:", meas_op.P.shape)
 
-# %%
-# 2.b Measure the moving object
-# -----------------------------------------------------------------------------
-# Now that the measurement operator is defined, we can measure the moving
-# object. As with the static case, this is done by using the implicit forward
-# method.
+######################################################################
+# .. note::
+#   If there are too many frames in your video, you may want to use only the first frames of it. If there are too many patterns in your acquisition operator, you may want to reduce this number by setting the parameter :attr:`M`.
 
-# measure the moving object
+# %%
+# Simulate
+# -----------------------------------------------------------------------------
+# As in the static case, this is done by calling (implicitly) forward method.
 y = meas_op(x_motion)
 
-# show the measurement vector
+# Plot the measurements
 imagesc(y.view((meas_size * 2, meas_size)).cpu().numpy(), "Measurement vector")
-
 
 # %%
 # 3. Example: reconstructing the motion-compensated image
@@ -423,5 +399,4 @@ print("def_field and aff_field2 are the same:", (def_field == aff_field2))
 # .. rubric:: References for dynamic reconstruction
 #
 # .. [1] Thomas Maitre, Elie Bretin, L. Mahieu-Williame, Michaël Sdika, Nicolas Ducros. Hybrid single-pixel camera for dynamic hyperspectral imaging. 2023. hal-04310110
-
 # .. [2] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros, Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View without Warping the Patterns. 2024. hal-04533981
