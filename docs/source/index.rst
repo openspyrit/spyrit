@@ -14,7 +14,7 @@ a full network. A full network is built using a measurement operator
 :math:`\mathcal{P}`, a noise operator :math:`\mathcal{N}`, a preprocessing
 operator :math:`\mathcal{B}`, a reconstruction operator :math:`\mathcal{R}`,
 and a learnable neural network :math:`\mathcal{G}_{\theta}`. All operators
-inherit from PyTorch's :class:`torch.nn.Module <https://pytorch.org/docs/stable/generated/torch.nn.Module.html>`_
+inherit from PyTorch's ``:class:`torch.nn.Module` <https://pytorch.org/docs/stable/generated/torch.nn.Module.html>``_
 class, which allows them to be easily combined into a full network.
 
 .. image:: fig/full.png
@@ -29,7 +29,7 @@ The spyrit package is available for Linux, MacOs and Windows::
    pip install spyrit
 
 Advanced installation guidelines are available on `GitHub <https://github.com/openspyrit/spyrit>`_.
-Check out the `available tutorials <gallery/index>`_ to get started with SPyRiT.
+Check out the `available tutorials <gallery/index.html>`_ to get started with SPyRiT.
 
 
 Single-pixel imaging
@@ -38,40 +38,46 @@ Single-pixel imaging
 Measurement model
 -----------------------------------
 
-Single-pixel imaging aims to recover an image :math:`$\bm{x} \in \mathbb{R}^N$` from a few
-noisy scalar products :math:`y\in\Re^M`, where :math:`M\ll N`. We model the
-acquisition as
+Single-pixel imaging aims to recover an image :math:`\bm{x} \in \mathbb{R}^N`
+from a few noisy scalar products :math:`y \in \mathbb{R}^M`, where
+:math:`M \ll N`. We model the acquisition as
 
       :math:`y = (\mathcal{N} \circ \mathcal{P})(x),`
 
-where :math:`\mathcal{P}` is a linear operator, :math:`\mathcal{N}` is a noise
-operator, and :math:`\circ` denotes the composition of operators.
+where :math:`\mathcal{P}` is a linear operator that models the light patterns, 
+:math:`\mathcal{N}` is a noise operator, and :math:`\circ` denotes the composition.
 
 Image reconstruction
 -----------------------------------
 
 Learning-based reconstruction approaches estimate the unknown image as
 :math:`x^* = \mathcal{I}_\theta(y)`, where :math:`\mathcal{I}_\theta`
-represents the parameters that are learned during a training phase. In the case
-of supervised learning, **the training phase** solves
+represents the learnable parameters of the inversion model :math:`\mathcal{I}_\theta`.
 
-      :math:`\min_{\theta}{\sum_i \mathcal{L}\left(x_i,\mathcal{I}_\theta(y_i)\right)},`
-
-where :math:`\mathcal{L}` is the training loss between the true image :math:`x`
-and its estimate, and :math:`\{x_i,y_i\}_i` is a set of training pairs.
-
-Consider the typical **reconstruction operator** :math:`\mathcal{I}_\theta`
-which can be written as:
+A typical reconstruction operator :math:`\mathcal{I}_\theta` can be written as:
 
       :math:`\mathcal{I}_\theta = \mathcal{G}_\theta \circ \mathcal{R} \circ \mathcal{B},`
 
 where :math:`\mathcal{B}` is a preprocessing operator, :math:`\mathcal{R}` is
-a (standard) linear reconstruction operator, and :math:`\mathcal{G}_\theta` is
-a neural network that can be trained during the training phase. Alternatively,
-:math:`\mathcal{R}` can be simply "plugged". In this case, it is trained
-beforehand.
+a linear reconstruction operator, and :math:`\mathcal{G}_\theta` is
+a trainable neural network or any available image-domain denoiser.
 
-To introduce the **full network**, a forward pass can be written as follows:
+Learning phase
+-----------------------------------
+
+In the case of supervised learning, the training phase solves:
+
+      :math:`\min{\theta}{\sum_i \mathcal{L}\left(x_i,\mathcal{I}_\theta(y_i)\right)},`
+
+where :math:`\mathcal{L}` is the training loss, and :math:`\{x_i,y_i\}_i` is a
+set of training pairs.
+
+
+
+
+
+
+To introduce the full network, a forward pass can be written as follows:
 
       :math:`F_{\theta}(x) = (\mathcal{G}_\theta \circ \mathcal{R} \circ \mathcal{B} \circ \mathcal{N} \circ \mathcal{P})(x).`
 
