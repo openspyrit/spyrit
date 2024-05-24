@@ -14,8 +14,8 @@ a full network. A full network is built using a measurement operator
 :math:`\mathcal{P}`, a noise operator :math:`\mathcal{N}`, a preprocessing
 operator :math:`\mathcal{B}`, a reconstruction operator :math:`\mathcal{R}`,
 and a learnable neural network :math:`\mathcal{G}_{\theta}`. All operators
-inherit from PyTorch's ``:class:`torch.nn.Module` <https://pytorch.org/docs/stable/generated/torch.nn.Module.html>``_
-class, which allows them to be easily combined into a full network.
+inherit from PyTorch's :class:`torch.nn.Module` class, which allows them to be
+easily combined into a full network.
 
 .. image:: fig/full.png
    :width: 800
@@ -29,7 +29,7 @@ The spyrit package is available for Linux, MacOs and Windows::
    pip install spyrit
 
 Advanced installation guidelines are available on `GitHub <https://github.com/openspyrit/spyrit>`_.
-Check out the `available tutorials <gallery/index.html>`_ to get started with SPyRiT.
+Check out our `available tutorials <gallery/index.html>`_ to get started with SPyRiT.
 
 
 Single-pixel imaging
@@ -38,7 +38,7 @@ Single-pixel imaging
 Measurement model
 -----------------------------------
 
-Single-pixel imaging aims to recover an image :math:`\bm{x} \in \mathbb{R}^N`
+Single-pixel imaging aims to recover an image :math:`\b{x} \in \mathbb{R}^N`
 from a few noisy scalar products :math:`y \in \mathbb{R}^M`, where
 :math:`M \ll N`. We model the acquisition as
 
@@ -46,6 +46,7 @@ from a few noisy scalar products :math:`y \in \mathbb{R}^M`, where
 
 where :math:`\mathcal{P}` is a linear operator that models the light patterns, 
 :math:`\mathcal{N}` is a noise operator, and :math:`\circ` denotes the composition.
+
 
 Image reconstruction
 -----------------------------------
@@ -62,80 +63,51 @@ where :math:`\mathcal{B}` is a preprocessing operator, :math:`\mathcal{R}` is
 a linear reconstruction operator, and :math:`\mathcal{G}_\theta` is
 a trainable neural network or any available image-domain denoiser.
 
+
 Learning phase
 -----------------------------------
 
 In the case of supervised learning, the training phase solves:
 
-      :math:`\min{\theta}{\sum_i \mathcal{L}\left(x_i,\mathcal{I}_\theta(y_i)\right)},`
+      :math:`\min_{\theta}{\sum_i \mathcal{L}\left(x_i,\mathcal{I}_\theta(y_i)\right)},`
 
 where :math:`\mathcal{L}` is the training loss, and :math:`\{x_i,y_i\}_i` is a
 set of training pairs.
-
-
-
-
-
 
 To introduce the full network, a forward pass can be written as follows:
 
       :math:`F_{\theta}(x) = (\mathcal{G}_\theta \circ \mathcal{R} \circ \mathcal{B} \circ \mathcal{N} \circ \mathcal{P})(x).`
 
-The full network can be trained using a database containing only images:
+The full network can be trained using a database containing only images
 
       :math:`\min_{\theta}{\sum_i \mathcal{L}\left(x_i,\mathcal{F}_\theta(x_i)\right)}.`
 
-This pipeline allows noisy data to be simulated on the fly, providing data
-augmentation while avoiding storing the measurements.
+The full network pipeline allows noisy data to be simulated on the fly,
+providing data augmentation while avoiding storing the measurements.
 
 
 Package structure
 -----------------------------------
 
 The main functionalities of SPyRiT are implemented in the subpackage
-:class:`spyrit.core` , which contains six submodules:
+:class:`spyrit.core` , which contains 8 submodules:
 
-1. **Measurement operators (meas)** compute linear measurements :math:`\mathcal{P}x` from
-   images :math:`x`, where :math:`\mathcal{P}` is a linear operator (matrix) and :math:`x`
-   is a vectorized image (see :mod:`spyrit.core.meas`).
+1. **Measurement operators** (:mod:`spyrit.core.meas`) compute linear measurements :math:`\bar{y} = \mathcal{P}x`.
 
-2. **Noise operators (noise)** corrupt measurements :math:`y=(\mathcal{N}\circ\mathcal{P})(x)` with noise (see :mod:`spyrit.core.noise`).
+2. **Noise operators** (:mod:`spyrit.core.noise`) corrupt measurements :math:`y=\mathcal{N}(\bar{y})` with noise.
 
-3. **Preprocessing operators (prep)** are used to process noisy measurements, :math:`m=\mathcal{B}(y)` ,
-   prior to reconstruction. They typically compensate for the image normalization previously performed (see :mod:`spyrit.core.prep`).
+3. **Preprocessing operators** (:mod:`spyrit.core.prep`) are used to process noisy measurements, :math:`m=\mathcal{B}(y)`, before reconstruction. They typically
+compensate for the image normalization previously performed.
 
-4. **Reconstruction operators (recon)** comprise both standard linear reconstruction operators
-   :math:`\mathcal{R}` and full network definitions :math:`\mathcal{F}_\theta`,
-   which include both forward and reconstruction layers (see :mod:`spyrit.core.recon`).
+4. **Reconstruction operators** (:mod:`spyrit.core.recon`) comprise both standard
+linear reconstruction operators :math:`\mathcal{R}` and full network definitions
+:math:`\mathcal{F}_\theta`.
 
-5. **Neural networks (nnet)** include well-known neural networks :math:`\mathcal{G_{\theta}}`, generally used as denoiser layers (see :mod:`spyrit.core.nnet`).
+5. **Neural networks** (:mod:`spyrit.core.nnet`) include well-known neural networks
+:math:`\mathcal{G_{\theta}}`, generally used as denoiser layers.
 
-6. **Training (train)** provide the functionalities for training reconstruction networks (see :mod:`spyrit.core.train`).
+6. **Training** (:mod:`spyrit.core.train`) provide the functionalities for training reconstruction networks.
 
-Subpackages
------------------------------------
-
-.. autosummary::
-   :toctree: _autosummary
-   :template: spyrit-module-template.rst
-   :recursive:
-   :caption: Subpackages
-
-   spyrit.core
-   spyrit.misc
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Tutorials
-
-   gallery/index
-
-.. Indices and tables
-    ==================
-
-    * :ref:`genindex`
-    * :ref:`modindex`
-    * :ref:`search`
 
 Cite us
 ==================================
@@ -147,8 +119,9 @@ When using SPyRiT specifically for the denoised completion network, please cite 
 
    - A Lorente Mur, P Leclerc, F Peyrin, and N Ducros, "Single-pixel image reconstruction from experimental data using neural networks," Opt. Express 29, 17097-17110 (2021). `DOI <https://doi.org/10.1364/OE.424228>`_.
 
+
 Join the project
 ==================================
-Feel free to contact us by `e-mail <mailto:nicolas.ducros@creatis.insa-lyon.fr>` for any question. Active developers are currently `Nicolas Ducros <https://www.creatis.insa-lyon.fr/~ducros/WebPage/index.html>`_, Thomas Baudier, `Juan Abascal <https://juanabascal78.wixsite.com/juan-abascal-webpage>`_ and Romain Phan.  Direct contributions via pull requests (PRs) are welcome.
+Feel free to contact us by `e-mail <mailto:nicolas.ducros@creatis.insa-lyon.fr>`_ for any question. Active developers are currently `Nicolas Ducros <https://www.creatis.insa-lyon.fr/~ducros/WebPage/index.html>`_, Thomas Baudier, `Juan Abascal <https://juanabascal78.wixsite.com/juan-abascal-webpage>`_ and Romain Phan.  Direct contributions via pull requests (PRs) are welcome.
 
 The full list of contributors can be found `here <https://github.com/openspyrit/spyrit/blob/master/README.md#contributors-alphabetical-order>`_.
