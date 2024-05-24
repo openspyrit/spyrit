@@ -96,7 +96,7 @@ The main functionalities of SPyRiT are implemented in the subpackage
 
 2. **Noise operators** (:mod:`spyrit.core.noise`) corrupt measurements :math:`y=\mathcal{N}(\bar{y})` with noise.
 
-3. **Preprocessing operators** (:mod:`spyrit.core.prep`) are used to process noisy measurements, :math:`m=\mathcal{B}(y)`, before reconstruction. They typically compensate for the image normalization previously performed.
+3. **Preprocessing operators** (:mod:`spyrit.core.prep`) are used to process noisy measurements, :math:`m=\mathcal{B}(y)` , before reconstruction. They typically compensate for the image normalization previously performed.
 
 4. **Reconstruction operators** (:mod:`spyrit.core.recon`) comprise both standard linear reconstruction operators :math:`\mathcal{R}` and full network definitions :math:`\mathcal{F}_\theta`.
 
