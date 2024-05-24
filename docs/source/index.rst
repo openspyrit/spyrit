@@ -109,7 +109,7 @@ The main functionalities of SPyRiT are implemented in the subpackage
 8. **Torch utilities** (:mod:`spyrit.core.torch`) contains utility functions for PyTorch that are used throughout the package.
 
 
-In addition, the subpackage :class:`spyrit.misc` contains various utility functions for Numpy that can be used independently of the core functionalities.
+In addition, the subpackage :class:`spyrit.misc` contains various utility functions for Numpy / PyTorch that can be used independently of the core functionalities.
 
 .. autosummary::
    :toctree: _autosummary
