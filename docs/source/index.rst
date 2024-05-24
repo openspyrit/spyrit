@@ -10,11 +10,11 @@ SPyRiT is a `PyTorch <https://pytorch.org/>`_-based deep image reconstruction
 package primarily designed for single-pixel imaging.
 
 SPyRiT allows to simulate measurements and perform image reconstruction using
-a full network structure. It takes a normalized image as input and performs
-data simulation and image reconstruction in a single forward pass or in
-separate steps. A full network generally consists of a measurement operator, a
-noise operator, a preprocessing operator, a reconstruction operator, and a
-learnable neural network. All operators inherit from PyTorch's `nn.Module`
+a full network. A full network is built using a measurement operator
+:math:`\mathcal{P}`, a noise operator :math:`\mathcal{N}`, a preprocessing
+operator :math:`\mathcal{B}`, a reconstruction operator :math:`\mathcal{R}`,
+and a learnable neural network :math:`\mathcal{G}_{\theta}`. All operators
+inherit from PyTorch's :class:`torch.nn.Module <https://pytorch.org/docs/stable/generated/torch.nn.Module.html>`_
 class, which allows them to be easily combined into a full network.
 
 .. image:: fig/full.png
@@ -22,40 +22,23 @@ class, which allows them to be easily combined into a full network.
    :align: center
 
 
-The complete network contains two main parts: a physics simulation part that
-simulates measurements from images, and a reconstruction part that estimates
-the unknown image from measurements.
-
-
-The Physics Simulation part consists of a Measurement operator
-(:math:`\mathcal{N}`) and a Noise operator (:math:`\mathcal{P}`).
-
-
-The reconstruction part consists of a preprocessing  (:math:`\mathcal{B}`) that
-produces the pre-processed measurements from the noisy measurements, a
-reconstruction operator (:math:`\mathcal{R}`) that estimates the unknown image
-from the pre-processed measurements, and an optional neural network
-(:math:`\mathcal{G_{\theta}}`) that can be trained to improve the
-reconstruction quality.
-
-
-
-Installation
+Getting started
 ==================================
 The spyrit package is available for Linux, MacOs and Windows::
 
    pip install spyrit
 
 Advanced installation guidelines are available on `GitHub <https://github.com/openspyrit/spyrit>`_.
+Check out the `available tutorials <gallery/index>`_ to get started with SPyRiT.
 
 
 Single-pixel imaging
 ==================================
 
-Modelling of the measurements
+Measurement model
 -----------------------------------
 
-**Single-pixel imaging** aims to recover an image :math:`x\in\Re^N` from a few
+Single-pixel imaging aims to recover an image :math:`$\bm{x} \in \mathbb{R}^N$` from a few
 noisy scalar products :math:`y\in\Re^M`, where :math:`M\ll N`. We model the
 acquisition as
 
