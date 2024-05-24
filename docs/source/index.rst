@@ -44,7 +44,7 @@ from a few noisy scalar products :math:`y \in \mathbb{R}^M`, where
 
       :math:`y = (\mathcal{N} \circ \mathcal{P})(x),`
 
-where :math:`\mathcal{P}` is a linear operator that models the light patterns, 
+where :math:`\mathcal{P}` is a linear operator that models the light patterns,
 :math:`\mathcal{N}` is a noise operator, and :math:`\circ` denotes the composition.
 
 

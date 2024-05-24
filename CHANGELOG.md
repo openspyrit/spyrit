@@ -2,9 +2,9 @@
 
 ### Notations
 
-\- removals  
-/ changes  
-\+ additions  
+\- removals
+/ changes
+\+ additions
 
 ---
 
@@ -40,7 +40,7 @@
 </summary>
 
 * / no longer supports numpy.array as input, must use torch.tensor
-* #### spyrit.core.meas  
+* #### spyrit.core.meas
     * \- class LinearRowSplit (use LinearSplit instead)
     * \+ 3 dynamic classes: DynamicLinear, DynamicLinearSplit, DynamicHadamSplit that allow measurements over time
     * spyrit.core.meas.Linear
