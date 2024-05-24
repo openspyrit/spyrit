@@ -87,7 +87,7 @@ imagesc(x_plot, r"Original image $x$ in [-1, 1]")
 #
 # The :math:`f(t)` function is a 3x3 matrix-valued function that represents the affine transformation. For more details, see `here <https://en.wikipedia.org/wiki/Affine_transformation#Image_transformation>`_.
 #
-# First, we define :math:`f` as in [1]_ and [2]_.
+# First, we define :math:`f` as in [MaBM23]_ and [MaBP24]_.
 
 a = 0.2  # amplitude
 omega = math.pi  # angular speed
@@ -206,7 +206,7 @@ imagesc(y.view((meas_size * 2, meas_size)).cpu().numpy(), "Measurement vector")
 #
 #   #. Resolution of a linear problem based on the dynamic forward matrix.
 #
-# For details, refer to [1]_ and [2]_.
+# For details, refer to [MaBM23]_ and [MaBP24]_.
 #
 
 # %%
@@ -229,7 +229,7 @@ print("H_dyn computed:", hasattr(meas_op, "H_dyn"))
 # compatibility reasons, although it is NOT recommended.
 
 ######################################################################
-# .. note:: There are different strategies for building :math:`H_{\rm dyn}`. Here, we consider the method described in [2]_ that avoids warping the Hadamard patterns.
+# .. note:: There are different strategies for building :math:`H_{\rm dyn}`. Here, we consider the method described in [MaBP24]_ that avoids warping the Hadamard patterns.
 
 ######################################################################
 # .. note:: Here, the deformation field is known. In the general case, it will have to be estimated.
@@ -378,5 +378,5 @@ print("def_field and aff_field2 are the same:", (def_field == aff_field2))
 ###############################################################################
 # .. rubric:: References for dynamic reconstruction
 #
-# .. [1] Thomas Maitre, Elie Bretin, L. Mahieu-Williame, Michaël Sdika, Nicolas Ducros. Hybrid single-pixel camera for dynamic hyperspectral imaging. 2023. hal-04310110
-# .. [2] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros, Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View without Warping the Patterns. 2024. hal-04533981
+# .. [MaBM23] Thomas Maitre, Elie Bretin, L. Mahieu-Williame, Michaël Sdika, Nicolas Ducros. Hybrid single-pixel camera for dynamic hyperspectral imaging. 2023. hal-04310110
+# .. [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros, Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View without Warping the Patterns. 2024. hal-04533981
