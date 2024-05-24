@@ -1591,12 +1591,16 @@ class DynamicHadamSplit(DynamicLinearSplit):
         >>> Ord = torch.rand([32,32])
         >>> meas_op = HadamSplitDynamic(400, 32, Ord)
         >>> print(meas_op)
-        HadamSplitDynamic(
-          (Image pixels): 1024
-          (H): torch.Size([400, 1024])
-          (P): torch.Size([800, 1024])
-          (Perm): torch.Size([1024, 1024])
-          )
+        DynamicHadamSplit(
+          (M): 400
+          (N): 1024
+          (H.shape): torch.Size([400, 1024])
+          (meas_shape): (32, 32)
+          (H_dyn): False
+          (img_shape): (32, 32)
+          (H_pinv): False
+          (P.shape): torch.Size([800, 1024])
+        )
         
     Reference:
     .. _MICCAI24:
