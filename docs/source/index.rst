@@ -119,9 +119,27 @@ When using SPyRiT specifically for the denoised completion network, please cite 
 
    - A Lorente Mur, P Leclerc, F Peyrin, and N Ducros, "Single-pixel image reconstruction from experimental data using neural networks," Opt. Express 29, 17097-17110 (2021). `DOI <https://doi.org/10.1364/OE.424228>`_.
 
-
+²
 Join the project
 ==================================
 Feel free to contact us by `e-mail <mailto:nicolas.ducros@creatis.insa-lyon.fr>`_ for any question. Active developers are currently `Nicolas Ducros <https://www.creatis.insa-lyon.fr/~ducros/WebPage/index.html>`_, Thomas Baudier, `Juan Abascal <https://juanabascal78.wixsite.com/juan-abascal-webpage>`_ and Romain Phan.  Direct contributions via pull requests (PRs) are welcome.
 
 The full list of contributors can be found `here <https://github.com/openspyrit/spyrit/blob/master/README.md#contributors-alphabetical-order>`_.
+
+
+.. autosummary::
+   :toctree: _autosummary
+   :template: spyrit-module-template.rst
+   :recursive:
+   :caption: Subpackages
+   :hidden:
+
+   spyrit.core
+   spyrit.misc
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Tutorials
+   :hidden:
+
+   gallery/index
