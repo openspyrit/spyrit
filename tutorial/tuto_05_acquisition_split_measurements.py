@@ -4,7 +4,7 @@ r"""
 
 .. _tuto_acquisition_split_measurements:
 
-This tutorial is an extension of the Tutorials :ref:`01 <tuto_acquisition_operators>` and :ref:`02 <tuto_pseudoinverse_linear>` where: 
+This tutorial is an extension of the Tutorials :ref:`01 <tuto_acquisition_operators>` and :ref:`02 <tuto_pseudoinverse_linear>` where:
 
 * we introduce split measurements to handle a Hadamard measurements,
 
@@ -146,7 +146,7 @@ except:
     print(f"Cov matrix {cov_name} not found! Set to the identity")
 
 ######################################################################
-# The permutation matrix is defined from a sampling matrix with shape :math:`(\sqrt{N},\sqrt{N})` (see the :mod:`~spyrit.misc.sampling` submodule). 
+# The permutation matrix is defined from a sampling matrix with shape :math:`(\sqrt{N},\sqrt{N})` (see the :mod:`~spyrit.misc.sampling` submodule).
 
 ######################################################################
 # We compute the sampling matrix for the "naive" subsampling
@@ -154,7 +154,7 @@ from spyrit.misc.statistics import Cov2Var
 from spyrit.misc.disp import add_colorbar, noaxis
 
 
-M = 64 * 64 // 4 # number of measurements (here, 1/4 of the pixels)
+M = 64 * 64 // 4  # number of measurements (here, 1/4 of the pixels)
 Cov_eye = np.eye(h * h)
 Ord_nai = Cov2Var(Cov_eye)
 
@@ -168,8 +168,8 @@ Ord_var = Cov2Var(Cov)
 # sphinx_gallery_thumbnail_number = 2
 
 # Mask for "naive subsampling"
-#mask_nai = np.zeros((h, h))
-#mask_nai[0 : int(M / h), :] = 1
+# mask_nai = np.zeros((h, h))
+# mask_nai[0 : int(M / h), :] = 1
 idx = np.argsort(Ord_nai.ravel(), axis=None)[::-1]
 mask_nai = np.zeros_like(Ord_nai)
 mask_nai.flat[idx[0:M]] = 1
