@@ -80,13 +80,13 @@ imagesc(x_plot, r"Original image $x$ in [-1, 1]")
 
 ######################################################################
 # We define an affine transformations using the :class:`spyrit.core.warp.AffineDeformationField` class, which is instantiated using 3 arguments:
+#
 #   * a function :math:`f(t)`, where :math:`t` represents time,
 #   * a list of times :math:`(t_0, ... , t_n)` where :math:`f` is evaluated,
 #   * the image size (used to determine the grid size) :math:`(height, width)`.
 #
 # The :math:`f(t)` function is a 3x3 matrix-valued function that represents the affine transformation. For more details, see `here <https://en.wikipedia.org/wiki/Affine_transformation#Image_transformation>`_.
-
-######################################################################
+#
 # First, we define :math:`f` as in [1]_ and [2]_.
 
 a = 0.2  # amplitude
