@@ -96,17 +96,29 @@ The main functionalities of SPyRiT are implemented in the subpackage
 
 2. **Noise operators** (:mod:`spyrit.core.noise`) corrupt measurements :math:`y=\mathcal{N}(\bar{y})` with noise.
 
-3. **Preprocessing operators** (:mod:`spyrit.core.prep`) are used to process noisy measurements, :math:`m=\mathcal{B}(y)`, before reconstruction. They typically
-compensate for the image normalization previously performed.
+3. **Preprocessing operators** (:mod:`spyrit.core.prep`) are used to process noisy measurements, :math:`m=\mathcal{B}(y)`, before reconstruction. They typically compensate for the image normalization previously performed.
 
-4. **Reconstruction operators** (:mod:`spyrit.core.recon`) comprise both standard
-linear reconstruction operators :math:`\mathcal{R}` and full network definitions
-:math:`\mathcal{F}_\theta`.
+4. **Reconstruction operators** (:mod:`spyrit.core.recon`) comprise both standard linear reconstruction operators :math:`\mathcal{R}` and full network definitions :math:`\mathcal{F}_\theta`.
 
-5. **Neural networks** (:mod:`spyrit.core.nnet`) include well-known neural networks
-:math:`\mathcal{G_{\theta}}`, generally used as denoiser layers.
+5. **Neural networks** (:mod:`spyrit.core.nnet`) include well-known neural networks :math:`\mathcal{G_{\theta}}`, generally used as denoiser layers.
 
 6. **Training** (:mod:`spyrit.core.train`) provide the functionalities for training reconstruction networks.
+
+7. **Warping** (:mod:`spyrit.core.warp`) contains the warping operators that are used to simulate moving objects.
+
+8. **Torch utilities** (:mod:`spyrit.core.torch`) contains utility functions for PyTorch that are used throughout the package.
+
+
+In addition, the subpackage :class:`spyrit.misc` contains various utility functions for Numpy that can be used independently of the core functionalities.
+
+.. autosummary::
+   :toctree: _autosummary
+   :template: spyrit-module-template.rst
+   :recursive:
+   :caption: Contents
+
+   spyrit.core
+   spyrit.misc
 
 
 Cite us
@@ -126,14 +138,6 @@ Feel free to contact us by `e-mail <mailto:nicolas.ducros@creatis.insa-lyon.fr>`
 
 The full list of contributors can be found `here <https://github.com/openspyrit/spyrit/blob/master/README.md#contributors-alphabetical-order>`_.
 
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-   :hidden:
-
-   spyrit.core
-   spyrit.misc
 
 .. toctree::
    :maxdepth: 2
