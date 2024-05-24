@@ -170,9 +170,9 @@ Ord_var = Cov2Var(Cov)
 # Mask for "naive subsampling"
 mask_nai = np.zeros((h, h))
 mask_nai[0 : int(M / h), :] = 1
-#idx = np.argsort(Ord_nai.ravel(), axis=None)[::-1]
-#mask_nai = np.zeros_like(Ord_nai)
-#mask_nai.flat[idx[0:M]] = 1
+# idx = np.argsort(Ord_nai.ravel(), axis=None)[::-1]
+# mask_nai = np.zeros_like(Ord_nai)
+# mask_nai.flat[idx[0:M]] = 1
 
 # Mask for "variance subsampling"
 idx = np.argsort(Ord_var.ravel(), axis=None)[::-1]
