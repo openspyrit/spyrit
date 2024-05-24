@@ -14,8 +14,8 @@ a full network. A full network is built using a measurement operator
 :math:`\mathcal{P}`, a noise operator :math:`\mathcal{N}`, a preprocessing
 operator :math:`\mathcal{B}`, a reconstruction operator :math:`\mathcal{R}`,
 and a learnable neural network :math:`\mathcal{G}_{\theta}`. All operators
-inherit from PyTorch's :class:`torch.nn.Module` class, which allows them to be
-easily combined into a full network.
+inherit from PyTorch's :class:`torch.nn.Module` class (`see here <https://pytorch.org/docs/stable/generated/torch.nn.Module.html>`_),
+which allows them to be easily combined into a full network.
 
 .. image:: fig/full.png
    :width: 800
@@ -38,7 +38,7 @@ Single-pixel imaging
 Measurement model
 -----------------------------------
 
-Single-pixel imaging aims to recover an image :math:`\b{x} \in \mathbb{R}^N`
+Single-pixel imaging aims to recover an image :math:`x \in \mathbb{R}^N`
 from a few noisy scalar products :math:`y \in \mathbb{R}^M`, where
 :math:`M \ll N`. We model the acquisition as
 
@@ -127,19 +127,11 @@ Feel free to contact us by `e-mail <mailto:nicolas.ducros@creatis.insa-lyon.fr>`
 The full list of contributors can be found `here <https://github.com/openspyrit/spyrit/blob/master/README.md#contributors-alphabetical-order>`_.
 
 
-.. autosummary::
-   :toctree: _autosummary
-   :template: spyrit-module-template.rst
-   :recursive:
-   :caption: Subpackages
-   :hidden:
-
-   spyrit.core
-   spyrit.misc
-
 .. toctree::
    :maxdepth: 2
    :caption: Tutorials
    :hidden:
 
    gallery/index
+   spyrit.core
+   spyrit.misc
