@@ -3,7 +3,7 @@ r"""
 ========================================================
 .. _tuto_dynamic:
 
-This tutorial explains how to reconstruct a motion-compensated image from a dynamic scene. 
+This tutorial explains how to reconstruct a motion-compensated image from a dynamic scene.
 
 .. figure:: ../fig/tuto9.png
    :width: 600
@@ -16,7 +16,7 @@ There are three steps in the process:
 
     #. Simulation of the dynamic scene. The :mod:`spyrit.core.warp` module can generate multiple frames by warping a static image, given a motion model or deformation field.
 
-    #. Simulation of the measurement. The dynamic classes from :mod:`spyrit.core.meas` can simulate the sequence of measurement corresponding to the time frames. 
+    #. Simulation of the measurement. The dynamic classes from :mod:`spyrit.core.meas` can simulate the sequence of measurement corresponding to the time frames.
 
     #. Reconstruction of a motion-compensated image from the sequence of measurement.
 
@@ -28,7 +28,7 @@ This tutorial illustrate the three steps through a simple example. Details about
 # ***********************************************************************
 
 #######################################################################
-# 
+#
 
 # %%
 # Load an image from a batch of images
@@ -80,10 +80,10 @@ imagesc(x_plot, r"Original image $x$ in [-1, 1]")
 
 ######################################################################
 # We define an affine transformations using the :class:`spyrit.core.warp.AffineDeformationField` class, which is instantiated using 3 arguments:
-#   * a function :math:`f(t)`, where :math:`t` represents time, 
-#   * a list of times :math:`(t_0, ... , t_n)` where :math:`f` is evaluated, 
+#   * a function :math:`f(t)`, where :math:`t` represents time,
+#   * a list of times :math:`(t_0, ... , t_n)` where :math:`f` is evaluated,
 #   * the image size (used to determine the grid size) :math:`(height, width)`.
-# 
+#
 # The :math:`f(t)` function is a 3x3 matrix-valued function that represents the affine transformation. For more details, see `here <https://en.wikipedia.org/wiki/Affine_transformation#Image_transformation>`_.
 
 ######################################################################
@@ -92,8 +92,10 @@ imagesc(x_plot, r"Original image $x$ in [-1, 1]")
 a = 0.2  # amplitude
 omega = math.pi  # angular speed
 
+
 def s(t):
     return 1 + a * math.sin(t * omega)  # base function for f
+
 
 def f(t):
     return torch.tensor(
@@ -113,6 +115,7 @@ def f(t):
 ###############################################################################
 # Next, we create the time vector, define the image shape, and compute the deformation field.
 from spyrit.core.warp import AffineDeformationField
+
 time_vector = torch.linspace(0, 10, (meas_size**2) * 2)  # *2 because of the splitting
 aff_field = AffineDeformationField(f, time_vector, img_shape)
 
@@ -123,8 +126,8 @@ aff_field = AffineDeformationField(f, time_vector, img_shape)
 
 # %%
 # Warp the image
-# ----------------------------------------------------------------------------- 
-# 
+# -----------------------------------------------------------------------------
+#
 # Warping works with vectorized images. So, we first reshape the image from `(b,c,h,w)` to `(c, h*w)`
 x = x.view(c, h * w)
 
@@ -157,7 +160,7 @@ plt.show()
 # %%
 # 2. Simulation of the measurements
 # *****************************************************************************
-# In this section, we simulate the acquisition of the previous video. We consider a full Hadamard matrix (no subsampling) using the :class:`spyrit.core.meas.DynamicHadamSplit` class. 
+# In this section, we simulate the acquisition of the previous video. We consider a full Hadamard matrix (no subsampling) using the :class:`spyrit.core.meas.DynamicHadamSplit` class.
 
 #######################################################################
 # .. note::
@@ -166,7 +169,7 @@ plt.show()
 # %%
 # Instantiation of a dynamic measurement operator
 # -----------------------------------------------------------------------------
-# The :class:`~spyrit.core.meas.DynamicHadamSplit` class is the counterpart of the 
+# The :class:`~spyrit.core.meas.DynamicHadamSplit` class is the counterpart of the
 # :class:`~spyrit.core.meas.HadamardSplit` class for dynamic scenes. The dynamic measurement operator considers a different frame for each of the measurement patterns. Therefore, the number of frames in the video must be the same as the number of measurement patterns .
 
 from spyrit.core.meas import DynamicHadamSplit
@@ -201,10 +204,10 @@ imagesc(y.view((meas_size * 2, meas_size)).cpu().numpy(), "Measurement vector")
 #
 #   #. Construction of a dynamic forward matrix that combines the knowledge of the measurement patterns and the deformation field.
 #
-#   #. Resolution of a linear problem based on the dynamic forward matrix. 
+#   #. Resolution of a linear problem based on the dynamic forward matrix.
 #
 # For details, refer to [1]_ and [2]_.
-# 
+#
 
 # %%
 # Computation of the dynamic measurement matrix
@@ -226,7 +229,7 @@ print("H_dyn computed:", hasattr(meas_op, "H_dyn"))
 # compatibility reasons, although it is NOT recommended.
 
 ######################################################################
-# .. note:: There are different strategies for building :math:`H_{\rm dyn}`. Here, we consider the method described in [2]_ that avoids warping the Hadamard patterns. 
+# .. note:: There are different strategies for building :math:`H_{\rm dyn}`. Here, we consider the method described in [2]_ that avoids warping the Hadamard patterns.
 
 ######################################################################
 # .. note:: Here, the deformation field is known. In the general case, it will have to be estimated.
@@ -271,7 +274,7 @@ print("H_dyn_pinv computed:", hasattr(meas_op, "H_dyn_pinv"))
 ###############################################################################
 # This creates a new attribute :attr:`H_dyn_pinv` that stores the pseudo-inverse of :attr:`H_dyn`. As before, the same tensor can be accessed  through the attribute :attr:`H_pinv`, for compatibility reasons, although it is *not* recommended.
 #
-# Next, we simply call the :meth:`pinv` method. 
+# Next, we simply call the :meth:`pinv` method.
 
 x_hat1 = meas_op.pinv(y)
 print("x_hat1 shape:", x_hat1.shape)
@@ -280,6 +283,7 @@ print("x_hat1 shape:", x_hat1.shape)
 # As in the static case, this can also be done through using :class:`spyrit.core.recon.PseudoInverse` class.
 
 from spyrit.core.recon import PseudoInverse
+
 recon_op = PseudoInverse()
 x_hat2 = recon_op(y, meas_op)
 
