@@ -4,7 +4,7 @@
 [![Docs](https://readthedocs.org/projects/spyrit/badge/?version=master&style=flat)](https://spyrit.readthedocs.io/en/master/)
 
 # SPyRiT
-SPyRiT is a [PyTorch](https://pytorch.org/)-based toolbox for deep image reconstruction. While SPyRiT was originally designed for single-pixel image reconstruction, it can solve any linear reconstruction problem.
+SPyRiT is a `PyTorch <https://pytorch.org/>`_-based deep image reconstruction package primarily designed for single-pixel imaging.
 
 # Installation
 The spyrit package is available for Linux, MacOs and Windows. We recommend to use a virtual environment.
