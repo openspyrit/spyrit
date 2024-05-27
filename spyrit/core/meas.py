@@ -212,29 +212,37 @@ class _Base(nn.Module):
     def reindex(
         self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
     ) -> torch.tensor:
-        """Reorder the rows or columns of a tensor according to the indices
-        stored in the attribute self.indices. The value stored in
-        `self.indices[0]` is the new index of the first row or column of the
-        input tensor, etc.
+        """Sorts a tensor along a specified axis using the indices tensor. The
+        indices tensor is contained in the attribute :attr:`self.indices`.
 
-        Args:
-            x (torch.tensor): Input tensor to be reordered.
+        The indices tensor contains the new indices of the elements in the values
+        tensor. `values[0]` will be placed at the index `indices[0]`, `values[1]`
+        at `indices[1]`, and so on.
 
-            axis (str, optional): Axis along which to order the tensor. Must be
-            either "rows" or "cols". Defaults to "rows".
-
-            inverse_permutation (bool, optional): If True, the inverse
-            permutation is used, so that two consecutive identical calls but for
-            this parameter set to `True` then to `False` will output the
-            original input. Defaults to False.
-
-        Returns:
-            torch.tensor: Tensor x with reordered rows or columns according to
-            the indices. Has same shape as input.
+        Using the inverse permutation allows to revert the permutation: in this
+        case, it is the element at index `indices[0]` that will be placed at the
+        index `0`, the element at index `indices[1]` that will be placed at the
+        index `1`, and so on.
 
         .. note::
-            This method is identical to the function
-            :func:`~spyrit.core.torch.reindex`.
+            See :func:`~spyrit.core.torch.reindex()` for more details.
+
+        Args:
+            values (torch.tensor): The tensor to sort. Can be 1D, 2D, or any
+            multi-dimensional batch of 2D tensors.
+
+            axis (str, optional): The axis to sort along. Must be either 'rows' or
+            'cols'. If `values` is 1D, `axis` is not used. Default is 'rows'.
+
+            inverse_permutation (bool, optional): Whether to apply the permutation
+            inverse. Default is False.
+
+        Raises:
+            ValueError: If `axis` is not 'rows' or 'cols'.
+
+        Returns:
+            torch.tensor: The sorted tensor by the given indices along the
+            specified axis.
         """
         return spytorch.reindex(
             x.to(self.indices.device), self.indices, axis, inverse_permutation
