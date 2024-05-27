@@ -148,12 +148,12 @@ def Permutation_Matrix(Mat: np.ndarray) -> np.ndarray:
 
 
 def sort_by_significance(
-    arr: Union[np.ndarray, torch.tensor],
-    sig: Union[np.ndarray, torch.tensor],
+    arr: np.ndarray,
+    sig: np.ndarray,
     axis: str = "rows",
     inverse_permutation: bool = False,
     get_indices: bool = False,
-) -> Union[np.ndarray, torch.tensor]:
+) -> np.ndarray:
     """
     Returns an array ordered by decreasing significance along the specified
     dimension.
@@ -232,17 +232,7 @@ def sort_by_significance(
             same way.
     """
     # compute indices in a stable way (otherwise quicksort messes up the order)
-    if isinstance(sig, torch.Tensor):
-        indices = torch.argsort(-sig.flatten(), stable=True)
-        if get_indices and isinstance(arr, np.ndarray):
-            indices = indices.numpy()  # both indices and arr are numpy arrays
-    elif isinstance(sig, np.ndarray):
-        indices = np.argsort(-sig.flatten(), kind="stable")
-        if get_indices and isinstance(arr, torch.Tensor):
-            indices = torch.from_numpy(indices)  # both are torch tensors
-    else:
-        raise ValueError("indices must be a numpy array or a torch tensor")
-
+    indices = np.argsort(-sig.flatten(), kind="stable")
     if get_indices:
         return (reindex(arr, indices, axis, inverse_permutation), indices)
     return reindex(arr, indices, axis, inverse_permutation)
@@ -271,8 +261,10 @@ def reindex(
         indices (np.ndarray or torch.tensor): Array containing the new indices
         of the elements contained in `values`.
 
-        axis (str, optional): The axis to sort along. Must be either 'rows' or
-        'cols'. If `values` is 1D, `axis` is not used. Default is 'rows'.
+        axis (str, optional): The axis to sort along. Must be either 'rows',
+        'cols' or None. If None, `values` is flattened before sorting,
+        and then reshaped to its original shape. If `values` is 1D, `axis` is
+        not used. Default is 'rows'.
 
         inverse_permutation (bool, optional): Whether to apply the permutation
         inverse. Default is False.
@@ -293,8 +285,15 @@ def reindex(
     """
     reindices = indices.argsort()
 
+    if axis == "flatten" or values.ndim == 1:
+        out_shape = values.shape
+        values = values.flatten()
+        if inverse_permutation:
+            return values[reindices.argsort()].reshape(out_shape)
+        return values[reindices].reshape(out_shape)
+
     # cols corresponds to last dimension
-    if axis == "cols" or values.ndim == 1:
+    if axis == "cols":
         if inverse_permutation:
             return values[..., reindices.argsort()]
         return values[..., reindices]
@@ -308,7 +307,7 @@ def reindex(
             return values[..., reindices.argsort(), :]
         return values[..., reindices, :]
     else:
-        raise ValueError("Invalid axis. Must be 'rows' or 'cols'.")
+        raise ValueError("Invalid axis. Must be 'rows', 'cols' or 'flatten'.")
 
 
 def reorder(meas: np.ndarray, Perm_acq: np.ndarray, Perm_rec: np.ndarray) -> np.ndarray:
