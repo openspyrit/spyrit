@@ -51,38 +51,38 @@ class DeformationField(nn.Module):
         [-1;-1] corresponds to the center of the top-left pixel.
 
     Args:
-        :attr:`inverse_grid_frames` (torch.tensor):
+        :attr:`field` (torch.tensor):
         *Inverse deformation field* :math:`u` of shape :math:`(n\_frames,H,W,2)`,
         where :math:`n\_frames` is the number of frames in the animation, and
         :math:`H` and :math:`W` are the height and width of the image to be
         warped. For accuracy reasons, the dtype is converted to `torch.float64`.
 
     Attributes:
-        :attr:`self.inverse_grid_frames` (torch.tensor):
+        :attr:`self.field` (torch.tensor):
         *Inverse deformation field* :math:`u` of shape :math:`(n\_frames,h,w,2)`.
         If set manually, the dtype should be `torch.float64`. Default: `None`.
 
     **Example 1:** Rotating a 2x2 B&W image by 90 degrees counter-clockwise, using one frame
         >>> u = torch.tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]]])
         >>> field = DeformationField(u)
-        >>> print(field.inverse_grid_frames)
+        >>> print(field.field)
         tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]]])
 
     **Example 2:** Rotating a 2x2 B&W image by 90 degrees clockwise, using one frame
         >>> u = torch.tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]]])
         >>> field = DeformationField(u)
-        >>> print(field.inverse_grid_frames)
+        >>> print(field.field)
         tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]])
     """
 
-    def __init__(self, inverse_grid_frames: torch.tensor):
+    def __init__(self, field: torch.tensor):
         super().__init__()
 
-        if inverse_grid_frames.dtype == torch.float32:
+        if field.dtype == torch.float32:
             if self.__class__ == DeformationField:
                 msg = (
                     "Consider using float64 when storing the deformation "
-                    "field in inverse_grid_frames for greater accuracy."
+                    "field for greater accuracy."
                 )
             if self.__class__ == AffineDeformationField:
                 msg = (
@@ -93,19 +93,19 @@ class DeformationField(nn.Module):
             warnings.warn(msg, UserWarning)
 
         # store as nn.Parameter
-        self.inverse_grid_frames = nn.Parameter(
-            inverse_grid_frames, requires_grad=False
+        self._field = nn.Parameter(
+            field, requires_grad=False
         )
         # set other properties / inv_grid_frames has shape (n_frames, H, W, 2)
         self.align_corners = True
-        self.n_frames = inverse_grid_frames.shape[0]
-        self.img_h = inverse_grid_frames.shape[1]
-        self.img_w = inverse_grid_frames.shape[2]
+        self.n_frames = field.shape[0]
+        self.img_h = field.shape[1]
+        self.img_w = field.shape[2]
         self.img_shape = (self.img_h, self.img_w)
 
     @property
     def field(self) -> torch.tensor:
-        return self.inverse_grid_frames.data
+        return self._field.data
 
     def forward(
         self,
@@ -119,7 +119,7 @@ class DeformationField(nn.Module):
         *inverse deformation field* :math:`u`.
 
         Deforms the vectorized image according to the *inverse deformation
-        field* :math:`u` contained in the attribute :attr:`inverse_grid_frames`,
+        field* :math:`u` contained in the attribute :attr:`field`,
         sliced between the frames :math:`n0` (included) and :math:`n1` (excluded).
         :math:`u` is the field that maps the pixels of the *deformed image* to
         the pixels of the *original image*.
@@ -148,11 +148,11 @@ class DeformationField(nn.Module):
             following: 'nearest', 'bilinear', 'bicubic'. Defaults to 'bilinear'.
 
         .. note::
-            If :math:`n0 < n1`, :attr:`inverse_grid_frames` is sliced
+            If :math:`n0 < n1`, :attr:`field` is sliced
             as follows: ``inv_grid_frames[n0:n1, :, :, :]``
 
         .. note::
-            If :math:`n0 > n1`, :attr:`inverse_grid_frames` is sliced
+            If :math:`n0 > n1`, :attr:`field` is sliced
             "backwards". The first frame of the warped animation corresponds to
             the index :math:`n0`, and the last frame corresponds to the index
             :math:`n1+1`. This behavior is identical to slicing a list with a
@@ -162,7 +162,7 @@ class DeformationField(nn.Module):
             :attr:`output` (torch.tensor):
             The deformed batch of images of shape :math:`(|n1-n0|,c,h,w)`, where each
             image in the batch is deformed according to the *inverse deformation
-            field* :math:`u` contained in the attribute :attr:`inverse_grid_frames`.
+            field* :math:`u` contained in the attribute :attr:`field`.
 
         Shape:
             :attr:`img`: :math:`(c,h,w)`, where :math:`c` is the number of
@@ -198,10 +198,10 @@ class DeformationField(nn.Module):
         n_frames = abs(n1 - n0)
         if n1 < n0:
             sel_inv_grid_frames = torch.flip(
-                self.inverse_grid_frames[n1 + 1 : n0 + 1, :, :, :], [0]
+                self.field[n1 + 1 : n0 + 1, :, :, :], [0]
             )
         else:
-            sel_inv_grid_frames = self.inverse_grid_frames[n0:n1, :, :, :]
+            sel_inv_grid_frames = self.field[n0:n1, :, :, :]
 
         # img has current shape (c, n_pixels), make it (n_frames, c, h, w)
         img_frames = (
@@ -223,7 +223,7 @@ class DeformationField(nn.Module):
 
     def _attributeslist(self):
         a = [
-            ("field shape", self.inverse_grid_frames.shape),
+            ("field shape", self.field.shape),
             ("n_frames", self.n_frames),
             ("img_shape", self.img_shape),
         ]
@@ -295,7 +295,7 @@ class AffineDeformationField(DeformationField):
 
         :attr:`n_frames` (int): Number of frames in the animation.
 
-        :attr:`self.inverse_grid_frames` (torch.tensor):
+        :attr:`self.field` (torch.tensor):
         Inverse grid frames that are computed from thr attribute
         :attr:`inverse_field_matrix` upon calling the method
         :meth:`save_inv_grid_frames`. If set manually,
