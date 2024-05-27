@@ -168,12 +168,12 @@ Ord_var = Cov2Var(Cov)
 # sphinx_gallery_thumbnail_number = 2
 
 # Mask for "naive subsampling"
-idx = np.argsort(-Ord_nai.ravel(), axis=None, kind='stable')
+idx = np.argsort(-Ord_nai.ravel(), axis=None, kind="stable")
 mask_nai = np.zeros_like(Ord_nai)
 mask_nai.flat[idx[0:M]] = 1
 
 # Mas for "variance subsampling"
-idx = np.argsort(-Ord_var.ravel(), axis=None, kind='stable')
+idx = np.argsort(-Ord_var.ravel(), axis=None, kind="stable")
 mask_var = np.zeros_like(Ord_var)
 mask_var.flat[idx[0:M]] = 1
 
