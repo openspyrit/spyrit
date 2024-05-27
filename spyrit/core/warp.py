@@ -79,14 +79,14 @@ class DeformationField(nn.Module):
         tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]])
     """
 
-    def __init__(self, inverse_grid_frames: torch.tensor):
+    def __init__(self, field: torch.tensor):
         super().__init__()
 
-        if inverse_grid_frames.dtype == torch.float32:
+        if field.dtype == torch.float32:
             if self.__class__ == DeformationField:
                 msg = (
                     "Consider using float64 when storing the deformation "
-                    "field in inverse_grid_frames for greater accuracy."
+                    "field for greater accuracy."
                 )
             if self.__class__ == AffineDeformationField:
                 msg = (
@@ -97,8 +97,8 @@ class DeformationField(nn.Module):
             warnings.warn(msg, UserWarning)
 
         # store as nn.Parameter
-        self._inverse_grid_frames = nn.Parameter(
-            inverse_grid_frames, requires_grad=False
+        self._field = nn.Parameter(
+            field, requires_grad=False
         )
         # set other properties / inv_grid_frames has shape (n_frames, H, W, 2)
         self._align_corners = True
@@ -129,7 +129,7 @@ class DeformationField(nn.Module):
 
     @property
     def field(self) -> torch.tensor:
-        return self._inverse_grid_frames.data
+        return self._field.data
 
     def forward(
         self,
@@ -221,7 +221,9 @@ class DeformationField(nn.Module):
         # get the right slice of the inverse deformation field
         n_frames = abs(n1 - n0)
         if n1 < n0:
-            sel_inv_grid_frames = torch.flip(self.field[n1 + 1 : n0 + 1, :, :, :], [0])
+            sel_inv_grid_frames = torch.flip(
+                self.field[n1 + 1 : n0 + 1, :, :, :], [0]
+            )
         else:
             sel_inv_grid_frames = self.field[n0:n1, :, :, :]
 
