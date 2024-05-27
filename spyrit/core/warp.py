@@ -104,9 +104,9 @@ class DeformationField(nn.Module):
         self._field = nn.Parameter(field, requires_grad=False)
         # set other properties / inv_grid_frames has shape (n_frames, H, W, 2)
         self._align_corners = True
-        self._n_frames = inverse_grid_frames.shape[0]
-        self._img_h = inverse_grid_frames.shape[1]
-        self._img_w = inverse_grid_frames.shape[2]
+        self._n_frames = field.shape[0]
+        self._img_h = field.shape[1]
+        self._img_w = field.shape[2]
         self._img_shape = (self.img_h, self.img_w)
 
     @property
