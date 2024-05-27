@@ -130,8 +130,8 @@ class _Base(nn.Module):
 
     def pinv(self, x: torch.tensor, reg: str = None, eta: float = None) -> torch.tensor:
         r"""Computes the pseudo inverse solution :math:`y = H^\dagger x`.
-        
-        This method will compute the pseudo inverse solution using the 
+
+        This method will compute the pseudo inverse solution using the
         measurement matrix pseudo-inverse :math:`H^\dagger` if it has been
         calculated and stored in the attribute :attr:`H_pinv`. If not, the
         pseudo inverse will be not be explicitly computed and the torch
@@ -142,12 +142,12 @@ class _Base(nn.Module):
             :attr:`x` (torch.tensor): batch of measurement vectors. If x has
             more than 1 dimension, the pseudo inverse is applied to each
             image in the batch.
-            
-            :attr:`reg` (str, optional): Regularization method to use. 
+
+            :attr:`reg` (str, optional): Regularization method to use.
             Available options are 'L1' and 'L2'. This parameter must be
             specified if the pseudo inverse has not been computed. Defaults
             to None.
-            
+
             :attr:`eta` (float, optional): Regularization parameter. Only
             relevant when :attr:`reg` is specified. Defaults to None.
 
@@ -317,13 +317,13 @@ class Linear(_Base):
 
         :attr:`rtol` (float, optional): Cutoff for small singular values (see
         :mod:`torch.linalg.pinv`). Only relevant when :attr:`pinv` is `True`.
-        
+
         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
-        will correspond to the highest value in :math:`Ord`. Must contain 
+        will correspond to the highest value in :math:`Ord`. Must contain
         :math:`M` values. If some values repeat, the order is kept. Defaults to
         None.
-        
+
         :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
         Must be a tuple of two integers representing the height and width of the
         patterns. If not specified, the shape is suppposed to be a square image.
@@ -332,7 +332,7 @@ class Linear(_Base):
     Attributes:
         :attr:`H` (torch.tensor): The learnable measurement matrix of shape
         :math:`(M, N)` initialized as :math:`H`.
-        
+
         :attr:`H_static` (torch.tensor): alias for :attr:`H`.
 
         :attr:`H_pinv` (torch.tensor, optional): The learnable pseudo inverse
@@ -345,13 +345,13 @@ class Linear(_Base):
         :attr:`h` (int): Measurement pattern height.
 
         :attr:`w` (int): Measurement pattern width.
-        
+
         :attr:`meas_shape` (tuple): Shape of the measurement patterns
         (height, width). Is equal to `(self.h, self.w)`.
-        
+
         :attr:`indices` (torch.tensor): Indices used to sort the rows of H.	It
         is used by the method :meth:`reindex()`.
-        
+
         :attr:`Ord` (torch.tensor): Order matrix used to sort the rows of H. It
         is used by :func:`~spyrit.core.torch.sort_by_significance()`.
 
@@ -519,7 +519,7 @@ class LinearSplit(Linear):
     :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
     `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
     :math:`H_{-} = \max(0,-H)`.
-    
+
     The class is constructed from the :math:`M` by :math:`N` matrix :math:`H`,
     where :math:`N` represents the number of pixels in the image and
     :math:`M` the number of measurements. Therefore, the shape of :math:`P` is
@@ -537,13 +537,13 @@ class LinearSplit(Linear):
 
         :attr:`rtol` (float, optional): Cutoff for small singular values (see
         :mod:`torch.linalg.pinv`). Only relevant when :attr:`pinv` is `True`.
-        
+
         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
-        will correspond to the highest value in :math:`Ord`. Must contain 
+        will correspond to the highest value in :math:`Ord`. Must contain
         :math:`M` values. If some values repeat, the order is kept. Defaults to
         None.
-        
+
         :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
         Must be a tuple of two integers representing the height and width of the
         patterns. If not specified, the shape is suppposed to be a square image.
@@ -552,7 +552,7 @@ class LinearSplit(Linear):
     Attributes:
         :attr:`H` (torch.tensor): The learnable measurement matrix of shape
         :math:`(M, N)` initialized as :math:`H`.
-        
+
         :attr:`H_static` (torch.tensor): alias for :attr:`H`.
 
         :attr:`P` (torch.tensor): The splitted measurement matrix of shape
@@ -568,13 +568,13 @@ class LinearSplit(Linear):
         :attr:`h` (int): Measurement pattern height.
 
         :attr:`w` (int): Measurement pattern width.
-        
+
         :attr:`meas_shape` (tuple): Shape of the measurement patterns
         (height, width). Is equal to `(self.h, self.w)`.
-        
+
         :attr:`indices` (torch.tensor): Indices used to sort the rows of H.	It
         is used by the method :meth:`reindex()`.
-        
+
         :attr:`Ord` (torch.tensor): Order matrix used to sort the rows of H. It
         is used by :func:`~spyrit.core.torch.sort_by_significance()`.
 
@@ -585,7 +585,7 @@ class LinearSplit(Linear):
 
     .. note::
         :math:`H = H_{+} - H_{-}`
-        
+
     Example:
         >>> H = torch.randn(400, 1600)
         >>> meas_op = LinearSplit(H, False)
@@ -697,21 +697,21 @@ class HadamSplit(LinearSplit):
     Args:
         :attr:`M` (int): Number of measurements. It determines the size of the
         Hadamard matrix subsample :math:`H`.
-        
+
         :attr:`h` (int): Measurement pattern height. The width is taken to be
         equal to the height, so the measurement pattern is square. The Hadamard
         matrix will have shape :math:`(h^2, h^2)`.
 
         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
-        will correspond to the highest value in :math:`Ord`. Must contain 
+        will correspond to the highest value in :math:`Ord`. Must contain
         :math:`M` values. If some values repeat, the order is kept. Defaults to
         None.
 
     Attributes:
         :attr:`H` (torch.tensor): The learnable measurement matrix of shape
         :math:`(M, N)`.
-        
+
         :attr:`H_static` (torch.tensor): alias for :attr:`H`.
 
         :attr:`P` (torch.tensor): The splitted measurement matrix of shape
@@ -728,13 +728,13 @@ class HadamSplit(LinearSplit):
         :attr:`h` (int): Measurement pattern height.
 
         :attr:`w` (int): Measurement pattern width. Is equal to :math:`h`.
-        
+
         :attr:`meas_shape` (tuple): Shape of the measurement patterns
         (height, width). Is equal to `(self.h, self.h)`.
-        
+
         :attr:`indices` (torch.tensor): Indices used to sort the rows of H.	It
         is used by the method :meth:`reindex()`.
-        
+
         :attr:`Ord` (torch.tensor): Order matrix used to sort the rows of H. It
         is used by :func:`~spyrit.core.torch.sort_by_significance()`.
 
@@ -787,7 +787,7 @@ class HadamSplit(LinearSplit):
             pixels in the image.
 
             Output: math:`(b*c, N)`
-            
+
         Example:
             >>> h = 32
             >>> Ord = torch.randn(h, h)
@@ -839,23 +839,23 @@ class DynamicLinear(_Base):
     Args:
         :attr:`H` (torch.tensor): measurement matrix (linear operator) with
         shape :math:`(M, N)`.
-        
+
         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
         will correspond to the highest value in :math:`Ord`. Must contain
         :math:`M` values. If some values repeat, the order is kept. Defaults to
         None.
-        
+
         :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
         Must be a tuple of two integers representing the height and width of the
         patterns. If not specified, the shape is suppposed to be a square image.
         If not, an error is raised. Defaults to None.
-        
+
         :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
         of two integers representing the height and width of the image. If not
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
-        
+
 
     Attributes:
         :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
@@ -871,25 +871,25 @@ class DynamicLinear(_Base):
 
         :attr:`meas_shape` (tuple): Shape of the measurement patterns
         (height, width). Is equal to `(self.h, self.w)`.
-        
+
         :attr:`img_h` (int): Image height.
-        
+
         :attr:`img_w` (int): Image width.
-        
+
         :attr:`img_shape` (tuple): Shape of the image (height, width). Is equal
         to `(self.img_h, self.img_w)`.
-        
+
         :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H`.
         Must be set using the method :meth:`build_H_dyn` before being accessed.
-        
+
         :attr:`H` (torch.tensor): Alias for :attr:`H_dyn`.
-        
+
         :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
         matrix :math:`H_{dyn}^\dagger`. Must be set using the method
         :meth:`build_H_dyn_pinv` before being accessed.
-        
+
         :attr:`H_pinv` (torch.tensor): Alias for :attr:`H_dyn_pinv`.
-        
+
     .. warning::
         The attributes :attr:`H` and :attr:`H_pinv` are used as aliases for
         :attr:`H_dyn` and :attr:`H_dyn_pinv`. If you want to access the static
@@ -908,7 +908,7 @@ class DynamicLinear(_Base):
           (img_shape): (40, 40)
           (H_pinv): False
         )
-        
+
     Reference:
     .. _MICCAI24:
         [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
@@ -998,27 +998,27 @@ class DynamicLinear(_Base):
 
     def build_H_dyn(self, motion: DeformationField, mode: str = "bilinear") -> None:
         """Build the dynamic measurement matrix `H_dyn`.
-        
+
         Compute and store the dynamic measurement matrix `H_dyn` from the static
         measurement matrix `H_static` and the deformation field `motion`. The
         output is stored in the attribute `self.H_dyn`.
-        
+
         This is done using the physical version explained in [MaBP24]_.
 
         Args:
-        
+
             :attr:`motion` (DeformationField): Deformation field representing the
             motion of the image.
-            
+
             :attr:`mode` (str): Interpolation mode. Can only be 'bilinear' for
             now. Bicubic interpolation will be available in a future release.
             Defaults to 'bilinear'.
-        
+
         Returns:
 
             None. The dynamic measurement matrix is stored in the attribute
             `self.H_dyn`.
-        
+
         References:
         .. _MaBP24:
             [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
@@ -1141,11 +1141,11 @@ class DynamicLinear(_Base):
         This method supposes that the dynamic measurement matrix `H_dyn` has
         already been set using the method `build_H_dyn()`. An error will be
         raised if `H_dyn` has not been set yet.
-        
+
         Args:
             :attr:`reg` (str): Regularization method. Can be either 'L1' or 'L2'.
             Defaults to 'L1'.
-            
+
             :attr:`eta` (float): Regularization parameter. Defaults to 1e-6.
 
         Raises:
@@ -1329,18 +1329,18 @@ class DynamicLinearSplit(DynamicLinear):
         :attr:`H` (torch.tensor): measurement matrix (linear operator) with
         shape :math:`(M, N)` where :math:`M` is the number of measurements and
         :math:`N` the number of pixels in the image.
-        
+
         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
         will correspond to the highest value in :math:`Ord`. Must contain
         :math:`M` values. If some values repeat, the order is kept. Defaults to
         None.
-        
+
         :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
         Must be a tuple of two integers representing the height and width of the
         patterns. If not specified, the shape is suppposed to be a square image.
         If not, an error is raised. Defaults to None.
-        
+
         :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
         of two integers representing the height and width of the image. If not
         specified, the shape is taken as equal to `meas_shape`. Setting this
@@ -1349,7 +1349,7 @@ class DynamicLinearSplit(DynamicLinear):
     Attributes:
         :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
         of shape :math:`(M,N)` initialized as :math:`H`.
-        
+
         :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of
         shape :math:`(2M, N)` such that `P[0::2, :] = H_{+}` and `P[1::2, :] = H_{-}`.
 
@@ -1363,25 +1363,25 @@ class DynamicLinearSplit(DynamicLinear):
 
         :attr:`meas_shape` (tuple): Shape of the measurement patterns
         (height, width). Is equal to `(self.h, self.w)`.
-        
+
         :attr:`img_h` (int): Image height.
-        
+
         :attr:`img_w` (int): Image width.
-        
+
         :attr:`img_shape` (tuple): Shape of the image (height, width). Is equal
         to `(self.img_h, self.img_w)`.
-        
+
         :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H`.
         Must be set using the method :meth:`build_H_dyn` before being accessed.
-        
+
         :attr:`H` (torch.tensor): Alias for :attr:`H_dyn`.
-        
+
         :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
         matrix :math:`H_{dyn}^\dagger`. Must be set using the method
         :meth:`build_H_dyn_pinv` before being accessed.
-        
+
         :attr:`H_pinv` (torch.tensor): Alias for :attr:`H_dyn_pinv`.
-        
+
     .. warning::
         For each call, there must be **exactly** as many images in :math:`x` as
         there are measurements in the linear operator :math:`P`.
@@ -1400,7 +1400,7 @@ class DynamicLinearSplit(DynamicLinear):
           (H_pinv): False
           (P.shape): torch.Size([800, 1600])
         )
-    
+
     Reference:
     .. _MICCAI24:
         [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
@@ -1513,13 +1513,13 @@ class DynamicHadamSplit(DynamicLinearSplit):
     Computes linear measurements from incoming images: :math:`y = Px`,
     where :math:`P` is a linear operator (matrix) with positive entries and
     :math:`x` is a batch of vectorized images representing a motion picture.
-    
+
     The matrix :math:`P` contains only positive values and is obtained by
     splitting a Hadamard-based matrix :math:`H` such that
     :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
     `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
     :math:`H_{-} = \max(0,-H)`.
-    
+
     :math:`H` is obtained by selecting a re-ordered subsample of :math:`M` rows
     of a "full" Hadamard matrix :math:`F` with shape :math:`(N^2, N^2)`.
     :math:`N` must be a power of 2.
@@ -1534,20 +1534,20 @@ class DynamicHadamSplit(DynamicLinearSplit):
 
         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
-        will correspond to the highest value in :math:`Ord`. Must contain 
+        will correspond to the highest value in :math:`Ord`. Must contain
         :math:`M` values. If some values repeat, the order is kept. Defaults to
         None.
-        
+
         :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
         of two integers representing the height and width of the image. If not
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
-        
+
 
     Attributes:
         :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
         of shape :math:`(M,N)` initialized as :math:`H`.
-        
+
         :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of
         shape :math:`(2M, N)` such that `P[0::2, :] = H_{+}` and `P[1::2, :] = H_{-}`.
 
@@ -1561,25 +1561,25 @@ class DynamicHadamSplit(DynamicLinearSplit):
 
         :attr:`meas_shape` (tuple): Shape of the measurement patterns
         (height, width). Is equal to `(self.h, self.w)`.
-        
+
         :attr:`img_h` (int): Image height.
-        
+
         :attr:`img_w` (int): Image width.
-        
+
         :attr:`img_shape` (tuple): Shape of the image (height, width). Is equal
         to `(self.img_h, self.img_w)`.
-        
+
         :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H`.
         Must be set using the method :meth:`build_H_dyn` before being accessed.
-        
+
         :attr:`H` (torch.tensor): Alias for :attr:`H_dyn`.
-        
+
         :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
         matrix :math:`H_{dyn}^\dagger`. Must be set using the method
         :meth:`build_H_dyn_pinv` before being accessed.
-        
+
         :attr:`H_pinv` (torch.tensor): Alias for :attr:`H_dyn_pinv`.
-        
+
     .. note::
         The computation of a Hadamard transform :math:`Fx` benefits a fast
         algorithm, as well as the computation of inverse Hadamard transforms.
@@ -1601,7 +1601,7 @@ class DynamicHadamSplit(DynamicLinearSplit):
           (H_pinv): False
           (P.shape): torch.Size([800, 1024])
         )
-        
+
     Reference:
     .. _MICCAI24:
         [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
