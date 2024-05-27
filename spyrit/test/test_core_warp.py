@@ -33,7 +33,7 @@ def test_core_warp():
     matrix = torch.randn(n_frames, height, width, 2, dtype=torch.float64)
     def_field = DeformationField(matrix)
     assert_shape(
-        def_field.inverse_grid_frames.shape,
+        def_field.field.shape,
         torch.Size([10, 32, 64, 2]),
         "Wrong constructor with rectangular size",
     )
