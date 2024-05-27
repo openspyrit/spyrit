@@ -55,15 +55,15 @@ class DeformationField(nn.Module):
     Attributes:
         :attr:`self.field` (torch.tensor):
         *Inverse deformation field* :math:`u` of shape :math:`(n\_frames,h,w,2)`.
-        
+
         :attr:`self.n_frames` (int): Number of frames in the animation.
-        
+
         :attr:`self.img_shape` (tuple): Shape of the image to be warped, i.e.
         :math:`(h,w)`, where :math:`h` and :math:`w` are the height and width
         of the image respectively.
-        
+
         :attr:`img_h` (int): Height of the image to be warped in pixels.
-        
+
         :attr:`img_w` (int): Width of the image to be warped in pixels.
 
     **Example 1:** Rotating a 2x2 B&W image by 90 degrees counter-clockwise, using one frame
@@ -114,15 +114,15 @@ class DeformationField(nn.Module):
     @property
     def n_frames(self) -> int:
         return self._n_frames
-    
+
     @property
     def img_h(self) -> int:
         return self._img_h
-    
+
     @property
     def img_w(self) -> int:
         return self._img_w
-    
+
     @property
     def img_shape(self) -> tuple:
         return self._img_shape
@@ -221,9 +221,7 @@ class DeformationField(nn.Module):
         # get the right slice of the inverse deformation field
         n_frames = abs(n1 - n0)
         if n1 < n0:
-            sel_inv_grid_frames = torch.flip(
-                self.field[n1 + 1 : n0 + 1, :, :, :], [0]
-            )
+            sel_inv_grid_frames = torch.flip(self.field[n1 + 1 : n0 + 1, :, :, :], [0])
         else:
             sel_inv_grid_frames = self.field[n0:n1, :, :, :]
 
@@ -316,15 +314,15 @@ class AffineDeformationField(DeformationField):
 
         :attr:`time_vector` (torch.tensor): List of the times at which the
         function is evaluated to generate the inverse deformation field.
-        
+
         :attr:`self.n_frames` (int): Number of frames in the animation.
-        
+
         :attr:`self.img_shape` (tuple): Shape of the image to be warped, i.e.
         :math:`(h,w)`, where :math:`h` and :math:`w` are the height and width
         of the image respectively.
-        
+
         :attr:`img_h` (int): Height of the image to be warped in pixels.
-        
+
         :attr:`img_w` (int): Width of the image to be warped in pixels.
 
     Example 1: Progressive zooming **in**
@@ -359,11 +357,11 @@ class AffineDeformationField(DeformationField):
     @property
     def func(self):
         return self._func
-    
+
     @property
     def time_vector(self):
         return self._time_vector
-    
+
     @property
     def align_corners(self) -> bool:
         return self._align_corners

@@ -2,9 +2,9 @@
 
 ### Notations
 
-\- removals  
-/ changes  
-\+ additions  
+\- removals
+/ changes
+\+ additions
 
 ---
 

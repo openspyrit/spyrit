@@ -92,17 +92,17 @@ class NoNoise(nn.Module):
         self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
     ) -> torch.tensor:
         """Sorts a tensor along a specified axis using the indices tensor. The
-        indices tensor is contained in the attribute :attr:`self.meas_op.indices`. 
+        indices tensor is contained in the attribute :attr:`self.meas_op.indices`.
 
         The indices tensor contains the new indices of the elements in the values
         tensor. `values[0]` will be placed at the index `indices[0]`, `values[1]`
         at `indices[1]`, and so on.
-            
+
         Using the inverse permutation allows to revert the permutation: in this
         case, it is the element at index `indices[0]` that will be placed at the
         index `0`, the element at index `indices[1]` that will be placed at the
         index `1`, and so on.
-        
+
         .. note::
             See :func:`~spyrit.core.torch.reindex()` for more details.
 

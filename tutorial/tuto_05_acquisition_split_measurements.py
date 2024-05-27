@@ -167,14 +167,15 @@ Ord_var = Cov2Var(Cov)
 
 # sphinx_gallery_thumbnail_number = 2
 from spyrit.misc.sampling import sort_by_significance
-mask_basis = np.zeros((h,h))
+
+mask_basis = np.zeros((h, h))
 mask_basis.flat[:M] = 1
 
 # Mask for "naive subsampling"
-mask_nai = sort_by_significance(mask_basis, Ord_nai, axis='flatten')
+mask_nai = sort_by_significance(mask_basis, Ord_nai, axis="flatten")
 
 # Mask for "variance subsampling"
-mask_var = sort_by_significance(mask_basis, Ord_var, axis='flatten')
+mask_var = sort_by_significance(mask_basis, Ord_var, axis="flatten")
 
 # Plot the masks
 f, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
