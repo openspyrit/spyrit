@@ -20,7 +20,7 @@ There are three steps in the process:
 
     #. Reconstruction of a motion-compensated image from the sequence of measurement.
 
-This tutorial illustrate the three steps through a simple example. Details about the :mod:`spyrit.core.warp` module are included at the end of the example.
+This tutorial illustrates the three steps through a simple example. Details about the :mod:`spyrit.core.warp` module are included at the end of the example.
 """
 
 # %%
