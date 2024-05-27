@@ -83,23 +83,21 @@ class PseudoInverse(nn.Module):
 class TikhonovMeasurementPriorDiag(nn.Module):
     # =========================================================================
     r"""
-    Tikhonov regularization with prior in the measurement domain.
+    Tikhonov regularisation with prior in the measurement domain.
 
-    Considering linear measurements :math:`y = Hx`, where :math:`H = GF` is the
-    measurement matrix and :math:`x` is a vectorized image, it estimates
-    :math:`x` from :math:`y` by approximately minimizing
+    Considering linear measurements :math:`m = Hx \in\mathbb{R}^M`, where :math:`H = GF` is the measurement matrix and :math:`x\in\mathbb{R}^N` is a vectorized image, it estimates :math:`x` from :math:`m` by approximately minimizing
 
     .. math::
-        \| y - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}
+        \|m - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}
 
-    where :math:`x_0` is a mean image prior, :math:`\Sigma` is a covariance
-    prior, and :math:`\Sigma_\alpha` is the measurement noise covariance.
+    where :math:`x_0\in\mathbb{R}^N` is a mean image prior, :math:`\Sigma\in\mathbb{R}^{N\times N}` is a covariance prior, and :math:`\Sigma_\alpha\in\mathbb{R}^{M\times M}` is the measurement noise covariance. The matrix :math:`G\in\mathbb{R}^{M\times N}` is a subsampling matrix.
 
-    The class is constructed from :math:`\Sigma`.
+    .. note::
+        The class is instantiated from :math:`\Sigma`, which represents the covariance of :math:`Fx`.
 
     Args:
-        - :attr:`sigma`:  covariance prior with shape :math:`(N, N)`
-        - :attr:`M`: number of measurements
+        - :attr:`sigma`:  covariance prior with shape :math:`N` x :math:`N`
+        - :attr:`M`: number of measurements :math:`M`
 
 
     Attributes:
@@ -146,27 +144,27 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         We approximate the solution as:
 
         .. math::
-            \hat{x} = x_0 + F^{-1} \begin{bmatrix} y_1 \\ y_2\end{bmatrix}
+            \hat{x} = x_0 + F^{-1} \begin{bmatrix} m_1 \\ m_2\end{bmatrix}
 
-        with :math:`y_1 = D_1(D_1 + \Sigma_\alpha)^{-1} (y - GF x_0)` and
-        :math:`y_2 = \Sigma_1 \Sigma_{21}^{-1} y_1`, where
+        with :math:`m_1 = D_1(D_1 + \Sigma_\alpha)^{-1} (m - GF x_0)` and
+        :math:`m_2 = \Sigma_1 \Sigma_{21}^{-1} m_1`, where
         :math:`\Sigma = \begin{bmatrix} \Sigma_1 & \Sigma_{21}^\top \\ \Sigma_{21} & \Sigma_2\end{bmatrix}`
         and  :math:`D_1 =\textrm{Diag}(\Sigma_1)`. Assuming the noise
         covariance :math:`\Sigma_\alpha` is diagonal, the matrix inversion
-        involded in the computation of :math:`y_1` is straigtforward.
+        involved in the computation of :math:`m_1` is straightforward.
 
         This is an approximation to the exact solution
 
         .. math::
             \hat{x} &= x_0 + F^{-1}\begin{bmatrix}\Sigma_1 \\ \Sigma_{21} \end{bmatrix}
-                      [\Sigma_1 + \Sigma_\alpha]^{-1} (y - GF x_0)
+                      [\Sigma_1 + \Sigma_\alpha]^{-1} (m - GF x_0)
 
 
         See Lemma B.0.5 of the PhD dissertation of A. Lorente Mur (2021):
         https://theses.hal.science/tel-03670825v1/file/these.pdf
 
         Args:
-            - :attr:`x`: A batch of measurement vectors :math:`y`
+            - :attr:`x`: A batch of measurement vectors :math:`m`
             - :attr:`x_0`: A batch of prior images :math:`x_0`
             - :attr:`var`: A batch of measurement noise variances :math:`\Sigma_\alpha`
             - :attr:`meas_op`: A measurement operator that provides :math:`GF` and :math:`F^{-1}`
@@ -565,15 +563,24 @@ class PinvNet(nn.Module):
 # =============================================================================
 class DCNet(nn.Module):
     # =========================================================================
-    r"""Denoised completion reconstruction network
+    r"""Denoised completion reconstruction network.
+
+    This is a four step reconstruction method:
+
+    #. Denoising in the measurement domain.
+    #. Estimation of the missing measurements from the denoised ones.
+    #. Image-domain mapping.
+    #. (Learned) Denoising in the image domain.
+
+    The first three steps corresponds to Tikhonov regularisation. Typically, only the last step involves learnable parameters.
 
     Args:
         :attr:`noise`: Acquisition operator (see :class:`~spyrit.core.noise`)
 
         :attr:`prep`: Preprocessing operator (see :class:`~spyrit.core.prep`)
 
-        :attr:`sigma`: UPDATE!! Tikhonov reconstruction operator of type
-        :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag()`
+        :attr:`sigma`: Covariance prior (for details, see the
+        :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag()` class)
 
         :attr:`denoi` (optional): Image denoising operator
         (see :class:`~spyrit.core.nnet`).

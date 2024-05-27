@@ -3,11 +3,31 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-SPyRiT's documentation
-==================================
+SPyRiT: a single-pixel image reconstruction toolkit based on PyTorch
+#####################################
 
 SPyRiT is a `PyTorch <https://pytorch.org/>`_-based deep image reconstruction
-package primarily designed for single-pixel imaging.
+package primarily designed for single-pixel imaging. SPyRiT is modular and may be useful for other linear inverse problems.
+
+
+Single-pixel imaging
+==================================
+
+Single-pixel imaging allows high-quality images to be provided by a device that is only equipped with a single point detector. It is based on the acquisition of the inner products of a scene with some light patterns
+
+.. math::
+   y_k = p_k^{\top}x,
+
+where :math:`x \in \mathbb{R}^{N}` represents the image of the scene and :math:`p_k \in \mathbb{R}^N` represents the :math:`k`-th light pattern displayed on the spatial light modulator. Next, the image needs to be reconstructed from the sequence of measurements obtained with :math:`K` different light patterns. The case :math:`K < N` is often considered to reduce the total acquisition time.
+
+SPyRiT's full network
+==================================
+
+.. image:: fig/full.png
+   :width: 800
+   :align: center
+
+SPyRiT's full network
 
 SPyRiT allows to simulate measurements and perform image reconstruction using
 a full network. A full network is built using a measurement operator
@@ -17,30 +37,10 @@ and a learnable neural network :math:`\mathcal{G}_{\theta}`. All operators
 inherit from PyTorch's :class:`torch.nn.Module` class (`see here <https://pytorch.org/docs/stable/generated/torch.nn.Module.html>`_),
 which allows them to be easily combined into a full network.
 
-.. image:: fig/full.png
-   :width: 800
-   :align: center
-
-
-Getting started
-==================================
-The spyrit package is available for Linux, MacOs and Windows::
-
-   pip install spyrit
-
-Advanced installation guidelines are available on `GitHub <https://github.com/openspyrit/spyrit>`_.
-Check out our `available tutorials <gallery/index.html>`_ to get started with SPyRiT.
-
-
-Single-pixel imaging
-==================================
-
-Measurement model
+Simulation of the measurements
 -----------------------------------
 
-Single-pixel imaging aims to recover an image :math:`x \in \mathbb{R}^N`
-from a few noisy scalar products :math:`y \in \mathbb{R}^M`, where
-:math:`M \ll N`. We model the acquisition as
+We implement the acquisition as
 
       :math:`y = (\mathcal{N} \circ \mathcal{P})(x),`
 
@@ -52,10 +52,10 @@ Image reconstruction
 -----------------------------------
 
 Learning-based reconstruction approaches estimate the unknown image as
-:math:`x^* = \mathcal{I}_\theta(y)`, where :math:`\mathcal{I}_\theta`
+:math:`x^* = \mathcal{I}_\theta(y)`, where :math:`\theta`
 represents the learnable parameters of the inversion model :math:`\mathcal{I}_\theta`.
 
-A typical reconstruction operator :math:`\mathcal{I}_\theta` can be written as:
+A typical inversion operator :math:`\mathcal{I}_\theta` can be written as
 
       :math:`\mathcal{I}_\theta = \mathcal{G}_\theta \circ \mathcal{R} \circ \mathcal{B},`
 
@@ -67,23 +67,29 @@ a trainable neural network or any available image-domain denoiser.
 Learning phase
 -----------------------------------
 
-In the case of supervised learning, the training phase solves:
+In the case of supervised learning, the training phase solves
 
-      :math:`\min_{\theta}{\sum_i \mathcal{L}\left(x_i,\mathcal{I}_\theta(y_i)\right)},`
+      :math:`\min_{\theta}{\sum_i \mathcal{L}\left(x^{(i)},\mathcal{I}_\theta(y^{(i)})\right)},`
 
-where :math:`\mathcal{L}` is the training loss, and :math:`\{x_i,y_i\}_i` is a
-set of training pairs.
+where :math:`\mathcal{L}` is the training loss, and :math:`\{x^{(i)},y^{(i)}\}_i` is a set of training pairs.
 
-To introduce the full network, a forward pass can be written as follows:
+By introducing the full network :math:`F_{\theta}(x) = (\mathcal{G}_\theta \circ \mathcal{R} \circ \mathcal{B} \circ \mathcal{N} \circ \mathcal{P})(x)`, the training phase relies on a database containing images only
 
-      :math:`F_{\theta}(x) = (\mathcal{G}_\theta \circ \mathcal{R} \circ \mathcal{B} \circ \mathcal{N} \circ \mathcal{P})(x).`
+      :math:`\min_{\theta}{\sum_i \mathcal{L}\left(x^{(i)},\mathcal{F}_\theta(x^{(i)})\right)}.`
 
-The full network can be trained using a database containing only images
+The full network allows noisy data to be simulated on the fly, providing data augmentation while avoiding storing the measurements.
 
-      :math:`\min_{\theta}{\sum_i \mathcal{L}\left(x_i,\mathcal{F}_\theta(x_i)\right)}.`
+Getting started
+==================================
 
-The full network pipeline allows noisy data to be simulated on the fly,
-providing data augmentation while avoiding storing the measurements.
+Installation
+-----------------------------------
+The SPyRiT package is available for Linux, MacOs and Windows::
+
+   pip install spyrit
+
+Advanced installation guidelines are available on `GitHub <https://github.com/openspyrit/spyrit>`_.
+Check out our `available tutorials <gallery/index.html>`_ to get started with SPyRiT.
 
 
 Package structure

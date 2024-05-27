@@ -6,11 +6,11 @@ r"""
 This tutorial shows how to perform image reconstruction using the denoised
 completion network (DCNet) with a trainable image denoiser. In the next
 tutorial, we will plug a denoiser into a DCNet, which requires no training.
-.. figure:: ../fig/tuto6.png
+
+.. figure:: ../fig/tuto3.png
    :width: 600
    :align: center
-   :alt: Reconstruction and neural network denoising architecture sketch using
-   split measurements
+   :alt: Reconstruction and neural network denoising architecture sketch using split measurements
 """
 
 ######################################################################
