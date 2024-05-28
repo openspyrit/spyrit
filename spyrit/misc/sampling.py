@@ -190,39 +190,32 @@ def sort_by_significance(
         elements in the flattened :math:`sig` array.
 
     Args:
-        arr (np.ndarray or torch.tensor):
-            Array to be ordered by rows or columns. The output's type is
-            the same as this parameter's type.
+        arr (np.ndarray or torch.tensor): Array to be ordered by rows or columns.
+        The output's type is the same as this parameter's type.
 
-        sig (np.ndarray or torch.tensor):
-            Array containing the significance values.
+        sig (np.ndarray or torch.tensor): Array containing the significance values.
 
-        axis (str, optional):
-            Axis along which to order the array. Must be either 'rows' or
-            'cols'. Defaults to 'rows'.
+        axis (str, optional): Axis along which to order the array. Must be either 'rows' or
+        'cols'. Defaults to 'rows'.
 
-        inverse_permutation (bool, optional):
-            If True, the permutation matrix is transposed before being used.
-            This is equivalent to using the inverse permutation matrix.
-            Defaults to False.
+        inverse_permutation (bool, optional): If True, the permutation matrix is
+        transposed before being used. This is equivalent to using the inverse
+        permutation matrix. Defaults to False.
 
-        get_indices (bool, optional):
-            If True, the function returns the indices of the significance
-            values in decreasing order. Defaults to False.
+        get_indices (bool, optional): If True, the function returns the indices of
+        the significance values in decreasing order. Defaults to False.
 
     Shape:
-        - arr: :math:`(*, r, c)` or :math:`(c)`, where :math:`(*)` is any
-        number of dimensions, and :math:`r` and :math:`c` are the number of
-        rows and columns respectively.
+        - arr: :math:`(*, r, c)` or :math:`(c)`, where :math:`(*)` is any number of
+        dimensions, and :math:`r` and :math:`c` are the number of rows and columns respectively.
 
-        - sig: :math:`(r)` if axis is 'rows' or :math:`(c)` if axis is 'cols'
-        (or any shape that has the same number of elements). Not used if
-        arr is 1D.
+        - sig: :math:`(r)` if axis is 'rows' or :math:`(c)` if axis is 'cols' (or any shape
+        that has the same number of elements). Not used if arr is 1D.
 
         - Output: :math:`(*, r, c)` or :math:`(c)`
 
     Returns:
-        Tuple of np.ndarray or torch.tensor:
+        Tuple of np.ndarray:
 
         - **Array** :math:`arr` ordered by decreasing significance :math:`sig`
             along its rows or columns.
