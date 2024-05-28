@@ -47,14 +47,12 @@ class DeformationField(nn.Module):
 
     Args:
         :attr:`field` (torch.tensor):
-        :attr:`field` (torch.tensor):
         *Inverse deformation field* :math:`u` of shape :math:`(n\_frames,H,W,2)`,
         where :math:`n\_frames` is the number of frames in the animation, and
         :math:`H` and :math:`W` are the height and width of the image to be
         warped. For accuracy reasons, the dtype is converted to `torch.float64`.
 
     Attributes:
-        :attr:`self.field` (torch.tensor):
         :attr:`self.field` (torch.tensor):
         *Inverse deformation field* :math:`u` of shape :math:`(n\_frames,h,w,2)`.
 
@@ -72,13 +70,11 @@ class DeformationField(nn.Module):
         >>> u = torch.tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]]])
         >>> field = DeformationField(u)
         >>> print(field.field)
-        >>> print(field.field)
         tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]]])
 
     **Example 2:** Rotating a 2x2 B&W image by 90 degrees clockwise, using one frame
         >>> u = torch.tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]]])
         >>> field = DeformationField(u)
-        >>> print(field.field)
         >>> print(field.field)
         tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]])
     """
@@ -146,7 +142,6 @@ class DeformationField(nn.Module):
 
         Deforms the vectorized image according to the *inverse deformation
         field* :math:`u` contained in the attribute :attr:`field`,
-        field* :math:`u` contained in the attribute :attr:`field`,
         sliced between the frames :math:`n0` (included) and :math:`n1` (excluded).
         :math:`u` is the field that maps the pixels of the *deformed image* to
         the pixels of the *original image*.
@@ -180,7 +175,6 @@ class DeformationField(nn.Module):
 
         .. note::
             If :math:`n0 > n1`, :attr:`field` is sliced
-            If :math:`n0 > n1`, :attr:`field` is sliced
             "backwards". The first frame of the warped animation corresponds to
             the index :math:`n0`, and the last frame corresponds to the index
             :math:`n1+1`. This behavior is identical to slicing a list with a
@@ -190,7 +184,6 @@ class DeformationField(nn.Module):
             :attr:`output` (torch.tensor):
             The deformed batch of images of shape :math:`(|n1-n0|,c,h,w)`, where each
             image in the batch is deformed according to the *inverse deformation
-            field* :math:`u` contained in the attribute :attr:`field`.
             field* :math:`u` contained in the attribute :attr:`field`.
 
         Shape:
