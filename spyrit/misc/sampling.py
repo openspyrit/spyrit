@@ -232,26 +232,22 @@ def sort_by_significance(
 
 
 def reindex(
-    values: Union[np.ndarray, torch.tensor],
-    indices: Union[np.ndarray, torch.tensor],
+    values: np.ndarray,
+    indices: np.ndarray,
     axis: str = "rows",
     inverse_permutation: bool = False,
-) -> Union[np.ndarray, torch.tensor]:
+) -> np.ndarray:
     """Sorts a tensor along a specified axis using the indices tensor.
 
     The indices tensor contains the new indices of the elements in the values
     tensor. `values[0]` will be placed at the index `indices[0]`, `values[1]`
     at `indices[1]`, and so on.
 
-    .. note::
-        This function can be called with either torch tensors or numpy arrays.
-        The output will have the same type as the input.
-
     Args:
-        values (np.ndarray or torch.tensor): Array to sort. Can be 1D, 2D, or any
+        values (np.ndarray): Array to sort. Can be 1D, 2D, or any
         multi-dimensional batch of 2D arrays.
 
-        indices (np.ndarray or torch.tensor): Array containing the new indices
+        indices (np.ndarray): Array containing the new indices
         of the elements contained in `values`.
 
         axis (str, optional): The axis to sort along. Must be either 'rows',
@@ -266,7 +262,7 @@ def reindex(
         ValueError: If `axis` is not 'rows' or 'cols'.
 
     Returns:
-        np.ndarray or torch.tensor: Array ordered by the given indices along
+        np.ndarray: Array ordered by the given indices along
         the specified axis. The type is the same as the input array `values`.
 
     Example:
@@ -299,6 +295,7 @@ def reindex(
         if inverse_permutation:
             return values[..., reindices.argsort(), :]
         return values[..., reindices, :]
+    
     else:
         raise ValueError("Invalid axis. Must be 'rows', 'cols' or 'flatten'.")
 
