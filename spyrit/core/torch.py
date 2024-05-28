@@ -312,36 +312,34 @@ def sort_by_significance(
     significance, and so on. The significance tensor `sig` must have the same
     shape as `values` along the specified axis.
 
-    .. note::
-        This function is equivalent to (but much faster than) the following
-        code::
+    This function is equivalent to (but much faster than) the following code::
 
-        from spyrit.core.torch import Permutation_Matrix
+    from spyrit.core.torch import Permutation_Matrix
 
-        h = 64
-        values = torch.randn(2*h, h)
-        sig_rows = torch.randn(2*h)
-        sig_cols = torch.randn(h)
+    h = 64
+    values = torch.randn(2*h, h)
+    sig_rows = torch.randn(2*h)
+    sig_cols = torch.randn(h)
 
-        # 1
-        y1 = sort_by_significance(values, sig_rows, 'rows', False)
-        y2 = Permutation_Matrix(sig_rows) @ values
-        assert torch.allclose(y1, y2) # True
+    # 1
+    y1 = sort_by_significance(values, sig_rows, 'rows', False)
+    y2 = Permutation_Matrix(sig_rows) @ values
+    assert torch.allclose(y1, y2) # True
 
-        # 2
-        y1 = sort_by_significance(values, sig_rows, 'rows', True)
-        y2 = Permutation_Matrix(sig_rows).T @ values
-        assert torch.allclose(y1, y2) # True
+    # 2
+    y1 = sort_by_significance(values, sig_rows, 'rows', True)
+    y2 = Permutation_Matrix(sig_rows).T @ values
+    assert torch.allclose(y1, y2) # True
 
-        # 3
-        y1 = sort_by_significance(values, sig_cols, 'cols', False)
-        y2 = values @ Permutation_Matrix(sig_cols)
-        assert torch.allclose(y1, y2) # True
+    # 3
+    y1 = sort_by_significance(values, sig_cols, 'cols', False)
+    y2 = values @ Permutation_Matrix(sig_cols)
+    assert torch.allclose(y1, y2) # True
 
-        # 4
-        y1 = sort_by_significance(values, sig_cols, 'cols', True)
-        y2 = values @ Permutation_Matrix(sig_cols).T
-        assert torch.allclose(y1, y2) # True
+    # 4
+    y1 = sort_by_significance(values, sig_cols, 'cols', True)
+    y2 = values @ Permutation_Matrix(sig_cols).T
+    assert torch.allclose(y1, y2) # True
 
     Args:
         values (torch.tensor): Tensor to sort by significance. Can be 1D, 2D,

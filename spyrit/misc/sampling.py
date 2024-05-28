@@ -190,39 +190,32 @@ def sort_by_significance(
         elements in the flattened :math:`sig` array.
 
     Args:
-        arr (np.ndarray or torch.tensor):
-            Array to be ordered by rows or columns. The output's type is
-            the same as this parameter's type.
+        arr (np.ndarray or torch.tensor): Array to be ordered by rows or columns.
+        The output's type is the same as this parameter's type.
 
-        sig (np.ndarray or torch.tensor):
-            Array containing the significance values.
+        sig (np.ndarray or torch.tensor): Array containing the significance values.
 
-        axis (str, optional):
-            Axis along which to order the array. Must be either 'rows' or
-            'cols'. Defaults to 'rows'.
+        axis (str, optional): Axis along which to order the array. Must be either 'rows' or
+        'cols'. Defaults to 'rows'.
 
-        inverse_permutation (bool, optional):
-            If True, the permutation matrix is transposed before being used.
-            This is equivalent to using the inverse permutation matrix.
-            Defaults to False.
+        inverse_permutation (bool, optional): If True, the permutation matrix is
+        transposed before being used. This is equivalent to using the inverse
+        permutation matrix. Defaults to False.
 
-        get_indices (bool, optional):
-            If True, the function returns the indices of the significance
-            values in decreasing order. Defaults to False.
+        get_indices (bool, optional): If True, the function returns the indices of
+        the significance values in decreasing order. Defaults to False.
 
     Shape:
-        - arr: :math:`(*, r, c)` or :math:`(c)`, where :math:`(*)` is any
-        number of dimensions, and :math:`r` and :math:`c` are the number of
-        rows and columns respectively.
+        - arr: :math:`(*, r, c)` or :math:`(c)`, where :math:`(*)` is any number of
+        dimensions, and :math:`r` and :math:`c` are the number of rows and columns respectively.
 
-        - sig: :math:`(r)` if axis is 'rows' or :math:`(c)` if axis is 'cols'
-        (or any shape that has the same number of elements). Not used if
-        arr is 1D.
+        - sig: :math:`(r)` if axis is 'rows' or :math:`(c)` if axis is 'cols' (or any shape
+        that has the same number of elements). Not used if arr is 1D.
 
         - Output: :math:`(*, r, c)` or :math:`(c)`
 
     Returns:
-        Tuple of np.ndarray or torch.tensor:
+        Tuple of np.ndarray:
 
         - **Array** :math:`arr` ordered by decreasing significance :math:`sig`
             along its rows or columns.
@@ -239,26 +232,22 @@ def sort_by_significance(
 
 
 def reindex(
-    values: Union[np.ndarray, torch.tensor],
-    indices: Union[np.ndarray, torch.tensor],
+    values: np.ndarray,
+    indices: np.ndarray,
     axis: str = "rows",
     inverse_permutation: bool = False,
-) -> Union[np.ndarray, torch.tensor]:
+) -> np.ndarray:
     """Sorts a tensor along a specified axis using the indices tensor.
 
     The indices tensor contains the new indices of the elements in the values
     tensor. `values[0]` will be placed at the index `indices[0]`, `values[1]`
     at `indices[1]`, and so on.
 
-    .. note::
-        This function can be called with either torch tensors or numpy arrays.
-        The output will have the same type as the input.
-
     Args:
-        values (np.ndarray or torch.tensor): Array to sort. Can be 1D, 2D, or any
+        values (np.ndarray): Array to sort. Can be 1D, 2D, or any
         multi-dimensional batch of 2D arrays.
 
-        indices (np.ndarray or torch.tensor): Array containing the new indices
+        indices (np.ndarray): Array containing the new indices
         of the elements contained in `values`.
 
         axis (str, optional): The axis to sort along. Must be either 'rows',
@@ -273,7 +262,7 @@ def reindex(
         ValueError: If `axis` is not 'rows' or 'cols'.
 
     Returns:
-        np.ndarray or torch.tensor: Array ordered by the given indices along
+        np.ndarray: Array ordered by the given indices along
         the specified axis. The type is the same as the input array `values`.
 
     Example:
@@ -306,6 +295,7 @@ def reindex(
         if inverse_permutation:
             return values[..., reindices.argsort(), :]
         return values[..., reindices, :]
+
     else:
         raise ValueError("Invalid axis. Must be 'rows', 'cols' or 'flatten'.")
 

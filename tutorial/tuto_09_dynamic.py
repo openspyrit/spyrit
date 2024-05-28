@@ -102,7 +102,7 @@ def f(t):
         [
             [1 / s(t), 0, 0],
             [0, s(t), 0],
-            [0, 0, 0],
+            [0, 0, 1],
         ],
         dtype=torch.float64,
     )
@@ -321,8 +321,8 @@ plt.show()
 #
 # Here, we provide an example of how to use the class
 # :class:`spyrit.core.warp.DeformationField`. The class takes one argument:
-# the deformation field itself of shape :math:`(n_frames,h,w,2)`, where
-# :math:`n_frames` is the number of frames, and :math:`h` and :math:`w` are the
+# the deformation field itself of shape :math:`(n_{\rm frames},h,w,2)`, where
+# :math:`n_{\rm frames}` is the number of frames, and :math:`h` and :math:`w` are the
 # height and width of the image. The last dimension represents the 2D
 # pixel from where to interpolate the new pixel value at the coordinate
 # :math:`(h,w)`.
@@ -379,4 +379,4 @@ print("def_field and aff_field2 are the same:", (def_field == aff_field2))
 # .. rubric:: References for dynamic reconstruction
 #
 # .. [MaBM23] Thomas Maitre, Elie Bretin, L. Mahieu-Williame, Michaël Sdika, Nicolas Ducros. Hybrid single-pixel camera for dynamic hyperspectral imaging. 2023. hal-04310110
-# .. [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros, Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View without Warping the Patterns. 2024. hal-04533981
+# .. [MaBP24] (MICCAI 2024 paper #1903) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros, Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View without Warping the Patterns. 2024. hal-04533981
