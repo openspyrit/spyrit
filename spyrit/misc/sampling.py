@@ -295,7 +295,7 @@ def reindex(
         if inverse_permutation:
             return values[..., reindices.argsort(), :]
         return values[..., reindices, :]
-    
+
     else:
         raise ValueError("Invalid axis. Must be 'rows', 'cols' or 'flatten'.")
 
