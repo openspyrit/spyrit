@@ -1056,7 +1056,7 @@ class LearnedPGD(nn.Module):
     def mse_fun(self, x, x_gt):
         return torch.linalg.norm(x - x_gt) 
 
-    def reconstruct(self, x):
+    def reconstruct(self, x, exp=False):
         r""" Reconstruction step of a reconstruction network
             
         Args:
@@ -1092,7 +1092,10 @@ class LearnedPGD(nn.Module):
             step = step.params
 
         # Preprocessing in the measurement domain
-        m = self.prep(x) # shape x = [b*c, M]
+        if exp:
+            m, N0_est = self.prep.forward_expe(x, self.acqu.meas_op)
+        else:
+            m = self.prep(x) # shape x = [b*c, M]
 
         if self.wls:
             # Get variance of the measurements
@@ -1178,45 +1181,10 @@ class LearnedPGD(nn.Module):
         if self.res_learn:
             # z=x-step*grad(L), x = P(z), x_end = z0 + P(z)
             x = x + z0
+
+        if exp:
+            x = self.prep.denormalize_expe(x, N0_est, self.acqu.meas_op.h, self.acqu.meas_op.w)
         return x 
-    def reconstruct_expe(self, x):
-        r"""Reconstruction step of a reconstruction network
-
-        Same as :meth:`reconstruct` reconstruct except that:
-
-        1. The preprocessing step estimates the image intensity for normalization
-
-        2. The output images are "denormalized", i.e., have units of photon counts
-
-        Args:
-            :attr:`x`: raw measurement vectors
-
-        Shape:
-            :attr:`x`: :math:`(BC,2M)`
-
-            :attr:`output`: :math:`(BC,1,H,W)`
-        """
-        # x of shape [b*c, 2M]
-        bc, _ = x.shape
-
-        # Preprocessing
-        x, N0_est = self.prep.forward_expe(x, self.acqu.meas_op)  # shape x = [b*c, M]
-        print(N0_est)
-
-        # measurements to image domain processing
-        x = self.pinv(x, self.acqu.meas_op)  # shape x = [b*c,N]
-
-        # Image domain denoising
-        x = x.view(
-            bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
-        )  # shape x = [b*c,1,h,w]
-        x = self.denoi(x)  # shape x = [b*c,1,h,w]
-        print(x.max())
-
-        # Denormalization
-        x = self.prep.denormalize_expe(
-            x, N0_est, self.acqu.meas_op.h, self.acqu.meas_op.w
-        )
-        return x
+    
 
     
