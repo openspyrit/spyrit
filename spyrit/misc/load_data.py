@@ -16,7 +16,7 @@ import os
 import sys
 import glob
 import numpy as np
-from PIL import Image
+import PIL
 
 
 def Files_names(Path, name_type):
@@ -31,8 +31,8 @@ def load_data_recon_3D(Path_files, list_files, Nl, Nc, Nh):
 
     for i in range(0, 2 * Nh, 2):
         Data[:, :, i // 2] = np.rot90(
-            np.array(Image.open(Path_files + list_files[i]))
-        ) - np.rot90(np.array(Image.open(Path_files + list_files[i + 1])))
+            np.array(PIL.Image.open(Path_files + list_files[i]))
+        ) - np.rot90(np.array(PIL.Image.open(Path_files + list_files[i + 1])))
 
     return Data
 
@@ -44,9 +44,9 @@ def load_data_Comp_1D_old(Path_files, list_files, Nh, Nl, Nc):
 
     for i in range(0, 2 * Nh, 2):
         Data[:, i // 2] = Sum_coll(
-            np.rot90(np.array(Image.open(Path_files + list_files[i])), 3), Nl, Nc
+            np.rot90(np.array(PIL.Image.open(Path_files + list_files[i])), 3), Nl, Nc
         ) - Sum_coll(
-            np.rot90(np.array(Image.open(Path_files + list_files[i + 1])), 3), Nl, Nc
+            np.rot90(np.array(PIL.Image.open(Path_files + list_files[i + 1])), 3), Nl, Nc
         )
 
     return Data
@@ -59,9 +59,9 @@ def load_data_Comp_1D_new(Path_files, list_files, Nh, Nl, Nc):
 
     for i in range(0, 2 * Nh, 2):
         Data[:, i // 2] = Sum_coll(
-            np.rot90(np.array(Image.open(Path_files + list_files[i + 1])), 3), Nl, Nc
+            np.rot90(np.array(PIL.Image.open(Path_files + list_files[i + 1])), 3), Nl, Nc
         ) - Sum_coll(
-            np.rot90(np.array(Image.open(Path_files + list_files[i])), 3), Nl, Nc
+            np.rot90(np.array(PIL.Image.open(Path_files + list_files[i])), 3), Nl, Nc
         )
 
     return Data
