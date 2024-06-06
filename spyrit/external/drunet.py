@@ -117,14 +117,14 @@ class UNetRes(nn.Module):
 
 
 class DRUNet(UNetRes):
-    r"""Plug-and-Play Image Restoration with Deep Denoiser Prior. 
-    DRUNet is a pretrained plug-and-play denoising network that has been pretrained for a wide range of noise levels.  
+    r"""Plug-and-Play Image Restoration with Deep Denoiser Prior.
+    DRUNet is a pretrained plug-and-play denoising network that has been pretrained for a wide range of noise levels.
     It admits the noise level as an input, so it does not require training.
-    DRUNet was proposed in the work 
+    DRUNet was proposed in the work
     [ZhLZ21] Zhang, K.; Li, Y.; Zuo, W.; Zhang, L.; Van Gool, L.; Timofte, R..: Plug-and-Play Image Restoration with Deep Denoiser Prior. In: IEEE Transactions on Pattern Analysis and Machine Intelligence, 44(10), 6360-6376, 2021.
 
     Args:
-        :attr:`noise_level` (float): noise level value in the range [0, 255]. 
+        :attr:`noise_level` (float): noise level value in the range [0, 255].
         This is used to create a noise level map that is concatenated to the input images.
 
         :attr:`n_channels` (int): number of image channels
@@ -141,7 +141,7 @@ class DRUNet(UNetRes):
 
     Input / Output:
         :attr:`x`: input images with shape :math:`(BC,n_channels,H,W)`
-        DRUNet has been tested only with :math:`n_channels=1` but 
+        DRUNet has been tested only with :math:`n_channels=1` but
         UNetRes can be used with :math:`n_channels>1`
 
         :attr:`output`: denoised images with shape :math:`(BC,n_channels,H,W)`
