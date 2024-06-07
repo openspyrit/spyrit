@@ -125,6 +125,7 @@ In addition, the subpackage :class:`spyrit.misc` contains various utility functi
 
    spyrit.core
    spyrit.misc
+   spyrit.external
 
 
 Cite us

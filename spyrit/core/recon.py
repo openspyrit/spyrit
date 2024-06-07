@@ -808,46 +808,81 @@ class DCNet(nn.Module):
         return x
 
 
+# %%===========================================================================================
+class PositiveParameters(nn.Module):
+    # ===========================================================================================
+    def __init__(self, params, requires_grad=True):
+        super(PositiveParameters, self).__init__()
+        self.params = torch.tensor(params, requires_grad=requires_grad)
+
+    def forward(self):
+        return torch.abs(self.params)
+
+
 # =============================================================================
-class DCDRUNet(DCNet):
-    # =========================================================================
-    r"""Denoised completion reconstruction network based on DRUNet wich concatenates a
-        noise level map to the input
+class LearnedPGD(nn.Module):
+    r"""Learned Proximal Gradient Descent reconstruction network.
+    Iterative algorithm that alternates between a gradient step and a proximal step,
+    where the proximal operator is learned denoiser. The update rule is given by:
 
-    .. math:
-
+    :math:`x_{k+1} = prox(\hat{x_k} - step * H^T (Hx_k - y))=
+    denoi(\hat{x_k} - step * H^T (Hx_k - y))`
 
     Args:
         :attr:`noise`: Acquisition operator (see :class:`~spyrit.core.noise`)
 
         :attr:`prep`: Preprocessing operator (see :class:`~spyrit.core.prep`)
 
-        :attr:`sigma`: UPDATE!! Tikhonov reconstruction operator of type
-        :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag()`
-
         :attr:`denoi` (optional): Image denoising operator
         (see :class:`~spyrit.core.nnet`).
         Default :class:`~spyrit.core.nnet.Identity`
 
-        :attr:`noise_level` (optional): Noise level in the range [0, 255], default is noise_level=5
+        :attr:`iter_stop` (int): Number of iterations of the LPGD algorithm
+        (commonly 3 to 10, trade-off between accuracy and speed).
+        Default 3 (for speed and with higher accuracy than post-processing denoising)
 
+        :attr:`step` (float): Step size of the LPGD algorithm. Default is None,
+        and it is estimated as the inverse of the Lipschitz constant of the gradient of the
+        data fidelity term.
+            - If :math:`meas_op.N` is available, the step size is estimated as
+            :math:`step=1/L=1/\text{meas_op.N}`, true for Hadamard operators.
+            - If not, the step size is estimated from by computing
+            the Lipschitz constant as the largest singular value of the
+            Hessians, :math:`L=\lambda_{\max}(H^TH)`. If this fails,
+            the step size is set to 1e-4.
+
+        :attr:`step_estimation` (bool): Default False. See :attr:`step` for details.
+
+        :attr:`step_grad` (bool): Default False. If True, the step size is learned
+        as a parameter of the network. Not tested yet.
+
+        :attr:`wls` (bool): Default False. If True, the data fidelity term is
+        modified to be the weighted least squares (WLS) term, which approximates
+        the Poisson likelihood. In this case, the data fidelity term is
+        :math:`\|Hx-y\|^2_{C^{-1}}`, where :math:`C` is the covariance matrix.
+        We assume that :math:`C` is diagonal, and the diagonal elements are
+        the measurement noise variances, estimated from :class:`~spyrit.core.prep.sigma`.
+
+        :attr:`gt` (torch.tensor): Ground-truth images. If available, the mean
+        squared error (MSE) is computed and logged. Default None.
+
+        :attr:`log_fidelity` (bool): Default False. If True, the data fidelity term
+        is logged for each iteration of the LPGD algorithm.
 
     Input / Output:
-        :attr:`input`: Ground-truth images with concatenated noise level map with
-         shape :math:`(B,C+1,H,W)`
+        :attr:`input`: Ground-truth images with shape :math:`(B,C,H,W)`
 
         :attr:`output`: Reconstructed images with shape :math:`(B,C,H,W)`
 
     Attributes:
         :attr:`Acq`: Acquisition operator initialized as :attr:`noise`
 
-        :attr:`PreP`: Preprocessing operator initialized as :attr:`prep`
+        :attr:`prep`: Preprocessing operator initialized as :attr:`prep`
 
-        :attr:`DC_Layer`: Data consistency layer initialized as :attr:`tikho`
+        :attr:`pinv`: Analytical reconstruction operator initialized as
+        :class:`~spyrit.core.recon.PseudoInverse()`
 
-        :attr:`Denoi`: Image (DRUNet architecture type) denoising operator
-        initialized as :attr:`denoi`
-
+        :attr:`Denoi`: Image denoising operator initialized as :attr:`denoi`
 
     Example:
         >>> B, C, H, M = 10, 1, 64, 64**2
@@ -855,31 +890,100 @@ class DCDRUNet(DCNet):
         >>> meas = HadamSplit(M, H, Ord)
         >>> noise = NoNoise(meas)
         >>> prep = SplitPoisson(1.0, M, H*H)
-        >>> sigma = torch.rand([H**2, H**2])
-        >>> n_channels = 1                   # 1 for grayscale image
-        >>> model_drunet_path = './spyrit/drunet/model_zoo/drunet_gray.pth'
-        >>> denoi_drunet = drunet(in_nc=n_channels+1, out_nc=n_channels, nc=[64, 128, 256, 512], nb=4, act_mode='R',
-            downsample_mode="strideconv", upsample_mode="convtranspose")
-        >>> recnet = DCDRUNet(noise,prep,sigma,denoi_drunet)
+        >>> denoi = denoi = Unet()
+        >>> recnet = LearnedPGD(noise, prep, denoi)
+        >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
         >>> z = recnet(x)
         >>> print(z.shape)
+        >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
         torch.Size([10, 1, 64, 64])
+        tensor(5.8912e-06)
     """
 
-    def __init__(self, noise, prep, sigma, denoi=nn.Identity(), noise_level=5):
-        super().__init__(noise, prep, sigma, denoi)
-        self.register_buffer("noise_level", torch.FloatTensor([noise_level / 255.0]))
+    def __init__(
+        self,
+        noise,
+        prep,
+        denoi=nn.Identity(),
+        iter_stop=3,
+        x0=0,
+        step=None,
+        step_estimation=False,
+        step_grad=False,
+        step_decay=1,
+        wls=False,
+        gt=None,
+        log_fidelity=False,
+        res_learn=False,
+    ):
+        super().__init__()
+        # nn.module
+        self.acqu = noise
+        self.prep = prep
+        self.denoi = denoi
 
-    def reconstruct(self, x):
-        r"""Reconstruction step of a reconstruction network
+        self.pinv = PseudoInverse()
+
+        # LPGD algo
+        self.x0 = x0
+        self.iter_stop = iter_stop
+        self.step = step
+        self.step_estimation = step_estimation
+        self.step_grad = step_grad
+        self.step_decay = step_decay
+        self.res_learn = res_learn
+
+        # Init step size (estimate)
+        self.set_stepsize(step)
+
+        # WLS
+        self.wls = wls
+
+        # Log fidelity
+        self.log_fidelity = log_fidelity
+
+        # Log MSE (Ground truth available)
+        if gt is not None:
+            self.x_gt = nn.Parameter(
+                torch.tensor(gt.reshape(gt.shape[0], -1)), requires_grad=False
+            )
+        else:
+            self.x_gt = None
+
+    def step_schedule(self, step):
+        if self.step_decay != 1:
+            step = [step * self.step_decay**i for i in range(self.iter_stop)]
+        elif self.iter_stop > 1:
+            step = [step for i in range(self.iter_stop)]
+        else:
+            step = [step]
+        return step
+
+    def set_stepsize(self, step):
+        if step is None:
+            # Stimate stepsize from Lipschitz constant
+            if hasattr(self.acqu.meas_op, "N"):
+                step = 1 / self.acqu.meas_op.N
+            else:
+                # Estimate step size as 1/sv_max(H^TH); if failed, set to 1e-4
+                self.step_estimation = True
+                step = 1e-4
+
+        step = self.step_schedule(step)
+        # step = nn.Parameter(torch.tensor(step), requires_grad=self.step_grad)
+        step = PositiveParameters(step, requires_grad=self.step_grad)
+        self.step = step
+
+    def forward(self, x):
+        r"""Full pipeline of reconstrcution network
 
         Args:
-            :attr:`x`: raw measurement vectors
+            :attr:`x`: ground-truth images
 
         Shape:
-            :attr:`x`: raw measurement vectors with shape :math:`(BC,2M)`
+            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
 
-            :attr:`output`: reconstructed images with shape :math:`(BC,1,H,W)`
+            :attr:`output`: reconstructed images with shape :math:`(B,C,H,W)`
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
@@ -887,125 +991,88 @@ class DCDRUNet(DCNet):
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = torch.rand([H**2, H**2])
-            >>> n_channels = 1                   # 1 for grayscale image
-            >>> model_drunet_path = './spyrit/drunet/model_zoo/drunet_gray.pth'
-            >>> denoi_drunet = drunet(in_nc=n_channels+1, out_nc=n_channels, nc=[64, 128, 256, 512], nb=4, act_mode='R',
-                downsample_mode="strideconv", upsample_mode="convtranspose")
-            >>> recnet = DCDRUNet(noise,prep,sigma,denoi_drunet)
-            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
-            >>> z = recnet.reconstruct(x)
+            >>> recnet = LearnedPGD(noise, prep)
+            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+            >>> z = recnet(x)
             >>> print(z.shape)
+            >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
             torch.Size([10, 1, 64, 64])
+            tensor(5.8912e-06)
         """
-        # x of shape [b*c, 2M]
 
-        bc, _ = x.shape
+        b, c, _, _ = x.shape
 
-        # Preprocessing
-        var_noi = self.prep.sigma(x)
-        x = self.prep(x)  # shape x = [b*c, M]
+        # Acquisition
+        x = x.view(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = self.acqu(x)  # shape x = [b*c, 2*M]
 
-        # measurements to image domain processing
-        x_0 = torch.zeros((bc, self.Acq.meas_op.N), device=x.device)
-        x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
-        x = x.view(
-            bc, 1, self.Acq.meas_op.h, self.Acq.meas_op.w
-        )  # shape x = [b*c,1,h,w]
-
-        # Image domain denoising
-        x = self.concat_noise_map(x)
-        x = self.denoi(x)
+        # Reconstruction
+        x = self.reconstruct(x)  # shape x = [bc, 1, h,w]
+        x = x.view(b, c, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
         return x
 
-    def concat_noise_map(self, x):
-        r"""Concatenation of noise level map to reconstructed images
+    def acquire(self, x):
+        r"""Simulate data acquisition
 
         Args:
-            :attr:`x`: reconstructed images from the reconstruction layer
+            :attr:`x`: ground-truth images
 
         Shape:
-            :attr:`x`: reconstructed images with shape :math:`(BC,1,H,W)`
+            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
 
-            :attr:`output`: reconstructed images with concatenated noise level map with shape :math:`(BC,2,H,W)`
+            :attr:`output`: measurement vectors with shape :math:`(BC,2M)`
+
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H*H)
+            >>> recnet = LearnedPGD(noise, prep)
+            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+            >>> z = recnet.acquire(x)
+            >>> print(z.shape)
+            torch.Size([10, 8192])
         """
 
-        b, c, h, w = x.shape
-        x = 0.5 * (x + 1)
-        x = torch.cat((x, self.noise_level.expand(b, 1, h, w)), dim=1)
+        b, c, _, _ = x.shape
+
+        # Acquisition
+        x = x.view(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = self.acqu(x)  # shape x = [b*c, 2*M]
+
         return x
 
-    def set_noise_level(self, noise_level):
-        r"""Reset noise level value
+    def hessian_sv(self):
+        H = self.acqu.meas_op.get_H()
+        if self.wls:
+            std_mat = 1 / torch.sqrt(self.meas_variance)
+            std_mat = torch.diag(std_mat.view(-1))
+            H = torch.matmul(std_mat, H)
+        try:
+            s = torch.linalg.svdvals(torch.matmul(H.t(), H))
+        except:
+            print("svdvals(H^T*H) failed, trying svdvals(H) instead")
+            s = torch.linalg.svdvals(H) ** 2
+        return s
 
-        Args:
-            :attr:`noise_level`: noise level value in the range [0, 255]
+    def stepsize_gd(self):
+        s = self.hessian_sv()
+        self.step = 2 / (s.min() + s.max())  # Kressner, EPFL, GD #1/(2*s.max()**2)
 
-        Shape:
-            :attr:`noise_level`: float value noise level :math:`(1)`
+    def cost_fun(self, x, y):
+        proj = self.acqu.meas_op.forward_H(x)
+        res = proj - y
+        if self.wls:
+            res = res / torch.sqrt(self.meas_variance)
+        return torch.linalg.norm(res) ** 2
 
-            :attr:`output`: noise level tensor with shape :math:`(1)`
-        """
-        self.noise_level = torch.FloatTensor([noise_level / 255.0])
+    def mse_fun(self, x, x_gt):
+        return torch.linalg.norm(x - x_gt)
 
-
-# =============================================================================
-class PositiveParameters(nn.Module):
-    # ==========================================================================
-    def __init__(self, size, val_min=1e-6):
-        super(PositiveParameters, self).__init__()
-        self.val_min = torch.tensor(val_min)
-        self.params = nn.Parameter(
-            torch.abs(val_min * torch.ones(size, 1)), requires_grad=True
-        )
-
-    def forward(self):
-        return torch.abs(self.params)
-
-
-# =============================================================================
-class PositiveMonoIncreaseParameters(PositiveParameters):
-    # =========================================================================
-    def __init__(self, size, val_min=0.000001):
-        super().__init__(size, val_min)
-
-    def forward(self):
-        # cumsum in opposite order
-        return super().forward().cumsum(dim=0).flip(dims=[0])
-
-
-# =============================================================================
-class UPGD(PinvNet):
-    # =========================================================================
-    def __init__(
-        self,
-        noise,
-        prep,
-        denoi=nn.Identity(),
-        num_iter=6,
-        lamb=1e-5,
-        lamb_min=1e-6,
-        split=False,
-    ):
-        super(UPGD, self).__init__(noise, prep, denoi)
-        self.num_iter = num_iter
-        self.lamb = lamb
-        self.lamb_min = lamb_min
-        # Set a trainable tensor for the regularization parameter with dimension num_iter
-        # and constrained to be positive with clamp(min=0.0, max=None)
-        self.lambs = PositiveMonoIncreaseParameters(
-            num_iter, lamb_min
-        )  # shape lambs = [num_iter,1]
-        # self.noise = noise
-        self.split = split
-
-    def reconstruct(self, x):
+    def reconstruct(self, x, exp=False):
         r"""Reconstruction step of a reconstruction network
-
-        Same as :meth:`reconstruct` reconstruct except that:
-
-            1. The regularization parameter is trainable
 
         Args:
             :attr:`x`: raw measurement vectors
@@ -1014,46 +1081,126 @@ class UPGD(PinvNet):
             :attr:`x`: :math:`(BC,2M)`
 
             :attr:`output`: :math:`(BC,1,H,W)`
+
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H**2)
+            >>> recnet = LearnedPGD(noise, prep)
+            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
+            >>> z = recnet.reconstruct(x)
+            >>> print(z.shape)
+            torch.Size([10, 1, 64, 64])
         """
 
-        # Measurement operator
-        # if self.split:
-        #    meas = super().Acq.meas_op
-        # else:
-        # meas = self.Acq.meas_op
-        meas = self.acqu.meas_op
-
-        # x of shape [b*c, 2M]
+        # Measurement to image domain mapping
         bc, _ = x.shape
 
-        # First estimate: Pseudo inverse
+        # Compute the stepsize from the Lipschitz constant
+        if self.step_estimation:
+            self.stepsize_gd()
+
+        step = self.step
+        if not isinstance(step, torch.Tensor):
+            step = step.params
+
         # Preprocessing in the measurement domain
-        x = self.prep(x)  # [5, 1024]
+        if exp:
+            m, N0_est = self.prep.forward_expe(x, self.acqu.meas_op)
+        else:
+            m = self.prep(x)  # shape x = [b*c, M]
 
-        # Save measurements
-        m = x.clone()  # [5, 1024]
+        if self.wls:
+            # Get variance of the measurements
+            if hasattr(self.prep, "sigma"):
+                meas_variance = self.prep.sigma(x)
+                self.meas_variance = meas_variance
+            else:
+                print(
+                    "WLS requires the variance of the measurements to be known!. Estimating var==m"
+                )
+                meas_variance = m
 
-        # measurements to image domain processing
-        x = self.pinv(x, self.acqu.meas_op)  # [5, 4096]         # shape x = [b*c,N]
-        # x = x.view(bc,1,self.acqu.meas_op.h, self.acqu.meas_op.w)   # shape x = [b*c,1,h,w]
+            # Normalize the stepsize to account for the variance
+            meas_variance_img_min, _ = torch.min(meas_variance, 1)  # 128
+            step = step.view(self.iter_stop, 1).to(x.device)
+            # Multiply meas_variance_img_min and step
+            step = meas_variance_img_min * step
 
-        # Unroll network
-        # Ensure step size is positive and monotonically decreasing and larger than self.lamb!
-        lambs = self.lambs()
-        for n in range(self.num_iter):
-            # Projection onto the measurement space
-            proj = self.acqu.meas_op.forward_H(x)  # [5, 1024]
+        # If pinv method is defined
+        if self.x0 != 0:
+            if hasattr(self.acqu.meas_op, "pinv"):
+                x = self.acqu.meas_op.pinv(m)
 
-            # Residual
-            res = proj - m  # [5, 1024]
+                # proximal step (prior)
+                x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
+                if isinstance(self.denoi, nn.ModuleList):
+                    x = self.denoi[0](x)
+                else:
+                    x = self.denoi(x)
+                x = x.view(bc, self.acqu.meas_op.N)
+            if self.res_learn:
+                z0 = x.detach().clone()
+                z0 = z0.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
+        else:
+            # zero init
+            x = torch.zeros((bc, self.acqu.meas_op.N), device=x.device)
 
-            # Gradient step
-            x = x + lambs[n] * self.acqu.meas_op.H_adjoint(res)  # [5, 4096]
+        if self.log_fidelity:
+            self.cost = []
+            with torch.no_grad():
+                # data_fidelity.append(self.data_fidelity(torch.zeros_like(x), m).cpu().numpy().tolist())
+                self.cost.append(self.cost_fun(x, m).cpu().numpy().tolist())
+        if self.x_gt is not None:
+            self.mse = []
+            with torch.no_grad():
+                self.mse.append(self.mse_fun(x, self.x_gt).cpu().numpy().tolist())
 
-            # Denoising step
-            x = x.view(
-                bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
-            )  # [5, 1, 64, 64]
-            x = self.denoi(x)
-            x = x.view(bc, self.acqu.meas_op.N)  # [5, 4096]
+        u = None
+
+        for i in range(self.iter_stop):
+            # gradient step (data fidelity)
+            res = self.acqu.meas_op.forward_H(x) - m
+            if self.wls:
+                res = res / meas_variance
+                upd = step[i].view(bc, 1) * self.acqu.meas_op.adjoint(res)
+            else:
+                upd = step[i] * self.acqu.meas_op.adjoint(res)
+            x = x - upd
+            x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
+
+            if i == 0 and self.res_learn and self.x0 == 0:
+                # if x0 does not exist
+                z0 = x.detach().clone()
+
+            # proximal step (prior)
+            if isinstance(self.denoi, nn.ModuleList):
+                x = self.denoi[i](x)
+            else:
+                x = self.denoi(x)
+            x = x.view(bc, self.acqu.meas_op.N)
+            if self.log_fidelity:
+                with torch.no_grad():
+                    self.cost.append(self.cost_fun(x, m).cpu().numpy().tolist())
+            # Compute mse if ground truth is field
+            if self.x_gt is not None:
+                with torch.no_grad():
+                    self.mse.append(self.mse_fun(x, self.x_gt).cpu().numpy().tolist())
+
+        if self.log_fidelity:
+            print(f"Data fidelity: {(self.cost)}. Stepsize: {self.step}")
+        if self.x_gt is not None:
+            print(f"|x - x_gt| = {self.mse}")
+
+        x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
+        if self.res_learn:
+            # z=x-step*grad(L), x = P(z), x_end = z0 + P(z)
+            x = x + z0
+
+        if exp:
+            x = self.prep.denormalize_expe(
+                x, N0_est, self.acqu.meas_op.h, self.acqu.meas_op.w
+            )
         return x
