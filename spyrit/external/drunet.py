@@ -121,7 +121,7 @@ class DRUNet(UNetRes):
     DRUNet is a pretrained plug-and-play denoising network that has been pretrained for a wide range of noise levels.
     It admits the noise level as an input, so it does not require training.
     DRUNet was proposed in the work
-    [ZhLZ21] K. Zhang et al., Plug-and-Play Image Restoration with Deep Denoiser Prior. In: IEEE Transactions on Pattern Analysis and Machine Intelligence, 44(10), 6360-6376, 2021. 
+    [ZhLZ21] K. Zhang et al., Plug-and-Play Image Restoration with Deep Denoiser Prior. In: IEEE Transactions on Pattern Analysis and Machine Intelligence, 44(10), 6360-6376, 2021.
     Original Code: https://github.com/cszn/DPIR/blob/master/models/network_unet.py
 
     Args:
@@ -141,14 +141,14 @@ class DRUNet(UNetRes):
         :attr:`upsample_mode` (str): upsample mode
 
     Input / Output:
-        :attr:`x`: input images with shape :math:(`BC`,`n_channels`,`H`,`W`). 
+        :attr:`x`: input images with shape :math:(`BC`,`n_channels`,`H`,`W`).
         DRUNet has been tested only with :math:`n_channels`=1 but
         UNetRes can be used with :math:`n_channels`>1.
 
         :attr:`output`: denoised images with shape :math:(`BC`,`n_channels`,`H`,`W`).
 
     Attributes:
-        :attr:`noise_level` (tensor): noise level tensor with shape :math:`(1)`. 
+        :attr:`noise_level` (tensor): noise level tensor with shape :math:`(1)`.
 
     """
 
