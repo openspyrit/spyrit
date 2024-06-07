@@ -123,7 +123,7 @@ class DRUNet(UNetRes):
     DRUNet was proposed in the work
 
     [ZhLZ21] K. Zhang et al., Plug-and-Play Image Restoration with Deep Denoiser Prior. In: IEEE Transactions on Pattern Analysis and Machine Intelligence, 44(10), 6360-6376, 2021.
-    
+
     Original Code: https://github.com/cszn/DPIR/blob/master/models/network_unet.py
 
     Args:
