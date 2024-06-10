@@ -35,3 +35,39 @@ import numpy as np
 import os
 from spyrit.misc.disp import imagesc
 import matplotlib.pyplot as plt
+
+# %%
+# Load a batch of images
+# -----------------------------------------------------------------------------
+
+###############################################################################
+# Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
+# using the :func:`transform_gray_norm` function.
+
+from spyrit.misc.statistics import transform_gray_norm
+import torchvision
+import torch
+
+h = 128  # image size hxh
+i = 1  # Image index (modify to change the image)
+spyritPath = os.getcwd()
+imgs_path = os.path.join(spyritPath, "images")
+
+# Create a transform for natural images to normalized grayscale image tensors
+transform = transform_gray_norm(img_size=h)
+
+# Create dataset and loader (expects class folder 'images/test/')
+dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=7)
+
+x, _ = next(iter(dataloader))
+print(f"Shape of input images: {x.shape}")
+
+# Select image
+x = x[i : i + 1, :, :, :]
+x = x.detach().clone()
+b, c, h, w = x.shape
+
+# plot
+x_plot = x.view(-1, h, h).cpu().numpy()
+imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
