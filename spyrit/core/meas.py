@@ -222,7 +222,7 @@ class _Base(nn.Module):
             else:
                 raise NotImplementedError(
                     f"Regularization method ({reg}) not implemented. Please "
-                    + "use 'L1' or 'L2'."
+                    + "use 'L1', 'L2' or 'H1'."
                 )
 
         # if we used bicubic b spline, convolve with the kernel
@@ -1343,7 +1343,7 @@ class DynamicLinear(_Base):
         else:
             raise NotImplementedError(
                 f"Regularization method '{reg}' is not implemented. Please "
-                + "choose either 'L1' or 'L2'."  # , or 'H1'."
+                + "choose either 'L1', 'L2' or 'H1'."
             )
 
         self._param_H_dyn_pinv = nn.Parameter(pinv, requires_grad=False)
@@ -1485,7 +1485,8 @@ class DynamicLinear(_Base):
             )
         else:
             raise NotImplementedError(
-                f"The mode {mode} is invalid, please choose bilinear or bicubic"
+                f"The mode {mode} is invalid, please choose bilinear, " +
+                "bicubic or schaum."
             )
 
 
