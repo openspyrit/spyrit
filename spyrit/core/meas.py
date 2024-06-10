@@ -1485,8 +1485,8 @@ class DynamicLinear(_Base):
             )
         else:
             raise NotImplementedError(
-                f"The mode {mode} is invalid, please choose bilinear, " +
-                "bicubic or schaum."
+                f"The mode {mode} is invalid, please choose bilinear, "
+                + "bicubic or schaum."
             )
 
 
