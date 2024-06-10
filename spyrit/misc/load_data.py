@@ -46,7 +46,9 @@ def load_data_Comp_1D_old(Path_files, list_files, Nh, Nl, Nc):
         Data[:, i // 2] = Sum_coll(
             np.rot90(np.array(PIL.Image.open(Path_files + list_files[i])), 3), Nl, Nc
         ) - Sum_coll(
-            np.rot90(np.array(PIL.Image.open(Path_files + list_files[i + 1])), 3), Nl, Nc
+            np.rot90(np.array(PIL.Image.open(Path_files + list_files[i + 1])), 3),
+            Nl,
+            Nc,
         )
 
     return Data
@@ -59,7 +61,9 @@ def load_data_Comp_1D_new(Path_files, list_files, Nh, Nl, Nc):
 
     for i in range(0, 2 * Nh, 2):
         Data[:, i // 2] = Sum_coll(
-            np.rot90(np.array(PIL.Image.open(Path_files + list_files[i + 1])), 3), Nl, Nc
+            np.rot90(np.array(PIL.Image.open(Path_files + list_files[i + 1])), 3),
+            Nl,
+            Nc,
         ) - Sum_coll(
             np.rot90(np.array(PIL.Image.open(Path_files + list_files[i])), 3), Nl, Nc
         )
