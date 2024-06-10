@@ -125,8 +125,8 @@ imagesc(m_plot, r"Measurements $m$")
 ###############################################################################
 # We define the LearnedPGD network by providing the measurement, noise and preprocessing operators,
 # the denoiser and other optional parameters to the class :class:`spyrit.core.recon.LearnedPGD`.
-# The optional parameters include the number of unrolled iterations (:math:`\text{iter_stop}`)
-# and the step size decay factor (:math:`\text{step_decay}`).
+# The optional parameters include the number of unrolled iterations (`iter_stop`)
+# and the step size decay factor (`step_decay`).
 # We choose Unet as the denoiser, as in previous tutorials.
 # For the optional parameters, we use three iterations and a step size decay
 # factor of 0.9, which worked well on this data (this should match the parameters
