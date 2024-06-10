@@ -800,7 +800,7 @@ def save_net(title, model):
     """Saves dictionaries of a given pytorch model in the place defined by
     title
     """
-    model_out_path = "{}.pth".format(title)
+    model_out_path = title # "{}.pth".format(title)
     print(model_out_path)
     torch.save(model.state_dict(), model_out_path)
     print("Model Saved")
