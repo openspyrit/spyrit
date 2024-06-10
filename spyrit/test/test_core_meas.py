@@ -253,10 +253,11 @@ def test_core_meas():
 
     time_vector = torch.linspace(0, 1, 400)
     field = AffineDeformationField(f, time_vector, img_shape=(50, 50))
-    meas_op.build_H_dyn(field)
+    meas_op.build_H_dyn(field, 'bilinear')
     assert_close_all(
         meas_op.H, H.flip(1), "Wrong dynamic measurement matrix", atol=1e-6
     )
+    meas_op.build_H_dyn(field, 'bicubic')
     print("ok")
 
     # build pseudo inverse H_dyn_pinv
