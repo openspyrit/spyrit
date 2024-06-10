@@ -80,11 +80,11 @@ def test_core_recon():
     # deformation field
     time_vector = torch.linspace(0.25, M // 4, M)
     field = AffineDeformationField(rotate, time_vector, (H, H))
-    img_motion = field(img)
+    img_motion = field(img, mode='bilinear')
     # measurement
     y = meas_op(img_motion)
     # build H_dyn and H_dyn_pinv
-    meas_op.build_H_dyn(field)
+    meas_op.build_H_dyn(field, 'bilinear')
     meas_op.build_H_dyn_pinv()
     # reconstruction
     recon_op = PseudoInverse()
