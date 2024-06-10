@@ -31,6 +31,26 @@
 
 <details open><summary>
 
+## v2.3.1
+</summary>
+
+### spyrit.core
+
+* #### spyrit.core.meas
+    * The dynamic classes now support bicubic dynamic reconstruction (spyrit.core.meas.DynamicLinear.build_h_dyn()). This uses cubic B-splines.
+* #### spyrit.core.train
+    * load_net() must take the full path, **with** the extension name (xyz.pth).
+
+### Tutorials
+
+* Tutorial 6 has been changed accordingly to the modification of spyrit.core.train.load_net().
+
+</details>
+
+---
+
+<details open><summary>
+
 ## v2.3.0
 </summary>
 
