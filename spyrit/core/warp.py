@@ -401,7 +401,7 @@ class AffineDeformationField(DeformationField):
         # get a batch of matrices of shape (n_frames, 2, 3)
         inv_mat_frames = torch.stack(
             [
-                self.func(t)[:2, :]  # need only the first 2 rows
+                self.func(t.item())[:2, :]  # need only the first 2 rows
                 for t in self.time_vector
             ]
         )
