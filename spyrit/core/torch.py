@@ -234,20 +234,20 @@ def neumann_boundary(img_shape):
     h, w = img_shape
     # create h blocks of wxw matrices
     max_ = max(h, w)
-    
+
     # create diagonals
     ones = torch.ones(max_)
     ones[0] = 0
     m_ones = -torch.ones(max_)
     block_h = spdiags([ones[:h], m_ones[:h]], [0, -1], (h, h))
     block_w = spdiags([ones[:w], m_ones[:w]], [0, -1], (w, w))
-    
+
     # create blocks using kronecker product
     Dx = torch.kron(block_h.to_dense(), torch.eye(w))
     Dy = torch.kron(torch.eye(h), block_w.to_dense())
-    
+
     return Dx, Dy
-    
+
 
 # =============================================================================
 # Permutations and Sorting
