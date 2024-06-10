@@ -275,7 +275,7 @@ class _Base(nn.Module):
             specified axis.
         """
         return spytorch.reindex(
-            x.to(self.indices.device), self.indices, axis, inverse_permutation
+            x, self.indices.to(x.device), axis, inverse_permutation
         )
 
     def _set_Ord(self, Ord: torch.tensor) -> None:
