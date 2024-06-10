@@ -232,7 +232,7 @@ if os.path.exists(model_cnn_path) is False:
     try:
         import gdown
 
-        gdown.download(url_cnn, f"{model_cnn_path}.pth", quiet=False, fuzzy=True)
+        gdown.download(url_cnn, model_cnn_path, quiet=False, fuzzy=True)
     except:
         print(f"Model {model_cnn_path} not downloaded!")
 
