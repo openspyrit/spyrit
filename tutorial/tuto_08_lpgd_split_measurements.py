@@ -121,3 +121,30 @@ m = prep_op(y)  # preprocessed measurement vector
 m_plot = m.detach().numpy()
 m_plot = meas2img2(m_plot.T, Ord_rec)
 imagesc(m_plot, r"Measurements $m$")
+
+###############################################################################
+# We define the LearnedPGD network by providing the measurement, noise and preprocessing operators,
+# the denoiser and other optional parameters to the class :class:`spyrit.core.recon.LearnedPGD`.
+# The optional parameters include the number of unrolled iterations (:math:`\text{iter_stop}`)
+# and the step size decay factor (:math:`\text{step_decay}`).
+# We choose Unet as the denoiser, as in previous tutorials.
+# For the optional parameters, we use three iterations and a step size decay
+# factor of 0.9, which worked well on this data (this should match the parameters
+# used during training).
+#
+# .. image:: ../fig/lpgd.png
+#    :width: 600
+#    :align: center
+#    :alt: Sketch of the network architecture for LearnedPGD
+
+from spyrit.core.nnet import Unet
+from spyrit.core.recon import LearnedPGD
+
+# use GPU, if available
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+# Define UNet denoiser
+denoi = Unet()
+
+# Define the LearnedPGD model
+lpgd_net = LearnedPGD(noise_op, prep_op, denoi, iter_stop=3, step_decay=0.9)
