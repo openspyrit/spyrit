@@ -274,9 +274,7 @@ class _Base(nn.Module):
             torch.tensor: The sorted tensor by the given indices along the
             specified axis.
         """
-        return spytorch.reindex(
-            x, self.indices.to(x.device), axis, inverse_permutation
-        )
+        return spytorch.reindex(x, self.indices.to(x.device), axis, inverse_permutation)
 
     def _set_Ord(self, Ord: torch.tensor) -> None:
         """Set the order matrix used to sort the rows of H. This is used in
