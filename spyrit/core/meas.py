@@ -58,6 +58,7 @@ class _Base(nn.Module):
                 + f"({H_static.shape[1]}) does not match the measurement shape "
                 + f"{self._meas_shape}."
             )
+        self._img_shape = self._meas_shape
 
         if Ord is not None:
             H_static, ind = spytorch.sort_by_significance(
@@ -102,6 +103,21 @@ class _Base(nn.Module):
         """Shape of the measurement patterns (height, width). Note that
         `height * width = N`."""
         return self._meas_shape
+
+    @property
+    def img_shape(self) -> tuple:
+        """Shape of the image (height, width)."""
+        return self._img_shape
+
+    @property
+    def img_h(self) -> int:
+        """Height of the image"""
+        return self._img_shape[0]
+
+    @property
+    def img_w(self) -> int:
+        """Width of the image"""
+        return self._img_shape[1]
 
     @property
     def indices(self) -> torch.tensor:
@@ -300,7 +316,38 @@ class _Base(nn.Module):
             torch.cat([H_pos, H_neg], 1).view(2 * H_static.shape[0], H_static.shape[1]),
             requires_grad=False,
         )
+    
+    def _build_pinv(self, tensor: torch.tensor, reg: str, eta: float
+        ) -> torch.tensor:
+        
+        if reg == "L1":
+            pinv = torch.linalg.pinv(tensor, atol=eta)
 
+        elif reg == "L2":
+            if tensor.shape[0] >= tensor.shape[1]:
+                pinv = (
+                    torch.linalg.inv(tensor.T @ tensor 
+                                     + eta * torch.eye(tensor.shape[1]))
+                    @ tensor.T
+                )
+            else:
+                pinv = tensor.T @ torch.linalg.inv(
+                    tensor @ tensor.T + eta * torch.eye(tensor.shape[0])
+                )
+
+        elif reg == "H1":
+            # Boundary condition matrices
+            Dx, Dy = spytorch.neumann_boundary(self.img_shape)
+            D2 = Dx.T @ Dx + Dy.T @ Dy
+            pinv = torch.linalg.inv(tensor.T @ tensor + eta * D2) @ tensor.T
+
+        else:
+            raise NotImplementedError(
+                f"Regularization method '{reg}' is not implemented. Please "
+                + "choose either 'L1', 'L2' or 'H1'."
+            )
+        return pinv
+    
     def _attributeslist(self) -> list:
         _list = [
             ("M", "self.M", _Base),
@@ -349,7 +396,7 @@ class Linear(_Base):
         measurement matrix :math:`H`. If `True`, the pseudo inverse is
         initialized as :math:`H^\dagger` and stored in the attribute
         :attr:`H_pinv`. It is alwats possible to compute and store the pseudo
-        inverse later using the method :meth:`set_H_pinv`. Defaults to `False`.
+        inverse later using the method :meth:`build_H_pinv`. Defaults to `False`.
 
         :attr:`rtol` (float, optional): Cutoff for small singular values (see
         :mod:`torch.linalg.pinv`). Only relevant when :attr:`pinv` is `True`.
@@ -394,7 +441,7 @@ class Linear(_Base):
     .. note::
         If you know the pseudo inverse of :math:`H` and want to store it, it is
         best to initialize the class with :attr:`pinv` set to `False` and then
-        call :meth:`set_H_pinv` to store the pseudo inverse.
+        call :meth:`build_H_pinv` to store the pseudo inverse.
 
     Example 1:
         >>> H = torch.rand([400, 1600])
@@ -431,7 +478,7 @@ class Linear(_Base):
     ):
         super().__init__(H, Ord, meas_shape)
         if pinv:
-            self.set_H_pinv(rtol=rtol)
+            self.build_H_pinv(rtol=rtol)
 
     @property
     def H(self) -> torch.tensor:
@@ -460,9 +507,10 @@ class Linear(_Base):
         )
         return self.H
 
-    def set_H_pinv(self, rtol: float = None) -> None:
+    def build_H_pinv(self, reg: str = 'L1', eta: float = 1e-3) -> None:
         """Used to set the pseudo inverse of the measurement matrix :math:`H`
-        using `torch.linalg.pinv`.
+        using `torch.linalg.pinv`. The result is stored in the attribute
+        :attr:`H_pinv`.
 
         Args:
             rtol (float, optional): Regularization parameter (cutoff for small
@@ -472,7 +520,8 @@ class Linear(_Base):
         Returns:
             None. The pseudo inverse is stored in the attribute :attr:`H_pinv`.
         """
-        self.H_pinv = torch.linalg.pinv(self.H.to(torch.float64), rtol=rtol)
+        pinv = self._build_pinv(self.H_static, reg, eta)
+        self.H_pinv = pinv
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Applies linear transform to incoming images: :math:`y = Hx`.
@@ -534,7 +583,7 @@ class Linear(_Base):
             del self._param_H_static_pinv
             warnings.warn(
                 "The pseudo-inverse H_pinv has been deleted. Please call "
-                + "set_H_pinv() to recompute it."
+                + "build_H_pinv() to recompute it."
             )
         except AttributeError:
             pass
@@ -569,7 +618,7 @@ class LinearSplit(Linear):
         measurement matrix :math:`H`. If `True`, the pseudo inverse is
         initialized as :math:`H^\dagger` and stored in the attribute
         :attr:`H_pinv`. It is alwats possible to compute and store the pseudo
-        inverse later using the method :meth:`set_H_pinv`. Defaults to `False`.
+        inverse later using the method :meth:`build_H_pinv`. Defaults to `False`.
 
         :attr:`rtol` (float, optional): Cutoff for small singular values (see
         :mod:`torch.linalg.pinv`). Only relevant when :attr:`pinv` is `True`.
@@ -617,7 +666,7 @@ class LinearSplit(Linear):
     .. note::
         If you know the pseudo inverse of :math:`H` and want to store it, it is
         best to initialize the class with :attr:`pinv` set to `False` and then
-        call :meth:`set_H_pinv` to store the pseudo inverse.
+        call :meth:`build_H_pinv` to store the pseudo inverse.
 
     .. note::
         :math:`H = H_{+} - H_{-}`
@@ -972,23 +1021,7 @@ class DynamicLinear(_Base):
                     + f"shape. Got image shape {img_shape} and measurement shape "
                     + f"{self.meas_shape}."
                 )
-        else:
-            self._img_shape = self.meas_shape
-
-    @property
-    def img_shape(self) -> tuple:
-        """Shape of the image (height, width)."""
-        return self._img_shape
-
-    @property
-    def img_h(self) -> int:
-        """Height of the image"""
-        return self._img_shape[0]
-
-    @property
-    def img_w(self) -> int:
-        """Width of the image"""
-        return self._img_shape[1]
+        # else, it is done in the _Base class __init__ (set to meas_shape)
 
     @property
     def H(self) -> torch.tensor:
@@ -1032,6 +1065,12 @@ class DynamicLinear(_Base):
                 + "Please call build_H_dyn_pinv() before accessing the attribute "
                 + "H_dyn_pinv (or H_pinv)."
             ) from e
+
+    @H_dyn_pinv.setter
+    def H_dyn_pinv(self, value: torch.tensor) -> None:
+        self._param_H_dyn_pinv = nn.Parameter(
+            value.to(torch.float64), requires_grad=False
+        )
 
     @H_dyn_pinv.deleter
     def H_dyn_pinv(self) -> None:
@@ -1317,34 +1356,8 @@ class DynamicLinear(_Base):
                 "The dynamic measurement matrix H has not been set yet. "
                 + "Please call build_H_dyn() before computing the pseudo-inverse."
             ) from e
-
-        if reg == "L1":
-            pinv = torch.linalg.pinv(H_dyn, atol=eta)
-
-        elif reg == "L2":
-            if H_dyn.shape[0] >= H_dyn.shape[1]:
-                pinv = (
-                    torch.linalg.inv(H_dyn.T @ H_dyn + eta * torch.eye(H_dyn.shape[1]))
-                    @ H_dyn.T
-                )
-            else:
-                pinv = H_dyn.T @ torch.linalg.inv(
-                    H_dyn @ H_dyn.T + eta * torch.eye(H_dyn.shape[0])
-                )
-
-        elif reg == "H1":
-            # Boundary condition matrices
-            Dx, Dy = spytorch.neumann_boundary(self.img_shape)
-            D2 = Dx.T @ Dx + Dy.T @ Dy
-            pinv = torch.linalg.inv(H_dyn.T @ H_dyn + eta * D2) @ H_dyn.T
-
-        else:
-            raise NotImplementedError(
-                f"Regularization method '{reg}' is not implemented. Please "
-                + "choose either 'L1', 'L2' or 'H1'."
-            )
-
-        self._param_H_dyn_pinv = nn.Parameter(pinv, requires_grad=False)
+        pinv = self._build_pinv(H_dyn, reg, eta)
+        self.H_dyn_pinv = pinv
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
