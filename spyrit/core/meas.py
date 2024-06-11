@@ -316,18 +316,18 @@ class _Base(nn.Module):
             torch.cat([H_pos, H_neg], 1).view(2 * H_static.shape[0], H_static.shape[1]),
             requires_grad=False,
         )
-    
-    def _build_pinv(self, tensor: torch.tensor, reg: str, eta: float
-        ) -> torch.tensor:
-        
+
+    def _build_pinv(self, tensor: torch.tensor, reg: str, eta: float) -> torch.tensor:
+
         if reg == "L1":
             pinv = torch.linalg.pinv(tensor, atol=eta)
 
         elif reg == "L2":
             if tensor.shape[0] >= tensor.shape[1]:
                 pinv = (
-                    torch.linalg.inv(tensor.T @ tensor 
-                                     + eta * torch.eye(tensor.shape[1]))
+                    torch.linalg.inv(
+                        tensor.T @ tensor + eta * torch.eye(tensor.shape[1])
+                    )
                     @ tensor.T
                 )
             else:
@@ -347,7 +347,7 @@ class _Base(nn.Module):
                 + "choose either 'L1', 'L2' or 'H1'."
             )
         return pinv
-    
+
     def _attributeslist(self) -> list:
         _list = [
             ("M", "self.M", _Base),
@@ -507,7 +507,7 @@ class Linear(_Base):
         )
         return self.H
 
-    def build_H_pinv(self, reg: str = 'L1', eta: float = 1e-3) -> None:
+    def build_H_pinv(self, reg: str = "L1", eta: float = 1e-3) -> None:
         """Used to set the pseudo inverse of the measurement matrix :math:`H`
         using `torch.linalg.pinv`. The result is stored in the attribute
         :attr:`H_pinv`.
