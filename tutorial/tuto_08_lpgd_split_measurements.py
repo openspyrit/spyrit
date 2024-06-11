@@ -169,6 +169,7 @@ model_net_path = os.path.join(
 if os.path.exists(model_net_path) is False:
     try:
         import gdown
+
         gdown.download(url_lpgd, model_net_path, quiet=False, fuzzy=True)
     except:
         print(f"Model not downloaded from {url_lpgd}!!!")
