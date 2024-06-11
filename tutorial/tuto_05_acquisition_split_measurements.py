@@ -1,18 +1,14 @@
-#!/usr/bin/env python3
 r"""
 05. Acquisition operators (advanced) - Split measurements and subsampling
 =========================================================================
 
 .. _tuto_acquisition_split_measurements:
 
-This tutorial is a continuation of the :ref:`Acquisition operators tutorial <tuto_acquisition_operators>`
-for single-pixel imaging, which showed how to simulate linear measurements using the
-:class:`spyrit.core` submodule (based on three classes :class:`spyrit.core.meas`,
-:class:`spyrit.core.noise`, and :class:`spyrit.core.prep`).
-This tutorial extends the previous case: i) by introducing split measurements that can handle a Hadamard measurement matrix,
-and ii) by discussing the choice of the subsampling pattern for accelerated acquisitions.
+This tutorial is an extension of the Tutorials :ref:`01 <tuto_acquisition_operators>` and :ref:`02 <tuto_pseudoinverse_linear>` where:
 
-These tutorials load image samples from `/images/`.
+* we introduce split measurements to handle a Hadamard measurements,
+
+* we discuss subsampling for accelerated acquisitions.
 """
 
 # %%
@@ -102,29 +98,17 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 
 # %%
 # Subsampling
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
-###############################################################################
-# We simulate an accelerated acquisition by subsampling the measurement matrix.
+######################################################################
+# Subsampling is done by retaining the first :math:`M` rows of a permuted Hadamard matrix :math:`H=GF`, where :math:`G` is a subsampled permutation matrix with shape :math:`(M,N)` and :math:`F` is a "full" Hadamard matrix with shape :math:`(N,N)`.
+
+######################################################################
 # We consider two subsampling strategies:
 #
 # * "Naive subsampling" by retaining only the first :math:`M` rows of the measurement matrix.
 #
-# * "Variance subsampling" by retaining only the first :math:`M` rows of a permuted measurement matrix
-#   where the first rows corresponds to the coefficients with largest variance and the last ones to
-#   the coefficients that are close to constant. The motivation is that almost constant coefficients are less informative than the others.
-#   This can be supported by principal component analysis, which states that preserving the components
-#   with largest variance leads to the best linear predictor.
-
-###############################################################################
-# Subsampling is done by retaining only the first :math:`M` rows of
-# a permuted Hadamard matrix :math:`\textrm{Perm} H`, where :math:`\textrm{Perm}` is a
-# permutation matrix with shape with shape :math:`(M,N)` and :math:`H` is a
-# "full" Hadamard matrix with shape :math:`(N,N)`
-# (see Hadamard matrix in :ref:`tutorial on pseudoinverse solution <sphx_glr_gallery_tuto_02_pseudoinverse_linear.py>`).
-# The permutation matrix :math:`\textrm{Perm}` is obtained from the ordering matrix
-# :math:`\textrm{Ord}` with shape :math:`(h,h)`. This is all handled internally
-# by the :class:`spyrit.core.meas.HadamSplit` class.
+# * "Variance subsampling" by retaining only the first :math:`M` rows of a permuted measurement matrix where the first rows corresponds to the coefficients with largest variance and the last ones to the coefficients that are close to constant. The motivation is that almost constant coefficients are less informative than the others. This can be supported by principal component analysis, which states that preserving the components with largest variance leads to the best linear predictor.
 
 ###############################################################################
 # First, we download the covariance matrix from our warehouse and load it. The covariance matrix
@@ -161,40 +145,35 @@ except:
     Cov = np.eye(h * h)
     print(f"Cov matrix {cov_name} not found! Set to the identity")
 
-###############################################################################
-# We compute the order matrix :math:`Ord` for the two sampling strategies,
-# from the covariance matrix for the "variance subsampling", and from the identity matrix
-# for the "naive subsampling". In the latter case,
-# the order matrix is constant, as all coefficients are considered equally informative,
-# and they are retained in the increasing 'naive' order.
-# We also define the number of measurements :math:`M` that will be used later.
+######################################################################
+# The permutation matrix is defined from a sampling matrix with shape :math:`(\sqrt{N},\sqrt{N})` (see the :mod:`~spyrit.misc.sampling` submodule).
 
+######################################################################
+# We compute the sampling matrix for the "naive" subsampling
 from spyrit.misc.statistics import Cov2Var
 from spyrit.misc.disp import add_colorbar, noaxis
 
-# number of measurements (here, 1/4 of the pixels)
-M = 64 * 64 // 4
 
-# Compute the order matrix
-# "Naive subsampling"
+M = 64 * 64 // 4  # number of measurements (here, 1/4 of the pixels)
 Cov_eye = np.eye(h * h)
 Ord_nai = Cov2Var(Cov_eye)
 
-# "Variance subsampling"
+######################################################################
+# And for the "variance" subsampling
 Ord_var = Cov2Var(Cov)
 
-###############################################################################
-# To provide further insight on the subsampling strategies, we can plot an
-# approximation of the  masks that are used to subsample the measurement matrices.
+#############################################################################
+# Further insight on the two strategies can be gained by plotting the masks corresponding to the sampling matrices.
 
 # sphinx_gallery_thumbnail_number = 2
 
 # Mask for "naive subsampling"
-mask_nai = np.zeros((h, h))
-mask_nai[0 : int(M / h), :] = 1
+idx = np.argsort(-Ord_nai.ravel(), axis=None, kind="stable")
+mask_nai = np.zeros_like(Ord_nai)
+mask_nai.flat[idx[0:M]] = 1
 
 # Mas for "variance subsampling"
-idx = np.argsort(Ord_var.ravel(), axis=None)[::-1]
+idx = np.argsort(-Ord_var.ravel(), axis=None, kind="stable")
 mask_var = np.zeros_like(Ord_var)
 mask_var.flat[idx[0:M]] = 1
 
@@ -212,9 +191,7 @@ add_colorbar(im2, "bottom", size="20%")
 
 ###############################################################################
 # .. note::
-#   Note that in this tutorial the covariance matrix is used only for chosing the subsampling strategy.
-#   Although the covariance matrix can be also exploited to improve the reconstruction,
-#   this will be considered in a future tutorial.
+#   Note that in this tutorial the covariance matrix is used only for choosing the subsampling strategy. Although the covariance matrix can be also exploited to improve the reconstruction, this will be considered in a future tutorial.
 
 # %%
 # Measurement and noise operators
@@ -236,7 +213,7 @@ add_colorbar(im2, "bottom", size="20%")
 
 ###############################################################################
 # We use the :class:`spyrit.core.noise.Poisson` class, set :math:`\alpha`
-# to 100 photons, and simulate a noisy measurement vector for the two sampling strategies.
+# to 100 photons, and simulate a noisy measurement vector for the two sampling strategies. Subsampling is handled internally by the :class:`~spyrit.core.meas.HadamSplit` class.
 
 from spyrit.core.noise import Poisson
 from spyrit.core.meas import HadamSplit
@@ -334,22 +311,19 @@ m_nai_nonoise = prep_nonoise_op(y_nai_nonoise)
 #######################################E########################################
 # We can now plot the three measurement vectors
 
-from spyrit.misc.sampling import meas2img2
+from spyrit.misc.sampling import meas2img
 
 # Plot the three measurement vectors
 m_plot = m_nai_nonoise.numpy()
-m_plot = meas2img2(m_plot.T, Ord_nai)
-m_plot = np.moveaxis(m_plot, -1, 0)
+m_plot = meas2img(m_plot, Ord_nai)
 m_plot_max = np.max(m_plot[0, :, :])
 m_plot_min = np.min(m_plot[0, :, :])
 
 m_plot2 = m_nai.numpy()
-m_plot2 = meas2img2(m_plot2.T, Ord_nai)
-m_plot2 = np.moveaxis(m_plot2, -1, 0)
+m_plot2 = meas2img(m_plot2, Ord_nai)
 
 m_plot3 = m_var.numpy()
-m_plot3 = meas2img2(m_plot3.T, Ord_var)
-m_plot3 = np.moveaxis(m_plot3, -1, 0)
+m_plot3 = meas2img(m_plot3, Ord_var)
 
 f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 7))
 im1 = ax1.imshow(m_plot[0, :, :], cmap="gray")

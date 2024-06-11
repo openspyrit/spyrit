@@ -107,7 +107,7 @@ except:
 
 from spyrit.core.meas import HadamSplit
 from spyrit.core.noise import Poisson
-from spyrit.misc.sampling import meas2img2
+from spyrit.misc.sampling import meas2img
 from spyrit.misc.statistics import Cov2Var
 from spyrit.core.prep import SplitPoisson
 
@@ -117,7 +117,7 @@ alpha = 100.0  # number of photons
 
 # Measurement and noise operators
 Ord = Cov2Var(Cov)
-meas_op = HadamSplit(M, h, Ord)
+meas_op = HadamSplit(M, h, torch.from_numpy(Ord))
 noise_op = Poisson(meas_op, alpha)
 prep_op = SplitPoisson(alpha, meas_op)
 
@@ -130,8 +130,8 @@ y = noise_op(x)  # a noisy measurement vector
 m = prep_op(y)  # preprocessed measurement vector
 
 m_plot = m.detach().numpy()
-m_plot = meas2img2(m_plot.T, Ord)
-imagesc(m_plot, r"Measurements $m$")
+m_plot = meas2img(m_plot, Ord)
+imagesc(m_plot[0, :, :], r"Measurements $m$")
 
 # %%
 # DRUNet denoising

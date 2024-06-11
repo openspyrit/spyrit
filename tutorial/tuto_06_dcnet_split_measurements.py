@@ -1,23 +1,22 @@
-#!/usr/bin/env python3
 r"""
 =========================================
 06. Denoised Completion Network (DCNet)
 =========================================
 .. _tuto_dcnet_split_measurements:
+This tutorial shows how to perform image reconstruction using the denoised
+completion network (DCNet) with a trainable image denoiser. In the next
+tutorial, we will plug a denoiser into a DCNet, which requires no training.
 
-This tutorial shows how to perform image reconstruction using the denoised completion network (DCNet) with a trainable image denoiser. In the next tutorial, we will plug a denoiser into a DCNet, which requires no training.
-
-.. figure:: ../fig/tuto6.png
+.. figure:: ../fig/tuto3.png
    :width: 600
    :align: center
    :alt: Reconstruction and neural network denoising architecture sketch using split measurements
-
 """
 
 ######################################################################
 # .. note::
-#
-#       As in the previous tutorials, we consider a split Hadamard operator and measurements corrupted by Poisson noise (see :ref:`Tutorial 5 <tuto_acquisition_split_measurements>`).
+#   As in the previous tutorials, we consider a split Hadamard operator and
+#   measurements corrupted by Poisson noise (see :ref:`Tutorial 5 <tuto_acquisition_split_measurements>`).
 
 # %%
 # Load a batch of images
@@ -79,10 +78,8 @@ import numpy as np
 
 # api Rest url of the warehouse
 url = "https://pilot-warehouse.creatis.insa-lyon.fr/api/v1"
-
 # Generate the warehouse client
 gc = girder_client.GirderClient(apiUrl=url)
-
 # Download the covariance matrix and mean image
 data_folder = "./stat/"
 dataId_list = [
@@ -90,7 +87,6 @@ dataId_list = [
     "63935a224d15dd536f048496",  # for reconstruction (imageNet, 64)
 ]
 cov_name = "./stat/Cov_64x64.npy"
-
 try:
     Cov = np.load(cov_name)
     print(f"Cov matrix {cov_name} loaded")
@@ -98,9 +94,7 @@ except FileNotFoundError:
     for dataId in dataId_list:
         myfile = gc.getFile(dataId)
         gc.downloadFile(dataId, data_folder + myfile["name"])
-
     print(f"Created {data_folder}")
-
     Cov = np.load(cov_name)
     print(f"Cov matrix {cov_name} loaded")
 except:
@@ -112,7 +106,7 @@ except:
 
 from spyrit.core.meas import HadamSplit
 from spyrit.core.noise import Poisson
-from spyrit.misc.sampling import meas2img2
+from spyrit.misc.sampling import meas2img
 from spyrit.misc.statistics import Cov2Var
 from spyrit.core.prep import SplitPoisson
 
@@ -122,21 +116,20 @@ alpha = 100.0  # number of photons
 
 # Measurement and noise operators
 Ord = Cov2Var(Cov)
-meas_op = HadamSplit(M, h, Ord)
+meas_op = HadamSplit(M, h, torch.from_numpy(Ord))
 noise_op = Poisson(meas_op, alpha)
 prep_op = SplitPoisson(alpha, meas_op)
 
 # Vectorize image
 x = x.view(b * c, h * w)
 print(f"Shape of vectorized image: {x.shape}")
-
 # Measurements
 y = noise_op(x)  # a noisy measurement vector
 m = prep_op(y)  # preprocessed measurement vector
 
 m_plot = m.detach().numpy()
-m_plot = meas2img2(m_plot.T, Ord)
-imagesc(m_plot, r"Measurements $m$")
+m_plot = meas2img(m_plot, Ord)
+imagesc(m_plot[0, :, :], r"Measurements $m$")
 
 # %%
 # Pseudo inverse solution
@@ -242,7 +235,6 @@ model_unet_path = os.path.join(
     model_path,
     "dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth",
 )
-
 load_unet = True
 if os.path.exists(model_unet_path) is False:
     try:
@@ -252,7 +244,6 @@ if os.path.exists(model_unet_path) is False:
     except:
         print(f"Model {model_unet_path} not found!")
         load_unet = False
-
 if load_unet:
     # Load pretrained model
     load_net(model_unet_path, dcnet_unet, device, False)

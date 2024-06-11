@@ -4,6 +4,10 @@
 #   See LICENSE.md for further details
 # -----------------------------------------------------------------------------
 
+"""This module contains miscellaneous Numpy / Pytorch functions and classes that are used in the
+Spyrit package.
+"""
+
 # from .disp import *
 # from .metrics import *
 # from .wlash_hadamard import *

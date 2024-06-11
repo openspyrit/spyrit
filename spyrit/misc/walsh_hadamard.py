@@ -34,9 +34,10 @@ __status__ = "Development"
 
 import math
 import numpy as np
-from scipy.linalg import hadamard
 from sympy.combinatorics.graycode import GrayCode
 import torch
+
+import spyrit.core.torch as spytorch
 
 
 # ------------------------------------------------------------------------------
@@ -224,12 +225,7 @@ def walsh_matrix(n):
     # return P @ H
 
     # check that the input is a power of 2
-    if n < 1:
-        lg2 = 0
-    else:
-        lg2 = int(math.log(n, 2))
-    if 2**lg2 != n:
-        raise ValueError("n must be an positive integer, and n must be " "a power of 2")
+    spytorch.assert_power_of_2(n, raise_error=True)
 
     # define recursive function
     def recursive_walsh(k):

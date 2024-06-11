@@ -14,6 +14,7 @@ from scipy import signal
 from scipy import misc
 from scipy import sparse
 import torch
+import math
 
 
 def display_vid(video, fps, title="", colormap=plt.cm.gray):
@@ -174,6 +175,7 @@ def imagesc(
         cax = plt.axes([0.85, 0.1, 0.075, 0.8])
         plt.colorbar(cax=cax, orientation="vertical")
 
+    # fig.tight_layout() # it raises warnings in some cases
     if show is True:
         plt.show()
 
