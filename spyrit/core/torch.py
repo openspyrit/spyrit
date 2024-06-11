@@ -239,7 +239,7 @@ def neumann_boundary(img_shape):
 
     Returns:
         :class:`torch.tensor`: The finite difference matrix.
-        
+
     .. note::
         This function returns the same matrix as :func:`finite_diff_mat` with
         the Neumann boundary condition. Internal implementation is different
