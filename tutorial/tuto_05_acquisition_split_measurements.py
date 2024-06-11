@@ -166,16 +166,16 @@ Ord_var = Cov2Var(Cov)
 # Further insight on the two strategies can be gained by plotting the masks corresponding to the sampling matrices.
 
 # sphinx_gallery_thumbnail_number = 2
+from spyrit.misc.sampling import sort_by_significance
+
+mask_basis = np.zeros((h, h))
+mask_basis.flat[:M] = 1
 
 # Mask for "naive subsampling"
-idx = np.argsort(-Ord_nai.ravel(), axis=None, kind="stable")
-mask_nai = np.zeros_like(Ord_nai)
-mask_nai.flat[idx[0:M]] = 1
+mask_nai = sort_by_significance(mask_basis, Ord_nai, axis="flatten")
 
-# Mas for "variance subsampling"
-idx = np.argsort(-Ord_var.ravel(), axis=None, kind="stable")
-mask_var = np.zeros_like(Ord_var)
-mask_var.flat[idx[0:M]] = 1
+# Mask for "variance subsampling"
+mask_var = sort_by_significance(mask_basis, Ord_var, axis="flatten")
 
 # Plot the masks
 f, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))

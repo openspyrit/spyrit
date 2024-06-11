@@ -117,6 +117,44 @@ class UNetRes(nn.Module):
 
 
 class DRUNet(UNetRes):
+    r"""Plug-and-Play Image Restoration with Deep Denoiser Prior.
+    DRUNet is a pretrained plug-and-play denoising network that has been pretrained for a wide range of noise levels.
+    It admits the noise level as an input, so it does not require training.
+    DRUNet was proposed in the work
+
+    [ZhLZ21] K. Zhang et al., Plug-and-Play Image Restoration with Deep Denoiser Prior. In: IEEE Transactions on Pattern Analysis and Machine Intelligence, 44(10), 6360-6376, 2021.
+
+    Original Code: https://github.com/cszn/DPIR/blob/master/models/network_unet.py
+
+    Args:
+        :attr:`noise_level` (float): noise level value in the range [0, 255].
+        This is used to create a noise level map that is concatenated to the input images.
+
+        :attr:`n_channels` (int): number of image channels
+
+        :attr:`nc` (list of int): number of features
+
+        :attr:`nb` (int): number of residual blocks
+
+        :attr:`act_mode` (str): activation function mode
+
+        :attr:`downsample_mode` (str): downsample mode
+
+        :attr:`upsample_mode` (str): upsample mode
+
+    Input / Output:
+        :attr:`x`: input images with shape (:math:`B`, :attr:`n_channels`, :math:`H`, :math:`W`).
+
+        :attr:`output`: denoised images with shape (:math:`B`, :attr:`n_channels`, :math:`H`, :math:`W`).
+
+    Attributes:
+        :attr:`noise_level` (tensor): noise level tensor with shape :math:`(1)`.
+
+    .. note::
+        :class:`~spyrit.external.drunet.DRUNet` has been tested only with :attr:`n_channels` =1 but
+        :class:`~spyrit.external.drunet.UNetRes` can be used with :attr:`n_channels` >1.
+    """
+
     def __init__(
         self,
         noise_level=5,

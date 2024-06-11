@@ -20,7 +20,7 @@ import torchvision
 
 
 def assert_power_of_2(n, raise_error=True):
-    """Asserts that n is a power of 2.
+    r"""Asserts that n is a power of 2.
 
     Args:
         n (int): The number to check.
@@ -46,7 +46,7 @@ def assert_power_of_2(n, raise_error=True):
 
 
 def finite_diff_mat(n, boundary="dirichlet"):
-    """
+    r"""
     Creates a finite difference matrix of shape :math:`(n^2,n^2)` for a 2D
     image of shape :math:`(n,n)`.
 
@@ -138,7 +138,7 @@ def finite_diff_mat(n, boundary="dirichlet"):
 
 
 def walsh_matrix(n):
-    """Returns a 1D Walsh-ordered Hadamard transform matrix of size
+    r"""Returns a 1D Walsh-ordered Hadamard transform matrix of size
     :math:`n \times n`.
 
     Args:
@@ -178,7 +178,7 @@ def walsh_matrix(n):
 
 
 def walsh2_matrix(n):
-    """Returns Walsh-ordered Hadamard matrix in 2D.
+    r"""Returns Walsh-ordered Hadamard matrix in 2D.
 
     Args:
         n (int): Order of the matrix, which must be a power of two.
@@ -195,7 +195,7 @@ def walsh2_matrix(n):
 
 
 def walsh2_torch(img, H=None):
-    """Returns a 2D Walsh-ordered Hadamard transform of an image.
+    r"""Returns a 2D Walsh-ordered Hadamard transform of an image.
 
     Args:
         img (torch.tensor): Image to transform. Must have a shape of
@@ -240,6 +240,11 @@ def reindex(  # previously sort_by_indices
     The indices tensor contains the new indices of the elements in the values
     tensor. `values[0]` will be placed at the index `indices[0]`, `values[1]`
     at `indices[1]`, and so on.
+
+    Using the inverse permutation allows to revert the permutation: in this
+    case, it is the element at index `indices[0]` that will be placed at the
+    index `0`, the element at index `indices[1]` that will be placed at the
+    index `1`, and so on.
 
     Args:
         values (torch.tensor): The tensor to sort. Can be 1D, 2D, or any
@@ -307,36 +312,34 @@ def sort_by_significance(
     significance, and so on. The significance tensor `sig` must have the same
     shape as `values` along the specified axis.
 
-    .. note::
-        This function is equivalent to (but much faster than) the following
-        code::
+    This function is equivalent to (but much faster than) the following code::
 
-        from spyrit.core.torch import Permutation_Matrix
+    from spyrit.core.torch import Permutation_Matrix
 
-        h = 64
-        values = torch.randn(2*h, h)
-        sig_rows = torch.randn(2*h)
-        sig_cols = torch.randn(h)
+    h = 64
+    values = torch.randn(2*h, h)
+    sig_rows = torch.randn(2*h)
+    sig_cols = torch.randn(h)
 
-        # 1
-        y1 = sort_by_significance(values, sig_rows, 'rows', False)
-        y2 = Permutation_Matrix(sig_rows) @ values
-        assert torch.allclose(y1, y2) # True
+    # 1
+    y1 = sort_by_significance(values, sig_rows, 'rows', False)
+    y2 = Permutation_Matrix(sig_rows) @ values
+    assert torch.allclose(y1, y2) # True
 
-        # 2
-        y1 = sort_by_significance(values, sig_rows, 'rows', True)
-        y2 = Permutation_Matrix(sig_rows).T @ values
-        assert torch.allclose(y1, y2) # True
+    # 2
+    y1 = sort_by_significance(values, sig_rows, 'rows', True)
+    y2 = Permutation_Matrix(sig_rows).T @ values
+    assert torch.allclose(y1, y2) # True
 
-        # 3
-        y1 = sort_by_significance(values, sig_cols, 'cols', False)
-        y2 = values @ Permutation_Matrix(sig_cols)
-        assert torch.allclose(y1, y2) # True
+    # 3
+    y1 = sort_by_significance(values, sig_cols, 'cols', False)
+    y2 = values @ Permutation_Matrix(sig_cols)
+    assert torch.allclose(y1, y2) # True
 
-        # 4
-        y1 = sort_by_significance(values, sig_cols, 'cols', True)
-        y2 = values @ Permutation_Matrix(sig_cols).T
-        assert torch.allclose(y1, y2) # True
+    # 4
+    y1 = sort_by_significance(values, sig_cols, 'cols', True)
+    y2 = values @ Permutation_Matrix(sig_cols).T
+    assert torch.allclose(y1, y2) # True
 
     Args:
         values (torch.tensor): Tensor to sort by significance. Can be 1D, 2D,
