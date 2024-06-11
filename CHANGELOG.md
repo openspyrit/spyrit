@@ -37,7 +37,8 @@
 ### spyrit.core
 
 * #### spyrit.core.meas
-    * The dynamic classes now support bicubic dynamic reconstruction (spyrit.core.meas.DynamicLinear.build_h_dyn()). This uses cubic B-splines.
+    * \+ For static classes, self.set_H_pinv has been renamed to self.build_H_pinv to match with the dynamic classes.
+    * \+ The dynamic classes now support bicubic dynamic reconstruction (spyrit.core.meas.DynamicLinear.build_h_dyn()). This uses cubic B-splines.
 * #### spyrit.core.train
     * load_net() must take the full path, **with** the extension name (xyz.pth).
 
