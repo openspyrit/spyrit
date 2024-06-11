@@ -478,7 +478,7 @@ class Linear(_Base):
     ):
         super().__init__(H, Ord, meas_shape)
         if pinv:
-            self.build_H_pinv(reg='L1', eta=rtol)
+            self.build_H_pinv(reg="L1", eta=rtol)
 
     @property
     def H(self) -> torch.tensor:
