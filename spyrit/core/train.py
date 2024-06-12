@@ -823,7 +823,7 @@ def load_net(title, model, device=None, strict=True):
         print("Model Loaded: {}".format(title))
     except:
         if os.path.isfile(model_out_path):
-            print("Model no loaded at {}".format(model_out_path))
+            print("Model not loaded at {}".format(model_out_path))
         else:
             print("Model not found at {}".format(model_out_path))
 
