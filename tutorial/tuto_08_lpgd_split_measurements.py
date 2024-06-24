@@ -43,37 +43,37 @@ Instead, code blocks are provided and images are downloaded.
 # sphinx_gallery_thumbnail_path = 'fig/lpgd.png'
 
 # .. code-block:: python
-    # import os
-    # import numpy as np
-    # from spyrit.misc.disp import imagesc
+# import os
+# import numpy as np
+# from spyrit.misc.disp import imagesc
 
-    # from spyrit.misc.statistics import transform_gray_norm
-    # import torchvision
-    # import torch
+# from spyrit.misc.statistics import transform_gray_norm
+# import torchvision
+# import torch
 
-    # h = 128  # image size hxh
-    # i = 1  # Image index (modify to change the image)
-    # spyritPath = os.getcwd()
-    # imgs_path = os.path.join(spyritPath, "images")
+# h = 128  # image size hxh
+# i = 1  # Image index (modify to change the image)
+# spyritPath = os.getcwd()
+# imgs_path = os.path.join(spyritPath, "images")
 
-    # # Create a transform for natural images to normalized grayscale image tensors
-    # transform = transform_gray_norm(img_size=h)
+# # Create a transform for natural images to normalized grayscale image tensors
+# transform = transform_gray_norm(img_size=h)
 
-    # # Create dataset and loader (expects class folder 'images/test/')
-    # dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
-    # dataloader = torch.utils.data.DataLoader(dataset, batch_size=7)
+# # Create dataset and loader (expects class folder 'images/test/')
+# dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
+# dataloader = torch.utils.data.DataLoader(dataset, batch_size=7)
 
-    # x, _ = next(iter(dataloader))
-    # print(f"Shape of input images: {x.shape}") # torch.Size([7, 1, 128, 128])
+# x, _ = next(iter(dataloader))
+# print(f"Shape of input images: {x.shape}") # torch.Size([7, 1, 128, 128])
 
-    # # Select image
-    # x = x[i : i + 1, :, :, :]
-    # x = x.detach().clone()
-    # b, c, h, w = x.shape
+# # Select image
+# x = x[i : i + 1, :, :, :]
+# x = x.detach().clone()
+# b, c, h, w = x.shape
 
-    # # plot
-    # x_plot = x.view(-1, h, h).cpu().numpy()
-    # imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
+# # plot
+# x_plot = x.view(-1, h, h).cpu().numpy()
+# imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 
 # %%
 # Forward operators for split measurements
@@ -91,40 +91,40 @@ Instead, code blocks are provided and images are downloaded.
 # by retaining only the first rows of a Hadamard matrix.
 
 # .. code-block:: python
-    # from spyrit.core.meas import HadamSplit
-    # from spyrit.core.noise import Poisson
-    # from spyrit.misc.sampling import meas2img
-    # from spyrit.misc.statistics import Cov2Var 
-    # from spyrit.core.prep import SplitPoisson
+# from spyrit.core.meas import HadamSplit
+# from spyrit.core.noise import Poisson
+# from spyrit.misc.sampling import meas2img
+# from spyrit.misc.statistics import Cov2Var
+# from spyrit.core.prep import SplitPoisson
 
-    # import math
+# import math
 
-    # # Measurement parameters
-    # M = 4096  # Number of measurements (here, 1/4 of the pixels)
-    # alpha = 10.0  # number of photons
+# # Measurement parameters
+# M = 4096  # Number of measurements (here, 1/4 of the pixels)
+# alpha = 10.0  # number of photons
 
-    # # Sampling: rectangular matrix
-    # Ord_rec = np.ones((h, h))
-    # n_sub = math.ceil(M**0.5)
-    # Ord_rec[:, n_sub:] = 0
-    # Ord_rec[n_sub:, :] = 0
+# # Sampling: rectangular matrix
+# Ord_rec = np.ones((h, h))
+# n_sub = math.ceil(M**0.5)
+# Ord_rec[:, n_sub:] = 0
+# Ord_rec[n_sub:, :] = 0
 
-    # # Measurement and noise operators
-    # meas_op = HadamSplit(M, h, torch.from_numpy(Ord_rec))
-    # noise_op = Poisson(meas_op, alpha)
-    # prep_op = SplitPoisson(alpha, meas_op)
+# # Measurement and noise operators
+# meas_op = HadamSplit(M, h, torch.from_numpy(Ord_rec))
+# noise_op = Poisson(meas_op, alpha)
+# prep_op = SplitPoisson(alpha, meas_op)
 
-    # # Vectorize image
-    # x = x.view(b * c, h * w)
-    # print(f"Shape of vectorized image: {x.shape}") # torch.Size([1, 16384])
+# # Vectorize image
+# x = x.view(b * c, h * w)
+# print(f"Shape of vectorized image: {x.shape}") # torch.Size([1, 16384])
 
-    # # Measurements
-    # y = noise_op(x)  # a noisy measurement vector
-    # m = prep_op(y)  # preprocessed measurement vector
+# # Measurements
+# y = noise_op(x)  # a noisy measurement vector
+# m = prep_op(y)  # preprocessed measurement vector
 
-    # m_plot = m.detach().numpy()
-    # m_plot = meas2img(m_plot, Ord_rec)
-    # imagesc(m_plot[0, :, :], r"Measurements $m$")
+# m_plot = m.detach().numpy()
+# m_plot = meas2img(m_plot, Ord_rec)
+# imagesc(m_plot[0, :, :], r"Measurements $m$")
 
 ###############################################################################
 # We define the LearnedPGD network by providing the measurement, noise and preprocessing operators,
@@ -142,17 +142,17 @@ Instead, code blocks are provided and images are downloaded.
 #    :alt: Sketch of the network architecture for LearnedPGD
 
 # .. code-block:: python
-    # from spyrit.core.nnet import Unet
-    # from spyrit.core.recon import LearnedPGD
+# from spyrit.core.nnet import Unet
+# from spyrit.core.recon import LearnedPGD
 
-    # # use GPU, if available
-    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# # use GPU, if available
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # # Define UNet denoiser
-    # denoi = Unet()
+# # Define UNet denoiser
+# denoi = Unet()
 
-    # # Define the LearnedPGD model
-    # lpgd_net = LearnedPGD(noise_op, prep_op, denoi, iter_stop=3, step_decay=0.9)
+# # Define the LearnedPGD model
+# lpgd_net = LearnedPGD(noise_op, prep_op, denoi, iter_stop=3, step_decay=0.9)
 
 ###############################################################################
 # Now, we download the pretrained weights and load them into the LPGD network.
