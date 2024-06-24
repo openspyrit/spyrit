@@ -146,7 +146,7 @@ class _Base(nn.Module):
 
     ### -------------------
 
-    def pinv(self, x: torch.tensor, reg: str = 'L1', eta: float = 1e-3) -> torch.tensor:
+    def pinv(self, x: torch.tensor, reg: str = "L1", eta: float = 1e-3) -> torch.tensor:
         r"""Computes the pseudo inverse solution :math:`y = H^\dagger x`.
 
         This method will compute the pseudo inverse solution using the

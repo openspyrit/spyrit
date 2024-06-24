@@ -150,67 +150,67 @@ lpgd_net = LearnedPGD(noise_op, prep_op, denoi, iter_stop=3, step_decay=0.9)
 
 ###############################################################################
 # Now, we download the pretrained weights and load them into the LPGD network.
-# Unfortunately, the pretrained weights are too heavy (2GB) to be downloaded 
+# Unfortunately, the pretrained weights are too heavy (2GB) to be downloaded
 # here. The last figure is nonetheless displayed to show the results.
 #
 # .. code-block:: python
 
-    # from spyrit.core.train import load_net
+# from spyrit.core.train import load_net
 
-    # # Download weights
-    # model_path = "./model"
-    # if os.path.exists(model_path) is False:
-    #     os.mkdir(model_path)
-    #     print(f"Created {model_path}")
+# # Download weights
+# model_path = "./model"
+# if os.path.exists(model_path) is False:
+#     os.mkdir(model_path)
+#     print(f"Created {model_path}")
 
-    # url_lpgd = "https://drive.google.com/file/d/1ki_cJQEwBWrpDhtE7-HoSEoY8oJUnUz5/view?usp=drive_link"
-    # model_net_path = os.path.join(
-    #     model_path,
-    #     "lpgd_unet_imagenet_N0_10_m_hadam-split_N_128_M_4096_epo_30_lr_0.001_sss_10_sdr_0.5_bs_128_reg_1e-07_uit_3_sdec0-9.pth",
-    # )
+# url_lpgd = "https://drive.google.com/file/d/1ki_cJQEwBWrpDhtE7-HoSEoY8oJUnUz5/view?usp=drive_link"
+# model_net_path = os.path.join(
+#     model_path,
+#     "lpgd_unet_imagenet_N0_10_m_hadam-split_N_128_M_4096_epo_30_lr_0.001_sss_10_sdr_0.5_bs_128_reg_1e-07_uit_3_sdec0-9.pth",
+# )
 
-    # if os.path.exists(model_net_path) is False:
-    #     try:
-    #         import gdown
+# if os.path.exists(model_net_path) is False:
+#     try:
+#         import gdown
 
-    #         gdown.download(url_lpgd, model_net_path, quiet=False, fuzzy=True)
-    #     except:
-    #         print(f"Model not downloaded from {url_lpgd}!!!")
+#         gdown.download(url_lpgd, model_net_path, quiet=False, fuzzy=True)
+#     except:
+#         print(f"Model not downloaded from {url_lpgd}!!!")
 
-    # # Load pretrained weights to the model
-    # load_net(model_net_path, lpgd_net, device, strict=False)
+# # Load pretrained weights to the model
+# load_net(model_net_path, lpgd_net, device, strict=False)
 
-    # lpgd_net.eval()
-    # lpgd_net.to(device)
+# lpgd_net.eval()
+# lpgd_net.to(device)
 
 ###############################################################################
 # We reconstruct by calling the reconstruct method as in previous tutorials
 # and display the results.
-# 
+#
 # .. code-block:: python
 
-    # import matplotlib.pyplot as plt
-    # from spyrit.misc.disp import add_colorbar, noaxis
+# import matplotlib.pyplot as plt
+# from spyrit.misc.disp import add_colorbar, noaxis
 
-    # with torch.no_grad():
-    #     z_lpgd = lpgd_net.reconstruct(y.to(device))
+# with torch.no_grad():
+#     z_lpgd = lpgd_net.reconstruct(y.to(device))
 
-    # # Plot results
-    # x_plot = x.view(-1, h, h).cpu().numpy()
-    # x_plot2 = z_lpgd.view(-1, h, h).cpu().numpy()
+# # Plot results
+# x_plot = x.view(-1, h, h).cpu().numpy()
+# x_plot2 = z_lpgd.view(-1, h, h).cpu().numpy()
 
-    # f, axs = plt.subplots(2, 1, figsize=(10, 10))
-    # im1 = axs[0].imshow(x_plot[0, :, :], cmap="gray")
-    # axs[0].set_title("Ground-truth image", fontsize=16)
-    # noaxis(axs[0])
-    # add_colorbar(im1, "bottom")
+# f, axs = plt.subplots(2, 1, figsize=(10, 10))
+# im1 = axs[0].imshow(x_plot[0, :, :], cmap="gray")
+# axs[0].set_title("Ground-truth image", fontsize=16)
+# noaxis(axs[0])
+# add_colorbar(im1, "bottom")
 
-    # im2 = axs[1].imshow(x_plot2[0, :, :], cmap="gray")
-    # axs[1].set_title("LPGD", fontsize=16)
-    # noaxis(axs[1])
-    # add_colorbar(im2, "bottom")
+# im2 = axs[1].imshow(x_plot2[0, :, :], cmap="gray")
+# axs[1].set_title("LPGD", fontsize=16)
+# noaxis(axs[1])
+# add_colorbar(im2, "bottom")
 
-    # plt.show()
+# plt.show()
 
 ###############################################################################
 # .. image:: https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1/file/66798540baa5a9000705894c/download
