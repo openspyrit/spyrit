@@ -41,7 +41,7 @@ Instead, code blocks are provided and images are downloaded.
 # using the :func:`transform_gray_norm` function.
 
 # sphinx_gallery_thumbnail_path = 'fig/lpgd.png'
-if __name__ == "__main__":
+if False:
 
 ###############################################################################
 # .. code-block:: python
