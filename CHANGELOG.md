@@ -45,6 +45,7 @@
 ### Tutorials
 
 * Tutorial 6 has been changed accordingly to the modification of spyrit.core.train.load_net().
+* Tutorial 8 is now available. 
 
 </details>
 
