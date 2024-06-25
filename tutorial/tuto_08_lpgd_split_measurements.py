@@ -45,7 +45,7 @@ be generated if the code was run.
 
 if False:
     import os
-    
+
     import torch
     import torchvision
     import numpy as np
@@ -95,7 +95,7 @@ if False:
 
 if False:
     import math
-    
+
     from spyrit.core.meas import HadamSplit
     from spyrit.core.noise import Poisson
     from spyrit.core.prep import SplitPoisson
@@ -182,6 +182,7 @@ if False:
     if os.path.exists(model_net_path) is False:
         try:
             import gdown
+
             gdown.download(url_lpgd, model_net_path, quiet=False, fuzzy=True)
         except:
             print(f"Model not downloaded from {url_lpgd}!!!")
@@ -198,7 +199,7 @@ if False:
 
 if False:
     import matplotlib.pyplot as plt
-    
+
     from spyrit.misc.disp import add_colorbar, noaxis
 
     with torch.no_grad():
