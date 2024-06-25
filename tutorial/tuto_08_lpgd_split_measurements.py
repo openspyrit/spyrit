@@ -223,6 +223,6 @@ if False:
 
 ###############################################################################
 # .. image:: https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1/item/6679853fbaa5a9000705894b/download
-#    :width: 600
+#    :width: 400
 #    :align: center
 #    :alt: Comparison of ground-truth image and LPGD reconstruction
