@@ -42,182 +42,180 @@ Instead, code blocks are provided and images are downloaded.
 
 # sphinx_gallery_thumbnail_path = 'fig/lpgd.png'
 
-if False:
+###############################################################################
+# .. code-block:: python
+import os
+import numpy as np
+from spyrit.misc.disp import imagesc
 
-    ###############################################################################
-    # .. code-block:: python
-    import os
-    import numpy as np
-    from spyrit.misc.disp import imagesc
+from spyrit.misc.statistics import transform_gray_norm
+import torchvision
+import torch
 
-    from spyrit.misc.statistics import transform_gray_norm
-    import torchvision
-    import torch
+h = 128  # image size hxh
+i = 1  # Image index (modify to change the image)
+spyritPath = os.getcwd()
+imgs_path = os.path.join(spyritPath, "images")
 
-    h = 128  # image size hxh
-    i = 1  # Image index (modify to change the image)
-    spyritPath = os.getcwd()
-    imgs_path = os.path.join(spyritPath, "images")
+# Create a transform for natural images to normalized grayscale image tensors
+transform = transform_gray_norm(img_size=h)
 
-    # Create a transform for natural images to normalized grayscale image tensors
-    transform = transform_gray_norm(img_size=h)
+# Create dataset and loader (expects class folder 'images/test/')
+dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=7)
 
-    # Create dataset and loader (expects class folder 'images/test/')
-    dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=7)
+x, _ = next(iter(dataloader))
+print(f"Shape of input images: {x.shape}")  # torch.Size([7, 1, 128, 128])
 
-    x, _ = next(iter(dataloader))
-    print(f"Shape of input images: {x.shape}")  # torch.Size([7, 1, 128, 128])
+# Select image
+x = x[i : i + 1, :, :, :]
+x = x.detach().clone()
+b, c, h, w = x.shape
 
-    # Select image
-    x = x[i : i + 1, :, :, :]
-    x = x.detach().clone()
-    b, c, h, w = x.shape
+# plot
+x_plot = x.view(-1, h, h).cpu().numpy()
+imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 
-    # plot
-    x_plot = x.view(-1, h, h).cpu().numpy()
-    imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
+# %%
+# Forward operators for split measurements
+# -----------------------------------------------------------------------------
 
-    # %%
-    # Forward operators for split measurements
-    # -----------------------------------------------------------------------------
+###############################################################################
+# We consider noisy split measurements for a Hadamard operator and a simple
+# rectangular subsampling” strategy
+# (for more details, refer to :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`).
+#
+#
+# We define the measurement, noise and preprocessing operators and then
+# simulate a measurement vector :math:`y` corrupted by Poisson noise. As in the previous tutorial,
+# we simulate an accelerated acquisition by subsampling the measurement matrix
+# by retaining only the first rows of a Hadamard matrix.
 
-    ###############################################################################
-    # We consider noisy split measurements for a Hadamard operator and a simple
-    # rectangular subsampling” strategy
-    # (for more details, refer to :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`).
-    #
-    #
-    # We define the measurement, noise and preprocessing operators and then
-    # simulate a measurement vector :math:`y` corrupted by Poisson noise. As in the previous tutorial,
-    # we simulate an accelerated acquisition by subsampling the measurement matrix
-    # by retaining only the first rows of a Hadamard matrix.
+# .. code-block:: python
+from spyrit.core.meas import HadamSplit
+from spyrit.core.noise import Poisson
+from spyrit.misc.sampling import meas2img
+from spyrit.misc.statistics import Cov2Var
+from spyrit.core.prep import SplitPoisson
 
-    # .. code-block:: python
-    from spyrit.core.meas import HadamSplit
-    from spyrit.core.noise import Poisson
-    from spyrit.misc.sampling import meas2img
-    from spyrit.misc.statistics import Cov2Var
-    from spyrit.core.prep import SplitPoisson
+import math
 
-    import math
+# Measurement parameters
+M = 4096  # Number of measurements (here, 1/4 of the pixels)
+alpha = 10.0  # number of photons
 
-    # Measurement parameters
-    M = 4096  # Number of measurements (here, 1/4 of the pixels)
-    alpha = 10.0  # number of photons
+# Sampling: rectangular matrix
+Ord_rec = np.ones((h, h))
+n_sub = math.ceil(M**0.5)
+Ord_rec[:, n_sub:] = 0
+Ord_rec[n_sub:, :] = 0
 
-    # Sampling: rectangular matrix
-    Ord_rec = np.ones((h, h))
-    n_sub = math.ceil(M**0.5)
-    Ord_rec[:, n_sub:] = 0
-    Ord_rec[n_sub:, :] = 0
+# Measurement and noise operators
+meas_op = HadamSplit(M, h, torch.from_numpy(Ord_rec))
+noise_op = Poisson(meas_op, alpha)
+prep_op = SplitPoisson(alpha, meas_op)
 
-    # Measurement and noise operators
-    meas_op = HadamSplit(M, h, torch.from_numpy(Ord_rec))
-    noise_op = Poisson(meas_op, alpha)
-    prep_op = SplitPoisson(alpha, meas_op)
+# Vectorize image
+x = x.view(b * c, h * w)
+print(f"Shape of vectorized image: {x.shape}")  # torch.Size([1, 16384])
 
-    # Vectorize image
-    x = x.view(b * c, h * w)
-    print(f"Shape of vectorized image: {x.shape}")  # torch.Size([1, 16384])
+# Measurements
+y = noise_op(x)  # a noisy measurement vector
+m = prep_op(y)  # preprocessed measurement vector
 
-    # Measurements
-    y = noise_op(x)  # a noisy measurement vector
-    m = prep_op(y)  # preprocessed measurement vector
+m_plot = m.detach().numpy()
+m_plot = meas2img(m_plot, Ord_rec)
+imagesc(m_plot[0, :, :], r"Measurements $m$")
 
-    m_plot = m.detach().numpy()
-    m_plot = meas2img(m_plot, Ord_rec)
-    imagesc(m_plot[0, :, :], r"Measurements $m$")
+###############################################################################
+# We define the LearnedPGD network by providing the measurement, noise and preprocessing operators,
+# the denoiser and other optional parameters to the class :class:`spyrit.core.recon.LearnedPGD`.
+# The optional parameters include the number of unrolled iterations (`iter_stop`)
+# and the step size decay factor (`step_decay`).
+# We choose Unet as the denoiser, as in previous tutorials.
+# For the optional parameters, we use three iterations and a step size decay
+# factor of 0.9, which worked well on this data (this should match the parameters
+# used during training).
+#
+# .. image:: ../fig/lpgd.png
+#    :width: 600
+#    :align: center
+#    :alt: Sketch of the network architecture for LearnedPGD
 
-    ###############################################################################
-    # We define the LearnedPGD network by providing the measurement, noise and preprocessing operators,
-    # the denoiser and other optional parameters to the class :class:`spyrit.core.recon.LearnedPGD`.
-    # The optional parameters include the number of unrolled iterations (`iter_stop`)
-    # and the step size decay factor (`step_decay`).
-    # We choose Unet as the denoiser, as in previous tutorials.
-    # For the optional parameters, we use three iterations and a step size decay
-    # factor of 0.9, which worked well on this data (this should match the parameters
-    # used during training).
-    #
-    # .. image:: ../fig/lpgd.png
-    #    :width: 600
-    #    :align: center
-    #    :alt: Sketch of the network architecture for LearnedPGD
+# .. code-block:: python
+from spyrit.core.nnet import Unet
+from spyrit.core.recon import LearnedPGD
 
-    # .. code-block:: python
-    from spyrit.core.nnet import Unet
-    from spyrit.core.recon import LearnedPGD
+# use GPU, if available
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # use GPU, if available
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# Define UNet denoiser
+denoi = Unet()
 
-    # Define UNet denoiser
-    denoi = Unet()
+# Define the LearnedPGD model
+lpgd_net = LearnedPGD(noise_op, prep_op, denoi, iter_stop=3, step_decay=0.9)
 
-    # Define the LearnedPGD model
-    lpgd_net = LearnedPGD(noise_op, prep_op, denoi, iter_stop=3, step_decay=0.9)
+###############################################################################
+# Now, we download the pretrained weights and load them into the LPGD network.
+# Unfortunately, the pretrained weights are too heavy (2GB) to be downloaded
+# here. The last figure is nonetheless displayed to show the results.
+#
+# .. code-block:: python
+from spyrit.core.train import load_net
 
-    ###############################################################################
-    # Now, we download the pretrained weights and load them into the LPGD network.
-    # Unfortunately, the pretrained weights are too heavy (2GB) to be downloaded
-    # here. The last figure is nonetheless displayed to show the results.
-    #
-    # .. code-block:: python
-    from spyrit.core.train import load_net
+# Download weights
+model_path = "./model"
+if os.path.exists(model_path) is False:
+    os.mkdir(model_path)
+    print(f"Created {model_path}")
 
-    # Download weights
-    model_path = "./model"
-    if os.path.exists(model_path) is False:
-        os.mkdir(model_path)
-        print(f"Created {model_path}")
+url_lpgd = "https://drive.google.com/file/d/1ki_cJQEwBWrpDhtE7-HoSEoY8oJUnUz5/view?usp=drive_link"
+model_net_path = os.path.join(
+    model_path,
+    "lpgd_unet_imagenet_N0_10_m_hadam-split_N_128_M_4096_epo_30_lr_0.001_sss_10_sdr_0.5_bs_128_reg_1e-07_uit_3_sdec0-9.pth",
+)
 
-    url_lpgd = "https://drive.google.com/file/d/1ki_cJQEwBWrpDhtE7-HoSEoY8oJUnUz5/view?usp=drive_link"
-    model_net_path = os.path.join(
-        model_path,
-        "lpgd_unet_imagenet_N0_10_m_hadam-split_N_128_M_4096_epo_30_lr_0.001_sss_10_sdr_0.5_bs_128_reg_1e-07_uit_3_sdec0-9.pth",
-    )
+if os.path.exists(model_net_path) is False:
+    try:
+        import gdown
 
-    if os.path.exists(model_net_path) is False:
-        try:
-            import gdown
+        gdown.download(url_lpgd, model_net_path, quiet=False, fuzzy=True)
+    except:
+        print(f"Model not downloaded from {url_lpgd}!!!")
 
-            gdown.download(url_lpgd, model_net_path, quiet=False, fuzzy=True)
-        except:
-            print(f"Model not downloaded from {url_lpgd}!!!")
+# Load pretrained weights to the model
+load_net(model_net_path, lpgd_net, device, strict=False)
 
-    # Load pretrained weights to the model
-    load_net(model_net_path, lpgd_net, device, strict=False)
+lpgd_net.eval()
+lpgd_net.to(device)
 
-    lpgd_net.eval()
-    lpgd_net.to(device)
+###############################################################################
+# We reconstruct by calling the reconstruct method as in previous tutorials
+# and display the results.
+#
+# .. code-block:: python
+import matplotlib.pyplot as plt
+from spyrit.misc.disp import add_colorbar, noaxis
 
-    ###############################################################################
-    # We reconstruct by calling the reconstruct method as in previous tutorials
-    # and display the results.
-    #
-    # .. code-block:: python
-    import matplotlib.pyplot as plt
-    from spyrit.misc.disp import add_colorbar, noaxis
+with torch.no_grad():
+    z_lpgd = lpgd_net.reconstruct(y.to(device))
 
-    with torch.no_grad():
-        z_lpgd = lpgd_net.reconstruct(y.to(device))
+# Plot results
+x_plot = x.view(-1, h, h).cpu().numpy()
+x_plot2 = z_lpgd.view(-1, h, h).cpu().numpy()
 
-    # Plot results
-    x_plot = x.view(-1, h, h).cpu().numpy()
-    x_plot2 = z_lpgd.view(-1, h, h).cpu().numpy()
+f, axs = plt.subplots(2, 1, figsize=(10, 10))
+im1 = axs[0].imshow(x_plot[0, :, :], cmap="gray")
+axs[0].set_title("Ground-truth image", fontsize=16)
+noaxis(axs[0])
+add_colorbar(im1, "bottom")
 
-    f, axs = plt.subplots(2, 1, figsize=(10, 10))
-    im1 = axs[0].imshow(x_plot[0, :, :], cmap="gray")
-    axs[0].set_title("Ground-truth image", fontsize=16)
-    noaxis(axs[0])
-    add_colorbar(im1, "bottom")
+im2 = axs[1].imshow(x_plot2[0, :, :], cmap="gray")
+axs[1].set_title("LPGD", fontsize=16)
+noaxis(axs[1])
+add_colorbar(im2, "bottom")
 
-    im2 = axs[1].imshow(x_plot2[0, :, :], cmap="gray")
-    axs[1].set_title("LPGD", fontsize=16)
-    noaxis(axs[1])
-    add_colorbar(im2, "bottom")
-
-    plt.show()
+plt.show()
 
 ###############################################################################
 # .. image:: https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1/item/6679853fbaa5a9000705894b/download
