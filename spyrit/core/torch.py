@@ -45,98 +45,6 @@ def assert_power_of_2(n, raise_error=True):
     return False
 
 
-def finite_diff_mat(n, boundary="dirichlet"):
-    r"""
-    Creates a finite difference matrix of shape :math:`(n^2,n^2)` for a 2D
-    image of shape :math:`(n,n)`.
-
-    Args:
-        :attr:`n` (int): The size of the image.
-
-        :attr:`boundary` (str, optional): The boundary condition to use.
-        Must be one of 'dirichlet', 'neumann', 'periodic', 'symmetric' or
-        'antisymmetric'. Default is 'neumann'.
-
-    Returns:
-        :class:`torch.sparse.FloatTensor`: The finite difference matrix.
-    """
-
-    # nombre de blocs: height
-    # taille de chaque bloc: width
-
-    # max number of elements in the diagonal
-    # height, width = shape
-    N = n**2
-    # here are all the possible matrices. Please add to this list if you
-    # want to add a new boundary condition
-    valid_boundaries = [
-        "dirichlet",
-        "neumann",
-        "periodic",
-        "symmetric",
-        "antisymmetric",
-    ]
-    if boundary not in valid_boundaries:
-        raise ValueError(
-            "Invalid boundary condition. Must be one of {}.".format(valid_boundaries)
-        )
-
-    # auxiliary function to create sparse matrix
-    def _spdiags(diagonals, offsets, shape):
-        """
-        Similar to torch.sparse.spdiags. Arguments are the same, excepted :
-            - diagonals is a list of 1D tensors (does not need to be a tensor)
-            - offsets is a list of integers (does not need to be a tensor)
-            - shape is unchanged (a tuple)
-
-        Most notably:
-            - Using a positive offset, the first element of the matrix diagonal
-            is the first element of the provided diagonal. torch.sparse.spdiags
-            introduces an offset of k when using a positive offset k.
-        """
-        # if offset > 0, roll to keep first element in 'dia' displayed
-        diags = torch.stack(
-            [dia.roll(off) if off > 0 else dia for dia, off in zip(diagonals, offsets)]
-        )
-        offsets = torch.tensor(offsets)
-        return torch.sparse.spdiags(diags, offsets, shape)
-
-    # create common diagonals
-    ones = torch.ones(n, n).flatten()
-    ones_0right = torch.ones(n, n)
-    ones_0right[:, -1] = 0
-    ones_0right = ones_0right.flatten()
-
-    if boundary == "dirichlet":
-        Dx = _spdiags([ones, -ones], [0, -n], (N, N))
-        Dy = _spdiags([ones, -ones_0right], [0, -1], (N, N))
-
-    elif boundary == "neumann":
-        ones_0left = ones_0right.roll(1)
-        ones_0top = ones_0left.reshape(n, n).T.flatten()
-        Dx = _spdiags([ones_0top, -ones], [0, -n], (N, N))
-        Dy = _spdiags([ones_0left, -ones_0right], [0, -1], (N, N))
-
-    elif boundary == "periodic":
-        zeros_1left = (1 - ones_0right).roll(1)
-        Dx = _spdiags([ones, -ones, -ones], [0, -n, N - n], (N, N))
-        Dy = _spdiags([ones, -ones_0right, -zeros_1left], [0, -1, n - 1], (N, N))
-
-    elif boundary == "symmetric":
-        zeros_1left = (1 - ones_0right).roll(1)
-        zeros_1top = zeros_1left.reshape(n, n).T.flatten()
-        Dx = _spdiags([ones, -ones, -zeros_1top], [0, -n, n], (N, N))
-        Dy = _spdiags([ones, -ones_0right, -zeros_1left], [0, -1, n - 1], (N, N))
-
-    elif boundary == "antisymmetric":
-        zeros_1left = (1 - ones_0right).roll(1)
-        zeros_1top = zeros_1left.reshape(n, n).T.flatten()
-        Dx = _spdiags([ones, -ones, zeros_1top], [0, -n, n], (N, N))
-        Dy = _spdiags([ones, -ones_0right, zeros_1left], [0, -1, 1], (N, N))
-
-    return Dx, Dy
-
-
 def walsh_matrix(n):
     r"""Returns a 1D Walsh-ordered Hadamard transform matrix of size
     :math:`n \times n`.
@@ -222,6 +130,137 @@ def walsh2_torch(img, H=None):
         H = walsh_matrix(img.shape[-1])
     H = H.to(img.device)
     return H @ img @ H
+
+
+# =============================================================================
+# Finite difference matrices
+# =============================================================================
+
+
+def spdiags(diagonals, offsets, shape):
+    """
+    Similar to torch.sparse.spdiags. Arguments are the same, excepted :
+        - diagonals is a list of 1D tensors (does not need to be a tensor)
+        - offsets is a list of integers (does not need to be a tensor)
+        - shape is unchanged (a tuple)
+
+    Most notably:
+        - Using a positive offset, the first element of the matrix diagonal
+        is the first element of the provided diagonal. torch.sparse.spdiags
+        introduces an offset of k when using a positive offset k.
+    """
+    # if offset > 0, roll to keep first element in 'dia' displayed
+    diags = torch.stack(
+        [dia.roll(off) if off > 0 else dia for dia, off in zip(diagonals, offsets)]
+    )
+    offsets = torch.tensor(offsets)
+    return torch.sparse.spdiags(diags, offsets, shape)
+
+
+def finite_diff_mat(n, boundary="dirichlet"):
+    r"""
+    Creates a finite difference matrix of shape :math:`(n^2,n^2)` for a 2D
+    image of shape :math:`(n,n)`.
+
+    Args:
+        :attr:`n` (int): The size of the image.
+
+        :attr:`boundary` (str, optional): The boundary condition to use.
+        Must be one of 'dirichlet', 'neumann', 'periodic', 'symmetric' or
+        'antisymmetric'. Default is 'neumann'.
+
+    Returns:
+        :class:`torch.sparse.FloatTensor`: The finite difference matrix.
+    """
+
+    # nombre de blocs: height
+    # taille de chaque bloc: width
+
+    # max number of elements in the diagonal
+    # height, width = shape
+    N = n**2
+    # here are all the possible matrices. Please add to this list if you
+    # want to add a new boundary condition
+    valid_boundaries = [
+        "dirichlet",
+        "neumann",
+        "periodic",
+        "symmetric",
+        "antisymmetric",
+    ]
+    if boundary not in valid_boundaries:
+        raise ValueError(
+            "Invalid boundary condition. Must be one of {}.".format(valid_boundaries)
+        )
+
+    # create common diagonals
+    ones = torch.ones(n, n).flatten()
+    ones_0right = torch.ones(n, n)
+    ones_0right[:, -1] = 0
+    ones_0right = ones_0right.flatten()
+
+    if boundary == "dirichlet":
+        Dx = spdiags([ones, -ones_0right], [0, -1], (N, N))
+        Dy = spdiags([ones, -ones], [0, -n], (N, N))
+
+    elif boundary == "neumann":
+        ones_0left = ones_0right.roll(1)
+        ones_0top = ones_0left.reshape(n, n).T.flatten()
+        Dx = spdiags([ones_0left, -ones_0right], [0, -1], (N, N))
+        Dy = spdiags([ones_0top, -ones], [0, -n], (N, N))
+
+    elif boundary == "periodic":
+        zeros_1left = (1 - ones_0right).roll(1)
+        Dx = spdiags([ones, -ones_0right, -zeros_1left], [0, -1, n - 1], (N, N))
+        Dy = spdiags([ones, -ones, -ones], [0, -n, N - n], (N, N))
+
+    elif boundary == "symmetric":
+        zeros_1left = (1 - ones_0right).roll(1)
+        zeros_1top = zeros_1left.reshape(n, n).T.flatten()
+        Dx = spdiags([ones, -ones_0right, -zeros_1left], [0, -1, n - 1], (N, N))
+        Dy = spdiags([ones, -ones, -zeros_1top], [0, -n, n], (N, N))
+
+    elif boundary == "antisymmetric":
+        zeros_1left = (1 - ones_0right).roll(1)
+        zeros_1top = zeros_1left.reshape(n, n).T.flatten()
+        Dx = spdiags([ones, -ones_0right, zeros_1left], [0, -1, 1], (N, N))
+        Dy = spdiags([ones, -ones, zeros_1top], [0, -n, n], (N, N))
+
+    return Dx, Dy
+
+
+def neumann_boundary(img_shape):
+    r"""
+    Creates a finite difference matrix of shape :math:`(h*w,h*w)` for a 2D
+    image of shape :math:`(h,w)`. The boundary condition used is Neumann.
+
+    Args:
+        :attr:`img_shape` (tuple): The size of the image :math:`(h,w)`.
+
+    Returns:
+        :class:`torch.tensor`: The finite difference matrix.
+
+    .. note::
+        This function returns the same matrix as :func:`finite_diff_mat` with
+        the Neumann boundary condition. Internal implementation is different
+        and allows to process rectangular images.
+    """
+    h, w = img_shape
+    # create h blocks of wxw matrices
+    max_ = max(h, w)
+
+    # create diagonals
+    ones = torch.ones(max_)
+    ones[0] = 0
+    m_ones = -torch.ones(max_)
+    block_h = spdiags([ones[:h], m_ones[:h]], [0, -1], (h, h))
+    block_w = spdiags([ones[:w], m_ones[:w]], [0, -1], (w, w))
+
+    # create blocks using kronecker product
+    Dx = torch.kron(torch.eye(h), block_w.to_dense())
+    Dy = torch.kron(block_h.to_dense(), torch.eye(w))
+
+    return Dx, Dy
 
 
 # =============================================================================

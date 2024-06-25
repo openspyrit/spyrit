@@ -479,7 +479,7 @@ class Train_par:
 
     def plot(self, start=0):
         plt.ion()
-        string1 = "Batch Size : \t {} \ Learning : \t {} \n".format(
+        string1 = "Batch Size : \t {} \n Learning : \t {} \n".format(
             self.batch_size, self.learning_rate
         )
         string2 = "size : \t {} \nRegularisation : \t {}".format(
@@ -800,7 +800,7 @@ def save_net(title, model):
     """Saves dictionaries of a given pytorch model in the place defined by
     title
     """
-    model_out_path = "{}.pth".format(title)
+    model_out_path = title  # "{}.pth".format(title)
     print(model_out_path)
     torch.save(model.state_dict(), model_out_path)
     print("Model Saved")
@@ -811,7 +811,7 @@ def load_net(title, model, device=None, strict=True):
     # if title.endswith(".pth"):
     #     model_out_path = "{}".format(title)
     # else:
-    model_out_path = "{}.pth".format(title)
+    model_out_path = title
     try:
         if device is None:
             model.load_state_dict(torch.load(model_out_path), strict=strict)
@@ -823,7 +823,7 @@ def load_net(title, model, device=None, strict=True):
         print("Model Loaded: {}".format(title))
     except:
         if os.path.isfile(model_out_path):
-            print("Model no loaded at {}".format(model_out_path))
+            print("Model not loaded at {}".format(model_out_path))
         else:
             print("Model not found at {}".format(model_out_path))
 

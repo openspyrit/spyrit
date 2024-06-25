@@ -128,8 +128,9 @@ aff_field = AffineDeformationField(f, time_vector, img_shape)
 # Warp the image
 # -----------------------------------------------------------------------------
 #
-# Warping works with vectorized images. So, we first reshape the image from `(b,c,h,w)` to `(c, h*w)`
-x = x.view(c, h * w)
+# Warping works with vectorized images. So, we first reshape the image from `(b,c,h,w)` to `(c, h*w)`.
+# The original image is casted to `torch.float64` to minimize numerical errors during the warping process.
+x = x.view(c, h * w).to(torch.float64)
 
 ######################################################################
 # We can now warp the image

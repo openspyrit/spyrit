@@ -22,6 +22,8 @@ import warnings
 import math
 import torch
 import torch.nn as nn
+import scipy.signal
+import numpy as np
 
 from spyrit.core.warp import DeformationField
 import spyrit.core.torch as spytorch
@@ -56,6 +58,7 @@ class _Base(nn.Module):
                 + f"({H_static.shape[1]}) does not match the measurement shape "
                 + f"{self._meas_shape}."
             )
+        self._img_shape = self._meas_shape
 
         if Ord is not None:
             H_static, ind = spytorch.sort_by_significance(
@@ -102,6 +105,21 @@ class _Base(nn.Module):
         return self._meas_shape
 
     @property
+    def img_shape(self) -> tuple:
+        """Shape of the image (height, width)."""
+        return self._img_shape
+
+    @property
+    def img_h(self) -> int:
+        """Height of the image"""
+        return self._img_shape[0]
+
+    @property
+    def img_w(self) -> int:
+        """Width of the image"""
+        return self._img_shape[1]
+
+    @property
     def indices(self) -> torch.tensor:
         """Indices used to sort the rows of H"""
         return self._indices
@@ -128,7 +146,7 @@ class _Base(nn.Module):
 
     ### -------------------
 
-    def pinv(self, x: torch.tensor, reg: str = None, eta: float = None) -> torch.tensor:
+    def pinv(self, x: torch.tensor, reg: str = "L1", eta: float = 1e-3) -> torch.tensor:
         r"""Computes the pseudo inverse solution :math:`y = H^\dagger x`.
 
         This method will compute the pseudo inverse solution using the
@@ -166,48 +184,76 @@ class _Base(nn.Module):
             >>> print(y.shape)
             torch.Size([10, 1600])
         """
-        # equivalent to
-        # torch.linalg.solve(H_dyn.T @ H_dyn + reg, H_dyn.T @ x)
+        # have we calculated the pseudo inverse ?
         if hasattr(self, "H_pinv"):
             # if the pseudo inverse has been computed
-            return x @ self.H_pinv.T.to(x.dtype)
-        elif isinstance(self, Linear):
-            # can we compute the inverse of H ?
-            H_to_inv = self.H_static
-        elif isinstance(self, DynamicLinear):
-            H_to_inv = self.H_dyn
-        else:
-            raise NotImplementedError(
-                "It seems you have instanciated a _Base element. This class "
-                + "Should not be called on its own."
-            )
+            ans = x @ self.H_pinv.T.to(x.dtype)
 
-        if reg == "L1":
-            return torch.linalg.lstsq(
-                H_to_inv, x.to(H_to_inv.dtype).T, rcond=eta, driver="gelsd"
-            ).solution.to(x.dtype)
-        elif reg == "L2":
-            # if under- over-determined problem ?
-            return (
-                torch.linalg.solve(
-                    H_to_inv.T @ H_to_inv + eta * torch.eye(H_to_inv.shape[1]),
-                    H_to_inv.T @ x.to(H_to_inv.dtype).T,
+        # if not
+        else:
+
+            if isinstance(self, Linear):
+                # can we compute the inverse of H ?
+                H_to_inv = self.H_static
+            elif isinstance(self, DynamicLinear):
+                H_to_inv = self.H_dyn
+            else:
+                raise NotImplementedError(
+                    "It seems you have instanciated a _Base element. This class "
+                    + "Should not be called on its own."
                 )
-                .to(x.dtype)
-                .T
+
+            if reg == "L1":
+                ans = torch.linalg.lstsq(
+                    H_to_inv, x.to(H_to_inv.dtype).T, rcond=eta, driver="gelsd"
+                ).solution.to(x.dtype)
+            elif reg == "L2":
+                # if under- over-determined problem ?
+                ans = (
+                    torch.linalg.solve(
+                        H_to_inv.T @ H_to_inv + eta * torch.eye(H_to_inv.shape[1]),
+                        H_to_inv.T @ x.to(H_to_inv.dtype).T,
+                    )
+                    .to(x.dtype)
+                    .T
+                )
+            elif reg == "H1":
+                Dx, Dy = spytorch.neumann_boundary(self.img_shape)
+                D2 = Dx.T @ Dx + Dy.T @ Dy
+                ans = (
+                    torch.linalg.solve(
+                        H_to_inv.T @ H_to_inv + eta * D2,
+                        H_to_inv.T @ x.to(H_to_inv.dtype).T,
+                    )
+                    .to(x.dtype)
+                    .T
+                )
+
+            elif reg is None:
+                raise ValueError(
+                    "Regularization method not specified. Please compute "
+                    + "the dynamic pseudo-inverse or specify a regularization "
+                    + "method."
+                )
+            else:
+                raise NotImplementedError(
+                    f"Regularization method ({reg}) not implemented. Please "
+                    + "use 'L1', 'L2' or 'H1'."
+                )
+
+        # if we used bicubic b spline, convolve with the kernel
+        if hasattr(self, "recon_mode") and self.recon_mode == "bicubic":
+            kernel = torch.tensor([[1, 4, 1], [4, 16, 4], [1, 4, 1]]) / 36
+            conv = nn.Conv2d(1, 1, kernel_size=3, padding=1, bias=False)
+            conv.weight.data = kernel.view(1, 1, 3, 3).to(ans.dtype)
+
+            ans = (
+                conv(ans.view(-1, 1, self.img_h, self.img_w))
+                .view(-1, self.img_h * self.img_w)
+                .data
             )
 
-        elif reg is None:
-            raise ValueError(
-                "Regularization method not specified. Please compute "
-                + "the dynamic pseudo-inverse or specify a regularization "
-                + "method."
-            )
-        else:
-            raise NotImplementedError(
-                f"Regularization method ({reg}) not implemented. Please "
-                + "use 'L1' or 'L2'."
-            )
+        return ans
 
     def reindex(
         self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
@@ -244,9 +290,7 @@ class _Base(nn.Module):
             torch.tensor: The sorted tensor by the given indices along the
             specified axis.
         """
-        return spytorch.reindex(
-            x.to(self.indices.device), self.indices, axis, inverse_permutation
-        )
+        return spytorch.reindex(x, self.indices.to(x.device), axis, inverse_permutation)
 
     def _set_Ord(self, Ord: torch.tensor) -> None:
         """Set the order matrix used to sort the rows of H. This is used in
@@ -272,6 +316,37 @@ class _Base(nn.Module):
             torch.cat([H_pos, H_neg], 1).view(2 * H_static.shape[0], H_static.shape[1]),
             requires_grad=False,
         )
+
+    def _build_pinv(self, tensor: torch.tensor, reg: str, eta: float) -> torch.tensor:
+
+        if reg == "L1":
+            pinv = torch.linalg.pinv(tensor, atol=eta)
+
+        elif reg == "L2":
+            if tensor.shape[0] >= tensor.shape[1]:
+                pinv = (
+                    torch.linalg.inv(
+                        tensor.T @ tensor + eta * torch.eye(tensor.shape[1])
+                    )
+                    @ tensor.T
+                )
+            else:
+                pinv = tensor.T @ torch.linalg.inv(
+                    tensor @ tensor.T + eta * torch.eye(tensor.shape[0])
+                )
+
+        elif reg == "H1":
+            # Boundary condition matrices
+            Dx, Dy = spytorch.neumann_boundary(self.img_shape)
+            D2 = Dx.T @ Dx + Dy.T @ Dy
+            pinv = torch.linalg.inv(tensor.T @ tensor + eta * D2) @ tensor.T
+
+        else:
+            raise NotImplementedError(
+                f"Regularization method '{reg}' is not implemented. Please "
+                + "choose either 'L1', 'L2' or 'H1'."
+            )
+        return pinv
 
     def _attributeslist(self) -> list:
         _list = [
@@ -321,7 +396,7 @@ class Linear(_Base):
         measurement matrix :math:`H`. If `True`, the pseudo inverse is
         initialized as :math:`H^\dagger` and stored in the attribute
         :attr:`H_pinv`. It is alwats possible to compute and store the pseudo
-        inverse later using the method :meth:`set_H_pinv`. Defaults to `False`.
+        inverse later using the method :meth:`build_H_pinv`. Defaults to `False`.
 
         :attr:`rtol` (float, optional): Cutoff for small singular values (see
         :mod:`torch.linalg.pinv`). Only relevant when :attr:`pinv` is `True`.
@@ -366,7 +441,7 @@ class Linear(_Base):
     .. note::
         If you know the pseudo inverse of :math:`H` and want to store it, it is
         best to initialize the class with :attr:`pinv` set to `False` and then
-        call :meth:`set_H_pinv` to store the pseudo inverse.
+        call :meth:`build_H_pinv` to store the pseudo inverse.
 
     Example 1:
         >>> H = torch.rand([400, 1600])
@@ -403,7 +478,7 @@ class Linear(_Base):
     ):
         super().__init__(H, Ord, meas_shape)
         if pinv:
-            self.set_H_pinv(rtol=rtol)
+            self.build_H_pinv(reg="L1", eta=rtol)
 
     @property
     def H(self) -> torch.tensor:
@@ -432,9 +507,10 @@ class Linear(_Base):
         )
         return self.H
 
-    def set_H_pinv(self, rtol: float = None) -> None:
+    def build_H_pinv(self, reg: str = "L1", eta: float = 1e-3) -> None:
         """Used to set the pseudo inverse of the measurement matrix :math:`H`
-        using `torch.linalg.pinv`.
+        using `torch.linalg.pinv`. The result is stored in the attribute
+        :attr:`H_pinv`.
 
         Args:
             rtol (float, optional): Regularization parameter (cutoff for small
@@ -444,7 +520,8 @@ class Linear(_Base):
         Returns:
             None. The pseudo inverse is stored in the attribute :attr:`H_pinv`.
         """
-        self.H_pinv = torch.linalg.pinv(self.H.to(torch.float64), rtol=rtol)
+        pinv = self._build_pinv(self.H_static, reg, eta)
+        self.H_pinv = pinv
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Applies linear transform to incoming images: :math:`y = Hx`.
@@ -506,7 +583,7 @@ class Linear(_Base):
             del self._param_H_static_pinv
             warnings.warn(
                 "The pseudo-inverse H_pinv has been deleted. Please call "
-                + "set_H_pinv() to recompute it."
+                + "build_H_pinv() to recompute it."
             )
         except AttributeError:
             pass
@@ -541,7 +618,7 @@ class LinearSplit(Linear):
         measurement matrix :math:`H`. If `True`, the pseudo inverse is
         initialized as :math:`H^\dagger` and stored in the attribute
         :attr:`H_pinv`. It is alwats possible to compute and store the pseudo
-        inverse later using the method :meth:`set_H_pinv`. Defaults to `False`.
+        inverse later using the method :meth:`build_H_pinv`. Defaults to `False`.
 
         :attr:`rtol` (float, optional): Cutoff for small singular values (see
         :mod:`torch.linalg.pinv`). Only relevant when :attr:`pinv` is `True`.
@@ -589,7 +666,7 @@ class LinearSplit(Linear):
     .. note::
         If you know the pseudo inverse of :math:`H` and want to store it, it is
         best to initialize the class with :attr:`pinv` set to `False` and then
-        call :meth:`set_H_pinv` to store the pseudo inverse.
+        call :meth:`build_H_pinv` to store the pseudo inverse.
 
     .. note::
         :math:`H = H_{+} - H_{-}`
@@ -944,23 +1021,7 @@ class DynamicLinear(_Base):
                     + f"shape. Got image shape {img_shape} and measurement shape "
                     + f"{self.meas_shape}."
                 )
-        else:
-            self._img_shape = self.meas_shape
-
-    @property
-    def img_shape(self) -> tuple:
-        """Shape of the image (height, width)."""
-        return self._img_shape
-
-    @property
-    def img_h(self) -> int:
-        """Height of the image"""
-        return self._img_shape[0]
-
-    @property
-    def img_w(self) -> int:
-        """Width of the image"""
-        return self._img_shape[1]
+        # else, it is done in the _Base class __init__ (set to meas_shape)
 
     @property
     def H(self) -> torch.tensor:
@@ -978,6 +1039,11 @@ class DynamicLinear(_Base):
                 + "Please call build_H_dyn() before accessing the attribute "
                 + "H_dyn (or H)."
             ) from e
+
+    @property
+    def recon_mode(self) -> str:
+        """Interpolation mode used for reconstruction."""
+        return self._recon_mode
 
     @property
     def H_pinv(self) -> torch.tensor:
@@ -999,6 +1065,12 @@ class DynamicLinear(_Base):
                 + "Please call build_H_dyn_pinv() before accessing the attribute "
                 + "H_dyn_pinv (or H_pinv)."
             ) from e
+
+    @H_dyn_pinv.setter
+    def H_dyn_pinv(self, value: torch.tensor) -> None:
+        self._param_H_dyn_pinv = nn.Parameter(
+            value.to(torch.float64), requires_grad=False
+        )
 
     @H_dyn_pinv.deleter
     def H_dyn_pinv(self) -> None:
@@ -1034,6 +1106,9 @@ class DynamicLinear(_Base):
             without Warping the Patterns. 2024. hal-04533981
         """
 
+        # store the mode in attribute
+        self._recon_mode = mode
+
         try:
             del self._param_H_dyn
             del self._param_H_dyn_pinv
@@ -1049,17 +1124,16 @@ class DynamicLinear(_Base):
             meas_pattern = self.P
         else:
             meas_pattern = self.H_static
-        # get H_static, pad it to make it the size of the image
-        H_padded = spytorch.center_pad(
-            meas_pattern.reshape(-1, *self._meas_shape), self.img_shape
-        )
+
+        n_frames = meas_pattern.shape[0]
 
         # get deformation field from motion
         # scale from [-1;1] x [-1;1] to [0;width-1] x [0;height-1]
         scale_factor = torch.tensor(self.img_shape) - 1
         def_field = (motion.field + 1) / 2 * scale_factor
 
-        if mode == "bilinear":
+        if mode == "bilinear_old":
+
             # get the integer part of the field for the 4 nearest neighbours
             #   00    point      01
             #    +------+--------+
@@ -1069,7 +1143,14 @@ class DynamicLinear(_Base):
             #    |      |        |
             #    +------+--------+
             #   10               11
+
+            def_field = spytorch.center_crop(
+                def_field.moveaxis(-1, 0), self.meas_shape
+            ).moveaxis(0, -1)
+            H_padded = meas_pattern.reshape(-1, *self.meas_shape)
+
             def_field_00 = def_field.floor().to(torch.int16)
+            self.def_field_00_1 = def_field_00
             def_field_01 = def_field_00 + torch.tensor([0, 1]).to(torch.int16)
             def_field_10 = def_field_00 + torch.tensor([1, 0]).to(torch.int16)
             def_field_11 = def_field_00 + torch.tensor([1, 1]).to(torch.int16)
@@ -1089,6 +1170,10 @@ class DynamicLinear(_Base):
             # combine with H_padded
             H_dxy = H_padded.to(torch.float64) * dxy
 
+            # ================
+            # ALL CORRECT HERE
+            # ================
+
             # label each frame in the deformation field
             frames_index = torch.arange(meas_pattern.shape[0]).view(
                 1, meas_pattern.shape[0], 1, 1, 1
@@ -1101,7 +1186,7 @@ class DynamicLinear(_Base):
 
             # keep indices that are within the image AND for which
             # the weights are non-zero
-            maxs = torch.tensor([self.img_h, self.img_w])
+            maxs = torch.tensor([self.img_w, self.img_h])
             keep = (
                 (def_field_stacked >= 0).all(dim=-1)
                 & (def_field_stacked < maxs).all(dim=-1)
@@ -1130,19 +1215,122 @@ class DynamicLinear(_Base):
 
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False)
 
-        elif mode == "bicubic":
-            raise NotImplementedError(
-                "Bicubic interpolation is not yet implemented. It will be "
-                + "available in a future release."
-            )
-
         else:
-            raise ValueError(
-                f"Unknown mode '{mode}'. Please use either 'bilinear' or "
-                + "'bicubic'."
-            )
+            # drawings of the kernels for bilinear and bicubic interpolation
+            #   00    point      01
+            #    +------+--------+
+            #    |      |        |
+            #    |      |        |
+            #    +------+--------+ point
+            #    |      |        |
+            #    +------+--------+
+            #   10               11
 
-    def build_H_dyn_pinv(self, reg: str = "L1", eta: float = 1e-6) -> None:
+            #      00          01   point   02          03
+            #       +-----------+-----+-----+-----------+
+            #       |           |           |           |
+            #       |           |     |     |           |
+            #       |        11 |           | 12        |
+            #    10 +-----------+-----+-----+-----------+ 13
+            #       |           |     |     |           |
+            #       + - - - - - + - - + - - + - - - - - + point
+            #       |           |     |     |           |
+            #    20 +-----------+-----+-----+-----------+ 23
+            #       |        21 |     |     | 22        |
+            #       |           |           |           |
+            #       |           |     |     |           |
+            #       +-----------+-----+-----+-----------+
+            #      30          31           32          33
+
+            kernel_size = self._spline(torch.tensor([0]), mode).shape[1]
+            kernel_width = kernel_size - 1
+            kernel_n_pts = kernel_size**2
+
+            # PART 1: SEPARATE THE INTEGER AND DECIMAL PARTS OF THE FIELD
+            # _________________________________________________________________
+            # crop def_field to keep only measured area
+            # moveaxis because crop expects (h,w) as last dimensions
+            def_field = spytorch.center_crop(
+                def_field.moveaxis(-1, 0), self.meas_shape
+            ).moveaxis(
+                0, -1
+            )  # shape (n_frames, meas_h, meas_w, 2)
+            # coordinate of top-left closest corner
+            def_field_floor = def_field.floor().to(torch.int64)
+            # shape (n_frames, meas_h, meas_w, 2)
+            # compute decimal part in x y direction
+            dx, dy = torch.split((def_field - def_field_floor), [1, 1], dim=-1)
+            dx, dy = dx.squeeze(-1), dy.squeeze(-1)
+            # dx.shape = dy.shape = (n_frames, meas_h, meas_w)
+            # evaluate the spline at the decimal part
+            dxy = torch.einsum(
+                "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
+            ).view(n_frames, kernel_n_pts, self.h * self.w)
+            # shape (n_frames, kernel_n_pts, meas_h*meas_w)
+
+            # PART 2: FLATTEN THE INDICES
+            # _________________________________________________________________
+            # we consider an expanded grid (img_h+k)x(img_w+k), where k is
+            # (kernel_width). This allows each part of the (kernel_size^2)-
+            # point grid to contribute to the interpolation.
+            # get coordinate of point _00
+            def_field_00 = def_field_floor - (kernel_size // 2 - 1)
+            # shift the grid for phantom rows/columns
+            def_field_00 += kernel_width
+            # create a mask indicating if either of the 2 indices is out of bounds
+            # (w,h) because the def_field is in (x,y) coordinates
+            maxs = torch.tensor([self.img_w + kernel_width, self.img_h + kernel_width])
+            mask = torch.logical_or(
+                (def_field_00 < 0).any(dim=-1), (def_field_00 >= maxs).any(dim=-1)
+            )  # shape (n_frames, meas_h, meas_w)
+            # trash index receives all the out-of-bounds indices
+            trash = (maxs[0] * maxs[1]).to(torch.int64)
+            # if the indices are out of bounds, we put the trash index
+            # otherwise we put the flattened index (y*w + x)
+            flattened_indices = torch.where(
+                mask,
+                trash,
+                def_field_00[..., 0]
+                + def_field_00[..., 1] * (self.img_w + kernel_width),
+            ).view(n_frames, self.h * self.w)
+
+            # PART 3: WARP H MATRIX WITH FLATTENED INDICES
+            # _________________________________________________________________
+            # Build 4 submatrices with 4 weights for bilinear interpolation
+            meas_dxy = (
+                meas_pattern.view(n_frames, 1, self.h * self.w).to(torch.float64) * dxy
+            )
+            # shape (n_frames, kernel_size^2, meas_h*meas_w)
+            # Create a larger H_dyn that will be folded
+            meas_dxy_sorted = torch.zeros(
+                (
+                    n_frames,
+                    kernel_n_pts,
+                    (self.img_h + kernel_width) * (self.img_w + kernel_width) + 1,
+                ),
+                # +1 for trash
+                dtype=torch.float64,
+            )
+            # add at flattened_indices the values of meas_dxy (~warping)
+            meas_dxy_sorted.scatter_add_(
+                2, flattened_indices.unsqueeze(1).expand_as(meas_dxy), meas_dxy
+            )
+            # drop last column (trash)
+            meas_dxy_sorted = meas_dxy_sorted[:, :, :-1]
+            self.meas_dxy_sorted = meas_dxy_sorted
+            # PART 4: FOLD THE MATRIX
+            # _________________________________________________________________
+            # define operator
+            fold = nn.Fold(
+                output_size=(self.img_h, self.img_w),
+                kernel_size=(kernel_size, kernel_size),
+                padding=kernel_width,
+            )
+            H_dyn = fold(meas_dxy_sorted).view(n_frames, self.img_h * self.img_w)
+            # store in _param_H_dyn
+            self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False)
+
+    def build_H_dyn_pinv(self, reg: str = "L1", eta: float = 1e-3) -> None:
         """Computes the pseudo-inverse of the dynamic measurement matrix
         `H_dyn` and stores it in the attribute `H_dyn_pinv`.
 
@@ -1168,45 +1356,8 @@ class DynamicLinear(_Base):
                 "The dynamic measurement matrix H has not been set yet. "
                 + "Please call build_H_dyn() before computing the pseudo-inverse."
             ) from e
-
-        if reg == "L1":
-            pinv = torch.linalg.pinv(H_dyn, atol=eta)
-
-        elif reg == "L2":
-            if H_dyn.shape[0] >= H_dyn.shape[1]:
-                pinv = (
-                    torch.linalg.inv(H_dyn.T @ H_dyn + eta * torch.eye(H_dyn.shape[1]))
-                    @ H_dyn.T
-                )
-            else:
-                pinv = H_dyn.T @ torch.linalg.inv(
-                    H_dyn @ H_dyn.T + eta * torch.eye(H_dyn.shape[0])
-                )
-
-        elif reg == "H1":
-            raise NotImplementedError(
-                "H1 regularization has not yet been implemented. It will be "
-                + "available in a future release."
-            )
-            # is the problem over- or under-determined?
-            if H_dyn.shape[0] >= H_dyn.shape[1]:
-                # Boundary condition matrices
-                Dx, Dy = spytorch.finite_diff_mat(H_dyn.shape[1], boundary="neumann")
-                D2 = Dx.T @ Dx + Dy.T @ Dy
-                pinv = torch.linalg.inv(H_dyn.T @ H_dyn + eta * D2) @ H_dyn.T
-            else:
-                Dx, Dy = spytorch.finite_diff_mat(H_dyn.shape[0], boundary="neumann")
-                D2 = Dx.T @ Dx + Dy.T @ Dy
-                print(D2.shape, H_dyn.T.shape)
-                pinv = H_dyn.T @ torch.linalg.inv(H_dyn @ H_dyn.T + eta * D2)
-
-        else:
-            raise NotImplementedError(
-                f"Regularization method '{reg}' is not implemented. Please "
-                + "choose either 'L1' or 'L2'."  # , or 'H1'."
-            )
-
-        self._param_H_dyn_pinv = nn.Parameter(pinv, requires_grad=False)
+        pinv = self._build_pinv(H_dyn, reg, eta)
+        self.H_dyn_pinv = pinv
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
@@ -1309,6 +1460,45 @@ class DynamicLinear(_Base):
                 ) from e
             else:
                 raise e
+
+    @staticmethod
+    def _spline(dx, mode):
+        """
+        Returns a 2D row-like tensor containing the values of dx evaluated at
+        each B-spline (2 values for bilinear, 4 for bicubic).
+        dx must be between 0 and 1.
+
+        Shapes
+            dx: (n_frames, self.h, self.w)
+            out: (n_frames, {2,4}, self.h, self.w)
+        """
+        if mode == "bilinear":
+            return torch.stack((1 - dx, dx), dim=1)
+        if mode == "bicubic":
+            return torch.stack(
+                (
+                    (1 - dx) ** 3 / 6,
+                    2 / 3 - dx**2 * (2 - dx) / 2,
+                    2 / 3 - (1 - dx) ** 2 * (1 + dx) / 2,
+                    dx**3 / 6,
+                ),
+                dim=1,
+            )
+        if mode == "schaum":
+            return torch.stack(
+                (
+                    dx / 6 * (dx - 1) * (2 - dx),
+                    (1 - dx / 2) * (1 - dx**2),
+                    (1 + (dx - 1) / 2) * (1 - (dx - 1) ** 2),
+                    1 / 6 * (dx + 1) * dx * (dx - 1),
+                ),
+                dim=1,
+            )
+        else:
+            raise NotImplementedError(
+                f"The mode {mode} is invalid, please choose bilinear, "
+                + "bicubic or schaum."
+            )
 
 
 # =============================================================================
@@ -1654,28 +1844,3 @@ class DynamicHadamSplit(DynamicLinearSplit):
 # return ans.to(orig_dtype)
 
 # BICUBIC INTERPOLATION TO BE IMPLEMENTED
-
-# elif mode == 'bicubic':
-# #     # get the integer part of the field for the 16 nearest neighbours
-# #     #      00          01   point   02          03
-# #     #       +-----------+-----+-----+-----------+
-# #     #       |           |           |           |
-# #     #       |           |     |     |           |
-# #     #       |        11 |           | 12        |
-# #     #    10 +-----------+-----+-----+-----------+ 13
-# #     #       |           |     |     |           |
-# #     # point + - - - - - + - - + - - + - - - - - +
-# #     #       |           |     |     |           |
-# #     #    20 +-----------+-----+-----+-----------+ 23
-# #     #       |        21 |     |     | 22        |
-# #     #       |           |           |           |
-# #     #       |           |     |     |           |
-# #     #       +-----------+-----+-----+-----------+
-# #     #      30          31           32          33
-
-#     def_field_00 = def_field.floor().to(torch.int32) - 1
-#     increments = torch.tensor(
-#         [[i,j] for i in range(4) for j in range(4)]
-#     ).to(torch.int32) # has order 00, 01, 02, 03, 10, 11, ...
-#     def_field_stacked = def_field_00.repeat(16, *[1]*def_field.dim())
-#     def_field_stacked += increments.expand_as(def_field_stacked)

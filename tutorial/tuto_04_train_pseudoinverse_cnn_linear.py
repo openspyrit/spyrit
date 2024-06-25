@@ -295,7 +295,7 @@ Path(model_root).mkdir(parents=True, exist_ok=True)
 if checkpoint_interval:
     Path(title).mkdir(parents=True, exist_ok=True)
 
-save_net(title, model)
+save_net(str(title) + ".pth", model)
 
 # Save training history
 import pickle
