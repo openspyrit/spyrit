@@ -41,10 +41,11 @@ Instead, code blocks are provided and images are downloaded.
 # using the :func:`transform_gray_norm` function.
 
 # sphinx_gallery_thumbnail_path = 'fig/lpgd.png'
+
 if False:
 
-    ###############################################################################
-    # .. code-block:: python
+###############################################################################
+# .. code-block:: python
     import os
     import numpy as np
     from spyrit.misc.disp import imagesc
@@ -77,22 +78,22 @@ if False:
     x_plot = x.view(-1, h, h).cpu().numpy()
     imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 
-    # %%
-    # Forward operators for split measurements
-    # -----------------------------------------------------------------------------
+# %%
+# Forward operators for split measurements
+# -----------------------------------------------------------------------------
 
-    ###############################################################################
-    # We consider noisy split measurements for a Hadamard operator and a simple
-    # rectangular subsampling” strategy
-    # (for more details, refer to :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`).
-    #
-    #
-    # We define the measurement, noise and preprocessing operators and then
-    # simulate a measurement vector :math:`y` corrupted by Poisson noise. As in the previous tutorial,
-    # we simulate an accelerated acquisition by subsampling the measurement matrix
-    # by retaining only the first rows of a Hadamard matrix.
+###############################################################################
+# We consider noisy split measurements for a Hadamard operator and a simple
+# rectangular subsampling” strategy
+# (for more details, refer to :ref:`Acquisition - split measurements <tuto_acquisition_split_measurements>`).
+#
+#
+# We define the measurement, noise and preprocessing operators and then
+# simulate a measurement vector :math:`y` corrupted by Poisson noise. As in the previous tutorial,
+# we simulate an accelerated acquisition by subsampling the measurement matrix
+# by retaining only the first rows of a Hadamard matrix.
 
-    # .. code-block:: python
+# .. code-block:: python
     from spyrit.core.meas import HadamSplit
     from spyrit.core.noise import Poisson
     from spyrit.misc.sampling import meas2img
@@ -128,22 +129,22 @@ if False:
     m_plot = meas2img(m_plot, Ord_rec)
     imagesc(m_plot[0, :, :], r"Measurements $m$")
 
-    ###############################################################################
-    # We define the LearnedPGD network by providing the measurement, noise and preprocessing operators,
-    # the denoiser and other optional parameters to the class :class:`spyrit.core.recon.LearnedPGD`.
-    # The optional parameters include the number of unrolled iterations (`iter_stop`)
-    # and the step size decay factor (`step_decay`).
-    # We choose Unet as the denoiser, as in previous tutorials.
-    # For the optional parameters, we use three iterations and a step size decay
-    # factor of 0.9, which worked well on this data (this should match the parameters
-    # used during training).
-    #
-    # .. image:: ../fig/lpgd.png
-    #    :width: 600
-    #    :align: center
-    #    :alt: Sketch of the network architecture for LearnedPGD
+###############################################################################
+# We define the LearnedPGD network by providing the measurement, noise and preprocessing operators,
+# the denoiser and other optional parameters to the class :class:`spyrit.core.recon.LearnedPGD`.
+# The optional parameters include the number of unrolled iterations (`iter_stop`)
+# and the step size decay factor (`step_decay`).
+# We choose Unet as the denoiser, as in previous tutorials.
+# For the optional parameters, we use three iterations and a step size decay
+# factor of 0.9, which worked well on this data (this should match the parameters
+# used during training).
+#
+# .. image:: ../fig/lpgd.png
+#    :width: 600
+#    :align: center
+#    :alt: Sketch of the network architecture for LearnedPGD
 
-    # .. code-block:: python
+# .. code-block:: python
     from spyrit.core.nnet import Unet
     from spyrit.core.recon import LearnedPGD
 
@@ -156,12 +157,12 @@ if False:
     # Define the LearnedPGD model
     lpgd_net = LearnedPGD(noise_op, prep_op, denoi, iter_stop=3, step_decay=0.9)
 
-    ###############################################################################
-    # Now, we download the pretrained weights and load them into the LPGD network.
-    # Unfortunately, the pretrained weights are too heavy (2GB) to be downloaded
-    # here. The last figure is nonetheless displayed to show the results.
-    #
-    # .. code-block:: python
+###############################################################################
+# Now, we download the pretrained weights and load them into the LPGD network.
+# Unfortunately, the pretrained weights are too heavy (2GB) to be downloaded
+# here. The last figure is nonetheless displayed to show the results.
+#
+# .. code-block:: python
     from spyrit.core.train import load_net
 
     # Download weights
@@ -190,11 +191,11 @@ if False:
     lpgd_net.eval()
     lpgd_net.to(device)
 
-    ###############################################################################
-    # We reconstruct by calling the reconstruct method as in previous tutorials
-    # and display the results.
-    #
-    # .. code-block:: python
+###############################################################################
+# We reconstruct by calling the reconstruct method as in previous tutorials
+# and display the results.
+#
+# .. code-block:: python
     import matplotlib.pyplot as plt
     from spyrit.misc.disp import add_colorbar, noaxis
 
@@ -219,7 +220,7 @@ if False:
     plt.show()
 
 ###############################################################################
-# .. image:: https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1/file/66798540baa5a9000705894c/download
+# .. image:: https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1/item/6679853fbaa5a9000705894b/download
 #    :width: 600
 #    :align: center
 #    :alt: Sketch of the network architecture for LearnedPGD
