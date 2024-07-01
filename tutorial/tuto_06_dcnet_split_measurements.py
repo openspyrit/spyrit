@@ -225,29 +225,35 @@ dcnet_unet = dcnet_unet.to(device)  # Use GPU, if available
 
 from spyrit.core.train import load_net
 
-# Download weights
-url_unet = "https://drive.google.com/file/d/15PRRZj5OxKpn1iJw78lGwUUBtTbFco1l/view?usp=drive_link"
-model_path = "./model"
-if os.path.exists(model_path) is False:
-    os.mkdir(model_path)
-    print(f"Created {model_path}")
-model_unet_path = os.path.join(
-    model_path,
-    "dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth",
-)
-load_unet = True
-if os.path.exists(model_unet_path) is False:
-    try:
-        import gdown
+local_folder = "./model/"
+# Create model folder
+if os.path.exists(local_folder):
+    print(f"{local_folder} found")
+else:
+    os.mkdir(local_folder)
+    print(f"Created {local_folder}")
 
-        gdown.download(url_unet, model_unet_path, quiet=False, fuzzy=True)
-    except:
-        print(f"Model {model_unet_path} not found!")
-        load_unet = False
-if load_unet:
-    # Load pretrained model
-    load_net(model_unet_path, dcnet_unet, device, False)
-    # print(f"Model {model_unet_path} loaded.")
+# Load pretrained model
+url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
+dataID = "667ebfcbbaa5a90007058961" # unique ID of the file
+data_name = "tuto6_dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth"
+model_unet_path = os.path.join(local_folder, data_name)
+
+if os.path.exists(model_unet_path):
+    print(f"Model found : {data_name}")
+
+else:
+    print(f"Model not found : {data_name}")
+    print(f"Downloading model... ", end="")
+    try:
+        gc = girder_client.GirderClient(apiUrl=url)
+        gc.downloadFile(dataID, model_unet_path)
+        print("Done")
+    except Exception as e:
+        print("Failed with error: ", e)
+
+# Load pretrained model
+load_net(model_unet_path, dcnet_unet, device, False)
 
 ######################################################################
 # We reconstruct the image

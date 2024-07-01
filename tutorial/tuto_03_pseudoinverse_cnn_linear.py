@@ -28,6 +28,7 @@ These tutorials load image samples from `/images/`.
 # using the :func:`transform_gray_norm` function.
 
 import os
+import girder_client
 
 import torch
 import torchvision
@@ -197,48 +198,36 @@ pinv_net_cnn = pinv_net_cnn.to(device)
 # As an example, we use a simple ConvNet that has been pretrained using STL-10 dataset.
 # We download the pretrained weights and load them into the network.
 
-# Load pretrained model
-model_path = "./model"
-num_epochs = 1
-
-pretrained_model_num = 3
-if pretrained_model_num == 1:
-    # 1 epoch
-    url_cnn = "https://drive.google.com/file/d/1iGjxOk06nlB5hSm3caIfx0vy2byQd-ZC/view?usp=drive_link"
-    name_cnn = "pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_1_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth"
-    num_epochs = 1
-elif pretrained_model_num == 2:
-    # 5 epochs
-    url_cnn = "https://drive.google.com/file/d/1tzZg1lU3AxOi8-EVXFgnxdtqQCJPjQ9f/view?usp=drive_link"
-    name_cnn = (
-        "pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_5_lr_0.001_sss_10_sdr_0.5_bs_512.pth"
-    )
-    num_epochs = 5
-elif pretrained_model_num == 3:
-    # 30 epochs
-    url_cnn = "https://drive.google.com/file/d/1IZYff1xQxJ3ckAnObqAWyOure6Bjkj4k/view?usp=drive_link"
-    name_cnn = "pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth"
-    num_epochs = 30
-
+local_folder = "./model/"
 # Create model folder
-if os.path.exists(model_path) is False:
-    os.mkdir(model_path)
-    print(f"Created {model_path}")
+if os.path.exists(local_folder):
+    print(f"{local_folder} found")
+else:
+    os.mkdir(local_folder)
+    print(f"Created {local_folder}")
 
-# Download model weights
-model_cnn_path = os.path.join(model_path, name_cnn)
-print(model_cnn_path)
-if os.path.exists(model_cnn_path) is False:
+# Load pretrained model
+url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
+dataID = "668267b3baa5a9000705896a" # unique ID of the file
+data_name = "tuto3_pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth"
+model_cnn_path = os.path.join(local_folder, data_name)
+num_epochs = 30
+
+if os.path.exists(model_cnn_path):
+    print(f"Model found : {data_name}")
+
+else:
+    print(f"Model not found : {data_name}")
+    print(f"Downloading model... ", end="")
     try:
-        import gdown
-
-        gdown.download(url_cnn, model_cnn_path, quiet=False, fuzzy=True)
-    except:
-        print(f"Model {model_cnn_path} not downloaded!")
+        gc = girder_client.GirderClient(apiUrl=url)
+        gc.downloadFile(dataID, model_cnn_path)
+        print("Done")
+    except Exception as e:
+        print("Failed with error: ", e)
 
 # Load model weights
 load_net(model_cnn_path, pinv_net_cnn, device, False)
-print(f"Model {model_cnn_path} loaded.")
 
 
 ###############################################################################
