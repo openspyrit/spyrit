@@ -397,6 +397,7 @@ def Cov2Var(Cov, out_shape=None):
     Extracts Variance Matrix from Covariance Matrix.
     
     The Variance matrix is extracted from the diagonal of the Covariance matrix.
+    This function works with np.ndarrays as well as torch.tensors.
     
     Args:
         Cov (np.array): Covariance matrix of shape :math:`(N_x, N_x)`.
@@ -426,7 +427,7 @@ def Cov2Var(Cov, out_shape=None):
         raise ValueError(f"Invalid output shape, got {out_shape} with 
                          {out_shape[0]}*{out_shape[1]} != {row}")
     
-    return np.diagonal(Cov).reshape(out_shape)
+    return Cov.diagonal().reshape(out_shape)
     # (Nx, Ny) = Cov.shape
     # diag_index = np.diag_indices(Nx)
     # Var = Cov[diag_index]
