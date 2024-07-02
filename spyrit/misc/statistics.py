@@ -424,8 +424,8 @@ def Cov2Var(Cov, out_shape=None):
     if out_shape is None:
         out_shape = (int(np.sqrt(row)), int(np.sqrt(col)))
     if out_shape[0] * out_shape[1] != row:
-        raise ValueError(f"Invalid output shape, got {out_shape} with 
-                         {out_shape[0]}*{out_shape[1]} != {row}")
+        raise ValueError(f"Invalid output shape, got {out_shape} with " +
+                         f"{out_shape[0]}*{out_shape[1]} != {row}")
     
     return Cov.diagonal().reshape(out_shape)
     # (Nx, Ny) = Cov.shape
