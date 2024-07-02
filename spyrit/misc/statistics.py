@@ -1,17 +1,16 @@
 from __future__ import print_function, division
 from typing import Any
+from pathlib import Path
+from PIL import Image
+
+import time
 import torch
 import torchvision
-
-# from torchvision import datasets, transforms
-from pathlib import Path
-
-# from spyrit.learning.model_Had_DCAN import *
-import time
-import spyrit.misc.walsh_hadamard as wh
 import numpy as np
-from PIL import Image
 from scipy.stats import rankdata
+
+import spyrit.misc.walsh_hadamard as wh
+import spyrit.core.torch as spytorch
 
 
 def stat_walsh_ImageNet(
@@ -393,15 +392,46 @@ def stat_fwalsh_S(dataloader, device, root):  # NOT validated!
     return mean, cov
 
 
-def Cov2Var(Cov):
+def Cov2Var(Cov, out_shape=None):
     """
-    Extracts Variance Matrix from Covariance Matrix
+    Extracts Variance Matrix from Covariance Matrix.
+    
+    The Variance matrix is extracted from the diagonal of the Covariance matrix.
+    
+    Args:
+        Cov (np.array): Covariance matrix of shape :math:`(N_x, N_x)`.
+        
+        out_shape (tuple, optional): Shape of the output variance matrix. If
+        `None`, :math:`N_x` must be a perfect square and the output is a square
+        matrix whose shape is :math:`(\sqrt{N_x}, \sqrt{N_x})`. Default is `None`.
+    
+    Raises:
+        ValueError: If the input matrix is not square.
+        
+        ValueError: If the output shape is not valid.
+    
+    Returns:
+        np.array: Variance matrix of shape :math:`(\sqrt{N_x}, \sqrt{N_x})` or
+        :math:`out_shape` if provided.
     """
-    (Nx, Ny) = Cov.shape
-    diag_index = np.diag_indices(Nx)
-    Var = Cov[diag_index]
-    Var = np.reshape(Var, (int(np.sqrt(Nx)), int(np.sqrt(Nx))))
-    return Var
+    row, col = Cov.shape
+    
+    # check Cov is square 
+    if row != col:
+        raise ValueError("Covariance matrix must be a square matrix")
+    
+    if out_shape is None:
+        out_shape = (int(np.sqrt(row)), int(np.sqrt(col)))
+    if out_shape[0] * out_shape[1] != row:
+        raise ValueError(f"Invalid output shape, got {out_shape} with 
+                         {out_shape[0]}*{out_shape[1]} != {row}")
+    
+    return np.diagonal(Cov).reshape(out_shape)
+    # (Nx, Ny) = Cov.shape
+    # diag_index = np.diag_indices(Nx)
+    # Var = Cov[diag_index]
+    # Var = np.reshape(Var, (int(np.sqrt(Nx)), int(np.sqrt(Nx))))
+    # return Var
 
 
 def img2mask(Ord, M):
