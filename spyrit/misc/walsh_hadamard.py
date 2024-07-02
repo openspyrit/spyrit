@@ -253,15 +253,24 @@ def walsh_matrix(n):
 
 
 def fwht(x, order=True):
-    """Fast Walsh-Hadamard transform of x
+    """Fast Walsh-Hadamard transform of x.
+    
+    Due to the inhrerent numerical instability of the Hadamard transform 
+    (lots of additions and subtractions), it is recommended to use float64
+    whenever possible. 
+    
+    This is computed using Amit Portnoy's algorithm available in the package
+    `hadamard-transform` at https://pypi.org/project/hadamard-transform/. 
 
     Args:
-        x (np.ndarray): n-by-1 input signal, where n is a power of two.
-        order (bool, optional): True for sequency (default), False for natural.
-        order (list, optional): permutation indices.
+        x (np.ndarray): batched input signal of shape :math:`(... , n)`, where
+        n is a power of two. The transform is applied along the last dimension.
+        
+        order (bool | list, optional): True for sequency (default), False for
+        natural. It is also possible to provide a list of permutation indices.
 
     Returns:
-        np.ndarray: n-by-1 transformed signal
+        np.ndarray: transformed signal of shape :math:`(... , n)`
 
     Example 1:
 
@@ -335,17 +344,65 @@ def fwht(x, order=True):
         >>> t = timeit.timeit(lambda: sp.fwht(x), number=10)
         >>> print(f"Fast Hadamard transform from sympy (10x): {t:.3f} seconds")
     """
-    n = len(x)
-    y = x.copy()
-    h = 1
-    while h < n:
-        for i in range(0, n, h * 2):
-            for j in range(i, i + h):
-                u = y[j]
-                v = y[j + h]
-                y[j] = u + v
-                y[j + h] = u - v
+    
+    # MIT License
+
+    # Copyright (c) 2022 Amit Portnoy
+
+    # Permission is hereby granted, free of charge, to any person obtaining a copy
+    # of this software and associated documentation files (the "Software"), to deal
+    # in the Software without restriction, including without limitation the rights
+    # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    # copies of the Software, and to permit persons to whom the Software is
+    # furnished to do so, subject to the following conditions:
+
+    # The above copyright notice and this permission notice shall be included in all
+    # copies or substantial portions of the Software.
+
+    # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    # SOFTWARE.
+    
+    # BELOW IS ADAPTED CODE FROM AMIT PORTNOY
+    # ---------------------------------------
+    original_shape = x.shape
+    
+    # create batch if x is 1D
+    if len(original_shape) == 1:
+        x = x[None, :] # shape (1, n)
+    
+    *batch, d = x.shape # batch is tuple and d is int
+    
+    h = 2
+    while h <= d:
+        hf = h // 2
+        x = x.reshape(*batch, d // h, h)
+        
+        half1, half2 = np.split(x, [hf], axis=-1)
+
+        x = np.concatenate((half1 + half2, half1 - half2), axis=-1)
+        
         h *= 2
+    # ---------------------------------------
+    # END OF ADAPTED CODE FROM AMIT PORTNOY
+    
+    # old way, inefficient. tested and works
+    
+    # n = len(x)
+    # y = x.copy()
+    # h = 1
+    # while h < n:
+    #     for i in range(0, n, h * 2):
+    #         for j in range(i, i + h):
+    #             u = y[j]
+    #             v = y[j + h]
+    #             y[j] = u + v
+    #             y[j + h] = u - v
+    #     h *= 2
 
     # Arbitrary order
     if type(order) == list:
