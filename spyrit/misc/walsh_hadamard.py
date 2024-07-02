@@ -345,6 +345,7 @@ def fwht(x, order=True):
         >>> print(f"Fast Hadamard transform from sympy (10x): {t:.3f} seconds")
     """
     
+    ###########################################################################
     # MIT License
 
     # Copyright (c) 2022 Amit Portnoy
@@ -366,6 +367,7 @@ def fwht(x, order=True):
     # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
     # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     # SOFTWARE.
+    ###########################################################################
     
     # BELOW IS ADAPTED CODE FROM AMIT PORTNOY
     # ---------------------------------------
@@ -377,6 +379,8 @@ def fwht(x, order=True):
     
     *batch, d = x.shape # batch is tuple and d is int
     
+    spytorch.assert_power_of_2(d, raise_error=True) # line not by Amit Portnoy
+    
     h = 2
     while h <= d:
         hf = h // 2
@@ -387,10 +391,12 @@ def fwht(x, order=True):
         x = np.concatenate((half1 + half2, half1 - half2), axis=-1)
         
         h *= 2
+    
+    x = x.reshape(original_shape)
     # ---------------------------------------
     # END OF ADAPTED CODE FROM AMIT PORTNOY
     
-    # old way, inefficient. tested and works
+    # old way. Both ways have been compared and are equivalent
     
     # n = len(x)
     # y = x.copy()
