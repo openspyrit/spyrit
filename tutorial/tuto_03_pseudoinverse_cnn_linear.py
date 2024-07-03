@@ -208,7 +208,7 @@ else:
 
 # Load pretrained model
 url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
-dataID = "668267b3baa5a9000705896a" # unique ID of the file
+dataID = "668267b3baa5a9000705896a"  # unique ID of the file
 data_name = "tuto3_pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth"
 model_cnn_path = os.path.join(local_folder, data_name)
 num_epochs = 30
