@@ -260,7 +260,7 @@ def fwht(x, order=True):
     whenever possible. 
     
     This is computed using Amit Portnoy's algorithm available in the package
-    `hadamard-transform` at https://pypi.org/project/hadamard-transform/. 
+    `hadamard-transform` at https://github.com/amitport/hadamard-transform. 
 
     Args:
         x (np.ndarray): batched input signal of shape :math:`(... , n)`, where
@@ -378,46 +378,33 @@ def fwht(x, order=True):
         x = x[None, :] # shape (1, n)
     
     *batch, d = x.shape # batch is tuple and d is int
-    
-    spytorch.assert_power_of_2(d, raise_error=True) # line not by Amit Portnoy
+    spytorch.assert_power_of_2(d, raise_error=True)
     
     h = 2
+    
     while h <= d:
-        hf = h // 2
-        x = x.reshape(*batch, d // h, h)
         
-        half1, half2 = np.split(x, [hf], axis=-1)
-
-        x = np.concatenate((half1 + half2, half1 - half2), axis=-1)
+        x = x.reshape(*batch, d // h, h)
+        half1, half2 = np.split(x, 2, axis=-1)
+        
+        # do we want sequency-ordered transform ?
+        if order == True:
+            half2[..., 1::2] *= -1
+            x = np.stack((half1 + half2, half1 - half2), axis=-1)
+        else:
+            x = np.concatenate((half1 + half2, half1 - half2), axis=-1)
         
         h *= 2
     
     x = x.reshape(original_shape)
     # ---------------------------------------
     # END OF ADAPTED CODE FROM AMIT PORTNOY
-    
-    # old way. Both ways have been compared and are equivalent
-    
-    # n = len(x)
-    # y = x.copy()
-    # h = 1
-    # while h < n:
-    #     for i in range(0, n, h * 2):
-    #         for j in range(i, i + h):
-    #             u = y[j]
-    #             v = y[j + h]
-    #             y[j] = u + v
-    #             y[j + h] = u - v
-    #     h *= 2
 
     # Arbitrary order
     if type(order) == list:
-        y = sequency_perm(y, order)
-    # Sequency (aka Walsh) order
-    elif order:
-        y = sequency_perm(y)
-    # Hadamard order, otherwise
-    return y
+        x = sequency_perm(x, order)
+        
+    return x
 
 
 # ------------------------------------------------------------------------------
