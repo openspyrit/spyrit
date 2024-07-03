@@ -178,7 +178,7 @@ if False:
 
     # Load pretrained model
     url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
-    dataID = "667ebf20baa5a9000705895b" # unique ID of the file
+    dataID = "667ebf20baa5a9000705895b"  # unique ID of the file
     data_name = "tuto8_model_lpgd.pth"
     model_net_path = os.path.join(local_folder, data_name)
 

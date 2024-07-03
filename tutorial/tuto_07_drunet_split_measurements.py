@@ -165,7 +165,7 @@ else:
 
 # Load pretrained model
 url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
-dataID = "667ebf9ebaa5a9000705895e" # unique ID of the file
+dataID = "667ebf9ebaa5a9000705895e"  # unique ID of the file
 data_name = "tuto7_drunet_gray.pth"
 model_drunet_path = os.path.join(local_folder, data_name)
 

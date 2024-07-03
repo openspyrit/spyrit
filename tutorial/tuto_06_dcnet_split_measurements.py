@@ -235,7 +235,7 @@ else:
 
 # Load pretrained model
 url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
-dataID = "667ebfcbbaa5a90007058961" # unique ID of the file
+dataID = "667ebfcbbaa5a90007058961"  # unique ID of the file
 data_name = "tuto6_dc-net_unet_stl10_N0_100_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth"
 model_unet_path = os.path.join(local_folder, data_name)
 

@@ -254,18 +254,18 @@ def walsh_matrix(n):
 
 def fwht(x, order=True):
     """Fast Walsh-Hadamard transform of x.
-    
-    Due to the inhrerent numerical instability of the Hadamard transform 
+
+    Due to the inhrerent numerical instability of the Hadamard transform
     (lots of additions and subtractions), it is recommended to use float64
-    whenever possible. 
-    
+    whenever possible.
+
     This is computed using Amit Portnoy's algorithm available in the package
-    `hadamard-transform` at https://github.com/amitport/hadamard-transform. 
+    `hadamard-transform` at https://github.com/amitport/hadamard-transform.
 
     Args:
         x (np.ndarray): batched input signal of shape :math:`(... , n)`, where
         n is a power of two. The transform is applied along the last dimension.
-        
+
         order (bool | list, optional): True for sequency (default), False for
         natural. It is also possible to provide a list of permutation indices.
 
@@ -344,7 +344,7 @@ def fwht(x, order=True):
         >>> t = timeit.timeit(lambda: sp.fwht(x), number=10)
         >>> print(f"Fast Hadamard transform from sympy (10x): {t:.3f} seconds")
     """
-    
+
     ###########################################################################
     # MIT License
 
@@ -368,34 +368,34 @@ def fwht(x, order=True):
     # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     # SOFTWARE.
     ###########################################################################
-    
+
     # BELOW IS ADAPTED CODE FROM AMIT PORTNOY
     # ---------------------------------------
     original_shape = x.shape
-    
+
     # create batch if x is 1D
     if len(original_shape) == 1:
-        x = x[None, :] # shape (1, n)
-    
-    *batch, d = x.shape # batch is tuple and d is int
+        x = x[None, :]  # shape (1, n)
+
+    *batch, d = x.shape  # batch is tuple and d is int
     spytorch.assert_power_of_2(d, raise_error=True)
-    
+
     h = 2
-    
+
     while h <= d:
-        
+
         x = x.reshape(*batch, d // h, h)
         half1, half2 = np.split(x, 2, axis=-1)
-        
+
         # do we want sequency-ordered transform ?
         if order == True:
             half2[..., 1::2] *= -1
             x = np.stack((half1 + half2, half1 - half2), axis=-1)
         else:
             x = np.concatenate((half1 + half2, half1 - half2), axis=-1)
-        
+
         h *= 2
-    
+
     x = x.reshape(original_shape)
     # ---------------------------------------
     # END OF ADAPTED CODE FROM AMIT PORTNOY
@@ -403,7 +403,7 @@ def fwht(x, order=True):
     # Arbitrary order
     if type(order) == list:
         x = sequency_perm(x, order)
-        
+
     return x
 
 
