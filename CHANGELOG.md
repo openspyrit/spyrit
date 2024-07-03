@@ -42,7 +42,7 @@
     * / The function spyrit.misc.walsh_hadamard.fwht has been significantly sped up, especially for sequency-ordered walsh-hadamard tranforms.
 
 * #### spyrit.misc.load_data
-    * \+ New function download_girder that downloads files identified by their hexadecimal ID from a url server 
+    * \+ New function download_girder that downloads files identified by their hexadecimal ID from a url server
 
 ### Tutorials
 
