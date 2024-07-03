@@ -31,6 +31,29 @@
 
 <details open><summary>
 
+## v2.3.2
+</summary>
+
+### spyrit.misc
+
+* #### spyrit.misc.statistics
+    * / The function spyrit.misc.statistics.Cov2Var has been sped up and now supports an output shape for non-square images
+* #### spyrit.misc.walsh_hadamard
+    * / The function spyrit.misc.walsh_hadamard.fwht has been significantly sped up, especially for sequency-ordered walsh-hadamard tranforms.
+
+* #### spyrit.misc.load_data
+    * \+ New function download_girder that downloads files identified by their hexadecimal ID from a url server 
+
+### Tutorials
+
+* Tutorials 3, 4, 6, 7, 8 now download data from our own servers instead of using google drive and the gdown library. Dependency on gdown library will be fully removed in a future version.
+
+</details>
+
+---
+
+<details open><summary>
+
 ## v2.3.1
 </summary>
 
