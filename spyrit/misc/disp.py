@@ -332,7 +332,7 @@ def pre_process_video(video, crop_patch, kernel_size):
     import cv2
 
     batch_size, seq_length, c, h, w = video.shape
-    batched_frames = video.view(batch_size * seq_length * c, h, w)
+    batched_frames = video.reshape(batch_size * seq_length * c, h, w)
     output_batch = torch.zeros(batched_frames.shape)
 
     for i in range(batch_size * seq_length * c):
@@ -340,5 +340,5 @@ def pre_process_video(video, crop_patch, kernel_size):
         img[crop_patch] = 0
         median_frame = cv2.medianBlur(img, kernel_size)
         output_batch[i, :, :] = torch.Tensor(median_frame)
-    output_batch = output_batch.view(batch_size, seq_length, c, h, w)
+    output_batch = output_batch.reshape(batch_size, seq_length, c, h, w)
     return output_batch

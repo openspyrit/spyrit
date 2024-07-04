@@ -178,6 +178,10 @@ def train_model(
     train_info["train"] = []
     train_info["val"] = []
 
+    # check that the folder `root` exists if do_checkpoint > 0
+    if (do_checkpoint > 0) and (not os.path.exists(root)):
+        raise ValueError(f"Folder {root} not found")
+
     # Set tensorboard writer
     if tb_path:
         samples, _ = next(iter(dataloaders["val"]))

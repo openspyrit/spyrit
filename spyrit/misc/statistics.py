@@ -1,17 +1,16 @@
 from __future__ import print_function, division
 from typing import Any
+from pathlib import Path
+from PIL import Image
+
+import time
 import torch
 import torchvision
-
-# from torchvision import datasets, transforms
-from pathlib import Path
-
-# from spyrit.learning.model_Had_DCAN import *
-import time
-import spyrit.misc.walsh_hadamard as wh
 import numpy as np
-from PIL import Image
 from scipy.stats import rankdata
+
+import spyrit.misc.walsh_hadamard as wh
+import spyrit.core.torch as spytorch
 
 
 def stat_walsh_ImageNet(
@@ -254,12 +253,12 @@ def mean_walsh(dataloader, device, n_loop=1):
 
     # Init
     n = 0
-    H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
+    # H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
     mean = torch.zeros((nx, ny), dtype=torch.float32)
 
     # Send to device (e.g., cuda)
     mean = mean.to(device)
-    H = torch.from_numpy(H).to(device)
+    # H = torch.from_numpy(H).to(device)
 
     # Compute Mean
     # Accumulate sum over all images in dataset
@@ -267,7 +266,7 @@ def mean_walsh(dataloader, device, n_loop=1):
         torch.manual_seed(i)
         for inputs, _ in dataloader:
             inputs = inputs.to(device)
-            trans = wh.walsh2_torch(inputs, H)
+            trans = spytorch.fwht_2d(inputs, True)
             mean = mean.add(torch.sum(trans, 0))
             # print
             n = n + inputs.shape[0]
@@ -295,8 +294,8 @@ def cov_walsh(dataloader, mean, device, n_loop=1):
     (b, c, nx, ny) = inputs.shape
     tot_num = len(dataloader) * b
 
-    H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
-    H = torch.from_numpy(H).to(device)
+    # H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
+    # H = torch.from_numpy(H).to(device)
 
     # Covariance --------------------------------------------------------------
     # Init
@@ -309,10 +308,10 @@ def cov_walsh(dataloader, mean, device, n_loop=1):
         torch.manual_seed(i)
         for inputs, _ in dataloader:
             inputs = inputs.to(device)
-            trans = wh.walsh2_torch(inputs, H)
+            trans = spytorch.fwht_2d(inputs, True)
             trans = trans - mean.repeat(inputs.shape[0], 1, 1, 1)
-            trans = trans.view(inputs.shape[0], nx * ny, 1)
-            cov = torch.addbmm(cov, trans, trans.view(inputs.shape[0], 1, nx * ny))
+            trans = trans.reshape(inputs.shape[0], nx * ny, 1)
+            cov = torch.addbmm(cov, trans, trans.reshape(inputs.shape[0], 1, nx * ny))
             # print
             n += inputs.shape[0]
             print(f"Cov:  {n} / (less than) {tot_num*n_loop} images", end="\n")
@@ -374,8 +373,8 @@ def stat_fwalsh_S(dataloader, device, root):  # NOT validated!
         inputs = inputs.to(device)
         trans = wh.fwalsh2_S_torch(inputs, ind)
         trans = trans - mean.repeat(inputs.shape[0], 1, 1, 1)
-        trans = trans.view(inputs.shape[0], nx * ny, 1)
-        cov = torch.addbmm(cov, trans, trans.view(inputs.shape[0], 1, nx * ny))
+        trans = trans.reshape(inputs.shape[0], nx * ny, 1)
+        cov = torch.addbmm(cov, trans, trans.reshape(inputs.shape[0], 1, nx * ny))
         # print
         n += inputs.shape[0]
         print(f"Cov:  {n} / (less than) {tot_num} images", end="\n")
@@ -393,15 +392,49 @@ def stat_fwalsh_S(dataloader, device, root):  # NOT validated!
     return mean, cov
 
 
-def Cov2Var(Cov):
+def Cov2Var(Cov, out_shape=None):
     """
-    Extracts Variance Matrix from Covariance Matrix
+    Extracts Variance Matrix from Covariance Matrix.
+
+    The Variance matrix is extracted from the diagonal of the Covariance matrix.
+    This function works with np.ndarrays as well as torch.tensors.
+
+    Args:
+        Cov (np.array): Covariance matrix of shape :math:`(N_x, N_x)`.
+
+        out_shape (tuple, optional): Shape of the output variance matrix. If
+        `None`, :math:`N_x` must be a perfect square and the output is a square
+        matrix whose shape is :math:`(\sqrt{N_x}, \sqrt{N_x})`. Default is `None`.
+
+    Raises:
+        ValueError: If the input matrix is not square.
+
+        ValueError: If the output shape is not valid.
+
+    Returns:
+        np.array: Variance matrix of shape :math:`(\sqrt{N_x}, \sqrt{N_x})` or
+        :math:`out_shape` if provided.
     """
-    (Nx, Ny) = Cov.shape
-    diag_index = np.diag_indices(Nx)
-    Var = Cov[diag_index]
-    Var = np.reshape(Var, (int(np.sqrt(Nx)), int(np.sqrt(Nx))))
-    return Var
+    row, col = Cov.shape
+
+    # check Cov is square
+    if row != col:
+        raise ValueError("Covariance matrix must be a square matrix")
+
+    if out_shape is None:
+        out_shape = (int(np.sqrt(row)), int(np.sqrt(col)))
+    if out_shape[0] * out_shape[1] != row:
+        raise ValueError(
+            f"Invalid output shape, got {out_shape} with "
+            + f"{out_shape[0]}*{out_shape[1]} != {row}"
+        )
+
+    return Cov.diagonal().reshape(out_shape)
+    # (Nx, Ny) = Cov.shape
+    # diag_index = np.diag_indices(Nx)
+    # Var = Cov[diag_index]
+    # Var = np.reshape(Var, (int(np.sqrt(Nx)), int(np.sqrt(Nx))))
+    # return Var
 
 
 def img2mask(Ord, M):

@@ -31,13 +31,14 @@ __maintainer__ = "developer"
 __status__ = "Development"
 # __version__ = "0.0.1"
 
+import warnings
 
 import math
-import numpy as np
-from sympy.combinatorics.graycode import GrayCode
 import torch
+import numpy as np
 
 import spyrit.core.torch as spytorch
+from sympy.combinatorics.graycode import GrayCode
 
 
 # ------------------------------------------------------------------------------
@@ -253,15 +254,24 @@ def walsh_matrix(n):
 
 
 def fwht(x, order=True):
-    """Fast Walsh-Hadamard transform of x
+    """Fast Walsh-Hadamard transform of x.
+
+    Due to the inhrerent numerical instability of the Hadamard transform
+    (lots of additions and subtractions), it is recommended to use float64
+    whenever possible.
+
+    This is computed using Amit Portnoy's algorithm available in the package
+    `hadamard-transform` at https://github.com/amitport/hadamard-transform.
 
     Args:
-        x (np.ndarray): n-by-1 input signal, where n is a power of two.
-        order (bool, optional): True for sequency (default), False for natural.
-        order (list, optional): permutation indices.
+        x (np.ndarray): batched input signal of shape :math:`(... , n)`, where
+        n is a power of two. The transform is applied along the last dimension.
+
+        order (bool | list, optional): True for sequency (default), False for
+        natural. It is also possible to provide a list of permutation indices.
 
     Returns:
-        np.ndarray: n-by-1 transformed signal
+        np.ndarray: transformed signal of shape :math:`(... , n)`
 
     Example 1:
 
@@ -335,26 +345,68 @@ def fwht(x, order=True):
         >>> t = timeit.timeit(lambda: sp.fwht(x), number=10)
         >>> print(f"Fast Hadamard transform from sympy (10x): {t:.3f} seconds")
     """
-    n = len(x)
-    y = x.copy()
-    h = 1
-    while h < n:
-        for i in range(0, n, h * 2):
-            for j in range(i, i + h):
-                u = y[j]
-                v = y[j + h]
-                y[j] = u + v
-                y[j + h] = u - v
+
+    ###########################################################################
+    # MIT License
+
+    # Copyright (c) 2022 Amit Portnoy
+
+    # Permission is hereby granted, free of charge, to any person obtaining a copy
+    # of this software and associated documentation files (the "Software"), to deal
+    # in the Software without restriction, including without limitation the rights
+    # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    # copies of the Software, and to permit persons to whom the Software is
+    # furnished to do so, subject to the following conditions:
+
+    # The above copyright notice and this permission notice shall be included in all
+    # copies or substantial portions of the Software.
+
+    # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    # SOFTWARE.
+    ###########################################################################
+
+    # BELOW IS ADAPTED CODE FROM AMIT PORTNOY
+    # ---------------------------------------
+    original_shape = x.shape
+
+    # create batch if x is 1D
+    if len(original_shape) == 1:
+        x = x.reshape(1, -1)  # shape (1, n)
+
+    *batch, d = x.shape  # batch is tuple and d is int
+    spytorch.assert_power_of_2(d, raise_error=True)
+
+    h = 2
+
+    while h <= d:
+
+        x = x.reshape(*batch, d // h, h)
+        half1, half2 = np.split(x, 2, axis=-1)
+
+        # do we want sequency-ordered transform ?
+        # two lines below not from Amit Portnoy
+        if order == True:
+            half2[..., 1::2] *= -1  # not from Amit Portnoy
+            x = np.stack((half1 + half2, half1 - half2), axis=-1)  # not from AP
+        else:
+            x = np.concatenate((half1 + half2, half1 - half2), axis=-1)
+
         h *= 2
+
+    x = x.reshape(original_shape)
+    # ---------------------------------------
+    # END OF ADAPTED CODE FROM AMIT PORTNOY
 
     # Arbitrary order
     if type(order) == list:
-        y = sequency_perm(y, order)
-    # Sequency (aka Walsh) order
-    elif order:
-        y = sequency_perm(y)
-    # Hadamard order, otherwise
-    return y
+        x = sequency_perm(x, order)
+
+    return x
 
 
 # ------------------------------------------------------------------------------
@@ -899,6 +951,11 @@ def fwht_torch(x, order=True):
     Returns:
         np.ndarray: n-by-1 transformed signal
 
+    ..warning::
+        This function is deprecated and has been moved to spyrit.core.torch. It
+        will be removed in a future version. Please call
+        :func:`spyrit.core.torch.fwht` instead.
+
     Example 1:
         Fast sequency-ordered (i.e., Walsh) Hadamard transform
 
@@ -987,26 +1044,13 @@ def fwht_torch(x, order=True):
         >>> t = timeit.timeit(lambda: wh.fwht_torch(x,ind), number=100)
         >>> print(f"With indices as inputs (100x): {t:.3f} seconds")
     """
-    n = x.shape[-1]
 
-    m = int(np.log2(n))
-    assert n == 1 << m, "n must be a power of 2"
-    y = x[..., None]
-
-    for d in range(m)[::-1]:
-        y = torch.cat(
-            (y[..., ::2, :] + y[..., 1::2, :], y[..., ::2, :] - y[..., 1::2, :]), dim=-1
-        )
-    y = y.squeeze(-2)
-
-    # Arbitrary order
-    if type(order) == list:
-        y = sequency_perm_torch(y, order)
-    # Sequency (aka Walsh) order
-    elif order:
-        y = sequency_perm_torch(y)
-    # Hadamard order, otherwise
-    return y
+    warnings.warn(
+        "This function is deprecated and has been moved. It will be removed "
+        + "in a future version. Please call spyrit.core.torch.fwht instead.",
+        DeprecationWarning,
+    )
+    return spytorch.fwht(x, order)
 
 
 def fwalsh_G_torch(x, ind=True):
@@ -1070,7 +1114,7 @@ def fwalsh_G_torch(x, ind=True):
     z = z[..., None]
     x = torch.cat((z, x), dim=-1)
     # Fast Hadamard transform
-    y = fwht_torch(x, ind)
+    y = spytorch.fwht(x, ind, -1)
     # Remove 0th entries
     y = y[..., 1:]
     return y
@@ -1193,7 +1237,7 @@ def walsh2_S_fold_torch(x):
 
     # Reshape to get images
     new_shape = torch.Size([*x.shape[:-1], n, n])
-    X = X.view(new_shape)
+    X = X.reshape(new_shape)
     return X
 
 
@@ -1225,13 +1269,13 @@ def walsh2_S_unfold_torch(X):
         >>> print(x)
 
     """
-    x = X.view(*(X.size()[:-2]), -1)
+    x = X.reshape(*(X.size()[:-2]), -1)
     x = x[..., 1:]
     return x
 
 
 def walsh_torch(x, H=None):
-    """Return 1D Walsh-ordered Hadamard transform of a signal
+    """Return 1D Walsh-ordered Hadamard transform of a signal.
 
     Args:
         :attr:`x` (:obj:`torch.tensor`): Input signals with shape `(*, n)`.
@@ -1241,6 +1285,10 @@ def walsh_torch(x, H=None):
 
     Returns:
         :obj:`torch.tensor`: Hadamard transformed signals with shape `(*, m)`.
+
+    ..warning::
+        This function is deprecated and will be removed in a future version.
+        Consider using :func:`spyrit.core.torch.fwht` instead.
 
     Note:
         Providing the input argument :attr:`H` leads to much faster
@@ -1292,12 +1340,13 @@ def walsh_torch(x, H=None):
         >>> t = timeit.timeit(lambda: wh.walsh_torch(x, H), number=200)
         >>> print(f"Fast Hadamard transform pytorch GPU (200x): {t:.4f} seconds")
     """
-    if H is None:
-        H = torch.from_numpy(walsh_matrix(x.shape[-1]).astype("float32"))
-    H = H.to(x.device)
-
-    # return (H @ x.mT).mT
-    return x @ H.mT
+    warnings.warn(
+        "This function is deprecated and will be removed in a future "
+        + "version. Please use spyrit.core.torch.fwht for natural- "
+        + "or walsh-ordered Hadamard transforms.",
+        DeprecationWarning,
+    )
+    return spytorch.fwht(x, True, -1)
 
 
 def walsh2_torch(im, H=None):
@@ -1311,11 +1360,19 @@ def walsh2_torch(im, H=None):
     Returns:
         torch.tensor: Hadamard transformed image. Same size as im
 
+    ..warning::
+        This function is deprecated and has been moved to spyrit.core.torch. It
+        is recommended to use :func:`spyrit.core.torch.fwht_2d` instead for
+        natural- or walsh-ordered Hadamard transforms.
+
     Examples:
         >>> im = torch.randn(256, 1, 64, 64)
         >>> had = walsh2_torch(im)
     """
-    if H is None:
-        H = torch.from_numpy(walsh_matrix(im.shape[3]).astype("float32"))
-    H = H.to(im.device)
-    return torch.matmul(torch.matmul(H, im), H)
+    warnings.warn(
+        "This function is deprecated and will be removed in a future "
+        + "version. Please use either spyrit.core.torch.fwht_2d for natural- "
+        + "or walsh-ordered Hadamard transforms.",
+        DeprecationWarning,
+    )
+    return spytorch.fwht_2d(im, True)

@@ -201,11 +201,10 @@ class Denoise_layer(nn.Module):
     # =========================================================================
     r"""Wiener filter that assumes additive white Gaussian noise.
 
-    .. math::
-        y = \sigma_\text{prior}^2/(\sigma^2_\text{prior} + \sigma^2_\text{meas}) x,
-        where :math:`\sigma^2_\text{prior}` is the variance prior and
-        :math:`\sigma^2_\text{meas}` is the variance of the measurement,
-        x is the input vector and y is the output vector.
+    :math:`y = \sigma_\text{prior}^2/(\sigma^2_\text{prior} + \sigma^2_\text{meas}) x`,
+    where :math:`\sigma^2_\text{prior}` is the variance prior and
+    :math:`\sigma^2_\text{meas}` is the variance of the measurement, :math:`x`
+    is the input vector and :math:`y` is the output vector.
 
     Args:
         :attr:`M` (int): size of incoming vector
@@ -248,10 +247,10 @@ class Denoise_layer(nn.Module):
 
     def forward(self, inputs: torch.tensor) -> torch.tensor:
         r"""
-        Applies a transformation to the incoming data: :math:`y = A^2/(A^2+x)`.
+        Applies a transformation to the incoming data: :math:`y = \sigma_\text{prior}^2/(\sigma_\text{prior}^2+x)`.
 
-        :math:`x` is the input tensor (see :attr:`inputs`) and :math:`A` is the
-        standard deviation prior (see :attr:`self.weight`).
+        :math:`x` is the input tensor (see :attr:`inputs`) and
+        :math:`\sigma_\text{prior}` is the standard deviation prior (see :attr:`self.weight`).
 
         Args:
             :attr:`inputs` (torch.tensor): input tensor :math:`x` of shape
@@ -273,16 +272,16 @@ class Denoise_layer(nn.Module):
     def tikho(inputs: torch.tensor, weight: torch.tensor) -> torch.tensor:
         # type: (torch.Tensor, torch.Tensor) -> torch.Tensor
         r"""
-        Applies a transformation to the incoming data: :math:`y = A^2/(A^2+x)`.
+        Applies a transformation to the incoming data: :math:`y = \sigma_\text{prior}^2/(\sigma_\text{prior}^2+x)`.
 
-        :math:`x` is the input tensor (see :attr:`inputs`) and :math:`A` is the
+        :math:`x` is the input tensor (see :attr:`inputs`) and :math:`\sigma_\text{prior}` is the
         standard deviation prior (see :attr:`weight`).
 
         Args:
             :attr:`inputs` (torch.tensor): input tensor :math:`x` of shape
             :math:`(N, *, in\_features)`
 
-            :attr:`weight` (torch.tensor): standard deviation prior :math:`A` of
+            :attr:`weight` (torch.tensor): standard deviation prior :math:`\sigma_\text{prior}` of
             shape :math:`(in\_features)`
 
         Returns:
@@ -390,12 +389,12 @@ class PinvNet(nn.Module):
         b, c, _, _ = x.shape
 
         # Acquisition
-        x = x.view(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = x.reshape(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
         x = self.acqu(x)  # shape x = [b*c, 2*M]
 
         # Reconstruction
         x = self.reconstruct(x)  # shape x = [bc, 1, h,w]
-        return x.view(b, c, self.acqu.meas_op.h, self.acqu.meas_op.w)
+        return x.reshape(b, c, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
     def acquire(self, x):
         r"""Simulates data acquisition
@@ -422,7 +421,7 @@ class PinvNet(nn.Module):
         """
         b, c, _, _ = x.shape
         # Acquisition
-        x = x.view(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = x.reshape(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
         return self.acqu(x)  # shape x = [b*c, 2*M]
 
     def meas2img(self, y):
@@ -453,7 +452,7 @@ class PinvNet(nn.Module):
         # z = m @ self.acqu.meas_op.get_Perm().T  # old way
         # new way, tested and working :
         z = self.acqu.meas_op.reindex(m, "cols", False)
-        return z.view(-1, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
+        return z.reshape(-1, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
     def reconstruct(self, x):
         r"""Preprocesses, reconstructs, and denoises raw measurement vectors.
@@ -514,7 +513,7 @@ class PinvNet(nn.Module):
         x = self.pinv(x, self.acqu.meas_op)  # shape x = [b*c,N]
 
         # Image-domain denoising
-        x = x.view(
+        x = x.reshape(
             bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
         )  # shape x = [b*c,1,h,w]
         return x
@@ -547,7 +546,7 @@ class PinvNet(nn.Module):
         x = self.pinv(x, self.acqu.meas_op)  # shape x = [b*c,N]
 
         # Image domain denoising
-        x = x.view(
+        x = x.reshape(
             bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
         )  # shape x = [b*c,1,h,w]
         x = self.denoi(x)  # shape x = [b*c,1,h,w]
@@ -672,12 +671,12 @@ class DCNet(nn.Module):
         b, c, _, _ = x.shape
 
         # Acquisition
-        x = x.view(b * c, self.Acq.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = x.reshape(b * c, self.Acq.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
         x = self.Acq(x)  # shape x = [b*c, 2*M]
 
         # Reconstruction
         x = self.reconstruct(x)  # shape x = [bc, 1, h,w]
-        x = x.view(b, c, self.Acq.meas_op.h, self.Acq.meas_op.w)
+        x = x.reshape(b, c, self.Acq.meas_op.h, self.Acq.meas_op.w)
 
         return x
 
@@ -709,7 +708,7 @@ class DCNet(nn.Module):
         b, c, _, _ = x.shape
 
         # Acquisition
-        x = x.view(b * c, self.Acq.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = x.reshape(b * c, self.Acq.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
         x = self.Acq(x)  # shape x = [b*c, 2*M]
 
         return x
@@ -748,7 +747,7 @@ class DCNet(nn.Module):
         # measurements to image domain processing
         x_0 = torch.zeros((bc, self.Acq.meas_op.N), device=x.device)
         x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
-        x = x.view(
+        x = x.reshape(
             bc, 1, self.Acq.meas_op.h, self.Acq.meas_op.w
         )  # shape x = [b*c,1,h,w]
 
@@ -789,13 +788,13 @@ class DCNet(nn.Module):
 
         # variance of preprocessed measurements
         var_noi = torch.div(
-            var_noi, (norm.view(-1, 1).expand(bc, self.Acq.meas_op.M)) ** 2
+            var_noi, (norm.reshape(-1, 1).expand(bc, self.Acq.meas_op.M)) ** 2
         )
 
         # measurements to image domain processing
         x_0 = torch.zeros((bc, self.Acq.meas_op.N), device=x.device)
         x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
-        x = x.view(
+        x = x.reshape(
             bc, 1, self.Acq.meas_op.h, self.Acq.meas_op.w
         )  # shape x = [b*c,1,h,w]
 
@@ -1003,12 +1002,12 @@ class LearnedPGD(nn.Module):
         b, c, _, _ = x.shape
 
         # Acquisition
-        x = x.view(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = x.reshape(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
         x = self.acqu(x)  # shape x = [b*c, 2*M]
 
         # Reconstruction
         x = self.reconstruct(x)  # shape x = [bc, 1, h,w]
-        x = x.view(b, c, self.acqu.meas_op.h, self.acqu.meas_op.w)
+        x = x.reshape(b, c, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
         return x
 
@@ -1125,12 +1124,12 @@ class LearnedPGD(nn.Module):
         >>> meas = HadamSplit(M, H, Ord)
         >>> noise = NoNoise(meas)
         >>> prep = SplitPoisson(1.0, M, H*H)
-        >>> recnet = PinvNet(noise, prep)
+        >>> recnet = LearnedPGD(noise, prep)
         >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
         >>> z = recnet(x)
         >>> print(z.shape)
-        >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
         torch.Size([10, 1, 64, 64])
+        >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
         tensor(5.8912e-06)
     """
 
@@ -1237,12 +1236,12 @@ class LearnedPGD(nn.Module):
         b, c, _, _ = x.shape
 
         # Acquisition
-        x = x.view(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = x.reshape(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
         x = self.acqu(x)  # shape x = [b*c, 2*M]
 
         # Reconstruction
         x = self.reconstruct(x)  # shape x = [bc, 1, h,w]
-        x = x.view(b, c, self.acqu.meas_op.h, self.acqu.meas_op.w)
+        x = x.reshape(b, c, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
         return x
 
@@ -1273,7 +1272,7 @@ class LearnedPGD(nn.Module):
         b, c, _, _ = x.shape
 
         # Acquisition
-        x = x.view(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = x.reshape(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
         x = self.acqu(x)  # shape x = [b*c, 2*M]
 
         return x
@@ -1282,7 +1281,7 @@ class LearnedPGD(nn.Module):
         H = self.acqu.meas_op.get_H()
         if self.wls:
             std_mat = 1 / torch.sqrt(self.meas_variance)
-            std_mat = torch.diag(std_mat.view(-1))
+            std_mat = torch.diag(std_mat.reshape(-1))
             H = torch.matmul(std_mat, H)
         try:
             s = torch.linalg.svdvals(torch.matmul(H.t(), H))
@@ -1364,7 +1363,7 @@ class LearnedPGD(nn.Module):
 
             # Normalize the stepsize to account for the variance
             meas_variance_img_min, _ = torch.min(meas_variance, 1)  # 128
-            step = step.view(self.iter_stop, 1).to(x.device)
+            step = step.reshape(self.iter_stop, 1).to(x.device)
             # Multiply meas_variance_img_min and step
             step = meas_variance_img_min * step
 
@@ -1374,15 +1373,15 @@ class LearnedPGD(nn.Module):
                 x = self.acqu.meas_op.pinv(m)
 
                 # proximal step (prior)
-                x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
+                x = x.reshape(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
                 if isinstance(self.denoi, nn.ModuleList):
                     x = self.denoi[0](x)
                 else:
                     x = self.denoi(x)
-                x = x.view(bc, self.acqu.meas_op.N)
+                x = x.reshape(bc, self.acqu.meas_op.N)
             if self.res_learn:
                 z0 = x.detach().clone()
-                z0 = z0.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
+                z0 = z0.reshape(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
         else:
             # zero init
             x = torch.zeros((bc, self.acqu.meas_op.N), device=x.device)
@@ -1404,11 +1403,11 @@ class LearnedPGD(nn.Module):
             res = self.acqu.meas_op.forward_H(x) - m
             if self.wls:
                 res = res / meas_variance
-                upd = step[i].view(bc, 1) * self.acqu.meas_op.adjoint(res)
+                upd = step[i].reshape(bc, 1) * self.acqu.meas_op.adjoint(res)
             else:
                 upd = step[i] * self.acqu.meas_op.adjoint(res)
             x = x - upd
-            x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
+            x = x.reshape(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
             if i == 0 and self.res_learn and self.x0 == 0:
                 # if x0 does not exist
@@ -1419,7 +1418,7 @@ class LearnedPGD(nn.Module):
                 x = self.denoi[i](x)
             else:
                 x = self.denoi(x)
-            x = x.view(bc, self.acqu.meas_op.N)
+            x = x.reshape(bc, self.acqu.meas_op.N)
             if self.log_fidelity:
                 with torch.no_grad():
                     self.cost.append(self.cost_fun(x, m).cpu().numpy().tolist())
@@ -1433,7 +1432,7 @@ class LearnedPGD(nn.Module):
         if self.x_gt is not None:
             print(f"|x - x_gt| = {self.mse}")
 
-        x = x.view(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
+        x = x.reshape(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
         if self.res_learn:
             # z=x-step*grad(L), x = P(z), x_end = z0 + P(z)
             x = x + z0
@@ -1467,7 +1466,7 @@ class LearnedPGD(nn.Module):
         x = self.pinv(x, self.acqu.meas_op)  # shape x = [b*c,N]
 
         # Image domain denoising
-        x = x.view(
+        x = x.reshape(
             bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
         )  # shape x = [b*c,1,h,w]
         x = self.denoi(x)  # shape x = [b*c,1,h,w]

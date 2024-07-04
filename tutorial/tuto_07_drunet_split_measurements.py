@@ -155,25 +155,35 @@ denoi_drunet = denoi_drunet.to(device)
 ###############################################################################
 # We download the pretrained weights of the DRUNet and load them.
 
-try:
-    import gdown
+local_folder = "./model/"
+# Create model folder
+if os.path.exists(local_folder):
+    print(f"{local_folder} found")
+else:
+    os.mkdir(local_folder)
+    print(f"Created {local_folder}")
 
-    # Download pretrained weights
-    model_drunet_path = "./model"
-    url_drunet = "https://drive.google.com/file/d/1fhnIDJAbh7IRSZ9tgk4JPtfGra4O1ghk/view?usp=drive_link"
+# Load pretrained model
+url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
+dataID = "667ebf9ebaa5a9000705895e"  # unique ID of the file
+data_name = "tuto7_drunet_gray.pth"
+model_drunet_path = os.path.join(local_folder, data_name)
 
-    if os.path.exists(model_drunet_path) is False:
-        os.mkdir(model_drunet_path)
-        print(f"Created {model_drunet_path}")
+if os.path.exists(model_drunet_path):
+    print(f"Model found : {data_name}")
 
-    model_drunet_path = os.path.join(model_drunet_path, "drunet_gray.pth")
-    gdown.download(url_drunet, model_drunet_path, quiet=False, fuzzy=True)
+else:
+    print(f"Model not found : {data_name}")
+    print(f"Downloading model... ", end="")
+    try:
+        gc = girder_client.GirderClient(apiUrl=url)
+        gc.downloadFile(dataID, model_drunet_path)
+        print("Done")
+    except Exception as e:
+        print("Failed with error: ", e)
 
-    # Load pretrained weights
-    denoi_drunet.load_state_dict(torch.load(model_drunet_path), strict=False)
-    print(f"Model {denoi_drunet} loaded.")
-except:
-    print(f"Model {model_drunet_path} not found!")
+# Load pretrained weights
+denoi_drunet.load_state_dict(torch.load(model_drunet_path), strict=False)
 
 # %%
 # Pluggind the DRUnet in a DCNet
