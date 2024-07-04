@@ -24,6 +24,9 @@
         * \- Permutation_Matrix()
     * spyrit.misc.sampling
         * \- meas2img2()
+    * spyrit.misc.walsh_hadamard
+        * \- walsh_torch
+        * \- walsh2_torch moved to spyrit.core.torch.fwht_2d (more efficient, covers natural and Walsh orders) and spyrit.core.torch.walsh2_torch (less efficient, more general algorithm)
 
 </details>
 
