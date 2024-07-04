@@ -892,8 +892,8 @@ class HadamSplit(LinearSplit):
         y = y.view(b, 1, self.h, self.w)
         # inverse of full transform
         # todo: initialize with 1D transform to speed up
-        x = 1 / self.N * spytorch.walsh2_torch(y)
-        return x.view(b, N)
+        x = 1 / self.N * spytorch.fwht_2d(y, True)
+        return x.reshape(b, N)
 
     def _set_Ord(self, Ord: torch.tensor) -> None:
         """Set the order matrix used to sort the rows of H."""
