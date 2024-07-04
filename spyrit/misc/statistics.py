@@ -253,12 +253,12 @@ def mean_walsh(dataloader, device, n_loop=1):
 
     # Init
     n = 0
-    H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
+    # H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
     mean = torch.zeros((nx, ny), dtype=torch.float32)
 
     # Send to device (e.g., cuda)
     mean = mean.to(device)
-    H = torch.from_numpy(H).to(device)
+    # H = torch.from_numpy(H).to(device)
 
     # Compute Mean
     # Accumulate sum over all images in dataset
@@ -266,7 +266,7 @@ def mean_walsh(dataloader, device, n_loop=1):
         torch.manual_seed(i)
         for inputs, _ in dataloader:
             inputs = inputs.to(device)
-            trans = wh.walsh2_torch(inputs, H)
+            trans = spytorch.fwht_2d(inputs, True)
             mean = mean.add(torch.sum(trans, 0))
             # print
             n = n + inputs.shape[0]
@@ -294,8 +294,8 @@ def cov_walsh(dataloader, mean, device, n_loop=1):
     (b, c, nx, ny) = inputs.shape
     tot_num = len(dataloader) * b
 
-    H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
-    H = torch.from_numpy(H).to(device)
+    # H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
+    # H = torch.from_numpy(H).to(device)
 
     # Covariance --------------------------------------------------------------
     # Init
@@ -308,7 +308,7 @@ def cov_walsh(dataloader, mean, device, n_loop=1):
         torch.manual_seed(i)
         for inputs, _ in dataloader:
             inputs = inputs.to(device)
-            trans = wh.walsh2_torch(inputs, H)
+            trans = spytorch.fwht_2d(inputs, True)
             trans = trans - mean.repeat(inputs.shape[0], 1, 1, 1)
             trans = trans.view(inputs.shape[0], nx * ny, 1)
             cov = torch.addbmm(cov, trans, trans.view(inputs.shape[0], 1, nx * ny))
