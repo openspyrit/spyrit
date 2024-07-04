@@ -376,7 +376,7 @@ def fwht(x, order=True):
 
     # create batch if x is 1D
     if len(original_shape) == 1:
-        x = x.reshape(1, -1) # shape (1, n)
+        x = x.reshape(1, -1)  # shape (1, n)
 
     *batch, d = x.shape  # batch is tuple and d is int
     spytorch.assert_power_of_2(d, raise_error=True)
@@ -391,8 +391,8 @@ def fwht(x, order=True):
         # do we want sequency-ordered transform ?
         # two lines below not from Amit Portnoy
         if order == True:
-            half2[..., 1::2] *= -1 # not from Amit Portnoy
-            x = np.stack((half1 + half2, half1 - half2), axis=-1) # not from AP
+            half2[..., 1::2] *= -1  # not from Amit Portnoy
+            x = np.stack((half1 + half2, half1 - half2), axis=-1)  # not from AP
         else:
             x = np.concatenate((half1 + half2, half1 - half2), axis=-1)
 
@@ -954,7 +954,7 @@ def fwht_torch(x, order=True):
     ..warning::
         This function is deprecated and has been moved to spyrit.core.torch. It
         will be removed in a future version. Please call
-        :func:`spyrit.core.torch.fwht` instead. 
+        :func:`spyrit.core.torch.fwht` instead.
 
     Example 1:
         Fast sequency-ordered (i.e., Walsh) Hadamard transform
@@ -1044,11 +1044,11 @@ def fwht_torch(x, order=True):
         >>> t = timeit.timeit(lambda: wh.fwht_torch(x,ind), number=100)
         >>> print(f"With indices as inputs (100x): {t:.3f} seconds")
     """
-    
+
     warnings.warn(
-        "This function is deprecated and has been moved. It will be removed " +
-        "in a future version. Please call spyrit.core.torch.fwht instead.",
-        DeprecationWarning
+        "This function is deprecated and has been moved. It will be removed "
+        + "in a future version. Please call spyrit.core.torch.fwht instead.",
+        DeprecationWarning,
     )
     return spytorch.fwht(x, order)
 
@@ -1341,10 +1341,10 @@ def walsh_torch(x, H=None):
         >>> print(f"Fast Hadamard transform pytorch GPU (200x): {t:.4f} seconds")
     """
     warnings.warn(
-        "This function is deprecated and will be removed in a future " +
-        "version. Please use spyrit.core.torch.fwht for natural- " +
-        "or walsh-ordered Hadamard transforms.",
-        DeprecationWarning
+        "This function is deprecated and will be removed in a future "
+        + "version. Please use spyrit.core.torch.fwht for natural- "
+        + "or walsh-ordered Hadamard transforms.",
+        DeprecationWarning,
     )
     return spytorch.fwht(x, True, -1)
 
@@ -1370,9 +1370,9 @@ def walsh2_torch(im, H=None):
         >>> had = walsh2_torch(im)
     """
     warnings.warn(
-        "This function is deprecated and will be removed in a future " +
-        "version. Please use either spyrit.core.torch.fwht_2d for natural- " +
-        "or walsh-ordered Hadamard transforms.",
-        DeprecationWarning
+        "This function is deprecated and will be removed in a future "
+        + "version. Please use either spyrit.core.torch.fwht_2d for natural- "
+        + "or walsh-ordered Hadamard transforms.",
+        DeprecationWarning,
     )
     return spytorch.fwht_2d(im, True)
