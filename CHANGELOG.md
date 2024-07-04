@@ -37,13 +37,21 @@
 ## v2.3.2
 </summary>
 
+### spyrit.core
+
+* #### spyrit.core.torch
+    * \+ Added spyrit.core.torch.fwht that implements in Pytorch the fast Walsh-Hadamard tranform for natural and Walsh ordered tranforms.
+    * \+ Added spyrit.core.torch.fwht_2d that implements in Pytorch the fast Walsh-Hadamard tranform in 2 dimensions for natural and Walsh ordered tranforms.
+
 ### spyrit.misc
 
 * #### spyrit.misc.statistics
     * / The function spyrit.misc.statistics.Cov2Var has been sped up and now supports an output shape for non-square images
 * #### spyrit.misc.walsh_hadamard
     * / The function spyrit.misc.walsh_hadamard.fwht has been significantly sped up, especially for sequency-ordered walsh-hadamard tranforms.
-
+    * \- fwht_torch is now deprecated. Use spyrit.core.torch.fwht instead.
+    * \- walsh_torch is now deprecated. Use spyrit.core.torch.fwht instead.
+    * \- walsh2_torch is now deprecated. Use spyrit.core.torch.fwht_2d instead.
 * #### spyrit.misc.load_data
     * \+ New function download_girder that downloads files identified by their hexadecimal ID from a url server
 
