@@ -313,7 +313,9 @@ class _Base(nn.Module):
         H_pos = nn.functional.relu(H_static)
         H_neg = nn.functional.relu(-H_static)
         self._param_P = nn.Parameter(
-            torch.cat([H_pos, H_neg], 1).reshape(2 * H_static.shape[0], H_static.shape[1]),
+            torch.cat([H_pos, H_neg], 1).reshape(
+                2 * H_static.shape[0], H_static.shape[1]
+            ),
             requires_grad=False,
         )
 
@@ -1298,7 +1300,8 @@ class DynamicLinear(_Base):
             # _________________________________________________________________
             # Build 4 submatrices with 4 weights for bilinear interpolation
             meas_dxy = (
-                meas_pattern.reshape(n_frames, 1, self.h * self.w).to(torch.float64) * dxy
+                meas_pattern.reshape(n_frames, 1, self.h * self.w).to(torch.float64)
+                * dxy
             )
             # shape (n_frames, kernel_size^2, meas_h*meas_w)
             # Create a larger H_dyn that will be folded
