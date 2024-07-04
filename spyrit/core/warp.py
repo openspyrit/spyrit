@@ -228,7 +228,7 @@ class DeformationField(nn.Module):
         img_frames = (
             img.unsqueeze(0)
             .expand(n_frames, *img.shape)
-            .view(n_frames, img.shape[0], self.img_h, self.img_w)
+            .reshape(n_frames, img.shape[0], self.img_h, self.img_w)
         )
         # img has current shape (c, h, w), make it (n_frames, c, h, w)
         # img_frames = img.unsqueeze(0).expand(n_frames, *img.shape)

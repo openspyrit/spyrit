@@ -166,9 +166,9 @@ class Linear_shift_had(Linear_shift):
             n = int(np.sqrt(N))
 
         # Inverse transform
-        x = x.view(bc, 1, n, n)
+        x = x.reshape(bc, 1, n, n)
         x = (
             1 / self.N * walsh2_torch(x)
         )  # todo: initialize with 1D transform to speed up
-        x = x.view(bc, N)
+        x = x.reshape(bc, N)
         return x

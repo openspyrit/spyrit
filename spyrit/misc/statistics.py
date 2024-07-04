@@ -310,8 +310,8 @@ def cov_walsh(dataloader, mean, device, n_loop=1):
             inputs = inputs.to(device)
             trans = spytorch.fwht_2d(inputs, True)
             trans = trans - mean.repeat(inputs.shape[0], 1, 1, 1)
-            trans = trans.view(inputs.shape[0], nx * ny, 1)
-            cov = torch.addbmm(cov, trans, trans.view(inputs.shape[0], 1, nx * ny))
+            trans = trans.reshape(inputs.shape[0], nx * ny, 1)
+            cov = torch.addbmm(cov, trans, trans.reshape(inputs.shape[0], 1, nx * ny))
             # print
             n += inputs.shape[0]
             print(f"Cov:  {n} / (less than) {tot_num*n_loop} images", end="\n")
@@ -373,8 +373,8 @@ def stat_fwalsh_S(dataloader, device, root):  # NOT validated!
         inputs = inputs.to(device)
         trans = wh.fwalsh2_S_torch(inputs, ind)
         trans = trans - mean.repeat(inputs.shape[0], 1, 1, 1)
-        trans = trans.view(inputs.shape[0], nx * ny, 1)
-        cov = torch.addbmm(cov, trans, trans.view(inputs.shape[0], 1, nx * ny))
+        trans = trans.reshape(inputs.shape[0], nx * ny, 1)
+        cov = torch.addbmm(cov, trans, trans.reshape(inputs.shape[0], 1, nx * ny))
         # print
         n += inputs.shape[0]
         print(f"Cov:  {n} / (less than) {tot_num} images", end="\n")

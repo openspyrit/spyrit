@@ -615,8 +615,8 @@ def Permutation_Matrix(sig: torch.tensor) -> torch.tensor:
                 [0., 0., 1., 0.],
                 [1., 0., 0., 0.]])
     """
-    indices = torch.argsort(-sig.view(-1), stable=True)
-    return torch.eye(len(sig.view(-1)), device=sig.device)[indices]
+    indices = torch.argsort(-sig.reshape(-1), stable=True)
+    return torch.eye(len(sig.reshape(-1)), device=sig.device)[indices]
 
 
 # =============================================================================

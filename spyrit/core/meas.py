@@ -245,11 +245,11 @@ class _Base(nn.Module):
         if hasattr(self, "recon_mode") and self.recon_mode == "bicubic":
             kernel = torch.tensor([[1, 4, 1], [4, 16, 4], [1, 4, 1]]) / 36
             conv = nn.Conv2d(1, 1, kernel_size=3, padding=1, bias=False)
-            conv.weight.data = kernel.view(1, 1, 3, 3).to(ans.dtype)
+            conv.weight.data = kernel.reshape(1, 1, 3, 3).to(ans.dtype)
 
             ans = (
-                conv(ans.view(-1, 1, self.img_h, self.img_w))
-                .view(-1, self.img_h * self.img_w)
+                conv(ans.reshape(-1, 1, self.img_h, self.img_w))
+                .reshape(-1, self.img_h * self.img_w)
                 .data
             )
 
@@ -313,7 +313,7 @@ class _Base(nn.Module):
         H_pos = nn.functional.relu(H_static)
         H_neg = nn.functional.relu(-H_static)
         self._param_P = nn.Parameter(
-            torch.cat([H_pos, H_neg], 1).view(2 * H_static.shape[0], H_static.shape[1]),
+            torch.cat([H_pos, H_neg], 1).reshape(2 * H_static.shape[0], H_static.shape[1]),
             requires_grad=False,
         )
 
@@ -889,7 +889,7 @@ class HadamSplit(LinearSplit):
         y = self.reindex(y, "cols", False)  # new way
         # x = x @ self.Perm.T               # old way
 
-        y = y.view(b, 1, self.h, self.w)
+        y = y.reshape(b, 1, self.h, self.w)
         # inverse of full transform
         # todo: initialize with 1D transform to speed up
         x = 1 / self.N * spytorch.fwht_2d(y, True)
@@ -1175,7 +1175,7 @@ class DynamicLinear(_Base):
             # ================
 
             # label each frame in the deformation field
-            frames_index = torch.arange(meas_pattern.shape[0]).view(
+            frames_index = torch.arange(meas_pattern.shape[0]).reshape(
                 1, meas_pattern.shape[0], 1, 1, 1
             )
             frames_index = frames_index.expand(4, -1, self.img_w, self.img_h, -1)
@@ -1210,7 +1210,7 @@ class DynamicLinear(_Base):
             # add in dynamic measurement matrix
             H_dyn = torch.zeros(H_padded.numel()).to(vals.dtype)
             H_dyn = H_dyn.put_(indices_linearized, vals, accumulate=True)
-            H_dyn = H_dyn.view(meas_pattern.shape[0], self.img_w * self.img_h)
+            H_dyn = H_dyn.reshape(meas_pattern.shape[0], self.img_w * self.img_h)
             # what is the dtype?
 
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False)
@@ -1265,7 +1265,7 @@ class DynamicLinear(_Base):
             # evaluate the spline at the decimal part
             dxy = torch.einsum(
                 "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
-            ).view(n_frames, kernel_n_pts, self.h * self.w)
+            ).reshape(n_frames, kernel_n_pts, self.h * self.w)
             # shape (n_frames, kernel_n_pts, meas_h*meas_w)
 
             # PART 2: FLATTEN THE INDICES
@@ -1292,13 +1292,13 @@ class DynamicLinear(_Base):
                 trash,
                 def_field_00[..., 0]
                 + def_field_00[..., 1] * (self.img_w + kernel_width),
-            ).view(n_frames, self.h * self.w)
+            ).reshape(n_frames, self.h * self.w)
 
             # PART 3: WARP H MATRIX WITH FLATTENED INDICES
             # _________________________________________________________________
             # Build 4 submatrices with 4 weights for bilinear interpolation
             meas_dxy = (
-                meas_pattern.view(n_frames, 1, self.h * self.w).to(torch.float64) * dxy
+                meas_pattern.reshape(n_frames, 1, self.h * self.w).to(torch.float64) * dxy
             )
             # shape (n_frames, kernel_size^2, meas_h*meas_w)
             # Create a larger H_dyn that will be folded
@@ -1326,7 +1326,7 @@ class DynamicLinear(_Base):
                 kernel_size=(kernel_size, kernel_size),
                 padding=kernel_width,
             )
-            H_dyn = fold(meas_dxy_sorted).view(n_frames, self.img_h * self.img_w)
+            H_dyn = fold(meas_dxy_sorted).reshape(n_frames, self.img_h * self.img_w)
             # store in _param_H_dyn
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False)
 

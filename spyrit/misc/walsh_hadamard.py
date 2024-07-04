@@ -1237,7 +1237,7 @@ def walsh2_S_fold_torch(x):
 
     # Reshape to get images
     new_shape = torch.Size([*x.shape[:-1], n, n])
-    X = X.view(new_shape)
+    X = X.reshape(new_shape)
     return X
 
 
@@ -1269,7 +1269,7 @@ def walsh2_S_unfold_torch(X):
         >>> print(x)
 
     """
-    x = X.view(*(X.size()[:-2]), -1)
+    x = X.reshape(*(X.size()[:-2]), -1)
     x = x[..., 1:]
     return x
 

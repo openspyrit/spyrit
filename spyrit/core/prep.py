@@ -143,7 +143,7 @@ class DirectPoisson(nn.Module):
         bc = x.shape[0]
 
         # Denormalization
-        beta = beta.view(bc, 1, 1, 1)
+        beta = beta.reshape(bc, 1, 1, 1)
         beta = beta.expand(bc, 1, h, w)
         x = (x + 1) / 2 * beta
 
@@ -455,7 +455,7 @@ class SplitPoisson(nn.Module):
         bc = x.shape[0]
 
         # Denormalization
-        beta = beta.view(bc, 1, 1, 1)
+        beta = beta.reshape(bc, 1, 1, 1)
         beta = beta.expand(bc, 1, h, w)
         x = (x + 1) / 2 * beta
 
