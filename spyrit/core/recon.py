@@ -201,11 +201,10 @@ class Denoise_layer(nn.Module):
     # =========================================================================
     r"""Wiener filter that assumes additive white Gaussian noise.
 
-    .. math::
-        y = \sigma_\text{prior}^2/(\sigma^2_\text{prior} + \sigma^2_\text{meas}) x,
-        where :math:`\sigma^2_\text{prior}` is the variance prior and
-        :math:`\sigma^2_\text{meas}` is the variance of the measurement,
-        x is the input vector and y is the output vector.
+    :math:`y = \sigma_\text{prior}^2/(\sigma^2_\text{prior} + \sigma^2_\text{meas}) x`,
+    where :math:`\sigma^2_\text{prior}` is the variance prior and
+    :math:`\sigma^2_\text{meas}` is the variance of the measurement, :math:`x`
+    is the input vector and :math:`y` is the output vector.
 
     Args:
         :attr:`M` (int): size of incoming vector
@@ -248,10 +247,10 @@ class Denoise_layer(nn.Module):
 
     def forward(self, inputs: torch.tensor) -> torch.tensor:
         r"""
-        Applies a transformation to the incoming data: :math:`y = A^2/(A^2+x)`.
+        Applies a transformation to the incoming data: :math:`y = \sigma_\text{prior}^2/(\sigma_\text{prior}^2+x)`.
 
-        :math:`x` is the input tensor (see :attr:`inputs`) and :math:`A` is the
-        standard deviation prior (see :attr:`self.weight`).
+        :math:`x` is the input tensor (see :attr:`inputs`) and
+        :math:`\sigma_\text{prior}` is the standard deviation prior (see :attr:`self.weight`).
 
         Args:
             :attr:`inputs` (torch.tensor): input tensor :math:`x` of shape
@@ -273,16 +272,16 @@ class Denoise_layer(nn.Module):
     def tikho(inputs: torch.tensor, weight: torch.tensor) -> torch.tensor:
         # type: (torch.Tensor, torch.Tensor) -> torch.Tensor
         r"""
-        Applies a transformation to the incoming data: :math:`y = A^2/(A^2+x)`.
+        Applies a transformation to the incoming data: :math:`y = \sigma_\text{prior}^2/(\sigma_\text{prior}^2+x)`.
 
-        :math:`x` is the input tensor (see :attr:`inputs`) and :math:`A` is the
+        :math:`x` is the input tensor (see :attr:`inputs`) and :math:`\sigma_\text{prior}` is the
         standard deviation prior (see :attr:`weight`).
 
         Args:
             :attr:`inputs` (torch.tensor): input tensor :math:`x` of shape
             :math:`(N, *, in\_features)`
 
-            :attr:`weight` (torch.tensor): standard deviation prior :math:`A` of
+            :attr:`weight` (torch.tensor): standard deviation prior :math:`\sigma_\text{prior}` of
             shape :math:`(in\_features)`
 
         Returns:
@@ -1125,12 +1124,12 @@ class LearnedPGD(nn.Module):
         >>> meas = HadamSplit(M, H, Ord)
         >>> noise = NoNoise(meas)
         >>> prep = SplitPoisson(1.0, M, H*H)
-        >>> recnet = PinvNet(noise, prep)
+        >>> recnet = LearnedPGD(noise, prep)
         >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
         >>> z = recnet(x)
         >>> print(z.shape)
-        >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
         torch.Size([10, 1, 64, 64])
+        >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
         tensor(5.8912e-06)
     """
 
