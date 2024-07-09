@@ -199,7 +199,6 @@ def fwht(x, order=True, dim=-1):
         >>> print(y_np)
         >>> print(y_torch)
 
-
     Example 5:
         Computation times for a signal of length 2**12
 

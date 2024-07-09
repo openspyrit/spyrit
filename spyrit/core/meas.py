@@ -862,6 +862,32 @@ class HadamSplit(LinearSplit):
         # set H_pinv as it is the transpose of H / self.N
         self.H_pinv = self.H.T / self.N
 
+    def forward_H(self, x: torch.tensor) -> torch.tensor:
+        r"""Optimized measurement simulation for Hadamard patterns, using the
+        Fast Hadamard Transform.
+        
+        The 2D fast Walsh-ordered Walsh-Hadamard transform is applied to the
+        incoming linearized data :math:`x`. The linearized data is reshaped to
+        a 2D image before the 2D transform, and is then reshaped to a linear
+        vector before it is returned.
+        
+        Args:
+            :math:`x` (torch.tensor): Batch of vectorized (flattened) images. If
+            x has more than 1 dimension, the linear measurement is applied to
+            the last dimension in the batch. 
+        
+        Shape:
+            :math:`x`: :math:`(*, N)` where * denotes the batch size and `N`
+            the total number of pixels in the image.
+            
+            Output: :math:`(*, M)` where * denotes the batch size and `M`
+            the number of measurements.
+        """
+        original_shape = x.shape
+        x = x.reshape(*original_shape[:-1], self.h, self.w)
+        m = spytorch.fwht_2d(x).reshape(original_shape)
+        return self.reindex(m, "rows", True)[..., :self.M]
+
     def inverse(self, y: torch.tensor) -> torch.tensor:
         r"""Inverse transform of Hadamard-domain images :math:`x = H_{had}^{-1}G y`.
 
