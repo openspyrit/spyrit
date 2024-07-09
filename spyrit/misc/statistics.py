@@ -392,12 +392,11 @@ def stat_fwalsh_S(dataloader, device, root):  # NOT validated!
     return mean, cov
 
 
-def Cov2Var(Cov, out_shape=None):
-    """
+def Cov2Var(Cov: np.ndarray, out_shape=None):
+    r"""
     Extracts Variance Matrix from Covariance Matrix.
 
     The Variance matrix is extracted from the diagonal of the Covariance matrix.
-    This function works with np.ndarrays as well as torch.tensors.
 
     Args:
         Cov (np.array): Covariance matrix of shape :math:`(N_x, N_x)`.
@@ -416,7 +415,6 @@ def Cov2Var(Cov, out_shape=None):
         :math:`out_shape` if provided.
     """
     row, col = Cov.shape
-
     # check Cov is square
     if row != col:
         raise ValueError("Covariance matrix must be a square matrix")
@@ -428,13 +426,8 @@ def Cov2Var(Cov, out_shape=None):
             f"Invalid output shape, got {out_shape} with "
             + f"{out_shape[0]}*{out_shape[1]} != {row}"
         )
-
-    return Cov.diagonal().reshape(out_shape)
-    # (Nx, Ny) = Cov.shape
-    # diag_index = np.diag_indices(Nx)
-    # Var = Cov[diag_index]
-    # Var = np.reshape(Var, (int(np.sqrt(Nx)), int(np.sqrt(Nx))))
-    # return Var
+    # copy is necessary (see np documentation about diagonal)
+    return np.diagonal(Cov).copy().reshape(out_shape)
 
 
 def img2mask(Ord, M):
