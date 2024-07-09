@@ -144,15 +144,15 @@ def download_girder(
             name = gc.getFile(id)["name"]
 
         # check the file exists
-        if not os.path.exists(local_folder / name):
+        if not os.path.exists(os.path.join(local_folder, name)):
             # connect to the server to download the file
             print("Downloading file... ", end="")
-            gc.downloadFile(id, local_folder / name)
+            gc.downloadFile(id, os.path.join(local_folder, name))
             print("done.")
 
         else:
             print("File already exists at", os.path.join(local_folder, name))
 
-        abs_paths.append(os.path.abspath(local_folder / name))
+        abs_paths.append(os.path.abspath(os.path.join(local_folder, name)))
 
-    return abs_paths
+    return abs_paths[0] if len(abs_paths) == 1 else abs_paths
