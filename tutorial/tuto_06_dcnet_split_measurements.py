@@ -74,28 +74,19 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # First, we download the covariance matrix from our warehouse.
 
 import girder_client
+from spyrit.misc.load_data import download_girder
 import numpy as np
 
-# api Rest url of the warehouse
+# Get covariance matrix
 url = "https://pilot-warehouse.creatis.insa-lyon.fr/api/v1"
-# Generate the warehouse client
-gc = girder_client.GirderClient(apiUrl=url)
-# Download the covariance matrix and mean image
 data_folder = "./stat/"
-dataId_list = [
-    "63935b624d15dd536f0484a5",  # for reconstruction (imageNet, 64)
-    "63935a224d15dd536f048496",  # for reconstruction (imageNet, 64)
-]
-cov_name = "./stat/Cov_64x64.npy"
+dataId = "63935b624d15dd536f0484a5"
+cov_name = "Cov_64x64.npy"
+# download
+file_abs_path = download_girder(url, dataId, data_folder, cov_name)
+
 try:
-    Cov = np.load(cov_name)
-    print(f"Cov matrix {cov_name} loaded")
-except FileNotFoundError:
-    for dataId in dataId_list:
-        myfile = gc.getFile(dataId)
-        gc.downloadFile(dataId, data_folder + myfile["name"])
-    print(f"Created {data_folder}")
-    Cov = np.load(cov_name)
+    Cov = np.load(file_abs_path)
     print(f"Cov matrix {cov_name} loaded")
 except:
     Cov = np.eye(h * h)

@@ -166,9 +166,8 @@ if False:
 
 if False:
     from spyrit.core.train import load_net
-    import girder_client
+    from spyrit.misc.load_data import download_girder
 
-    local_folder = "./model/"
     # Create model folder
     if os.path.exists(local_folder):
         print(f"{local_folder} found")
@@ -176,27 +175,16 @@ if False:
         os.mkdir(local_folder)
         print(f"Created {local_folder}")
 
-    # Load pretrained model
+    # Download parameters
     url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
     dataID = "667ebf20baa5a9000705895b"  # unique ID of the file
+    local_folder = "./model/"
     data_name = "tuto8_model_lpgd.pth"
-    model_net_path = os.path.join(local_folder, data_name)
-
-    if os.path.exists(model_net_path):
-        print(f"Model found : {data_name}")
-
-    else:
-        print(f"Model not found : {data_name}")
-        print(f"Downloading model... ", end="")
-        try:
-            gc = girder_client.GirderClient(apiUrl=url)
-            gc.downloadFile(dataID, model_net_path)
-            print("Done")
-        except Exception as e:
-            print("Failed with error: ", e)
+    # Download from Girder
+    model_abs_path = download_girder(url, dataID, local_folder, data_name)
 
     # Load pretrained weights to the model
-    load_net(model_net_path, lpgd_net, device, strict=False)
+    load_net(model_abs_path, lpgd_net, device, strict=False)
 
     lpgd_net.eval()
     lpgd_net.to(device)

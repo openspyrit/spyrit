@@ -313,26 +313,14 @@ if mode_run:
     torch.cuda.empty_cache()
 
 else:
+    from spyrit.misc.load_data import download_girder
+
     url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
+    dataID = "667ebfe4baa5a90007058964"  # unique ID of the file
     data_name = "tuto4_TRAIN_pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pkl"
     train_path = os.path.join(model_root, data_name)
-
-    # Find existing training history
-    if os.path.exists(train_path):
-        print(f"Training history found: {data_name}")
-
-    else:
-        print(f"Training history not found: {data_name}")
-        print(f"Downloading training history... ", end="")
-        try:
-            import girder_client
-
-            dataID = "667ebfe4baa5a90007058964"  # unique ID of the file
-            gc = girder_client.GirderClient(apiUrl=url)
-            gc.downloadFile(dataID, train_path)
-            print("Done")
-        except Exception as e:
-            print("Failed with error: ", e)
+    # download girder file
+    download_girder(url, dataID, model_root, data_name)
 
     with open(train_path, "rb") as param_file:
         params = pickle.load(param_file)

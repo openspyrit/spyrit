@@ -198,33 +198,15 @@ pinv_net_cnn = pinv_net_cnn.to(device)
 # As an example, we use a simple ConvNet that has been pretrained using STL-10 dataset.
 # We download the pretrained weights and load them into the network.
 
-local_folder = "./model/"
-# Create model folder
-if os.path.exists(local_folder):
-    print(f"{local_folder} found")
-else:
-    os.mkdir(local_folder)
-    print(f"Created {local_folder}")
+from spyrit.misc.load_data import download_girder
 
 # Load pretrained model
 url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
 dataID = "668267b3baa5a9000705896a"  # unique ID of the file
+local_folder = "./model/"
 data_name = "tuto3_pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth"
-model_cnn_path = os.path.join(local_folder, data_name)
-num_epochs = 30
-
-if os.path.exists(model_cnn_path):
-    print(f"Model found : {data_name}")
-
-else:
-    print(f"Model not found : {data_name}")
-    print(f"Downloading model... ", end="")
-    try:
-        gc = girder_client.GirderClient(apiUrl=url)
-        gc.downloadFile(dataID, model_cnn_path)
-        print("Done")
-    except Exception as e:
-        print("Failed with error: ", e)
+# download the model and save it in the local folder
+model_cnn_path = download_girder(url, dataID, local_folder, data_name)
 
 # Load model weights
 load_net(model_cnn_path, pinv_net_cnn, device, False)
@@ -256,7 +238,7 @@ noaxis(ax2)
 add_colorbar(im2, "bottom", size="20%")
 
 im3 = ax3.imshow(x_plot3, cmap="gray")
-ax3.set_title(f"Pinv + CNN (trained {num_epochs} epochs", fontsize=20)
+ax3.set_title(f"Pinv + CNN (trained 30 epochs", fontsize=20)
 noaxis(ax3)
 add_colorbar(im3, "bottom", size="20%")
 
@@ -264,7 +246,7 @@ add_colorbar(im3, "bottom", size="20%")
 # We show the best result again (tutorial thumbnail purpose)
 
 # Plot
-imagesc(x_plot3, f"Pinv + CNN (trained {num_epochs} epochs", title_fontsize=20)
+imagesc(x_plot3, f"Pinv + CNN (trained 30 epochs", title_fontsize=20)
 
 plt.show()
 
