@@ -314,13 +314,14 @@ if mode_run:
 
 else:
     from spyrit.misc.load_data import download_girder
+
     url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
     dataID = "667ebfe4baa5a90007058964"  # unique ID of the file
     data_name = "tuto4_TRAIN_pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pkl"
     train_path = os.path.join(model_root, data_name)
     # download girder file
     download_girder(url, dataID, model_root, data_name)
-    
+
     with open(train_path, "rb") as param_file:
         params = pickle.load(param_file)
     train_info["train"] = params.train_loss
