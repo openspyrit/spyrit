@@ -38,7 +38,8 @@
 </summary>
 
 ### spyrit.core
-
+* #### spyrit.core.meas
+    * / The method forward_H has been optimized for the HadamSplit class
 * #### spyrit.core.torch
     * \+ Added spyrit.core.torch.fwht that implements in Pytorch the fast Walsh-Hadamard tranform for natural and Walsh ordered tranforms.
     * \+ Added spyrit.core.torch.fwht_2d that implements in Pytorch the fast Walsh-Hadamard tranform in 2 dimensions for natural and Walsh ordered tranforms.
