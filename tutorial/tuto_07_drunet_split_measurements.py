@@ -143,35 +143,17 @@ denoi_drunet = denoi_drunet.to(device)
 ###############################################################################
 # We download the pretrained weights of the DRUNet and load them.
 
-local_folder = "./model/"
-# Create model folder
-if os.path.exists(local_folder):
-    print(f"{local_folder} found")
-else:
-    os.mkdir(local_folder)
-    print(f"Created {local_folder}")
+from spyrit.misc.load_data import download_girder
 
 # Load pretrained model
 url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
 dataID = "667ebf9ebaa5a9000705895e"  # unique ID of the file
+local_folder = "./model/"
 data_name = "tuto7_drunet_gray.pth"
-model_drunet_path = os.path.join(local_folder, data_name)
-
-if os.path.exists(model_drunet_path):
-    print(f"Model found : {data_name}")
-
-else:
-    print(f"Model not found : {data_name}")
-    print(f"Downloading model... ", end="")
-    try:
-        gc = girder_client.GirderClient(apiUrl=url)
-        gc.downloadFile(dataID, model_drunet_path)
-        print("Done")
-    except Exception as e:
-        print("Failed with error: ", e)
+model_drunet_abs_path = download_girder(url, dataID, local_folder, data_name)
 
 # Load pretrained weights
-denoi_drunet.load_state_dict(torch.load(model_drunet_path), strict=False)
+denoi_drunet.load_state_dict(torch.load(model_drunet_abs_path), strict=False)
 
 # %%
 # Pluggind the DRUnet in a DCNet
@@ -257,10 +239,10 @@ drunet_den = drunet(in_nc=n_channels + 1, out_nc=n_channels)
 
 # Load pretrained model
 try:
-    drunet_den.load_state_dict(torch.load(model_drunet_path), strict=True)
-    print(f"Model {model_drunet_path} loaded.")
+    drunet_den.load_state_dict(torch.load(model_drunet_abs_path), strict=True)
+    print(f"Model {model_drunet_abs_path} loaded.")
 except:
-    print(f"Model {model_drunet_path} not found!")
+    print(f"Model {model_drunet_abs_path} not found!")
     load_drunet = False
 drunet_den = drunet_den.to(device)
 
