@@ -886,7 +886,8 @@ class HadamSplit(LinearSplit):
         original_shape = x.shape
         x = x.reshape(*original_shape[:-1], self.h, self.w)
         m = spytorch.fwht_2d(x).reshape(original_shape)
-        return self.reindex(m, "rows", True)[..., :self.M]
+        print(m.shape)
+        return self.reindex(m, "cols", True)[..., :self.M]
 
     def inverse(self, y: torch.tensor) -> torch.tensor:
         r"""Inverse transform of Hadamard-domain images :math:`x = H_{had}^{-1}G y`.
