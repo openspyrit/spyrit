@@ -22,8 +22,6 @@ import warnings
 import math
 import torch
 import torch.nn as nn
-import scipy.signal
-import numpy as np
 
 from spyrit.core.warp import DeformationField
 import spyrit.core.torch as spytorch
@@ -162,9 +160,10 @@ class _Base(nn.Module):
             image in the batch.
 
             :attr:`reg` (str, optional): Regularization method to use.
-            Available options are 'L1' and 'L2'. This parameter must be
-            specified if the pseudo inverse has not been computed. Defaults
-            to None.
+            Available options are 'rcond', 'L2' and 'H1'. 'rcond' uses the
+            :attr:`rcond` parameter found in :func:`torch.linalg.lstsq`.
+            This parameter must be specified if the pseudo inverse has not been
+            computed. Defaults to None.
 
             :attr:`eta` (float, optional): Regularization parameter. Only
             relevant when :attr:`reg` is specified. Defaults to None.
@@ -203,7 +202,7 @@ class _Base(nn.Module):
                     + "Should not be called on its own."
                 )
 
-            if reg == "L1":
+            if reg == "rcond":
                 ans = torch.linalg.lstsq(
                     H_to_inv, x.to(H_to_inv.dtype).T, rcond=eta, driver="gelsd"
                 ).solution.to(x.dtype)
@@ -1142,7 +1141,8 @@ class DynamicLinear(_Base):
             del self._param_H_dyn_pinv
             warnings.warn(
                 "The dynamic measurement matrix pseudo-inverse H_pinv has "
-                + "been deleted. Please call build_H_dyn_pinv() to recompute it.",
+                + "been deleted. Please call self.build_H_dyn_pinv() to " +
+                "recompute it.",
                 UserWarning,
             )
         except AttributeError:
@@ -1160,204 +1160,120 @@ class DynamicLinear(_Base):
         scale_factor = torch.tensor(self.img_shape) - 1
         def_field = (motion.field + 1) / 2 * scale_factor
 
-        if mode == "bilinear_old":
+        # drawings of the kernels for bilinear and bicubic interpolation
+        #   00    point      01
+        #    +------+--------+
+        #    |      |        |
+        #    |      |        |
+        #    +------+--------+ point
+        #    |      |        |
+        #    +------+--------+
+        #   10               11
 
-            # get the integer part of the field for the 4 nearest neighbours
-            #   00    point      01
-            #    +------+--------+
-            #    |      |        |
-            #    |      |        |
-            #    +------+--------+ point
-            #    |      |        |
-            #    +------+--------+
-            #   10               11
+        #      00          01   point   02          03
+        #       +-----------+-----+-----+-----------+
+        #       |           |           |           |
+        #       |           |     |     |           |
+        #       |        11 |           | 12        |
+        #    10 +-----------+-----+-----+-----------+ 13
+        #       |           |     |     |           |
+        #       + - - - - - + - - + - - + - - - - - + point
+        #       |           |     |     |           |
+        #    20 +-----------+-----+-----+-----------+ 23
+        #       |        21 |     |     | 22        |
+        #       |           |           |           |
+        #       |           |     |     |           |
+        #       +-----------+-----+-----+-----------+
+        #      30          31           32          33
 
-            def_field = spytorch.center_crop(
-                def_field.moveaxis(-1, 0), self.meas_shape
-            ).moveaxis(0, -1)
-            H_padded = meas_pattern.reshape(-1, *self.meas_shape)
+        kernel_size = self._spline(torch.tensor([0]), mode).shape[1]
+        kernel_width = kernel_size - 1
+        kernel_n_pts = kernel_size**2
 
-            def_field_00 = def_field.floor().to(torch.int16)
-            self.def_field_00_1 = def_field_00
-            def_field_01 = def_field_00 + torch.tensor([0, 1]).to(torch.int16)
-            def_field_10 = def_field_00 + torch.tensor([1, 0]).to(torch.int16)
-            def_field_11 = def_field_00 + torch.tensor([1, 1]).to(torch.int16)
-            # stack them all up for vectorized operations
-            def_field_stacked = torch.stack(
-                [def_field_00, def_field_01, def_field_10, def_field_11]
-            )
+        # PART 1: SEPARATE THE INTEGER AND DECIMAL PARTS OF THE FIELD
+        # _________________________________________________________________
+        # crop def_field to keep only measured area
+        # moveaxis because crop expects (h,w) as last dimensions
+        def_field = spytorch.center_crop(
+            def_field.moveaxis(-1, 0), self.meas_shape
+        ).moveaxis(
+            0, -1
+        )  # shape (n_frames, meas_h, meas_w, 2)
+        # coordinate of top-left closest corner
+        def_field_floor = def_field.floor().to(torch.int64)
+        # shape (n_frames, meas_h, meas_w, 2)
+        # compute decimal part in x y direction
+        dx, dy = torch.split((def_field - def_field_floor), [1, 1], dim=-1)
+        dx, dy = dx.squeeze(-1), dy.squeeze(-1)
+        # dx.shape = dy.shape = (n_frames, meas_h, meas_w)
+        # evaluate the spline at the decimal part
+        dxy = torch.einsum(
+            "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
+        ).reshape(n_frames, kernel_n_pts, self.h * self.w)
+        # shape (n_frames, kernel_n_pts, meas_h*meas_w)
 
-            # compute the weights for the bilinear interpolation
-            dx, dy = torch.split((def_field - def_field_00), [1, 1], dim=-1)
-            dx, dy = dx.squeeze(-1), dy.squeeze(-1)
-            # stack for the 4 nearest neighbours, must match def_field order
-            dxy = torch.stack(
-                [(1 - dx) * (1 - dy), (1 - dx) * dy, dx * (1 - dy), dx * dy]
-            )
+        # PART 2: FLATTEN THE INDICES
+        # _________________________________________________________________
+        # we consider an expanded grid (img_h+k)x(img_w+k), where k is
+        # (kernel_width). This allows each part of the (kernel_size^2)-
+        # point grid to contribute to the interpolation.
+        # get coordinate of point _00
+        def_field_00 = def_field_floor - (kernel_size // 2 - 1)
+        # shift the grid for phantom rows/columns
+        def_field_00 += kernel_width
+        # create a mask indicating if either of the 2 indices is out of bounds
+        # (w,h) because the def_field is in (x,y) coordinates
+        maxs = torch.tensor([self.img_w + kernel_width, self.img_h + kernel_width])
+        mask = torch.logical_or(
+            (def_field_00 < 0).any(dim=-1), (def_field_00 >= maxs).any(dim=-1)
+        )  # shape (n_frames, meas_h, meas_w)
+        # trash index receives all the out-of-bounds indices
+        trash = (maxs[0] * maxs[1]).to(torch.int64)
+        # if the indices are out of bounds, we put the trash index
+        # otherwise we put the flattened index (y*w + x)
+        flattened_indices = torch.where(
+            mask,
+            trash,
+            def_field_00[..., 0]
+            + def_field_00[..., 1] * (self.img_w + kernel_width),
+        ).reshape(n_frames, self.h * self.w)
 
-            # combine with H_padded
-            H_dxy = H_padded.to(torch.float64) * dxy
-
-            # ================
-            # ALL CORRECT HERE
-            # ================
-
-            # label each frame in the deformation field
-            frames_index = torch.arange(meas_pattern.shape[0]).reshape(
-                1, meas_pattern.shape[0], 1, 1, 1
-            )
-            frames_index = frames_index.expand(4, -1, self.img_w, self.img_h, -1)
-            # stack the frames with the def_field_stacked
-            def_field_stacked_framed = torch.cat(
-                (frames_index, def_field_stacked), dim=-1
-            )
-
-            # keep indices that are within the image AND for which
-            # the weights are non-zero
-            maxs = torch.tensor([self.img_w, self.img_h])
-            keep = (
-                (def_field_stacked >= 0).all(dim=-1)
-                & (def_field_stacked < maxs).all(dim=-1)
-                & (H_dxy != 0)
-            )
-
-            # get the values and indices for the non-zero weights to add
-            # to the dynamic measurement matrix. Linearize the indices
-            vals = H_dxy[keep]
-            indices = def_field_stacked_framed[keep].T
-
-            H_shape_multiplier = torch.tensor(
-                [
-                    [H_padded.shape[1] * H_padded.shape[2]],
-                    [1],  # accounts for x dimension
-                    [H_padded.shape[2]],  # accounts for y dimension
-                ]
-            )
-            indices_linearized = (indices * H_shape_multiplier).sum(dim=0)
-
-            # add in dynamic measurement matrix
-            H_dyn = torch.zeros(H_padded.numel()).to(vals.dtype)
-            H_dyn = H_dyn.put_(indices_linearized, vals, accumulate=True)
-            H_dyn = H_dyn.reshape(meas_pattern.shape[0], self.img_w * self.img_h)
-            # what is the dtype?
-
-            self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False)
-
-        else:
-            # drawings of the kernels for bilinear and bicubic interpolation
-            #   00    point      01
-            #    +------+--------+
-            #    |      |        |
-            #    |      |        |
-            #    +------+--------+ point
-            #    |      |        |
-            #    +------+--------+
-            #   10               11
-
-            #      00          01   point   02          03
-            #       +-----------+-----+-----+-----------+
-            #       |           |           |           |
-            #       |           |     |     |           |
-            #       |        11 |           | 12        |
-            #    10 +-----------+-----+-----+-----------+ 13
-            #       |           |     |     |           |
-            #       + - - - - - + - - + - - + - - - - - + point
-            #       |           |     |     |           |
-            #    20 +-----------+-----+-----+-----------+ 23
-            #       |        21 |     |     | 22        |
-            #       |           |           |           |
-            #       |           |     |     |           |
-            #       +-----------+-----+-----+-----------+
-            #      30          31           32          33
-
-            kernel_size = self._spline(torch.tensor([0]), mode).shape[1]
-            kernel_width = kernel_size - 1
-            kernel_n_pts = kernel_size**2
-
-            # PART 1: SEPARATE THE INTEGER AND DECIMAL PARTS OF THE FIELD
-            # _________________________________________________________________
-            # crop def_field to keep only measured area
-            # moveaxis because crop expects (h,w) as last dimensions
-            def_field = spytorch.center_crop(
-                def_field.moveaxis(-1, 0), self.meas_shape
-            ).moveaxis(
-                0, -1
-            )  # shape (n_frames, meas_h, meas_w, 2)
-            # coordinate of top-left closest corner
-            def_field_floor = def_field.floor().to(torch.int64)
-            # shape (n_frames, meas_h, meas_w, 2)
-            # compute decimal part in x y direction
-            dx, dy = torch.split((def_field - def_field_floor), [1, 1], dim=-1)
-            dx, dy = dx.squeeze(-1), dy.squeeze(-1)
-            # dx.shape = dy.shape = (n_frames, meas_h, meas_w)
-            # evaluate the spline at the decimal part
-            dxy = torch.einsum(
-                "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
-            ).reshape(n_frames, kernel_n_pts, self.h * self.w)
-            # shape (n_frames, kernel_n_pts, meas_h*meas_w)
-
-            # PART 2: FLATTEN THE INDICES
-            # _________________________________________________________________
-            # we consider an expanded grid (img_h+k)x(img_w+k), where k is
-            # (kernel_width). This allows each part of the (kernel_size^2)-
-            # point grid to contribute to the interpolation.
-            # get coordinate of point _00
-            def_field_00 = def_field_floor - (kernel_size // 2 - 1)
-            # shift the grid for phantom rows/columns
-            def_field_00 += kernel_width
-            # create a mask indicating if either of the 2 indices is out of bounds
-            # (w,h) because the def_field is in (x,y) coordinates
-            maxs = torch.tensor([self.img_w + kernel_width, self.img_h + kernel_width])
-            mask = torch.logical_or(
-                (def_field_00 < 0).any(dim=-1), (def_field_00 >= maxs).any(dim=-1)
-            )  # shape (n_frames, meas_h, meas_w)
-            # trash index receives all the out-of-bounds indices
-            trash = (maxs[0] * maxs[1]).to(torch.int64)
-            # if the indices are out of bounds, we put the trash index
-            # otherwise we put the flattened index (y*w + x)
-            flattened_indices = torch.where(
-                mask,
-                trash,
-                def_field_00[..., 0]
-                + def_field_00[..., 1] * (self.img_w + kernel_width),
-            ).reshape(n_frames, self.h * self.w)
-
-            # PART 3: WARP H MATRIX WITH FLATTENED INDICES
-            # _________________________________________________________________
-            # Build 4 submatrices with 4 weights for bilinear interpolation
-            meas_dxy = (
-                meas_pattern.reshape(n_frames, 1, self.h * self.w).to(torch.float64)
-                * dxy
-            )
-            # shape (n_frames, kernel_size^2, meas_h*meas_w)
-            # Create a larger H_dyn that will be folded
-            meas_dxy_sorted = torch.zeros(
-                (
-                    n_frames,
-                    kernel_n_pts,
-                    (self.img_h + kernel_width) * (self.img_w + kernel_width) + 1,
-                ),
-                # +1 for trash
-                dtype=torch.float64,
-            )
-            # add at flattened_indices the values of meas_dxy (~warping)
-            meas_dxy_sorted.scatter_add_(
-                2, flattened_indices.unsqueeze(1).expand_as(meas_dxy), meas_dxy
-            )
-            # drop last column (trash)
-            meas_dxy_sorted = meas_dxy_sorted[:, :, :-1]
-            self.meas_dxy_sorted = meas_dxy_sorted
-            # PART 4: FOLD THE MATRIX
-            # _________________________________________________________________
-            # define operator
-            fold = nn.Fold(
-                output_size=(self.img_h, self.img_w),
-                kernel_size=(kernel_size, kernel_size),
-                padding=kernel_width,
-            )
-            H_dyn = fold(meas_dxy_sorted).reshape(n_frames, self.img_h * self.img_w)
-            # store in _param_H_dyn
-            self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False)
+        # PART 3: WARP H MATRIX WITH FLATTENED INDICES
+        # _________________________________________________________________
+        # Build 4 submatrices with 4 weights for bilinear interpolation
+        meas_dxy = (
+            meas_pattern.reshape(n_frames, 1, self.h * self.w).to(torch.float64)
+            * dxy
+        )
+        # shape (n_frames, kernel_size^2, meas_h*meas_w)
+        # Create a larger H_dyn that will be folded
+        meas_dxy_sorted = torch.zeros(
+            (
+                n_frames,
+                kernel_n_pts,
+                (self.img_h + kernel_width) * (self.img_w + kernel_width) + 1,
+            ),
+            # +1 for trash
+            dtype=torch.float64,
+        )
+        # add at flattened_indices the values of meas_dxy (~warping)
+        meas_dxy_sorted.scatter_add_(
+            2, flattened_indices.unsqueeze(1).expand_as(meas_dxy), meas_dxy
+        )
+        # drop last column (trash)
+        meas_dxy_sorted = meas_dxy_sorted[:, :, :-1]
+        self.meas_dxy_sorted = meas_dxy_sorted
+        # PART 4: FOLD THE MATRIX
+        # _________________________________________________________________
+        # define operator
+        fold = nn.Fold(
+            output_size=(self.img_h, self.img_w),
+            kernel_size=(kernel_size, kernel_size),
+            padding=kernel_width,
+        )
+        H_dyn = fold(meas_dxy_sorted).reshape(n_frames, self.img_h * self.img_w)
+        # store in _param_H_dyn
+        self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False)
 
     def build_H_dyn_pinv(self, reg: str = "L1", eta: float = 1e-3) -> None:
         """Computes the pseudo-inverse of the dynamic measurement matrix
@@ -1368,8 +1284,8 @@ class DynamicLinear(_Base):
         raised if `H_dyn` has not been set yet.
 
         Args:
-            :attr:`reg` (str): Regularization method. Can be either 'L1' or 'L2'.
-            Defaults to 'L1'.
+            :attr:`reg` (str): Regularization method. Can be either 'rcond',
+            'L2' or 'H1'. Defaults to 'rcond'.
 
             :attr:`eta` (float): Regularization parameter. Defaults to 1e-6.
 
@@ -1848,28 +1764,3 @@ class DynamicHadamSplit(DynamicLinearSplit):
         # we pass the whole F matrix to the constructor
         super().__init__(F, Ord, (h, h), img_shape)
         self._M = M
-
-
-# -----------------------------------------------------------------------------
-
-# REGULARIZATION TO BE IMPLEMENTED
-# if reg == 'L2':
-#     ans = torch.linalg.solve(
-#         H_dyn.T @ H_dyn + eta * torch.eye(H_dyn.shape[1]),
-#         H_dyn.T @ x.T,
-#         driver = 'gelsd').T
-
-# elif reg == 'H1':
-#     a, b = spytorch.finite_diff_mat(meas_op.img_h, 'neumann')
-#     D2 = (a.T @ a + b.T @ b).to_dense()
-#     ans = torch.linalg.solve(H_dyn.T @ H_dyn + eta * D2,
-#                             H_dyn.T @ x.T).T
-
-# else:
-#     print("No valid regularization specified, using least squares")
-#     ans = torch.linalg.lstsq(H_dyn, x.T,
-#                         rcond=0.05, driver='gelss').solution.T
-
-# return ans.to(orig_dtype)
-
-# BICUBIC INTERPOLATION TO BE IMPLEMENTED
