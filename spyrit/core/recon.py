@@ -56,7 +56,11 @@ class PseudoInverse(nn.Module):
 
             :attr:`meas_op`: Measurement operator. Any class that
             implements a :meth:`pinv` method can be used, e.g.,
-            :class:`~spyrit.core.forwop.HadamSplit`.
+            :class:`~spyrit.core.meas.HadamSplit`.
+
+            :attr:`kwargs`: Additional keyword arguments that are passed to
+            the :meth:`pinv` method of the measurement operator. Can be used
+            to specify a regularization parameter.
 
         Shape:
 
