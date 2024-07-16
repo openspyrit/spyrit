@@ -144,7 +144,7 @@ class _Base(nn.Module):
 
     ### -------------------
 
-    def pinv(self, x: torch.tensor, reg: str = "L1", eta: float = 1e-3) -> torch.tensor:
+    def pinv(self, x: torch.tensor, reg: str = "rcond", eta: float = 1e-3) -> torch.tensor:
         r"""Computes the pseudo inverse solution :math:`y = H^\dagger x`.
 
         This method will compute the pseudo inverse solution using the
@@ -237,7 +237,7 @@ class _Base(nn.Module):
             else:
                 raise NotImplementedError(
                     f"Regularization method ({reg}) not implemented. Please "
-                    + "use 'L1', 'L2' or 'H1'."
+                    + "use 'rcond', 'L2' or 'H1'."
                 )
 
         # if we used bicubic b spline, convolve with the kernel
@@ -320,7 +320,7 @@ class _Base(nn.Module):
 
     def _build_pinv(self, tensor: torch.tensor, reg: str, eta: float) -> torch.tensor:
 
-        if reg == "L1":
+        if reg == "rcond":
             pinv = torch.linalg.pinv(tensor, atol=eta)
 
         elif reg == "L2":
@@ -345,7 +345,7 @@ class _Base(nn.Module):
         else:
             raise NotImplementedError(
                 f"Regularization method '{reg}' is not implemented. Please "
-                + "choose either 'L1', 'L2' or 'H1'."
+                + "choose either 'rcond', 'L2' or 'H1'."
             )
         return pinv
 
@@ -479,7 +479,7 @@ class Linear(_Base):
     ):
         super().__init__(H, Ord, meas_shape)
         if pinv:
-            self.build_H_pinv(reg="L1", eta=rtol)
+            self.build_H_pinv(reg="rcond", eta=rtol)
 
     @property
     def H(self) -> torch.tensor:
@@ -508,7 +508,7 @@ class Linear(_Base):
         )
         return self.H
 
-    def build_H_pinv(self, reg: str = "L1", eta: float = 1e-3) -> None:
+    def build_H_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
         """Used to set the pseudo inverse of the measurement matrix :math:`H`
         using `torch.linalg.pinv`. The result is stored in the attribute
         :attr:`H_pinv`.
@@ -1275,7 +1275,7 @@ class DynamicLinear(_Base):
         # store in _param_H_dyn
         self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False)
 
-    def build_H_dyn_pinv(self, reg: str = "L1", eta: float = 1e-3) -> None:
+    def build_H_dyn_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
         """Computes the pseudo-inverse of the dynamic measurement matrix
         `H_dyn` and stores it in the attribute `H_dyn_pinv`.
 
