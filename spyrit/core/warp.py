@@ -90,8 +90,8 @@ class DeformationField(nn.Module):
         self._img_h = field.shape[1]
         self._img_w = field.shape[2]
         self._img_shape = (self.img_h, self.img_w)
-        
-        self.warn_range = True # warn the user if the field goes beyond +/-2
+
+        self.warn_range = True  # warn the user if the field goes beyond +/-2
         self._warn_field()
 
     @property
@@ -246,14 +246,14 @@ class DeformationField(nn.Module):
                     ":attr:`func` for greater accuracy."
                 )
             warnings.warn(msg, UserWarning)
-        
+
         # if the field goes bayond +/-2, warn the user
         if self.warn_range and (self.field.abs() > 2).any():
             msg = (
-                "The deformation field goes beyond the range [-1;1]. " +
-                "Are you sure most of it lies within this range?" +
-                "You can suppress this warning by setting " +
-                "self.warn_range = False.",
+                "The deformation field goes beyond the range [-1;1]. "
+                + "Are you sure most of it lies within this range?"
+                + "You can suppress this warning by setting "
+                + "self.warn_range = False.",
             )
             warnings.warn(msg, UserWarning)
 

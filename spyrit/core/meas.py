@@ -144,7 +144,9 @@ class _Base(nn.Module):
 
     ### -------------------
 
-    def pinv(self, x: torch.tensor, reg: str = "rcond", eta: float = 1e-3) -> torch.tensor:
+    def pinv(
+        self, x: torch.tensor, reg: str = "rcond", eta: float = 1e-3
+    ) -> torch.tensor:
         r"""Computes the pseudo inverse solution :math:`y = H^\dagger x`.
 
         This method will compute the pseudo inverse solution using the
@@ -1141,8 +1143,8 @@ class DynamicLinear(_Base):
             del self._param_H_dyn_pinv
             warnings.warn(
                 "The dynamic measurement matrix pseudo-inverse H_pinv has "
-                + "been deleted. Please call self.build_H_dyn_pinv() to " +
-                "recompute it.",
+                + "been deleted. Please call self.build_H_dyn_pinv() to "
+                + "recompute it.",
                 UserWarning,
             )
         except AttributeError:
@@ -1234,16 +1236,14 @@ class DynamicLinear(_Base):
         flattened_indices = torch.where(
             mask,
             trash,
-            def_field_00[..., 0]
-            + def_field_00[..., 1] * (self.img_w + kernel_width),
+            def_field_00[..., 0] + def_field_00[..., 1] * (self.img_w + kernel_width),
         ).reshape(n_frames, self.h * self.w)
 
         # PART 3: WARP H MATRIX WITH FLATTENED INDICES
         # _________________________________________________________________
         # Build 4 submatrices with 4 weights for bilinear interpolation
         meas_dxy = (
-            meas_pattern.reshape(n_frames, 1, self.h * self.w).to(torch.float64)
-            * dxy
+            meas_pattern.reshape(n_frames, 1, self.h * self.w).to(torch.float64) * dxy
         )
         # shape (n_frames, kernel_size^2, meas_h*meas_w)
         # Create a larger H_dyn that will be folded
