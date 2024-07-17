@@ -34,6 +34,25 @@
 
 <details open><summary>
 
+## v2.3.3
+</summary>
+
+### spyrit.core
+* #### spyrit.core.meas
+    * / The regularization value 'L1' has been changed to 'rcond'. The behavior is unchanged but the reconstruction did not correspond to L1 regularization.
+* #### spyrit.core.recon
+    * / The documentation for the class core.recon.Denoise_layer has been clarified.
+
+### Tutorials
+
+* Tutorial 2 integrated the change from 'L1' to 'rcond'
+
+</details>
+
+---
+
+<details open><summary>
+
 ## v2.3.2
 </summary>
 

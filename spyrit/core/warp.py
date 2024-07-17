@@ -82,20 +82,6 @@ class DeformationField(nn.Module):
     def __init__(self, field: torch.tensor):
         super().__init__()
 
-        if field.dtype == torch.float32:
-            if self.__class__ == DeformationField:
-                msg = (
-                    "Consider using float64 when storing the deformation "
-                    "field for greater accuracy."
-                )
-            if self.__class__ == AffineDeformationField:
-                msg = (
-                    "Consider using float64 when defining the output type "
-                    "of the affine transformation matrix "
-                    ":attr:`func` for greater accuracy."
-                )
-            warnings.warn(msg, UserWarning)
-
         # store as nn.Parameter
         self._field = nn.Parameter(field, requires_grad=False)
         # set other properties / inv_grid_frames has shape (n_frames, H, W, 2)
@@ -104,6 +90,9 @@ class DeformationField(nn.Module):
         self._img_h = field.shape[1]
         self._img_w = field.shape[2]
         self._img_shape = (self.img_h, self.img_w)
+
+        self.warn_range = True  # warn the user if the field goes beyond +/-2
+        self._warn_field()
 
     @property
     def align_corners(self) -> bool:
@@ -241,6 +230,32 @@ class DeformationField(nn.Module):
             align_corners=self.align_corners,
         ).to(img.dtype)
         return out.reshape(img.shape[-2], n_frames, img.shape[-1])
+
+    def _warn_field(self):
+        # using float64 is preferred for accuracy
+        if self.field.dtype == torch.float32:
+            if self.__class__ == DeformationField:
+                msg = (
+                    "Consider using float64 when storing the deformation "
+                    "field for greater accuracy."
+                )
+            if self.__class__ == AffineDeformationField:
+                msg = (
+                    "Consider using float64 when defining the output type "
+                    "of the affine transformation matrix "
+                    ":attr:`func` for greater accuracy."
+                )
+            warnings.warn(msg, UserWarning)
+
+        # if the field goes bayond +/-2, warn the user
+        if self.warn_range and (self.field.abs() > 2).any():
+            msg = (
+                "The deformation field goes beyond the range [-1;1]. "
+                + "Are you sure most of it lies within this range?"
+                + "You can suppress this warning by setting "
+                + "self.warn_range = False.",
+            )
+            warnings.warn(msg, UserWarning)
 
     def _attributeslist(self):
         a = [
