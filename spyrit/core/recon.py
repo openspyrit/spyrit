@@ -89,20 +89,27 @@ class TikhonovMeasurementPriorDiag(nn.Module):
     r"""
     Tikhonov regularisation with prior in the measurement domain.
 
-    Considering linear measurements :math:`m = Hx \in\mathbb{R}^M`, where :math:`H = GF` is the measurement matrix and :math:`x\in\mathbb{R}^N` is a vectorized image, it estimates :math:`x` from :math:`m` by approximately minimizing
+    Considering linear measurements :math:`m = Hx \in\mathbb{R}^M`, where
+    :math:`H = GF` is the measurement matrix and :math:`x\in\mathbb{R}^N` is a
+    vectorized image, it estimates :math:`x` from :math:`m` by approximately
+    minimizing
 
     .. math::
         \|m - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}
 
-    where :math:`x_0\in\mathbb{R}^N` is a mean image prior, :math:`\Sigma\in\mathbb{R}^{N\times N}` is a covariance prior, and :math:`\Sigma_\alpha\in\mathbb{R}^{M\times M}` is the measurement noise covariance. The matrix :math:`G\in\mathbb{R}^{M\times N}` is a subsampling matrix.
+    where :math:`x_0\in\mathbb{R}^N` is a mean image prior,
+    :math:`\Sigma\in\mathbb{R}^{N\times N}` is a covariance prior, and
+    :math:`\Sigma_\alpha\in\mathbb{R}^{M\times M}` is the measurement noise
+    covariance. The matrix :math:`G\in\mathbb{R}^{M\times N}` is a
+    subsampling matrix.
 
     .. note::
-        The class is instantiated from :math:`\Sigma`, which represents the covariance of :math:`Fx`.
+        The class is instantiated from :math:`\Sigma`, which represents the
+        covariance of :math:`Fx`.
 
     Args:
         - :attr:`sigma`:  covariance prior with shape :math:`N` x :math:`N`
         - :attr:`M`: number of measurements :math:`M`
-
 
     Attributes:
         :attr:`comp`: The learnable completion layer initialized as
@@ -163,7 +170,6 @@ class TikhonovMeasurementPriorDiag(nn.Module):
             \hat{x} &= x_0 + F^{-1}\begin{bmatrix}\Sigma_1 \\ \Sigma_{21} \end{bmatrix}
                       [\Sigma_1 + \Sigma_\alpha]^{-1} (m - GF x_0)
 
-
         See Lemma B.0.5 of the PhD dissertation of A. Lorente Mur (2021):
         https://theses.hal.science/tel-03670825v1/file/these.pdf
 
@@ -203,28 +209,56 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 # =============================================================================
 class Denoise_layer(nn.Module):
     # =========================================================================
-    r"""Wiener filter that assumes additive white Gaussian noise.
+    r"""Defines a learnable Wiener filter that assumes additive white Gaussian noise.
 
-    :math:`y = \sigma_\text{prior}^2/(\sigma^2_\text{prior} + \sigma^2_\text{meas}) x`,
-    where :math:`\sigma^2_\text{prior}` is the variance prior and
-    :math:`\sigma^2_\text{meas}` is the variance of the measurement, :math:`x`
-    is the input vector and :math:`y` is the output vector.
+    The filter is pre-defined upon initialization with the standard deviation prior
+    (if known), or with an integer representing the size of the input vector.
+    In the second case, the standard deviation prior is initialized at random
+    from a uniform (0,2/size) distribution.
+    
+    Using the foward method (the implicit call method), the filter is fully
+    defined:
 
+    .. math::
+    \sigma_\text{prior}^2/(\sigma^2_\text{prior} + \sigma^2_\text{meas})
+    
+    where :math:`\sigma^2_\text{prior}` is the variance prior defined at
+    initialization and :math:`\sigma^2_\text{meas}` is the measurement variance
+    defined using the forward method. The value given by the equation above 
+    can then be multiplied by the measurement vector to obtain the denoised
+    measurement vector.
+    
     Args:
-        :attr:`M` (int): size of incoming vector
+        :attr:`std_dev_or_size` (torch.tensor or int): 1D tensor representing
+        the standard deviation prior or an integer defining the size of the
+        randomly-initialized standard deviation prior. If an array is passed
+        and it is not 1D, it is flattened. It is stored internally as a
+        :class:`nn.Parameter`, whose :attr:`data` attribute is accessed through
+        the :attr:`sigma` attribute, and whose :attr:`requires_grad` attribute
+        is accessed through the :attr:`requires_grad` attribute. 
 
-    Shape:
-        - Input: :math:`(*, M)`.
-        - Output: :math:`(*, M)`.
+    Shape for forward call:
+        - Input: :math:`(*, in\_features)` measurement variance.
+        - Output: :math:`(*, in\_features)` fully defined Wiener filter.
 
     Attributes:
         :attr:`weight`:
         The learnable standard deviation prior :math:`\sigma_\text{prior}` of
-        shape :math:`(M, 1)`. The values are initialized from
-        :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`, where :math:`k = 1/M`.
+        shape :math:`(in\_features, 1)`. The values are initialized from
+        :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`, where :math:`k = 1/in\_features`.
+        
+        :attr:`sigma`:
+        The learnable standard deviation prior :math:`\sigma_\text{prior}` of shape
+        :math:`(, in\_features)`. If the input is an integer, the standard deviation prior
+        is initialized at random from  :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`,
+        where :math:`k = 1/in\_features`.
 
         :attr:`in_features`:
-        The number of input features equal to :math:`M`.
+        The number of input features.
+        
+        :attr:`requires_grad`:
+        A boolean indicating whether the autograd should record operations on
+        the standard deviation tensor. Default is True.
 
     Example:
         >>> m = Denoise_layer(30)
@@ -234,40 +268,71 @@ class Denoise_layer(nn.Module):
         torch.Size([128, 30])
     """
 
-    def __init__(self, M: int):
+    def __init__(
+        self,
+        std_dev_prior_or_size: Union[torch.tensor, int],
+        requires_grad=True):
         super(Denoise_layer, self).__init__()
-        self.in_features = M
-        self.weight = nn.Parameter(torch.Tensor(M))
-        self.reset_parameters()
+        
+        if isinstance(std_dev_prior_or_size, int):
+            self.weight = nn.Parameter(
+                torch.Tensor(std_dev_prior_or_size),
+                requires_grad=requires_grad
+            )
+            self.reset_parameters()
+            
+        else:
+            if not isinstance(std_dev_prior_or_size, torch.Tensor):
+                raise TypeError(
+                    "std_dev_or_size should be an integer or a torch.Tensor"
+                )
+            self.weight = nn.Parameter(
+                std_dev_prior_or_size.reshape(-1),
+                requires_grad=requires_grad
+            )
 
+    @property
+    def in_features(self):
+        return self.weight.data.numel()
+    
     def reset_parameters(self):
         r"""
         Resets the standard deviation prior :math:`\sigma_\text{prior}`.
 
         The values are initialized from :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`,
-        where :math:`k = 1/M`. They are stored in the :attr:`weight` attribute.
+        where :math:`k = 1/in\_features`. They are stored in the :attr:`weight`
+        attribute.
         """
         nn.init.uniform_(self.weight, 0, 2 / math.sqrt(self.in_features))
 
-    def forward(self, inputs: torch.tensor) -> torch.tensor:
+    def forward(self, sigma_meas_squared: torch.tensor) -> torch.tensor:
         r"""
-        Applies a transformation to the incoming data: :math:`y = \sigma_\text{prior}^2/(\sigma_\text{prior}^2+x)`.
-
-        :math:`x` is the input tensor (see :attr:`inputs`) and
-        :math:`\sigma_\text{prior}` is the standard deviation prior (see :attr:`self.weight`).
+        Fully defines the Wiener filter with the measurement variance.
+        
+        This outputs :math:`\sigma_\text{prior}^2/(\sigma_\text{prior}^2 + \sigma^2_\text{meas})`,
+        where :math:`\sigma^2_\text{meas}` is the measurement variance (see :attr:`sigma_meas_squared`) and
+        :math:`\sigma_\text{prior}` is the standard deviation prior defined 
+        upon construction of the class (see :attr:`self.weight`).
 
         Args:
-            :attr:`inputs` (torch.tensor): input tensor :math:`x` of shape
-            :math:`(N, *, in\_features)`
+            :attr:`sigma_meas_squared` (torch.tensor): input tensor :math:`\sigma^2_\text{meas}`
+            of shape :math:`(*, in\_features)`
 
         Returns:
-            torch.tensor: The transformed data :math:`y` of shape
-            :math:`(N, in\_features)`
+            torch.tensor: The multiplicative filter of shape
+            :math:`(*, in\_features)`
 
         Shape:
-
+            - Input: :math:`(*, in\_features)`
+            - Output: :math:`(*, in\_features)`
         """
-        return self.tikho(inputs, self.weight)
+        if sigma_meas_squared.shape[-1] != self.in_features:
+            raise ValueError(
+                "The last dimension of the input tensor " +
+                f"({sigma_meas_squared.shape[-1]})should be equal to the number of " +
+                f"input features ({self.in_features})."
+            )
+        return self.tikho(sigma_meas_squared, self.weight)
 
     def extra_repr(self):
         return "in_features={}".format(self.in_features)
