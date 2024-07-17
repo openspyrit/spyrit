@@ -4,7 +4,10 @@ Author: Romain Phan
 """
 
 import warnings
-warnings.filterwarnings("ignore", ".*The deformation field goes beyond the range [-1;1].*")
+
+warnings.filterwarnings(
+    "ignore", ".*The deformation field goes beyond the range [-1;1].*"
+)
 
 import torch
 import math
