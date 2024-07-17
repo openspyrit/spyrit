@@ -25,7 +25,7 @@ def test_core_warp():
     print("\tconstructor... ", end="")
     n_frames = 10
     nx, ny = 64, 64
-    matrix = torch.randn(n_frames, ny, nx, 2, dtype=torch.float64)
+    matrix = torch.rand(n_frames, ny, nx, 2, dtype=torch.float64)
     def_field = DeformationField(matrix)
     print("ok")
 
@@ -33,7 +33,7 @@ def test_core_warp():
     print("\tconstructor with rectangular size... ", end="")
     n_frames = 10
     height, width = 32, 64
-    matrix = torch.randn(n_frames, height, width, 2, dtype=torch.float64)
+    matrix = torch.rand(n_frames, height, width, 2, dtype=torch.float64)
     def_field = DeformationField(matrix)
     assert_shape(
         def_field.field.shape,
@@ -44,9 +44,9 @@ def test_core_warp():
 
     # forward greyscale (1D)
     print("\tforward greyscale... ", end="")
-    matrix = torch.randn(n_frames, ny, nx, 2, dtype=torch.float64)
+    matrix = torch.rand(n_frames, ny, nx, 2, dtype=torch.float64)
     def_field = DeformationField(matrix)
-    img = torch.randn(1, nx * ny, dtype=torch.float64)
+    img = torch.rand(1, nx * ny, dtype=torch.float64)
     warped_img = def_field(img, 0, n_frames)
     assert_shape(
         warped_img.shape, torch.Size([1, 10, nx * ny]), "Wrong forward greyscale size"
@@ -55,7 +55,7 @@ def test_core_warp():
 
     # forward color (3D)
     print("\tforward color... ", end="")
-    img = torch.randn(3, nx * ny, dtype=torch.float64)
+    img = torch.rand(3, nx * ny, dtype=torch.float64)
     warped_img = def_field(img, 0, n_frames)
     assert_shape(
         warped_img.shape, torch.Size([3, 10, nx * ny]), "Wrong forward color size"
@@ -64,7 +64,7 @@ def test_core_warp():
 
     # # forward color with batch of images
     # print("\tforward color with batch of images... ", end="")
-    # batch_imgs = torch.randn(5, 3, nx, ny, dtype=torch.float)
+    # batch_imgs = torch.rand(5, 3, nx, ny, dtype=torch.float)
     # warped_batch_imgs = def_field(batch_imgs, 0, n_frames)
     # assert_shape(
     #     warped_batch_imgs.shape,
@@ -139,7 +139,7 @@ def test_core_warp():
     # # test 4 frames with 10 images in a batch
     # print("\tforward 4 frames with 10 images in a batch... ", end="")
     # nx, ny = 2, 2
-    # batch_imgs = torch.randn(10, 3, nx, ny, dtype=torch.float)
+    # batch_imgs = torch.rand(10, 3, nx, ny, dtype=torch.float)
     # warped_batch_imgs = field(batch_imgs, 0, n_frames, "bilinear")
     # assert_shape(
     #     warped_batch_imgs.shape,
