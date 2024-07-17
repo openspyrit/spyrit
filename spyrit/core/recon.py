@@ -215,19 +215,19 @@ class Denoise_layer(nn.Module):
     (if known), or with an integer representing the size of the input vector.
     In the second case, the standard deviation prior is initialized at random
     from a uniform (0,2/size) distribution.
-    
+
     Using the foward method (the implicit call method), the filter is fully
     defined:
 
     .. math::
     \sigma_\text{prior}^2/(\sigma^2_\text{prior} + \sigma^2_\text{meas})
-    
+
     where :math:`\sigma^2_\text{prior}` is the variance prior defined at
     initialization and :math:`\sigma^2_\text{meas}` is the measurement variance
-    defined using the forward method. The value given by the equation above 
+    defined using the forward method. The value given by the equation above
     can then be multiplied by the measurement vector to obtain the denoised
     measurement vector.
-    
+
     Args:
         :attr:`std_dev_or_size` (torch.tensor or int): 1D tensor representing
         the standard deviation prior or an integer defining the size of the
@@ -235,7 +235,7 @@ class Denoise_layer(nn.Module):
         and it is not 1D, it is flattened. It is stored internally as a
         :class:`nn.Parameter`, whose :attr:`data` attribute is accessed through
         the :attr:`sigma` attribute, and whose :attr:`requires_grad` attribute
-        is accessed through the :attr:`requires_grad` attribute. 
+        is accessed through the :attr:`requires_grad` attribute.
 
     Shape for forward call:
         - Input: :math:`(*, in\_features)` measurement variance.
@@ -246,7 +246,7 @@ class Denoise_layer(nn.Module):
         The learnable standard deviation prior :math:`\sigma_\text{prior}` of
         shape :math:`(in\_features, 1)`. The values are initialized from
         :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`, where :math:`k = 1/in\_features`.
-        
+
         :attr:`sigma`:
         The learnable standard deviation prior :math:`\sigma_\text{prior}` of shape
         :math:`(, in\_features)`. If the input is an integer, the standard deviation prior
@@ -255,7 +255,7 @@ class Denoise_layer(nn.Module):
 
         :attr:`in_features`:
         The number of input features.
-        
+
         :attr:`requires_grad`:
         A boolean indicating whether the autograd should record operations on
         the standard deviation tensor. Default is True.
@@ -269,32 +269,29 @@ class Denoise_layer(nn.Module):
     """
 
     def __init__(
-        self,
-        std_dev_prior_or_size: Union[torch.tensor, int],
-        requires_grad=True):
+        self, std_dev_prior_or_size: Union[torch.tensor, int], requires_grad=True
+    ):
         super(Denoise_layer, self).__init__()
-        
+
         if isinstance(std_dev_prior_or_size, int):
             self.weight = nn.Parameter(
-                torch.Tensor(std_dev_prior_or_size),
-                requires_grad=requires_grad
+                torch.Tensor(std_dev_prior_or_size), requires_grad=requires_grad
             )
             self.reset_parameters()
-            
+
         else:
             if not isinstance(std_dev_prior_or_size, torch.Tensor):
                 raise TypeError(
                     "std_dev_or_size should be an integer or a torch.Tensor"
                 )
             self.weight = nn.Parameter(
-                std_dev_prior_or_size.reshape(-1),
-                requires_grad=requires_grad
+                std_dev_prior_or_size.reshape(-1), requires_grad=requires_grad
             )
 
     @property
     def in_features(self):
         return self.weight.data.numel()
-    
+
     def reset_parameters(self):
         r"""
         Resets the standard deviation prior :math:`\sigma_\text{prior}`.
@@ -308,10 +305,10 @@ class Denoise_layer(nn.Module):
     def forward(self, sigma_meas_squared: torch.tensor) -> torch.tensor:
         r"""
         Fully defines the Wiener filter with the measurement variance.
-        
+
         This outputs :math:`\sigma_\text{prior}^2/(\sigma_\text{prior}^2 + \sigma^2_\text{meas})`,
         where :math:`\sigma^2_\text{meas}` is the measurement variance (see :attr:`sigma_meas_squared`) and
-        :math:`\sigma_\text{prior}` is the standard deviation prior defined 
+        :math:`\sigma_\text{prior}` is the standard deviation prior defined
         upon construction of the class (see :attr:`self.weight`).
 
         Args:
@@ -328,9 +325,9 @@ class Denoise_layer(nn.Module):
         """
         if sigma_meas_squared.shape[-1] != self.in_features:
             raise ValueError(
-                "The last dimension of the input tensor " +
-                f"({sigma_meas_squared.shape[-1]})should be equal to the number of " +
-                f"input features ({self.in_features})."
+                "The last dimension of the input tensor "
+                + f"({sigma_meas_squared.shape[-1]})should be equal to the number of "
+                + f"input features ({self.in_features})."
             )
         return self.tikho(sigma_meas_squared, self.weight)
 
