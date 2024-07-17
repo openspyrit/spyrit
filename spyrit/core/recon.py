@@ -220,13 +220,18 @@ class Denoise_layer(nn.Module):
     defined:
 
     .. math::
-    \sigma_\text{prior}^2/(\sigma^2_\text{prior} + \sigma^2_\text{meas})
+        \sigma_\text{prior}^2/(\sigma^2_\text{prior} + \sigma^2_\text{meas})
 
     where :math:`\sigma^2_\text{prior}` is the variance prior defined at
     initialization and :math:`\sigma^2_\text{meas}` is the measurement variance
     defined using the forward method. The value given by the equation above
     can then be multiplied by the measurement vector to obtain the denoised
     measurement vector.
+
+    ..note::
+        The weight (defined at initialization or accessible through the
+        attribute :attr:`weight`) should not be squared (as it is squared when
+        the forward method is called).
 
     Args:
         :attr:`std_dev_or_size` (torch.tensor or int): 1D tensor representing
@@ -310,6 +315,10 @@ class Denoise_layer(nn.Module):
         where :math:`\sigma^2_\text{meas}` is the measurement variance (see :attr:`sigma_meas_squared`) and
         :math:`\sigma_\text{prior}` is the standard deviation prior defined
         upon construction of the class (see :attr:`self.weight`).
+
+        ..note::
+            The measurement variance should be squared before being passed to
+            this method, unlike the standard deviation prior (defined at construction).
 
         Args:
             :attr:`sigma_meas_squared` (torch.tensor): input tensor :math:`\sigma^2_\text{meas}`
