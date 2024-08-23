@@ -28,6 +28,7 @@ These tutorials load image samples from `/images/`.
 # using the :func:`transform_gray_norm` function.
 
 import os
+import girder_client
 
 import torch
 import torchvision
@@ -197,48 +198,18 @@ pinv_net_cnn = pinv_net_cnn.to(device)
 # As an example, we use a simple ConvNet that has been pretrained using STL-10 dataset.
 # We download the pretrained weights and load them into the network.
 
+from spyrit.misc.load_data import download_girder
+
 # Load pretrained model
-model_path = "./model"
-num_epochs = 1
-
-pretrained_model_num = 3
-if pretrained_model_num == 1:
-    # 1 epoch
-    url_cnn = "https://drive.google.com/file/d/1iGjxOk06nlB5hSm3caIfx0vy2byQd-ZC/view?usp=drive_link"
-    name_cnn = "pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_1_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth"
-    num_epochs = 1
-elif pretrained_model_num == 2:
-    # 5 epochs
-    url_cnn = "https://drive.google.com/file/d/1tzZg1lU3AxOi8-EVXFgnxdtqQCJPjQ9f/view?usp=drive_link"
-    name_cnn = (
-        "pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_5_lr_0.001_sss_10_sdr_0.5_bs_512.pth"
-    )
-    num_epochs = 5
-elif pretrained_model_num == 3:
-    # 30 epochs
-    url_cnn = "https://drive.google.com/file/d/1IZYff1xQxJ3ckAnObqAWyOure6Bjkj4k/view?usp=drive_link"
-    name_cnn = "pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth"
-    num_epochs = 30
-
-# Create model folder
-if os.path.exists(model_path) is False:
-    os.mkdir(model_path)
-    print(f"Created {model_path}")
-
-# Download model weights
-model_cnn_path = os.path.join(model_path, name_cnn)
-print(model_cnn_path)
-if os.path.exists(model_cnn_path) is False:
-    try:
-        import gdown
-
-        gdown.download(url_cnn, model_cnn_path, quiet=False, fuzzy=True)
-    except:
-        print(f"Model {model_cnn_path} not downloaded!")
+url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
+dataID = "668267b3baa5a9000705896a"  # unique ID of the file
+local_folder = "./model/"
+data_name = "tuto3_pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth"
+# download the model and save it in the local folder
+model_cnn_path = download_girder(url, dataID, local_folder, data_name)
 
 # Load model weights
 load_net(model_cnn_path, pinv_net_cnn, device, False)
-print(f"Model {model_cnn_path} loaded.")
 
 
 ###############################################################################
@@ -267,7 +238,7 @@ noaxis(ax2)
 add_colorbar(im2, "bottom", size="20%")
 
 im3 = ax3.imshow(x_plot3, cmap="gray")
-ax3.set_title(f"Pinv + CNN (trained {num_epochs} epochs", fontsize=20)
+ax3.set_title(f"Pinv + CNN (trained 30 epochs", fontsize=20)
 noaxis(ax3)
 add_colorbar(im3, "bottom", size="20%")
 
@@ -275,7 +246,7 @@ add_colorbar(im3, "bottom", size="20%")
 # We show the best result again (tutorial thumbnail purpose)
 
 # Plot
-imagesc(x_plot3, f"Pinv + CNN (trained {num_epochs} epochs", title_fontsize=20)
+imagesc(x_plot3, f"Pinv + CNN (trained 30 epochs", title_fontsize=20)
 
 plt.show()
 

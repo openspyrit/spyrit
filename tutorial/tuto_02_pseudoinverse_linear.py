@@ -216,7 +216,7 @@ del meas_op.H_pinv  # delete the pseudo-inverse
 print(f"Pseudo-inverse computed: {hasattr(meas_op, 'H_pinv')}")
 
 # Reconstruction
-x_rec2 = recon_op(y, meas_op, reg="L1", eta=1e-6)
+x_rec2 = recon_op(y, meas_op, reg="rcond", eta=1e-6)
 
 # restore the pseudo-inverse
 meas_op.H_pinv = temp

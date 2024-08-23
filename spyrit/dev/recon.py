@@ -464,7 +464,7 @@ class Tikhonov_solve(nn.Module):
         """
         A = FO.Mat() @ torch.transpose(FO.Mat(), 0, 1) + self.mu * torch.eye(FO.M)
         # Can precompute H@H.T to save time!
-        A = A.view(1, FO.M, FO.M)
+        A = A.reshape(1, FO.M, FO.M)
         # Instead of reshaping A, reshape x in the batch-final dimension
         # A = A.repeat(x.shape[0],1, 1); # Not optimal in terms of memory
         A = A.expand(x.shape[0], -1, -1)
@@ -757,7 +757,7 @@ class Generalised_Tikhonov_solve(nn.Module):
             torch.Size([10, 400])
         """
         A = FO.Mat() @ self.Sigma_prior @ torch.transpose(FO.Mat(), 0, 1)
-        A = A.view(1, FO.M, FO.M)
+        A = A.reshape(1, FO.M, FO.M)
         # A = A.repeat(x.shape[0],1,1);# this could be precomputed maybe
         # A += torch.diag_embed(var);
         A = A.expand(x.shape[0], -1, -1) + torch.diag_embed(var)
@@ -971,12 +971,12 @@ class PinvStoreNet(nn.Module):
         b, c, _, _ = x.shape
 
         # Acquisition
-        x = x.view(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = x.reshape(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
         x = self.acqu(x)  # shape x = [b*c, 2*M]
 
         # Reconstruction
         x = self.reconstruct(x)  # shape x = [bc, 1, h,w]
-        x = x.view(b, c, self.acqu.meas_op.h, self.acqu.meas_op.w)
+        x = x.reshape(b, c, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
         return x
 
@@ -1007,7 +1007,7 @@ class PinvStoreNet(nn.Module):
         b, c, _, _ = x.shape
 
         # Acquisition
-        x = x.view(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = x.reshape(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
         x = self.acqu(x)  # shape x = [b*c, 2*M]
 
         return x
@@ -1045,7 +1045,7 @@ class PinvStoreNet(nn.Module):
         x = self.pinv(x)  # shape x = [b*c,N]
 
         # Image-domain denoising
-        x = x.view(
+        x = x.reshape(
             bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
         )  # shape x = [b*c,1,h,w]
         x = self.denoi(x)
@@ -1070,7 +1070,7 @@ class MoDL(nn.Module):
         b, c, h, w = x.shape
 
         # Acquisition
-        x = x.view(b * c, h * w)
+        x = x.reshape(b * c, h * w)
         # shape x = [b*c,h*w] = [b*c,N]
         x_0 = torch.zeros_like(x).to(x.device)
         x = self.Acq(x)
@@ -1087,15 +1087,15 @@ class MoDL(nn.Module):
             # shape x = [b*c, N]
             # Image-to-image mapping via convolutional networks
             # Image domain denoising
-            x = x.view(b * c, 1, h, w)
+            x = x.reshape(b * c, 1, h, w)
             x = self.Denoi(x)
             # shape stays the same
-            x = x.view(b * c, h * w)
+            x = x.reshape(b * c, h * w)
             # shape x = [b*c,h*w] = [b*c,N]
             x_0 = x
         x = self.DC_layer(m, x_0, self.Acq.FO)
         # shape x = [b*c, N]
-        x = x.view(b, c, h, w)
+        x = x.reshape(b, c, h, w)
         return x
 
     def forward_mmse(self, x):
@@ -1103,7 +1103,7 @@ class MoDL(nn.Module):
         b, c, h, w = x.shape
 
         # Acquisition
-        x = x.view(b * c, h * w)
+        x = x.reshape(b * c, h * w)
         # shape x = [b*c,h*w] = [b*c,N]
         x_0 = torch.zeros_like(x).to(x.device)
         x = self.Acq(x)
@@ -1120,7 +1120,7 @@ class MoDL(nn.Module):
 
         # Image-to-image mapping via convolutional networks
         # Image domain denoising
-        x = x.view(b * c, 1, h, w)
+        x = x.reshape(b * c, 1, h, w)
         return x
 
     def reconstruct(self, x, h=None, w=None):
@@ -1133,7 +1133,7 @@ class MoDL(nn.Module):
         if w is None:
             w = int(np.sqrt(self.Acq.FO.N))
 
-        x = x.view(b * c, M2)
+        x = x.reshape(b * c, M2)
         x_0 = torch.zeros((b * c, self.Acq.FO.N)).to(x.device)
 
         # Preprocessing
@@ -1147,16 +1147,16 @@ class MoDL(nn.Module):
             # shape x = [b*c, N]
             # Image-to-image mapping via convolutional networks
             # Image domain denoising
-            x = x.view(b * c, 1, h, w)
+            x = x.reshape(b * c, 1, h, w)
             x = self.Denoi(x)
             # shape stays the same
-            x = x.view(b * c, h * w)
+            x = x.reshape(b * c, h * w)
             # shape x = [b*c,h*w] = [b*c,N]
             x_0 = x
 
         x = self.DC_layer(m, x_0, self.Acq.FO)
         # shape x = [b*c, N]
-        x = x.view(b, c, h, w)
+        x = x.reshape(b, c, h, w)
         return x
 
 
@@ -1178,7 +1178,7 @@ class EM_net(nn.Module):
         b, c, h, w = x.shape
 
         # Acquisition
-        x = x.view(b * c, h * w)
+        x = x.reshape(b * c, h * w)
         # shape x = [b*c,h*w] = [b*c,N]
         x_0 = torch.zeros_like(x).to(x.device)
         x = self.Acq(x)
@@ -1198,13 +1198,13 @@ class EM_net(nn.Module):
             # shape x = [b*c, N]
             # Image-to-image mapping via convolutional networks
             # Image domain denoising
-            x = x.view(b * c, 1, h, w)
+            x = x.reshape(b * c, 1, h, w)
             x = self.Denoi(x, iterate=i)
             # shape stays the same
-            x = x.view(b * c, h * w)
+            x = x.reshape(b * c, h * w)
             # shape x = [b*c,h*w] = [b*c,N]
             x_0 = x
-        x = x.view(b, c, h, w)
+        x = x.reshape(b, c, h, w)
         return x
 
 

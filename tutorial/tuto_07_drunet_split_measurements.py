@@ -72,30 +72,18 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 ######################################################################
 # First, we download the covariance matrix from our warehouse.
 
-import girder_client
+from spyrit.misc.load_data import download_girder
 
-# api Rest url of the warehouse
+# download parameters
 url = "https://pilot-warehouse.creatis.insa-lyon.fr/api/v1"
-
-# Generate the warehouse client
-gc = girder_client.GirderClient(apiUrl=url)
-
-# Download the covariance matrix and mean image
+dataId = "63935b624d15dd536f0484a5"
 data_folder = "./stat/"
-dataId_list = [
-    "63935b624d15dd536f0484a5",  # for reconstruction (imageNet, 64)
-    "63935a224d15dd536f048496",  # for reconstruction (imageNet, 64)
-]
-cov_name = "./stat/Cov_64x64.npy"
+cov_name = "Cov_64x64.npy"
+# download the covariance matrix
+file_abs_path = download_girder(url, dataId, data_folder, cov_name)
 
 try:
-    for dataId in dataId_list:
-        myfile = gc.getFile(dataId)
-        gc.downloadFile(dataId, data_folder + myfile["name"])
-
-    print(f"Created {data_folder}")
-
-    Cov = np.load(cov_name)
+    Cov = np.load(file_abs_path)
     print(f"Cov matrix {cov_name} loaded")
 except:
     Cov = np.eye(h * h)
@@ -155,25 +143,17 @@ denoi_drunet = denoi_drunet.to(device)
 ###############################################################################
 # We download the pretrained weights of the DRUNet and load them.
 
-try:
-    import gdown
+from spyrit.misc.load_data import download_girder
 
-    # Download pretrained weights
-    model_drunet_path = "./model"
-    url_drunet = "https://drive.google.com/file/d/1fhnIDJAbh7IRSZ9tgk4JPtfGra4O1ghk/view?usp=drive_link"
+# Load pretrained model
+url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
+dataID = "667ebf9ebaa5a9000705895e"  # unique ID of the file
+local_folder = "./model/"
+data_name = "tuto7_drunet_gray.pth"
+model_drunet_abs_path = download_girder(url, dataID, local_folder, data_name)
 
-    if os.path.exists(model_drunet_path) is False:
-        os.mkdir(model_drunet_path)
-        print(f"Created {model_drunet_path}")
-
-    model_drunet_path = os.path.join(model_drunet_path, "drunet_gray.pth")
-    gdown.download(url_drunet, model_drunet_path, quiet=False, fuzzy=True)
-
-    # Load pretrained weights
-    denoi_drunet.load_state_dict(torch.load(model_drunet_path), strict=False)
-    print(f"Model {denoi_drunet} loaded.")
-except:
-    print(f"Model {model_drunet_path} not found!")
+# Load pretrained weights
+denoi_drunet.load_state_dict(torch.load(model_drunet_abs_path), strict=False)
 
 # %%
 # Pluggind the DRUnet in a DCNet
@@ -259,10 +239,10 @@ drunet_den = drunet(in_nc=n_channels + 1, out_nc=n_channels)
 
 # Load pretrained model
 try:
-    drunet_den.load_state_dict(torch.load(model_drunet_path), strict=True)
-    print(f"Model {model_drunet_path} loaded.")
+    drunet_den.load_state_dict(torch.load(model_drunet_abs_path), strict=True)
+    print(f"Model {model_drunet_abs_path} loaded.")
 except:
-    print(f"Model {model_drunet_path} not found!")
+    print(f"Model {model_drunet_abs_path} not found!")
     load_drunet = False
 drunet_den = drunet_den.to(device)
 

@@ -166,29 +166,25 @@ if False:
 
 if False:
     from spyrit.core.train import load_net
+    from spyrit.misc.load_data import download_girder
 
-    # Download weights
-    model_path = "./model"
-    if os.path.exists(model_path) is False:
-        os.mkdir(model_path)
-        print(f"Created {model_path}")
+    # Create model folder
+    if os.path.exists(local_folder):
+        print(f"{local_folder} found")
+    else:
+        os.mkdir(local_folder)
+        print(f"Created {local_folder}")
 
-    url_lpgd = "https://drive.google.com/file/d/1ki_cJQEwBWrpDhtE7-HoSEoY8oJUnUz5/view?usp=drive_link"
-    model_net_path = os.path.join(
-        model_path,
-        "lpgd_unet_imagenet_N0_10_m_hadam-split_N_128_M_4096_epo_30_lr_0.001_sss_10_sdr_0.5_bs_128_reg_1e-07_uit_3_sdec0-9.pth",
-    )
-
-    if os.path.exists(model_net_path) is False:
-        try:
-            import gdown
-
-            gdown.download(url_lpgd, model_net_path, quiet=False, fuzzy=True)
-        except:
-            print(f"Model not downloaded from {url_lpgd}!!!")
+    # Download parameters
+    url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
+    dataID = "667ebf20baa5a9000705895b"  # unique ID of the file
+    local_folder = "./model/"
+    data_name = "tuto8_model_lpgd.pth"
+    # Download from Girder
+    model_abs_path = download_girder(url, dataID, local_folder, data_name)
 
     # Load pretrained weights to the model
-    load_net(model_net_path, lpgd_net, device, strict=False)
+    load_net(model_abs_path, lpgd_net, device, strict=False)
 
     lpgd_net.eval()
     lpgd_net.to(device)

@@ -190,8 +190,8 @@ def ssim(I1, I2):
 def batch_psnr_vid(input_batch, output_batch):
     list_psnr = []
     batch_size, seq_length, c, h, w = input_batch.shape
-    input_batch = input_batch.view(batch_size * seq_length * c, 1, h, w)
-    output_batch = output_batch.view(batch_size * seq_length * c, 1, h, w)
+    input_batch = input_batch.reshape(batch_size * seq_length * c, 1, h, w)
+    output_batch = output_batch.reshape(batch_size * seq_length * c, 1, h, w)
     for i in range(input_batch.shape[0]):
         img = input_batch[i, 0, :, :]
         img_out = output_batch[i, 0, :, :]
@@ -204,8 +204,8 @@ def batch_psnr_vid(input_batch, output_batch):
 def batch_ssim_vid(input_batch, output_batch):
     list_ssim = []
     batch_size, seq_length, c, h, w = input_batch.shape
-    input_batch = input_batch.view(batch_size * seq_length * c, 1, h, w)
-    output_batch = output_batch.view(batch_size * seq_length * c, 1, h, w)
+    input_batch = input_batch.reshape(batch_size * seq_length * c, 1, h, w)
+    output_batch = output_batch.reshape(batch_size * seq_length * c, 1, h, w)
     for i in range(input_batch.shape[0]):
         img = input_batch[i, 0, :, :]
         img_out = output_batch[i, 0, :, :]
