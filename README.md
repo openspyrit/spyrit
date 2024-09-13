@@ -34,7 +34,7 @@ pip3 install torch torchvision torchaudio
 (GPU version using `conda`)
 
 ``` shell
-conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
 ```
 
 Then, install SPyRiT using `pip`.
