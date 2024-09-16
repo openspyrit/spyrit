@@ -34,10 +34,22 @@ pip3 install torch torchvision torchaudio
 (GPU version using `conda`)
 
 ``` shell
-conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia
 ```
 
-Then, install SPyRiT using `pip`.
+Then, install SPyRiT using `pip`:
+
+(user mode)
+```
+pip install spyrit
+```
+(developper mode)
+```
+git clone https://github.com/openspyrit/spyrit.git
+cd spyrit
+pip install -e .
+```
+
 
 ## Test
 To check the installation, run in your python terminal:
