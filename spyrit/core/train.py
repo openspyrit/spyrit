@@ -810,21 +810,42 @@ def save_net(title, model):
     print("Model Saved")
 
 
-def load_net(title, model, device=None, strict=True):
-    """Loads net defined by title"""
+def load_net(path, model, device=None, strict=True):
+    """Loads network defined by path into model. The network is loaded in-place
+    
+    Args:
+        :attr:`path` (str): full path to the model, must contain file extension
+        
+        :attr:`model` (torch.nn.Module): model to load the weights into. The
+        model must have the same architecture as the model that was saved.
+        
+        :attr:`device` (str): device to load the model on. If None, the model
+        is loaded on the cpu.
+        
+        :attr:`strict` (bool): this argument is passed to the `load_state_dict`
+        of the `nn.Module`. If True, the keys of the state_dict and the model
+        must match exactly. If there is a mismatch, an exception is raised.
+    
+    Returns:
+        `None`
+    
+    """
     # if title.endswith(".pth"):
     #     model_out_path = "{}".format(title)
     # else:
-    model_out_path = title
+    model_out_path = path
     try:
         if device is None:
-            model.load_state_dict(torch.load(model_out_path), strict=strict)
+            model.load_state_dict(
+                torch.load(model_out_path, weights_only=True),
+                strict=strict
+            )
         else:
             model.load_state_dict(
-                torch.load(model_out_path, map_location=torch.device(device)),
+                torch.load(model_out_path, weights_only=True, map_location=torch.device(device)),
                 strict=strict,
             )
-        print("Model Loaded: {}".format(title))
+        print("Model Loaded: {}".format(path))
     except:
         if os.path.isfile(model_out_path):
             print("Model not loaded at {}".format(model_out_path))
