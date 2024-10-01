@@ -242,7 +242,7 @@ class DeformationField(nn.Module):
                 align_corners=self.align_corners,
             )
             .to(img_collection.dtype)
-            .reshape(n_frames, c, n_pixels)
+            .reshape(c, n_frames, n_pixels)
         )
 
         return out
