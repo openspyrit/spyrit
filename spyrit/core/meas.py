@@ -65,9 +65,7 @@ class _Base(nn.Module):
             Ord = torch.arange(H_static.shape[0], 0, -1)
 
         # attributes for internal use
-        self._param_H_static = nn.Parameter(
-            H_static, requires_grad=False
-        )
+        self._param_H_static = nn.Parameter(H_static, requires_grad=False)
         self._param_Ord = nn.Parameter(Ord.to(torch.float32), requires_grad=False)
         self._indices = ind.to(torch.int32)
         # need to store M because H_static may be cropped (see HadamSplit)
@@ -143,8 +141,7 @@ class _Base(nn.Module):
     ### -------------------
 
     def pinv(
-        self, x: torch.tensor, reg: str = "rcond", eta: float = 1e-3,
-        diff=False
+        self, x: torch.tensor, reg: str = "rcond", eta: float = 1e-3, diff=False
     ) -> torch.tensor:
         r"""Computes the pseudo inverse solution :math:`y = H^\dagger x`.
 
@@ -202,18 +199,18 @@ class _Base(nn.Module):
                 H_to_inv = self.H_static
             elif isinstance(self, DynamicLinear):
                 H_to_inv = self.H_dyn
-                
+
                 if diff:
                     x = x[..., ::2] - x[..., 1::2]
                     H_to_inv = H_to_inv[::2, :] - H_to_inv[1::2, :]
-                    
+
             else:
                 raise NotImplementedError(
                     "It seems you have instanciated a _Base element. This class "
                     + "Should not be called on its own."
                 )
 
-            driver = 'gelsd'
+            driver = "gelsd"
             if H_to_inv.device != torch.device("cpu"):
                 H_to_inv = H_to_inv.cpu()
                 x = x.cpu()
@@ -225,23 +222,17 @@ class _Base(nn.Module):
                 ).solution.to(x.dtype)
             elif reg == "L2":
                 # if under- over-determined problem ?
-                ans = (
-                    torch.linalg.solve(
-                        H_to_inv.T @ H_to_inv + eta * torch.eye(H_to_inv.shape[1]),
-                        H_to_inv.T @ x.to(H_to_inv.dtype).T,
-                    )
-                    .to(x.dtype)
-                )
+                ans = torch.linalg.solve(
+                    H_to_inv.T @ H_to_inv + eta * torch.eye(H_to_inv.shape[1]),
+                    H_to_inv.T @ x.to(H_to_inv.dtype).T,
+                ).to(x.dtype)
             elif reg == "H1":
                 Dx, Dy = spytorch.neumann_boundary(self.img_shape)
                 D2 = Dx.T @ Dx + Dy.T @ Dy
-                ans = (
-                    torch.linalg.solve(
-                        H_to_inv.T @ H_to_inv + eta * D2,
-                        H_to_inv.T @ x.to(H_to_inv.dtype).T,
-                    )
-                    .to(x.dtype)
-                )
+                ans = torch.linalg.solve(
+                    H_to_inv.T @ H_to_inv + eta * D2,
+                    H_to_inv.T @ x.to(H_to_inv.dtype).T,
+                ).to(x.dtype)
 
             elif reg is None:
                 raise ValueError(
@@ -1246,7 +1237,9 @@ class DynamicLinear(_Base):
         def_field_00 += kernel_width
         # create a mask indicating if either of the 2 indices is out of bounds
         # (w,h) because the def_field is in (x,y) coordinates
-        maxs = torch.tensor([self.img_w + kernel_width, self.img_h + kernel_width], device=device)
+        maxs = torch.tensor(
+            [self.img_w + kernel_width, self.img_h + kernel_width], device=device
+        )
         mask = torch.logical_or(
             (def_field_00 < 0).any(dim=-1), (def_field_00 >= maxs).any(dim=-1)
         )  # shape (n_frames, meas_h, meas_w)
@@ -1272,7 +1265,8 @@ class DynamicLinear(_Base):
             (
                 n_frames,
                 kernel_n_pts,
-                (self.img_h + kernel_width) * (self.img_w + kernel_width) + 1, # +1 for trash
+                (self.img_h + kernel_width) * (self.img_w + kernel_width)
+                + 1,  # +1 for trash
             ),
             dtype=torch.float64,
         ).to(device)
