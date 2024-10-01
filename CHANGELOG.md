@@ -17,16 +17,31 @@
 
 * spyrit.core
     * spyrit.core.meas
-        * \- self.H_adjoint for static classes
-        * \- self.get_H() for static classes
-* spyrit.misc
-    * spyrit.misc.matrix_tools
-        * \- Permutation_Matrix()
-    * spyrit.misc.sampling
-        * \- meas2img2()
-    * spyrit.misc.walsh_hadamard
-        * \- walsh_torch
-        * \- walsh2_torch moved to spyrit.core.torch.fwht_2d (more efficient, covers natural and Walsh orders) and spyrit.core.torch.walsh2_torch (less efficient, more general algorithm)
+        * / Fixed .pinv() output shape (it was transposed with some regularisation methods)
+        * / Fixed some device errors when using cuda with .pinv()
+        * / The measurement matrix H is now stored with the data type it is given to the constructor (it was previously converted to torch.float32 for memory reasons)
+        * \+ added in the .pinv() method a diff parameter enabling differentiated reconstructions (subtracting negative patterns/measurements to the positive patterns/measurements)
+    *spyrit.core.train
+        * / load_net() uses the weights_only=True parameter in the torch.load() function. Documentation updated
+
+</details>
+
+---
+
+<details><summary>
+
+## v2.3.4 (not released yet)
+</summary>
+
+### spyrit.core
+* #### spyrit.core.meas
+    * / The regularization value 'L1' has been changed to 'rcond'. The behavior is unchanged but the reconstruction did not correspond to L1 regularization.
+* #### spyrit.core.recon
+    * / The documentation for the class core.recon.Denoise_layer has been clarified.
+
+### Tutorials
+
+* Tutorial 2 integrated the change from 'L1' to 'rcond'
 
 </details>
 

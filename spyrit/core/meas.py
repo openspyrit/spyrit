@@ -40,8 +40,6 @@ class _Base(nn.Module):
     ) -> None:
         super().__init__()
 
-        # H should be stored in float32
-        H_static = H_static.to(torch.float32)
         # store meas_shape and check it is correct
         if meas_shape is None:
             self._meas_shape = (
@@ -67,9 +65,7 @@ class _Base(nn.Module):
             Ord = torch.arange(H_static.shape[0], 0, -1)
 
         # attributes for internal use
-        self._param_H_static = nn.Parameter(
-            H_static.to(torch.float32), requires_grad=False
-        )
+        self._param_H_static = nn.Parameter(H_static, requires_grad=False)
         self._param_Ord = nn.Parameter(Ord.to(torch.float32), requires_grad=False)
         self._indices = ind.to(torch.int32)
         # need to store M because H_static may be cropped (see HadamSplit)
@@ -145,7 +141,7 @@ class _Base(nn.Module):
     ### -------------------
 
     def pinv(
-        self, x: torch.tensor, reg: str = "rcond", eta: float = 1e-3
+        self, x: torch.tensor, reg: str = "rcond", eta: float = 1e-3, diff=False
     ) -> torch.tensor:
         r"""Computes the pseudo inverse solution :math:`y = H^\dagger x`.
 
@@ -169,6 +165,11 @@ class _Base(nn.Module):
 
             :attr:`eta` (float, optional): Regularization parameter. Only
             relevant when :attr:`reg` is specified. Defaults to None.
+
+            :attr:`diff` (bool, optional): Use only with DynamicSplit measurements.
+            Whether to use the difference of positive and negative patterns.
+            The difference is applied to the measurements and to the dynamic
+            measurement matrix. Defaults to False.
 
         Shape:
             :math:`x`: :math:`(*, M)` where * denotes the batch size and `M`
@@ -198,37 +199,40 @@ class _Base(nn.Module):
                 H_to_inv = self.H_static
             elif isinstance(self, DynamicLinear):
                 H_to_inv = self.H_dyn
+
+                if diff:
+                    x = x[..., ::2] - x[..., 1::2]
+                    H_to_inv = H_to_inv[::2, :] - H_to_inv[1::2, :]
+
             else:
                 raise NotImplementedError(
                     "It seems you have instanciated a _Base element. This class "
                     + "Should not be called on its own."
                 )
 
+            driver = "gelsd"
+            if H_to_inv.device != torch.device("cpu"):
+                H_to_inv = H_to_inv.cpu()
+                x = x.cpu()
+                # driver = 'gels'
+
             if reg == "rcond":
                 ans = torch.linalg.lstsq(
-                    H_to_inv, x.to(H_to_inv.dtype).T, rcond=eta, driver="gelsd"
+                    H_to_inv, x.to(H_to_inv.dtype).T, rcond=eta, driver=driver
                 ).solution.to(x.dtype)
             elif reg == "L2":
                 # if under- over-determined problem ?
-                ans = (
-                    torch.linalg.solve(
-                        H_to_inv.T @ H_to_inv + eta * torch.eye(H_to_inv.shape[1]),
-                        H_to_inv.T @ x.to(H_to_inv.dtype).T,
-                    )
-                    .to(x.dtype)
-                    .T
-                )
+                ans = torch.linalg.solve(
+                    H_to_inv.T @ H_to_inv + eta * torch.eye(H_to_inv.shape[1]),
+                    H_to_inv.T @ x.to(H_to_inv.dtype).T,
+                ).to(x.dtype)
             elif reg == "H1":
                 Dx, Dy = spytorch.neumann_boundary(self.img_shape)
                 D2 = Dx.T @ Dx + Dy.T @ Dy
-                ans = (
-                    torch.linalg.solve(
-                        H_to_inv.T @ H_to_inv + eta * D2,
-                        H_to_inv.T @ x.to(H_to_inv.dtype).T,
-                    )
-                    .to(x.dtype)
-                    .T
-                )
+                ans = torch.linalg.solve(
+                    H_to_inv.T @ H_to_inv + eta * D2,
+                    H_to_inv.T @ x.to(H_to_inv.dtype).T,
+                ).to(x.dtype)
 
             elif reg is None:
                 raise ValueError(
@@ -1069,6 +1073,12 @@ class DynamicLinear(_Base):
                 + "H_dyn (or H)."
             ) from e
 
+    @H_dyn.setter
+    def H_dyn(self, value: torch.tensor) -> None:
+        self._param_H_dyn = nn.Parameter(value.to(torch.float64), requires_grad=False)
+        if hasattr(self, "_param_H_dyn_pinv"):
+            del H_pinv
+
     @property
     def recon_mode(self) -> str:
         """Interpolation mode used for reconstruction."""
@@ -1137,6 +1147,8 @@ class DynamicLinear(_Base):
 
         # store the mode in attribute
         self._recon_mode = mode
+        # store the device used in the deformation field
+        device = motion.field.device
 
         try:
             del self._param_H_dyn
@@ -1159,7 +1171,7 @@ class DynamicLinear(_Base):
 
         # get deformation field from motion
         # scale from [-1;1] x [-1;1] to [0;width-1] x [0;height-1]
-        scale_factor = torch.tensor(self.img_shape) - 1
+        scale_factor = (torch.tensor(self.img_shape) - 1).to(device)
         def_field = (motion.field + 1) / 2 * scale_factor
 
         # drawings of the kernels for bilinear and bicubic interpolation
@@ -1225,12 +1237,14 @@ class DynamicLinear(_Base):
         def_field_00 += kernel_width
         # create a mask indicating if either of the 2 indices is out of bounds
         # (w,h) because the def_field is in (x,y) coordinates
-        maxs = torch.tensor([self.img_w + kernel_width, self.img_h + kernel_width])
+        maxs = torch.tensor(
+            [self.img_w + kernel_width, self.img_h + kernel_width], device=device
+        )
         mask = torch.logical_or(
             (def_field_00 < 0).any(dim=-1), (def_field_00 >= maxs).any(dim=-1)
         )  # shape (n_frames, meas_h, meas_w)
         # trash index receives all the out-of-bounds indices
-        trash = (maxs[0] * maxs[1]).to(torch.int64)
+        trash = (maxs[0] * maxs[1]).to(torch.int64).to(device)
         # if the indices are out of bounds, we put the trash index
         # otherwise we put the flattened index (y*w + x)
         flattened_indices = torch.where(
@@ -1244,18 +1258,18 @@ class DynamicLinear(_Base):
         # Build 4 submatrices with 4 weights for bilinear interpolation
         meas_dxy = (
             meas_pattern.reshape(n_frames, 1, self.h * self.w).to(torch.float64) * dxy
-        )
+        ).to(device)
         # shape (n_frames, kernel_size^2, meas_h*meas_w)
         # Create a larger H_dyn that will be folded
         meas_dxy_sorted = torch.zeros(
             (
                 n_frames,
                 kernel_n_pts,
-                (self.img_h + kernel_width) * (self.img_w + kernel_width) + 1,
+                (self.img_h + kernel_width) * (self.img_w + kernel_width)
+                + 1,  # +1 for trash
             ),
-            # +1 for trash
             dtype=torch.float64,
-        )
+        ).to(device)
         # add at flattened_indices the values of meas_dxy (~warping)
         meas_dxy_sorted.scatter_add_(
             2, flattened_indices.unsqueeze(1).expand_as(meas_dxy), meas_dxy
@@ -1385,6 +1399,13 @@ class DynamicLinear(_Base):
             torch.tensor: Line-by-line dot product of the operator and the
             input image tensor.
         """
+        if x.shape[-1] != self.img_h * self.img_w:
+            raise RuntimeError(
+                "The number of pixels in the input image must match the number "
+                + "of pixels in the operator. Got "
+                + f"{x.shape[-1]} pixels in the input image and "
+                + f"{self.img_h * self.img_w} pixels in the operator."
+            )
         x_cropped = spytorch.center_crop(x, self.meas_shape, self.img_shape)
         try:
             return torch.einsum("ij,...ij->...i", op.to(x.dtype), x_cropped)

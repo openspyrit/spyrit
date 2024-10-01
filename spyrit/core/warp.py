@@ -213,23 +213,39 @@ class DeformationField(nn.Module):
             sel_inv_grid_frames = self.field[n0:n1, :, :, :]
             sel_inv_grid_frames = self.field[n0:n1, :, :, :]
 
-        # img has current shape (c, n_pixels), make it (n_frames, c, h, w)
-        img_frames = (
-            img.unsqueeze(0)
-            .expand(n_frames, *img.shape)
-            .reshape(n_frames, img.shape[0], self.img_h, self.img_w)
-        )
-        # img has current shape (c, h, w), make it (n_frames, c, h, w)
-        # img_frames = img.unsqueeze(0).expand(n_frames, *img.shape)
+        # img has current shape (c, n_pixels), make it (n_frames, c, n_pixels)
+        c, n_pixels = img.shape
+        img_frames = img.unsqueeze(0).expand(n_frames, c, n_pixels)
 
-        out = nn.functional.grid_sample(
-            img_frames.to(sel_inv_grid_frames.dtype),
-            sel_inv_grid_frames,
-            mode=mode,
-            padding_mode="zeros",
-            align_corners=self.align_corners,
-        ).to(img.dtype)
-        return out.reshape(img.shape[-2], n_frames, img.shape[-1])
+        return self._warp(img_frames, sel_inv_grid_frames, mode)
+
+    def _warp(self, img_collection, inverse_grid_frames, mode):
+        """
+        Used to warp a collection of 2D images with a deformation field.
+        Each image of the collection will get a different deformation.
+
+        img is a batched version of the image, with shape (c, n_frames, h, w)
+        """
+        # img_collection has shape (c, n_frames, n_pixels), make it
+        # (n_frames, c, h, w)
+        n_frames, c, n_pixels = img_collection.shape
+        img_collection = img_collection.reshape(n_frames, c, *self.img_shape).to(
+            inverse_grid_frames.dtype
+        )
+
+        out = (
+            nn.functional.grid_sample(
+                img_collection,
+                inverse_grid_frames,
+                mode=mode,
+                padding_mode="zeros",
+                align_corners=self.align_corners,
+            )
+            .to(img_collection.dtype)
+            .reshape(c, n_frames, n_pixels)
+        )
+
+        return out
 
     def _warn_field(self):
         # using float64 is preferred for accuracy
@@ -237,23 +253,23 @@ class DeformationField(nn.Module):
             if self.__class__ == DeformationField:
                 msg = (
                     "Consider using float64 when storing the deformation "
-                    "field for greater accuracy."
+                    + "field for greater accuracy."
                 )
             if self.__class__ == AffineDeformationField:
                 msg = (
-                    "Consider using float64 when defining the output type "
-                    "of the affine transformation matrix "
-                    ":attr:`func` for greater accuracy."
+                    "Consider using float64 when defining the output "
+                    + "type of the affine transformation matrix "
+                    + ":attr:`func` for greater accuracy."
                 )
             warnings.warn(msg, UserWarning)
 
         # if the field goes bayond +/-2, warn the user
         if self.warn_range and (self.field.abs() > 2).any():
             msg = (
-                "The deformation field goes beyond the range [-1;1]. "
-                + "Are you sure most of it lies within this range?"
-                + "You can suppress this warning by setting "
-                + "self.warn_range = False.",
+                "The deformation field goes beyond the range [-2;2], "
+                + "everything mapped outside [-1;1] will not be visible. "
+                + "Suppress this warning by setting "
+                + "self.warn_range = False."
             )
             warnings.warn(msg, UserWarning)
 
