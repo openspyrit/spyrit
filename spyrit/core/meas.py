@@ -79,8 +79,8 @@ class _Base(nn.Module):
 
     @property
     def N(self) -> int:
-        """Number of pixels in the image (second dimension of H)"""
-        return self.H_static.shape[1]
+        """Number of pixels in the image"""
+        return self.img_h * self.img_w
 
     @property
     def h(self) -> int:
@@ -1055,12 +1055,6 @@ class DynamicLinear(_Base):
                     + f"{self.meas_shape}."
                 )
         # else, it is done in the _Base class __init__ (set to meas_shape)
-
-    # redefine self.N because of possible extended field
-    @property
-    def N(self) -> int:
-        """Number of pixels in the image."""
-        return self.img_h * self.img_w
 
     @property
     def H(self) -> torch.tensor:
