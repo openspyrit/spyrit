@@ -1056,6 +1056,12 @@ class DynamicLinear(_Base):
                 )
         # else, it is done in the _Base class __init__ (set to meas_shape)
 
+    # redefine self.N because of possible extended field
+    @property
+    def N(self) -> int:
+        """Number of pixels in the image."""
+        return self.img_h * self.img_w
+
     @property
     def H(self) -> torch.tensor:
         """Dynamic measurement matrix H. Equal to self.H_dyn."""
