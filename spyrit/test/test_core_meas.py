@@ -356,7 +356,7 @@ def test_core_meas():
     # attributes
     print("\tattributes... ", end="")
     assert_equal(meas_op.M, 400, "Wrong M")
-    assert_equal(meas_op.N, 1024, "Wrong N")
+    assert_equal(meas_op.N, 2500, "Wrong N")
     assert_equal(meas_op.h, 32, "Wrong h")
     assert_equal(meas_op.w, 32, "Wrong w")
     assert_equal(meas_op.meas_shape, torch.Size([32, 32]), "Wrong meas_shape")

@@ -79,8 +79,8 @@ class _Base(nn.Module):
 
     @property
     def N(self) -> int:
-        """Number of pixels in the image (second dimension of H)"""
-        return self.H_static.shape[1]
+        """Number of pixels in the image"""
+        return self.img_h * self.img_w
 
     @property
     def h(self) -> int:
@@ -217,22 +217,34 @@ class _Base(nn.Module):
                 # driver = 'gels'
 
             if reg == "rcond":
-                ans = torch.linalg.lstsq(
-                    H_to_inv, x.to(H_to_inv.dtype).T, rcond=eta, driver=driver
-                ).solution.to(x.dtype)
+                ans = (
+                    torch.linalg.lstsq(
+                        H_to_inv, x.to(H_to_inv.dtype).T, rcond=eta, driver=driver
+                    )
+                    .solution.to(x.dtype)
+                    .T
+                )
             elif reg == "L2":
                 # if under- over-determined problem ?
-                ans = torch.linalg.solve(
-                    H_to_inv.T @ H_to_inv + eta * torch.eye(H_to_inv.shape[1]),
-                    H_to_inv.T @ x.to(H_to_inv.dtype).T,
-                ).to(x.dtype)
+                ans = (
+                    torch.linalg.solve(
+                        H_to_inv.T @ H_to_inv + eta * torch.eye(H_to_inv.shape[1]),
+                        H_to_inv.T @ x.to(H_to_inv.dtype).T,
+                    )
+                    .to(x.dtype)
+                    .T
+                )
             elif reg == "H1":
                 Dx, Dy = spytorch.neumann_boundary(self.img_shape)
                 D2 = Dx.T @ Dx + Dy.T @ Dy
-                ans = torch.linalg.solve(
-                    H_to_inv.T @ H_to_inv + eta * D2,
-                    H_to_inv.T @ x.to(H_to_inv.dtype).T,
-                ).to(x.dtype)
+                ans = (
+                    torch.linalg.solve(
+                        H_to_inv.T @ H_to_inv + eta * D2,
+                        H_to_inv.T @ x.to(H_to_inv.dtype).T,
+                    )
+                    .to(x.dtype)
+                    .T
+                )
 
             elif reg is None:
                 raise ValueError(
