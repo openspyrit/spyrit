@@ -239,11 +239,12 @@ class DeformationField(nn.Module):
             inverse_grid_frames.dtype
         )
 
-        if mode == 'biquintic':
+        if mode == "biquintic":
             import skimage
             import numpy as np
+
             out = np.empty((c, n_frames, n_pixels))
-            
+
             # use scikit-image's order 5 warp. This implies:
             # putting the origin pixel coordinate (x,y) at dimension 0, not 3
             # using numpy instead of pytorch
@@ -251,21 +252,24 @@ class DeformationField(nn.Module):
             # changing from 'xy' notation to 'ij'
             inverse_grid_frames = inverse_grid_frames[::-1, :, :, :]
             # rescaling from [-1, 1] to [0, height-1] (same for width)
-            inverse_grid_frames = (inverse_grid_frames + 1) / 2 * np.array([
-                self.img_h, self.img_w]).reshape(2, 1, 1, 1)
-            
+            inverse_grid_frames = (
+                (inverse_grid_frames + 1)
+                / 2
+                * np.array([self.img_h, self.img_w]).reshape(2, 1, 1, 1)
+            )
+
             # use 2 for loops, faster than 5D warp (because 5D interpolation)
             for frame in range(n_frames):
                 inverse_grid = inverse_grid_frames[:, frame, :, :]
-                
+
                 for channel in range(c):
                     out[channel, frame, :] = skimage.transform.warp(
                         img_frames[frame, channel, :, :].numpy(),
                         inverse_grid,
                         order=5,
-                        clip=False
+                        clip=False,
                     ).flatten()
-            
+
             return torch.from_numpy(out).to(img_frames.device).to(img_frames.dtype)
 
         out = (
