@@ -20,10 +20,8 @@ as a class attribute.
 
 import warnings
 
-import skimage.transform
 import torch
 import torch.nn as nn
-import numpy as np
 
 
 # =============================================================================
@@ -157,7 +155,16 @@ class DeformationField(nn.Module):
             :attr:`mode` (str, optional):
             The interpolation mode to use. It is directly passed to the
             function :func:`torch.nn.functional.grid_sample`. It must be one of the
-            following: 'nearest', 'bilinear', 'bicubic'. Defaults to 'bilinear'.
+            following: 'nearest', 'bilinear', 'bicubic', 'biquintic'. The mode
+            'biquintic' requires the scikit-image package which relies on numpy.
+            Run `pip install scikit-image` if you do not have it yet. Defaults
+            to 'bilinear'.
+
+        .. note::
+            If using mode='bicubic' or mode='biquintic', the warped image may
+            contain values outside the original range. Please use the
+            function or method :func:`torch.clamp` to ensure the values are in
+            the correct range.
 
         .. note::
             If :math:`n0 < n1`, :attr:`field` is sliced
@@ -234,6 +241,7 @@ class DeformationField(nn.Module):
 
         if mode == 'biquintic':
             import skimage
+            import numpy as np
             out = np.empty((c, n_frames, n_pixels))
             
             # use scikit-image's order 5 warp. This implies:
