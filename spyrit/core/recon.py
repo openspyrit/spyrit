@@ -461,10 +461,12 @@ class PinvNet(nn.Module):
             torch.Size([10, 1, 64, 64])
             tensor(5.8912e-06)
         """
-        original_shape = x.shape # b, c, _, _ = x.shape
+        original_shape = x.shape  # b, c, _, _ = x.shape
 
         # Acquisition
-        x = x.reshape(*original_shape[:-2], self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = x.reshape(
+            *original_shape[:-2], self.acqu.meas_op.N
+        )  # shape x = [b*c,h*w] = [b*c,N]
         x = self.acqu(x)  # shape x = [b*c, 2*M]
 
         # Reconstruction
@@ -579,7 +581,7 @@ class PinvNet(nn.Module):
             torch.Size([10, 1, 64, 64])
         """
         # Measurement to image domain mapping
-        bc = x.shape[0] # bc, _ = x.shape
+        bc = x.shape[0]  # bc, _ = x.shape
 
         # Preprocessing in the measurement domain
         x = self.prep(x)  # , self.acqu.meas_op) # shape x = [b*c, M]

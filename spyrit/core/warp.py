@@ -236,9 +236,9 @@ class DeformationField(nn.Module):
         # (n_frames, c, h, w)
         n_frames, c, n_pixels = img_frames.shape
         original_dtype = img_frames.dtype
-        img_frames = img_frames\
-            .reshape(n_frames, c, *self.img_shape) \
-            .to(inverse_grid_frames.dtype)
+        img_frames = img_frames.reshape(n_frames, c, *self.img_shape).to(
+            inverse_grid_frames.dtype
+        )
 
         if mode == "biquintic":
             import skimage
