@@ -22,7 +22,6 @@ from typing import Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import poisson
 
 from spyrit.core.meas import Linear, LinearSplit, HadamSplit  # , LinearRowSplit
 
@@ -229,8 +228,8 @@ class Poisson(NoNoise):
         # x = self.meas_op(x)
         x = super().forward(x)  # NoNoise forward
         x = self.alpha * x
-        x = F.relu(x)  # troncate negative values to zero
-        x = poisson(x)
+        x = F.relu(x)  # truncate negative values to zero, otherwise error
+        x = torch.poisson(x)
         return x
 
 
