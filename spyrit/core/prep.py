@@ -79,7 +79,7 @@ class DirectPoisson(nn.Module):
         """
         # normalize
         H_ones = self.H_ones.expand(x.shape[0], self.M)
-        x = 2 * x / self.alpha - H_ones
+        x = 2 * x / self.alpha - H_ones.to(x.dtype)
         return x
 
     def sigma(self, x: torch.tensor) -> torch.tensor:
