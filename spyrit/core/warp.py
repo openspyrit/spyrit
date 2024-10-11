@@ -235,9 +235,10 @@ class DeformationField(nn.Module):
         # img_frames has shape (c, n_frames, n_pixels), make it
         # (n_frames, c, h, w)
         n_frames, c, n_pixels = img_frames.shape
-        img_frames = img_frames.reshape(n_frames, c, *self.img_shape).to(
-            inverse_grid_frames.dtype
-        )
+        original_dtype = img_frames.dtype
+        img_frames = img_frames\
+            .reshape(n_frames, c, *self.img_shape) \
+            .to(inverse_grid_frames.dtype)
 
         if mode == "biquintic":
             import skimage
@@ -280,7 +281,7 @@ class DeformationField(nn.Module):
                 padding_mode="zeros",
                 align_corners=self.align_corners,
             )
-            .to(img_frames.dtype)
+            .to(original_dtype)
             .reshape(c, n_frames, n_pixels)
         )
 
@@ -331,6 +332,9 @@ class DeformationField(nn.Module):
         if isinstance(other, DeformationField):
             return bool((self.field == other.field).all())
         return False
+
+    def __hash__(self) -> int:
+        return hash(self.field)
 
 
 # =============================================================================
