@@ -461,15 +461,17 @@ class PinvNet(nn.Module):
             torch.Size([10, 1, 64, 64])
             tensor(5.8912e-06)
         """
-        b, c, _, _ = x.shape
+        original_shape = x.shape  # b, c, _, _ = x.shape
 
         # Acquisition
-        x = x.reshape(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        x = x.reshape(
+            *original_shape[:-2], self.acqu.meas_op.N
+        )  # shape x = [b*c,h*w] = [b*c,N]
         x = self.acqu(x)  # shape x = [b*c, 2*M]
 
         # Reconstruction
         x = self.reconstruct(x)  # shape x = [bc, 1, h,w]
-        return x.reshape(b, c, self.acqu.meas_op.h, self.acqu.meas_op.w)
+        return x.reshape(*original_shape)
 
     def acquire(self, x):
         r"""Simulates data acquisition
@@ -579,7 +581,7 @@ class PinvNet(nn.Module):
             torch.Size([10, 1, 64, 64])
         """
         # Measurement to image domain mapping
-        bc, _ = x.shape
+        bc = x.shape[0]  # bc, _ = x.shape
 
         # Preprocessing in the measurement domain
         x = self.prep(x)  # , self.acqu.meas_op) # shape x = [b*c, M]
@@ -615,7 +617,7 @@ class PinvNet(nn.Module):
 
         # Preprocessing
         x, N0_est = self.prep.forward_expe(x, self.acqu.meas_op)  # shape x = [b*c, M]
-        print(N0_est)
+        # print(N0_est)
 
         # measurements to image domain processing
         x = self.pinv(x, self.acqu.meas_op)  # shape x = [b*c,N]
@@ -625,7 +627,7 @@ class PinvNet(nn.Module):
             bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
         )  # shape x = [b*c,1,h,w]
         x = self.denoi(x)  # shape x = [b*c,1,h,w]
-        print(x.max())
+        # print(x.max())
 
         # Denormalization
         x = self.prep.denormalize_expe(

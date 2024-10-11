@@ -126,8 +126,7 @@ class DeformationField(nn.Module):
         mode: str = "bilinear",
     ) -> torch.tensor:
         r"""
-        Warps a vectorized image or batch of vectorized images with the stored
-        *inverse deformation field* :math:`u`.
+        Warps a vectorized image with the stored *inverse deformation field* :math:`u`.
 
         Deforms the vectorized image according to the *inverse deformation
         field* :math:`u` contained in the attribute :attr:`field`,
@@ -156,7 +155,16 @@ class DeformationField(nn.Module):
             :attr:`mode` (str, optional):
             The interpolation mode to use. It is directly passed to the
             function :func:`torch.nn.functional.grid_sample`. It must be one of the
-            following: 'nearest', 'bilinear', 'bicubic'. Defaults to 'bilinear'.
+            following: 'nearest', 'bilinear', 'bicubic', 'biquintic'. The mode
+            'biquintic' requires the scikit-image package which relies on numpy.
+            Run `pip install scikit-image` if you do not have it yet. Defaults
+            to 'bilinear'.
+
+        .. note::
+            If using mode='bicubic' or mode='biquintic', the warped image may
+            contain values outside the original range. Please use the
+            function or method :func:`torch.clamp` to ensure the values are in
+            the correct range.
 
         .. note::
             If :math:`n0 < n1`, :attr:`field` is sliced
@@ -171,16 +179,16 @@ class DeformationField(nn.Module):
 
         Returns:
             :attr:`output` (torch.tensor):
-            The deformed batch of images of shape :math:`(|n1-n0|,c,h,w)`, where each
+            The deformed batch of vectorized images of shape :math:`(c,|n1-n0|,h*w)`, where each
             image in the batch is deformed according to the *inverse deformation
             field* :math:`u` contained in the attribute :attr:`field`.
 
         Shape:
-            :attr:`img`: :math:`(c,h,w)`, where :math:`c` is the number of
+            :attr:`img`: :math:`(c,h*w)`, where :math:`c` is the number of
             channels, and :math:`h` and :math:`w` are the number of pixels
             along the heigth and width of the image respectively.
 
-            :attr:`output`: :math:`(|n1-n0|,c,h,w)`
+            :attr:`output`: :math:`(c,|n1-n0|,h*w)`
 
         Example 1: Rotating a 2x2 B&W image by 90 degrees counter-clockwise, using one
         frame
@@ -188,12 +196,10 @@ class DeformationField(nn.Module):
         >>> v = torch.tensor([[[[ 1., -1.], [ 1., 1.]],
                                [[-1., -1.], [-1., 1.]]]])
         >>> field = DeformationField(v)
-        >>> image = torch.tensor([[[0. , 0.3],
-                                   [0.7, 1. ]]])
+        >>> image = torch.tensor([[0., 0.3, 0.7, 1.]])
         >>> deformed_image = field(image, 0, 1)
         >>> print(deformed_image)
-        tensor([[[[0.3000, 1.0000],
-                  [0.0000, 0.7000]]]])
+        tensor([[[0.3000, 1.0000, 0.0000, 0.7000]]])
         """
         # check that the image has the correct number of dimensions
         if img.ndim != 2:
@@ -219,29 +225,63 @@ class DeformationField(nn.Module):
 
         return self._warp(img_frames, sel_inv_grid_frames, mode)
 
-    def _warp(self, img_collection, inverse_grid_frames, mode):
+    def _warp(self, img_frames, inverse_grid_frames, mode):
         """
         Used to warp a collection of 2D images with a deformation field.
         Each image of the collection will get a different deformation.
 
         img is a batched version of the image, with shape (c, n_frames, h, w)
         """
-        # img_collection has shape (c, n_frames, n_pixels), make it
+        # img_frames has shape (c, n_frames, n_pixels), make it
         # (n_frames, c, h, w)
-        n_frames, c, n_pixels = img_collection.shape
-        img_collection = img_collection.reshape(n_frames, c, *self.img_shape).to(
+        n_frames, c, n_pixels = img_frames.shape
+        original_dtype = img_frames.dtype
+        img_frames = img_frames.reshape(n_frames, c, *self.img_shape).to(
             inverse_grid_frames.dtype
         )
 
+        if mode == "biquintic":
+            import skimage
+            import numpy as np
+
+            out = np.empty((c, n_frames, n_pixels))
+
+            # use scikit-image's order 5 warp. This implies:
+            # putting the origin pixel coordinate (x,y) at dimension 0, not 3
+            # using numpy instead of pytorch
+            inverse_grid_frames = inverse_grid_frames.moveaxis(-1, 0).numpy()
+            # changing from 'xy' notation to 'ij'
+            inverse_grid_frames = inverse_grid_frames[::-1, :, :, :]
+            # rescaling from [-1, 1] to [0, height-1] (same for width)
+            inverse_grid_frames = (
+                (inverse_grid_frames + 1)
+                / 2
+                * np.array([self.img_h, self.img_w]).reshape(2, 1, 1, 1)
+            )
+
+            # use 2 for loops, faster than 5D warp (because 5D interpolation)
+            for frame in range(n_frames):
+                inverse_grid = inverse_grid_frames[:, frame, :, :]
+
+                for channel in range(c):
+                    out[channel, frame, :] = skimage.transform.warp(
+                        img_frames[frame, channel, :, :].numpy(),
+                        inverse_grid,
+                        order=5,
+                        clip=False,
+                    ).flatten()
+
+            return torch.from_numpy(out).to(img_frames.device).to(img_frames.dtype)
+
         out = (
             nn.functional.grid_sample(
-                img_collection,
+                img_frames,
                 inverse_grid_frames,
                 mode=mode,
                 padding_mode="zeros",
                 align_corners=self.align_corners,
             )
-            .to(img_collection.dtype)
+            .to(original_dtype)
             .reshape(c, n_frames, n_pixels)
         )
 
@@ -292,6 +332,9 @@ class DeformationField(nn.Module):
         if isinstance(other, DeformationField):
             return bool((self.field == other.field).all())
         return False
+
+    def __hash__(self) -> int:
+        return hash(self.field)
 
 
 # =============================================================================
