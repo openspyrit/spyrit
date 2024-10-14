@@ -21,9 +21,8 @@
         * / Fixed some device errors when using cuda with .pinv()
         * / The measurement matrix H is now stored with the data type it is given to the constructor (it was previously converted to torch.float32 for memory reasons)
         * \+ added in the .pinv() method a diff parameter enabling differentiated reconstructions (subtracting negative patterns/measurements to the positive patterns/measurements)
-    *spyrit.core.train
+    * spyrit.core.train
         * / load_net() uses the weights_only=True parameter in the torch.load() function. Documentation updated
-
 </details>
 
 ---
@@ -38,6 +37,8 @@
     * / The regularization value 'L1' has been changed to 'rcond'. The behavior is unchanged but the reconstruction did not correspond to L1 regularization.
 * #### spyrit.core.recon
     * / The documentation for the class core.recon.Denoise_layer has been clarified.
+* #### spyrit.core.warp
+    * \+ It is now possible to use biquintic (5th-order) warping. This uses scikit-image's (skimage) warp function, which relies on numpy arrays.
 
 ### Tutorials
 
