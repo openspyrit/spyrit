@@ -64,6 +64,10 @@ class _Base(nn.Module):
             ind = torch.arange(H_static.shape[0])
             Ord = torch.arange(H_static.shape[0], 0, -1)
 
+        # convert H to float32 if it is not float64
+        if H_static.dtype != torch.float64:
+            H_static = H_static.to(torch.float32)
+
         # attributes for internal use
         self._param_H_static = nn.Parameter(H_static, requires_grad=False)
         self._param_Ord = nn.Parameter(Ord.to(torch.float32), requires_grad=False)
@@ -409,7 +413,7 @@ class Linear(_Base):
 
     Args:
         :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
-        with shape :math:`(M, N)`.
+        with shape :math:`(M, N)`. Only real values are supported.
 
         :attr:`pinv` (bool): Whether to store the pseudo inverse of the
         measurement matrix :math:`H`. If `True`, the pseudo inverse is
@@ -631,7 +635,7 @@ class LinearSplit(Linear):
 
     Args:
         :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
-        with shape :math:`(M, N)`.
+        with shape :math:`(M, N)`. Only real values are supported.
 
         :attr:`pinv` (bool): Whether to store the pseudo inverse of the
         measurement matrix :math:`H`. If `True`, the pseudo inverse is
@@ -989,7 +993,7 @@ class DynamicLinear(_Base):
 
     Attributes:
         :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
-        of shape :math:`(M,N)` initialized as :math:`H`.
+        of shape :math:`(M,N)` initialized as :math:`H`.  Only real values are supported.
 
         :attr:`M` (int): Number of measurements performed by the linear operator.
 
@@ -1504,7 +1508,7 @@ class DynamicLinearSplit(DynamicLinear):
     Args:
         :attr:`H` (torch.tensor): measurement matrix (linear operator) with
         shape :math:`(M, N)` where :math:`M` is the number of measurements and
-        :math:`N` the number of pixels in the image.
+        :math:`N` the number of pixels in the image. Only real values are supported.
 
         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
