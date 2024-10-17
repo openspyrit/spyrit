@@ -240,6 +240,13 @@ class DeformationField(nn.Module):
             inverse_grid_frames.dtype
         )
 
+        # print((n_frames, c, *self.img_shape))
+        out = torch.empty(
+            (n_frames, c, *self.img_shape),
+            dtype=img_frames.dtype,
+            device=img_frames.device,
+        )
+
         if mode == "biquintic":
             import skimage
             import numpy as np
