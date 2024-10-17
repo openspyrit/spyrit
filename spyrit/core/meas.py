@@ -73,7 +73,7 @@ class _Base(nn.Module):
             self._param_H_static = nn.Parameter(H_static, requires_grad=False)
             # need to store M because H_static may be cropped (see HadamSplit)
             self._M = H_static.shape[0]
-        
+
         self._param_Ord = nn.Parameter(Ord.to(torch.float32), requires_grad=False)
         self._indices = ind.to(torch.int32)
 
@@ -713,7 +713,7 @@ class LinearSplit(Linear):
     """
 
     save_H = True
-    
+
     def __init__(
         self,
         H: torch.tensor,
@@ -723,7 +723,7 @@ class LinearSplit(Linear):
         meas_shape: tuple = None,  # (height, width)
     ):
         super().__init__(H, pinv, rtol, Ord, meas_shape)
-        
+
         # if self.save_H:
         #     self._set_P(self.H_static)
 
@@ -733,8 +733,8 @@ class LinearSplit(Linear):
         H_pos = nn.functional.relu(self.H_static)
         H_neg = nn.functional.relu(-self.H_static)
         return torch.cat([H_pos, H_neg], 1).reshape(
-                2 * self.H_static.shape[0], self.H_static.shape[1]
-            )
+            2 * self.H_static.shape[0], self.H_static.shape[1]
+        )
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Applies linear transform to incoming images: :math:`y = Px`.
@@ -895,23 +895,21 @@ class HadamSplit(LinearSplit):
     ):
 
         # F = spytorch.walsh2_matrix(h)
-        empty = torch.empty(h**2, h**2) # just for correct shape
-        
+        empty = torch.empty(h**2, h**2)  # just for correct shape
+
         # we pass the whole F matrix to the constructor, but override the
         # calls self.H etc to only return the first M rows
         super().__init__(empty, pinv=False, Ord=Ord, meas_shape=(h, h))
         self._M = M
-        
+
         # set H_pinv as it is the transpose of H / self.N
         # self.H_pinv = self.H.T / self.N
 
     # H_static is not supposed to be stored anymore
     @property
     def H_static(self) -> torch.tensor:
-        return self.reindex(
-            spytorch.walsh2_matrix(self.h), 'rows', False
-        )[: self.M, :]
-    
+        return self.reindex(spytorch.walsh2_matrix(self.h), "rows", False)[: self.M, :]
+
     # P is not supposed to be stored anymore
     @property
     def P(self) -> torch.tensor:
@@ -919,9 +917,9 @@ class HadamSplit(LinearSplit):
         H_pos = nn.functional.relu(H_static)
         H_neg = nn.functional.relu(-H_static)
         return torch.cat([H_pos, H_neg], 1).reshape(
-                2 * H_static.shape[0], H_static.shape[1]
-            )
-    
+            2 * H_static.shape[0], H_static.shape[1]
+        )
+
     # we can build this instead of storing it
     @property
     def H_pinv(self) -> torch.tensor:
@@ -996,7 +994,7 @@ class HadamSplit(LinearSplit):
 
     def forward_transform(self, x):
         return spytorch.fwht_2d(x)
-        
+
 
 # =============================================================================
 class DynamicLinear(_Base):
@@ -1180,7 +1178,7 @@ class DynamicLinear(_Base):
             del self._param_H_dyn_pinv
         except UnboundLocalError:
             pass
-        
+
     def build_H_dyn(self, motion: DeformationField, mode: str = "bilinear") -> None:
         """Build the dynamic measurement matrix `H_dyn`.
 
@@ -1287,9 +1285,13 @@ class DynamicLinear(_Base):
         dx, dy = dx.squeeze(-1), dy.squeeze(-1)
         # dx.shape = dy.shape = (n_frames, meas_h, meas_w)
         # evaluate the spline at the decimal part
-        dxy = torch.einsum(
-            "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
-        ).reshape(n_frames, kernel_n_pts, self.h * self.w).to(device)
+        dxy = (
+            torch.einsum(
+                "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
+            )
+            .reshape(n_frames, kernel_n_pts, self.h * self.w)
+            .to(device)
+        )
         # shape (n_frames, kernel_n_pts, meas_h*meas_w)
 
         # PART 2: FLATTEN THE INDICES
@@ -1474,9 +1476,9 @@ class DynamicLinear(_Base):
             )
         x_cropped = spytorch.center_crop(x, self.meas_shape, self.img_shape)
         try:
-            return torch.einsum("ij,...ij->...i",
-                                op.to(x.dtype).to(x.device),
-                                x_cropped)
+            return torch.einsum(
+                "ij,...ij->...i", op.to(x.dtype).to(x.device), x_cropped
+            )
         except RuntimeError as e:
             if "subscript i" in str(e):
                 raise RuntimeError(
@@ -1651,18 +1653,18 @@ class DynamicLinearSplit(DynamicLinear):
     ):
         # call constructor of DynamicLinear
         super().__init__(H, Ord, meas_shape, img_shape)
-    
+
         # if self.save_H:
         #     self._set_P(self.H_static)
-    
+
     # P is not supposed to be stored anymore
     @property
     def P(self) -> torch.tensor:
         H_pos = nn.functional.relu(self.H_static)
         H_neg = nn.functional.relu(-self.H_static)
         return torch.cat([H_pos, H_neg], 1).reshape(
-                2 * self.H_static.shape[0], self.H_static.shape[1]
-            )
+            2 * self.H_static.shape[0], self.H_static.shape[1]
+        )
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
@@ -1864,8 +1866,8 @@ class DynamicHadamSplit(DynamicLinearSplit):
     ):
 
         # F = spytorch.walsh2_matrix(h)
-        empty = torch.empty(h**2, h**2) # just to get the shape
-        
+        empty = torch.empty(h**2, h**2)  # just to get the shape
+
         # we pass the whole F matrix to the constructor
         super().__init__(empty, Ord, (h, h), img_shape)
         self._M = M
@@ -1873,6 +1875,6 @@ class DynamicHadamSplit(DynamicLinearSplit):
     # H_static is not supposed to be stored anymore
     @property
     def H_static(self) -> torch.tensor:
-        return self.reindex(
-            spytorch.walsh2_matrix(self.h), 'rows', False
-        )[: self.M, :].to(self.indices.device)
+        return self.reindex(spytorch.walsh2_matrix(self.h), "rows", False)[
+            : self.M, :
+        ].to(self.indices.device)
