@@ -75,7 +75,7 @@ class _Base(nn.Module):
             self._M = H_static.shape[0]
         
         self._param_Ord = nn.Parameter(Ord.to(torch.float32), requires_grad=False)
-        self._indices = nn.Parameter(ind.to(torch.int32), requires_grad=False)
+        self._indices = ind.to(torch.int32)
 
     ### PROPERTIES ------
     @property
