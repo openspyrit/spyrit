@@ -1140,8 +1140,7 @@ class DynamicLinear(_Base):
     @H_dyn.setter
     def H_dyn(self, value: torch.tensor) -> None:
         self._param_H_dyn = nn.Parameter(value.to(torch.float64), requires_grad=False)
-        if hasattr(self, "_param_H_dyn_pinv"):
-            del H_pinv
+        del H_pinv
 
     @property
     def recon_mode(self) -> str:
@@ -1177,8 +1176,11 @@ class DynamicLinear(_Base):
 
     @H_dyn_pinv.deleter
     def H_dyn_pinv(self) -> None:
-        del self._param_H_dyn_pinv
-
+        try:
+            del self._param_H_dyn_pinv
+        except UnboundLocalError:
+            pass
+        
     def build_H_dyn(self, motion: DeformationField, mode: str = "bilinear") -> None:
         """Build the dynamic measurement matrix `H_dyn`.
 
