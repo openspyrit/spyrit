@@ -20,8 +20,17 @@ warnings.filterwarnings("ignore", ".*Sparse CSR tensor support is in beta state.
 
 
 # =============================================================================
+class PositiveParameters(nn.Module):
+    def __init__(self, params, requires_grad=True):
+        super(PositiveParameters, self).__init__()
+        self.params = torch.tensor(params, requires_grad=requires_grad)
+
+    def forward(self):
+        return torch.abs(self.params)
+
+
+# =============================================================================
 class PseudoInverse(nn.Module):
-    # =========================================================================
     r"""Moore-Penrose pseudoinverse.
 
     Considering linear measurements :math:`y = Hx`, where :math:`H` is the
@@ -85,7 +94,6 @@ class PseudoInverse(nn.Module):
 
 # =============================================================================
 class TikhonovMeasurementPriorDiag(nn.Module):
-    # =========================================================================
     r"""
     Tikhonov regularisation with prior in the measurement domain.
 
@@ -208,7 +216,6 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 
 # =============================================================================
 class Denoise_layer(nn.Module):
-    # =========================================================================
     r"""Defines a learnable Wiener filter that assumes additive white Gaussian noise.
 
     The filter is pre-defined upon initialization with the standard deviation prior
@@ -381,10 +388,8 @@ class Denoise_layer(nn.Module):
 # |                      RECONSTRUCTION NETWORKS                              |
 # -----------------------------------------------------------------------------
 
-
 # =============================================================================
 class PinvNet(nn.Module):
-    # =========================================================================
     r"""Pseudo inverse reconstruction network
 
     Args:
@@ -638,7 +643,6 @@ class PinvNet(nn.Module):
 
 # =============================================================================
 class DCNet(nn.Module):
-    # =========================================================================
     r"""Denoised completion reconstruction network.
 
     This is a four step reconstruction method:
@@ -882,17 +886,6 @@ class DCNet(nn.Module):
         x = self.prep.denormalize_expe(x, norm, self.Acq.meas_op.h, self.Acq.meas_op.w)
 
         return x
-
-
-# %%===========================================================================================
-class PositiveParameters(nn.Module):
-    # ===========================================================================================
-    def __init__(self, params, requires_grad=True):
-        super(PositiveParameters, self).__init__()
-        self.params = torch.tensor(params, requires_grad=requires_grad)
-
-    def forward(self):
-        return torch.abs(self.params)
 
 
 # =============================================================================
