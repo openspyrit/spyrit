@@ -30,8 +30,8 @@ class DeformationField(nn.Module):
     r"""
     Stores a discrete deformation field as a :math:`(b,h,w,2)` tensor.
 
-    Warps a single image according to an *inverse deformation field* :math:`u`,
-    i.e. the field that maps the *deformed image* pixel coordinates to the
+    Warps a single image or batch of images according to an *inverse deformation field*
+    :math:`u`, i.e. the field that maps the *deformed image* pixel coordinates to the
     *original image* pixel coordinates.
 
     It is constructed from a tensor of shape :math:`(n\_frames,h,w,2)`, where
@@ -50,7 +50,7 @@ class DeformationField(nn.Module):
         *Inverse deformation field* :math:`u` of shape :math:`(n\_frames,H,W,2)`,
         where :math:`n\_frames` is the number of frames in the animation, and
         :math:`H` and :math:`W` are the height and width of the image to be
-        warped. For accuracy reasons, the dtype is converted to `torch.float64`.
+        warped. For accuracy reasons, it is recommended the dtype to be `torch.float64`.
 
     Attributes:
         :attr:`self.field` (torch.tensor):
@@ -65,12 +65,19 @@ class DeformationField(nn.Module):
         :attr:`img_h` (int): Height of the image to be warped in pixels.
 
         :attr:`img_w` (int): Width of the image to be warped in pixels.
+        
+        :attr:`self.align_corners` (bool): Always True. This argument is passed
+        to the functions :func:`torch.nn.functional.grid_sample` and
+        :func:`torch.nn.functional.affine_grid` to ensure the corners of the
+        image are aligned with the corners of the grid.
 
     **Example 1:** Rotating a 2x2 B&W image by 90 degrees counter-clockwise, using one frame
-        >>> u = torch.tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]]])
+        >>> u = torch.tensor([[[[ 1, -1], [ 1, 1]], [[-1, -1], [-1, 1]]]])
         >>> field = DeformationField(u)
         >>> print(field.field)
-        tensor([[[[ 0.5, -0.5], [ 0.5, 0.5]], [[-0.5, -0.5], [-0.5, 0.5]]]])
+        tensor([[[[ 1, -1], [ 1, 1]], [[-1, -1], [-1, 1]]]])
+        >>> print(field.field.shape)
+        torch.Size([1, 2, 2, 2])
 
     **Example 2:** Rotating a 2x2 B&W image by 90 degrees clockwise, using one frame
         >>> u = torch.tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]]])
@@ -82,14 +89,12 @@ class DeformationField(nn.Module):
     def __init__(self, field: torch.tensor):
         super().__init__()
 
-        # store as nn.Parameter
-        self._field = nn.Parameter(field, requires_grad=False)
-        # set other properties / inv_grid_frames has shape (n_frames, H, W, 2)
         self._align_corners = True
-        self._n_frames = field.shape[0]
-        self._img_h = field.shape[1]
-        self._img_w = field.shape[2]
-        self._img_shape = (self.img_h, self.img_w)
+        
+        # field is None if AffineDeformationField is used
+        if not isinstance(self, AffineDeformationField):
+            # store as nn.Parameter
+            self._field = nn.Parameter(field, requires_grad=False)
 
         self.warn_range = True  # warn the user if the field goes beyond +/-2
         self._warn_field()
@@ -100,19 +105,19 @@ class DeformationField(nn.Module):
 
     @property
     def n_frames(self) -> int:
-        return self._n_frames
-
-    @property
-    def img_h(self) -> int:
-        return self._img_h
-
-    @property
-    def img_w(self) -> int:
-        return self._img_w
+        return self._field.shape[0]
 
     @property
     def img_shape(self) -> tuple:
-        return self._img_shape
+        return self._field.shape[1:3]
+
+    @property
+    def img_h(self) -> int:
+        return self._field.shape[1]
+
+    @property
+    def img_w(self) -> int:
+        return self._field.shape[2]
 
     @property
     def field(self) -> torch.tensor:
@@ -125,24 +130,21 @@ class DeformationField(nn.Module):
         n1: int = None,
         mode: str = "bilinear",
     ) -> torch.tensor:
-        r"""
-        Warps a vectorized image with the stored *inverse deformation field* :math:`u`.
+        r"""Warps a batch of 2D images with the stored *inverse deformation field* :math:`u`.
 
-        Deforms the vectorized image according to the *inverse deformation
+        Deforms the batch of 2D images according to the *inverse deformation
         field* :math:`u` contained in the attribute :attr:`field`,
         sliced between the frames :math:`n0` (included) and :math:`n1` (excluded).
         :math:`u` is the field that maps the pixels of the *deformed image* to
         the pixels of the *original image*.
 
-        This method assumes the vectorized image has the same number of pixels
-        as the deformation field.
-
         Args:
             :attr:`img` (torch.tensor):
-            The vectorized image to deform of shape :math:`(c, h*w)`, where
-            :math:`c` is the number of channels
-            (usually 1 or 3), and :math:`h` and :math:`w` are the number of
-            pixels along the height and width of the image respectively.
+            The batch of 2D images to deform of shape :math:`(b, c, h, w)`, where
+            :math:`b` is the number of images in the batch, :math:`c` is the
+            number of channels (usually 1 or 3), and :math:`h` and :math:`w`
+            are the number of pixels along the height and width of the image
+            respectively.
 
             :attr:`n0` (int, optional):
             The index of the first frame to use in the *inverse deformation
@@ -153,12 +155,12 @@ class DeformationField(nn.Module):
             field*. If None, the last available frame is used. Defaults to None.
 
             :attr:`mode` (str, optional):
-            The interpolation mode to use. It is directly passed to the
-            function :func:`torch.nn.functional.grid_sample`. It must be one of the
-            following: 'nearest', 'bilinear', 'bicubic', 'biquintic'. The mode
-            'biquintic' requires the scikit-image package which relies on numpy.
-            Run `pip install scikit-image` if you do not have it yet. Defaults
-            to 'bilinear'.
+            The interpolation mode to use. It must be one of the following:
+            'nearest', 'bilinear', 'bicubic', 'biquintic'. If either `nearest`,
+            `bilinear`, or `bicubic`, it is directly passed to the
+            function :func:`torch.nn.functional.grid_sample`. if `biquintic`,
+            it is passed to the package scikit-image, which requires skimage and numpy.
+            Defaults to 'bilinear'.
 
         .. note::
             If using mode='bicubic' or mode='biquintic', the warped image may
@@ -177,18 +179,26 @@ class DeformationField(nn.Module):
             :math:`n1+1`. This behavior is identical to slicing a list with a
             step of -1.
 
+        .. note::
+            If the number of pixels is different in the image and the field,
+            the torch function :func:`torch.nn.functional.grid_sample` will
+            still work, and it will interpolate the field to match the image
+            size.
+
         Returns:
             :attr:`output` (torch.tensor):
-            The deformed batch of vectorized images of shape :math:`(c,|n1-n0|,h*w)`, where each
+            The deformed batch of 2D images of shape :math:`(b, |n1-n0|, c, h, w)`, where each
             image in the batch is deformed according to the *inverse deformation
             field* :math:`u` contained in the attribute :attr:`field`.
 
         Shape:
-            :attr:`img`: :math:`(c,h*w)`, where :math:`c` is the number of
-            channels, and :math:`h` and :math:`w` are the number of pixels
-            along the heigth and width of the image respectively.
+            :attr:`img`: :math:`(b, c, h, w)`, where
+            :math:`b` is the number of images in the batch, :math:`c` is the
+            number of channels (usually 1 or 3), and :math:`h` and :math:`w`
+            are the number of pixels along the height and width of the image
+            respectively.
 
-            :attr:`output`: :math:`(c,|n1-n0|,h*w)`
+            :attr:`output`: :math:`(b, |n1-n0|, c, h, w)`
 
         Example 1: Rotating a 2x2 B&W image by 90 degrees counter-clockwise, using one
         frame
@@ -196,17 +206,14 @@ class DeformationField(nn.Module):
         >>> v = torch.tensor([[[[ 1., -1.], [ 1., 1.]],
                                [[-1., -1.], [-1., 1.]]]])
         >>> field = DeformationField(v)
-        >>> image = torch.tensor([[0., 0.3, 0.7, 1.]])
+        >>> image = torch.tensor([0., 0.3, 0.7, 1.]).view(1, 1, 2, 2)
         >>> deformed_image = field(image, 0, 1)
         >>> print(deformed_image)
-        tensor([[[0.3000, 1.0000, 0.0000, 0.7000]]])
+        tensor([[[[0.3000, 1.0000], [0.0000, 0.7000]]]])
         """
-        # check that the image has the correct number of dimensions
-        if img.ndim != 2:
-            raise ValueError(
-                f"img has incorrect number of dimensions: {img.ndim}, must "
-                + "have 2: (channels, n_pixels)."
-            )
+       
+        # check that the input is shaped (b, c, h, w)
+        b, c, h, w = img.shape
 
         if n1 is None:
             n1 = self.n_frames
@@ -217,41 +224,48 @@ class DeformationField(nn.Module):
             sel_inv_grid_frames = torch.flip(self.field[n1 + 1 : n0 + 1, :, :, :], [0])
         else:
             sel_inv_grid_frames = self.field[n0:n1, :, :, :]
-            sel_inv_grid_frames = self.field[n0:n1, :, :, :]
 
-        # img has current shape (c, n_pixels), make it (n_frames, c, n_pixels)
-        c, n_pixels = img.shape
-        img_frames = img.unsqueeze(0).expand(n_frames, c, n_pixels)
+        # img has current shape (b, c, h, w), make it (n_frames, b*c, h, w)
+        img_frames = img.reshape(1, b * c, h, w).expand(n_frames, -1, -1, -1)
+        
+        warped_frames = self.grid_sample(img_frames, sel_inv_grid_frames, mode)
+        # has shape (n_frames, b*c, h, w), make it (b, n_frames, c, h, w)
+        return warped_frames.reshape(n_frames, b, c, h, w).moveaxis(0, 1)
 
-        return self._warp(img_frames, sel_inv_grid_frames, mode)
+    def grid_sample(self, img_frames, inverse_grid_frames, mode):
+        """Used to warp frames of 2D images with a deformation field. Each
+        image of the collection will get a different deformation. This function
+        matches the behavior of nn.functional.grid_sample.
 
-    def _warp(self, img_frames, inverse_grid_frames, mode):
+        Inputs:
+            :attr:`img_frames` (torch.tensor): batch of 2D images of shape
+            `(n_frames, c, h, w)`, where `n_frames` is the number of frames in
+            the animation, `c` is the number of channels, and `h` and `w` are
+            the height and width of the image respectively.
+            
+            :attr:`inverse_grid_frames` (torch.tensor): batch of inverse
+            deformation fields of shape `(n_frames, h, w, 2)`, indicating the
+            pixel coordinates of the original image that are displayed in the
+            warped image.
+            
+            :attr:`mode` (str): The interpolation mode to use. It must be one of
+            the following: 'nearest', 'bilinear', 'bicubic', 'biquintic'. If either
+            `nearest`, `bilinear`, or `bicubic`, it is directly passed to the
+            function :func:`torch.nn.functional.grid_sample`. if `biquintic`,
+            it is passed to the package scikit-image, which requires skimage and numpy.
+
+        Returns:
+            :attr:`out` (torch.tensor): The deformed batch of 2D images of shape
+            `(n_frames, c, h, w)`. Each image in the batch is deformed according
+            to the inverse deformation field :math:`u` contained in the attribute
+            :attr:`field`.
         """
-        Used to warp a collection of 2D images with a deformation field.
-        Each image of the collection will get a different deformation.
-
-        img is a batched version of the image, with shape (c, n_frames, h, w)
-        """
-        # img_frames has shape (c, n_frames, n_pixels), make it
-        # (n_frames, c, h, w)
-        n_frames, c, n_pixels = img_frames.shape
-        original_dtype = img_frames.dtype
-        img_frames = img_frames.reshape(n_frames, c, *self.img_shape).to(
-            inverse_grid_frames.dtype
-        )
-
-        # print((n_frames, c, *self.img_shape))
-        out = torch.empty(
-            (n_frames, c, *self.img_shape),
-            dtype=img_frames.dtype,
-            device=img_frames.device,
-        )
-
         if mode == "biquintic":
             import skimage
             import numpy as np
 
-            out = np.empty((c, n_frames, n_pixels))
+            n_frames, c, h, w = img_frames.shape
+            out = np.empty((n_frames, c, h, w))
 
             # use scikit-image's order 5 warp. This implies:
             # putting the origin pixel coordinate (x,y) at dimension 0, not 3
@@ -271,28 +285,25 @@ class DeformationField(nn.Module):
                 inverse_grid = inverse_grid_frames[:, frame, :, :]
 
                 for channel in range(c):
-                    out[channel, frame, :] = skimage.transform.warp(
+                    out[frame, channel, :, :] = skimage.transform.warp(
                         img_frames[frame, channel, :, :].numpy(),
                         inverse_grid,
                         order=5,
                         clip=False,
-                    ).flatten()
+                    )
 
             return torch.from_numpy(out).to(img_frames.device).to(img_frames.dtype)
 
-        out = (
-            nn.functional.grid_sample(
-                img_frames,
+        else:
+            out = nn.functional.grid_sample(
+                img_frames.to(inverse_grid_frames.dtype),
                 inverse_grid_frames,
                 mode=mode,
                 padding_mode="zeros",
                 align_corners=self.align_corners,
-            )
-            .to(original_dtype)
-            .reshape(c, n_frames, n_pixels)
-        )
+            ).to(img_frames.dtype)
 
-        return out
+            return out # has shape (n_frames, c, h, w)
 
     def _warn_field(self):
         # using float64 is preferred for accuracy
@@ -348,10 +359,9 @@ class DeformationField(nn.Module):
 class AffineDeformationField(DeformationField):
     # =========================================================================
     r"""
-    Stores an affine deformation field andn uses it to compute a discrete
-    deformation field :class:`DeformationField`.
+    Stores an affine deformation field as a 3x3 matrix.
 
-    Warps an image or batch of images according to an *inverse affine deformation
+    Warps a batch of images according to an *inverse affine deformation
     field* :math:`u`, i.e. the field that maps the *deformed image* pixel
     coordinates to the *original image* pixel coordinates.
 
@@ -363,13 +373,15 @@ class AffineDeformationField(DeformationField):
 
     To warp an image, the affine transformation matrix is evaluated at each
     time corresponding to the frames of the animation. The *inverse deformation
-    field* :math:`u` is then computed from the inverse of the affine
+    field* :math:`u` is then computed from the affine
     transformation matrix, and the image is warped according to the *inverse
     deformation field* :math:`u`.
-
-    Contrary to :class:`DeformationField`, this class can warp images of
-    variable sizes, as the *inverse deformation field* :math:`u` is computed from the
-    affine transformation matrix at the desired spatial resolution.
+    
+    The image size is requested upon construction, but the warping can be done
+    with images of different sizes. The grid is simply interpolated to match
+    the image size. It is also possible to change the image size after
+    construction by setting the attribute :attr:`img_shape`, or the attributes
+    :attr:`img_h` and :attr:`img_w`.
 
     .. important::
         The coordinates are given in the range [-1;1]. When referring to a
@@ -400,11 +412,14 @@ class AffineDeformationField(DeformationField):
 
         :attr:`self.img_shape` (tuple): Shape of the image to be warped, i.e.
         :math:`(h,w)`, where :math:`h` and :math:`w` are the height and width
-        of the image respectively.
+        of the image respectively. This attribute can be set to change the
+        image size.
 
-        :attr:`img_h` (int): Height of the image to be warped in pixels.
+        :attr:`img_h` (int): Height of the image to be warped in pixels. This
+        attribute can be set to change the image size.
 
-        :attr:`img_w` (int): Width of the image to be warped in pixels.
+        :attr:`img_w` (int): Width of the image to be warped in pixels. This
+        attribute can be set to change the image size.
 
     Example 1: Progressive zooming **in**
         >>> def u(t):
@@ -431,22 +446,55 @@ class AffineDeformationField(DeformationField):
 
         self._func = func
         self._time_vector = time_vector
-        self._align_corners = True  # keep this for _generate_inv_grid_frames
+        self._img_shape = img_shape
 
-        super().__init__(self._generate_inv_grid_frames(img_shape))
+        super().__init__(None)
 
+    # override the field property to generate it on the fly
+    @property
+    def field(self) -> torch.tensor:
+        return self._generate_inv_grid_frames(self.img_shape)
+
+    # override inherited properties
+    @property
+    def n_frames(self) -> int:
+        return len(self.time_vector)
+
+    # add a setter for the img_shape
+    @property
+    def img_shape(self) -> tuple:
+        return self._img_shape
+    
+    @img_shape.setter
+    def img_shape(self, img_shape: tuple):
+        self._img_shape = img_shape
+    
+    @property
+    def img_h(self) -> int:
+        return self.img_shape[0]
+    
+    @img_h.setter
+    def img_h(self, img_h: int):
+        self._img_shape = (img_h, self.img_shape[1])
+    
+    @property
+    def img_w(self) -> int:
+        return self.img_shape[1]
+
+    @img_w.setter
+    def img_w(self, img_w: int):
+        self._img_shape = (self.img_shape[0], img_w)
+
+    # new property
     @property
     def func(self):
         return self._func
 
+    # new property
     @property
     def time_vector(self):
         return self._time_vector
-
-    @property
-    def align_corners(self) -> bool:
-        return self._align_corners
-
+    
     def _generate_inv_grid_frames(
         self,
         grid_shape: tuple,
@@ -475,18 +523,11 @@ class AffineDeformationField(DeformationField):
             torch.tensor: The inverse deformation field as a tensor of shape
             :math:`(n\_frames, h, w, 2)`.
         """
-        # time_vector = torch.linspace(t0, t1, n_frames, dtype=torch.float64)#[:n_frames]
-        # self.time_vector = time_vector
-        # inv_mat_frames = torch.zeros((n_frames, 2, 3), dtype=torch.float64)
-
         # get a batch of matrices of shape (n_frames, 2, 3)
-        inv_mat_frames = torch.stack(
-            [
+        inv_mat_frames = torch.stack([
                 self.func(t.item())[:2, :]  # need only the first 2 rows
                 for t in self.time_vector
-            ]
-        )
-        # inv_grid_frames = torch.round(inv_mat_frames, decimals=6)
+        ])
 
         # use them to generate the grid
         inv_grid_frames = nn.functional.affine_grid(
@@ -497,3 +538,4 @@ class AffineDeformationField(DeformationField):
             align_corners=self.align_corners,
         )
         return inv_grid_frames
+    
