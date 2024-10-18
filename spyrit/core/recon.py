@@ -1118,17 +1118,6 @@ class PositiveParameters(nn.Module):
 #         self.noise_level = torch.FloatTensor([noise_level / 255.0])
 
 
-# %%===========================================================================================
-class PositiveParameters(nn.Module):
-    # ===========================================================================================
-    def __init__(self, params, requires_grad=True):
-        super(PositiveParameters, self).__init__()
-        self.params = torch.tensor(params, requires_grad=requires_grad)
-
-    def forward(self):
-        return torch.abs(self.params)
-
-
 # =============================================================================
 class LearnedPGD(nn.Module):
     r"""Learned Proximal Gradient Descent reconstruction network.
