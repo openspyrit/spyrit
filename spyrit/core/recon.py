@@ -136,14 +136,13 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 
         N = sigma.shape[0]
 
-
         var_prior = sigma.diag()[:M]
 
         # self.denoi = Denoise_layer(M)
         # self.denoi.weight.data = torch.sqrt(var_prior)
         # self.denoi.weight.data = self.denoi.weight.data.float()
         # self.denoi.weight.requires_grad = False
-        
+
         self.denoise_weights = nn.Parameter(torch.sqrt(var_prior), requires_grad=False)
 
         Sigma1 = sigma[:M, :M]
@@ -156,22 +155,22 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         # self.comp.weight.data = W
         # self.comp.weight.data = self.comp.weight.data.float()
         # self.comp.weight.requires_grad = False
-        
+
     def wiener_denoise(self, x: torch.tensor, var: torch.tensor) -> torch.tensor:
         """Returns a denoised version of the input tensor using the variance prior.
-        
+
         This uses the attribute self.denoise_weights, which is a learnable
-        parameter. 
+        parameter.
 
         Inputs:
             x (torch.tensor): The input tensor to be denoised.
-            
+
             var (torch.tensor): The variance prior.
-        
+
         Returns:
             torch.tensor: The denoised tensor.
         """
-        
+
         weights_squared = self.denoise_weights**2
         return torch.mul((weights_squared / (weights_squared + var)), x)
 
@@ -414,6 +413,7 @@ class Denoise_layer(nn.Module):
 # -----------------------------------------------------------------------------
 # |                      RECONSTRUCTION NETWORKS                              |
 # -----------------------------------------------------------------------------
+
 
 # =============================================================================
 class PinvNet(nn.Module):

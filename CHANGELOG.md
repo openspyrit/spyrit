@@ -15,7 +15,7 @@
 
 </summary>
 
-    
+
 </details>
 
 ---
@@ -34,7 +34,7 @@
     * \+ added in the .pinv() method a diff parameter enabling differentiated reconstructions (subtracting negative patterns/measurements to the positive patterns/measurements)
 * #### spyrit.core.recon
     * \- The class core.recon.Denoise_layer is deprecated and will be removed in a future version
-    * / The class TikhonovMeasurementPriorDiag no longer uses Denoise_layer and uses instead an internal method to handle the denoising. 
+    * / The class TikhonovMeasurementPriorDiag no longer uses Denoise_layer and uses instead an internal method to handle the denoising.
 * #### spyrit.core.train
     * / load_net() uses the weights_only=True parameter in the torch.load() function. Documentation updated
 * #### spyrit.core.warp
