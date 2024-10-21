@@ -136,23 +136,44 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 
         N = sigma.shape[0]
 
-        self.comp = nn.Linear(M, N - M, False)
-        self.denoi = Denoise_layer(M)
 
         var_prior = sigma.diag()[:M]
 
-        self.denoi.weight.data = torch.sqrt(var_prior)
-        self.denoi.weight.data = self.denoi.weight.data.float()
-        self.denoi.weight.requires_grad = False
+        # self.denoi = Denoise_layer(M)
+        # self.denoi.weight.data = torch.sqrt(var_prior)
+        # self.denoi.weight.data = self.denoi.weight.data.float()
+        # self.denoi.weight.requires_grad = False
+        
+        self.denoise_weights = nn.Parameter(torch.sqrt(var_prior), requires_grad=False)
 
         Sigma1 = sigma[:M, :M]
         Sigma21 = sigma[M:, :M]
         # W = Sigma21 @ torch.linalg.inv(Sigma1)
         W = torch.linalg.solve(Sigma1.T, Sigma21.T).T
 
-        self.comp.weight.data = W
-        self.comp.weight.data = self.comp.weight.data.float()
-        self.comp.weight.requires_grad = False
+        self.comp = nn.Parameter(W, requires_grad=False)
+        # self.comp = nn.Linear(M, N - M, False)
+        # self.comp.weight.data = W
+        # self.comp.weight.data = self.comp.weight.data.float()
+        # self.comp.weight.requires_grad = False
+        
+    def wiener_denoise(self, x: torch.tensor, var: torch.tensor) -> torch.tensor:
+        """Returns a denoised version of the input tensor using the variance prior.
+        
+        This uses the attribute self.denoise_weights, which is a learnable
+        parameter. 
+
+        Inputs:
+            x (torch.tensor): The input tensor to be denoised.
+            
+            var (torch.tensor): The variance prior.
+        
+        Returns:
+            torch.tensor: The denoised tensor.
+        """
+        
+        weights_squared = self.denoise_weights**2
+        return torch.mul((weights_squared / (weights_squared + var)), x)
 
     def forward(
         self, x: torch.tensor, x_0: torch.tensor, var: torch.tensor, meas_op: HadamSplit
@@ -206,8 +227,8 @@ class TikhonovMeasurementPriorDiag(nn.Module):
             torch.Size([85, 1024])
         """
         x = x - meas_op.forward_H(x_0)
-        y1 = torch.mul(self.denoi(var), x)
-        y2 = self.comp(y1)
+        y1 = self.wiener_denoise(x, var)
+        y2 = y1 @ self.comp.T
 
         y = torch.cat((y1, y2), -1)
         x = x_0 + meas_op.inverse(y)
@@ -284,6 +305,12 @@ class Denoise_layer(nn.Module):
         self, std_dev_prior_or_size: Union[torch.tensor, int], requires_grad=True
     ):
         super(Denoise_layer, self).__init__()
+
+        warnings.warn(
+            "This class is deprecated and will be removed in a future release. "
+            "Please use the `TikhonovMeasurementPriorDiag` class instead.",
+            DeprecationWarning,
+        )
 
         if isinstance(std_dev_prior_or_size, int):
             self.weight = nn.Parameter(
