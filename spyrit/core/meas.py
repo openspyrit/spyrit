@@ -314,11 +314,11 @@ class _Base(nn.Module):
 
     def unvectorize(self, input: torch.tensor) -> torch.tensor:
         """Reshape a vectorized tensor to the measurement shape (heigth, width).
-        
+
         Input:
             input (torch.tensor): A tensor of shape (*, N) where * denotes the
             batch size and N the total number of pixels in the image.
-        
+
         Output:
             torch.tensor: A tensor of shape (*, h, w) where * denotes the batch
             size and h, w the height and width of the measurement patterns.
@@ -326,12 +326,12 @@ class _Base(nn.Module):
         return input.reshape(*input.shape[:-1], *self.meas_shape)
 
     def vectorize(self, input: torch.tensor) -> torch.tensor:
-        """Vectorize an image-shaped tensor. 
-        
+        """Vectorize an image-shaped tensor.
+
         Input:
             input (torch.tensor): A tensor of shape (*, h, w) where * denotes the
             batch size and h, w the height and width of the measurement patterns.
-            
+
         Output:
             torch.tensor: A tensor of shape (*, N) where * denotes the batch size
             and N the total number of pixels in the image.
@@ -615,7 +615,7 @@ class Linear(_Base):
             :math:`(*, M)` where * denotes any number of dimensions (e.g.
             `(b,c)` where `b` is the batch size and `c` the number of channels)
             and `M` the number of measurements.
-        
+
         Output:
             torch.tensor: The adjoint of the input measurements, which are
             in the image domain. It has shape :math:`(*, h, w)` where * denotes
@@ -638,7 +638,9 @@ class Linear(_Base):
         # return x @ self.H.to(x.dtype).to(x.device)
         return torch.einsum("mhw,...m->...hw", self.unvectorize(self.H).to(y.dtype), y)
 
-    def _static_forward_with_op(self, x: torch.tensor, op: torch.tensor) -> torch.tensor:
+    def _static_forward_with_op(
+        self, x: torch.tensor, op: torch.tensor
+    ) -> torch.tensor:
         return torch.einsum("mhw,...hw->...m", self.unvectorize(op).to(x.dtype), x)
 
     def _set_Ord(self, Ord: torch.tensor) -> None:
@@ -794,7 +796,7 @@ class LinearSplit(Linear):
             `*` can have any number of dimensions, for instance `(b, c)` where
             `b` is the batch size and `c` the number of channels. `h` and `w`
             are the height and width of the images.
-        
+
         Output:
             torch.tensor: The linear measurements of the input images. It has
             shape :math:`(*, 2M)` where * denotes any number of dimensions and
@@ -827,7 +829,7 @@ class LinearSplit(Linear):
 
         This is equivalent to computing :math:`x \cdot H^T`. The input images
         must be unvectorized.
-        
+
         .. warning::
             This method uses the measurement matrix :math:`H` to compute the linear
             measurements from incoming images. If you want to apply the splitted
@@ -1001,7 +1003,7 @@ class HadamSplit(LinearSplit):
             `*` denotes any dimension, for instance `(b,c)` where `b` is the
             batch size and `c` the number of channels. `h` and `w` are the height
             and width of the images.
-            
+
         Output:
             torch.tensor: The linear measurements of the input images. It has
             shape :math:`(*,M)` where * denotes any number of dimensions and
@@ -1021,21 +1023,21 @@ class HadamSplit(LinearSplit):
 
     def inverse(self, y: torch.tensor) -> torch.tensor:
         r"""Inverse transform of Hadamard-domain images.
-        
+
         It can be described as :math:`x = H_{had}^{-1}G y`, where :math:`y` is
         the input Hadamard-domain measurements, :math:`H_{had}^{-1}` is the inverse
-        Hadamard transform, and :math:`G` is the reordering matrix. 
-        
+        Hadamard transform, and :math:`G` is the reordering matrix.
+
         .. note::
             For this inverse to work, the input vector must have the same number
-            of measurements as there are pixels in the original image 
+            of measurements as there are pixels in the original image
             (:math:`M = N`), i.e. no subsampling is allowed.
 
         Args:
             :math:`y`: batch of images in the Hadamard domain of shape
             :math:`(*,c,M)`. `*` denotes any size, `c` the number of
             channels, and `M` the number of measurements (with `M = N`).
-        
+
         Output:
             :math:`x`: batch of images of shape :math:`(*,c,h,w)`. `*` denotes
             any size, `c` the number of channels, and `h`, `w` the height and
@@ -1067,7 +1069,7 @@ class HadamSplit(LinearSplit):
 
         y = self.unvectorize(y)
         # inverse of full transform
-        
+
         x = 1 / self.N * spytorch.fwht_2d(y, True)
         return x
 
@@ -1483,7 +1485,7 @@ class DynamicLinear(_Base):
             denotes any dimension (e.g. the batch size), `t` the number of frames,
             `c` the number of channels, and `h`, `w` the height and width of the
             images.
-            
+
         Output:
             :math:`y`: Linear measurements of the input images. It has shape
             :math:`(*, c, M)` where * denotes any number of dimensions, `c` the
@@ -1534,7 +1536,9 @@ class DynamicLinear(_Base):
         except AttributeError:
             pass
 
-    def _dynamic_forward_with_op(self, x: torch.tensor, op: torch.tensor) -> torch.tensor:
+    def _dynamic_forward_with_op(
+        self, x: torch.tensor, op: torch.tensor
+    ) -> torch.tensor:
         return torch.einsum("thw,...tchw->...ct", self.unvectorize(op).to(x.dtype), x)
 
     @staticmethod
@@ -1718,7 +1722,7 @@ class DynamicLinearSplit(DynamicLinear):
         :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
         `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
         :math:`H_{-} = \max(0,-H)`.
-        
+
         If you want to measure with the original matrix :math:`H`, use the
         method :meth:`forward_H`.
 
@@ -1727,7 +1731,7 @@ class DynamicLinearSplit(DynamicLinear):
             denotes any dimension (e.g. the batch size), :math:`t` the number of
             frames, :math:`c` the number of channels, and :math:`h`, :math:`w`
             the height and width of the images.
-        
+
         Output:
             :math:`y`: Linear measurements of the input images. It has shape
             :math:`(*, c, 2M)` where * denotes any number of dimensions, :math:`c`
@@ -1761,7 +1765,7 @@ class DynamicLinearSplit(DynamicLinear):
         Simulates the measurement of a motion picture :math:`y = H \cdot x(t)`.
 
         The output :math:`y` is computed as :math:`y = Hx`, where :math:`H` is
-        the measurement matrix and :math:`x` is a batch of images. 
+        the measurement matrix and :math:`x` is a batch of images.
 
         The matrix :math:`H` can contain positive and negative values and is
         given by the user at initialization. If you want to measure with the
@@ -1772,16 +1776,16 @@ class DynamicLinearSplit(DynamicLinear):
             denotes any dimension (e.g. the batch size), :math:`t` the number of
             frames, :math:`c` the number of channels, and :math:`h`, :math:`w`
             the height and width of the images.
-        
+
         Output:
             :math:`y`: Linear measurements of the input images. It has shape
             :math:`(*, c, M)` where * denotes any number of dimensions, :math:`c`
             the number of channels, and :math:`M` the number of measurements.
-        
+
         .. important::
             There must be as many images as there are measurements in the original
             linear operator, i.e. :math:`t = M`.
-            
+
         Shape:
             :math:`x`: :math:`(*, t, c, h, w)`
 

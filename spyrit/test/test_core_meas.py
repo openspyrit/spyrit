@@ -51,7 +51,9 @@ def test_core_meas():
     meas_op = Linear(H_static, Ord=Ord)
     assert_equal_all(meas_op.Ord, Ord, "Wrong Ord")
     assert_equal_all(meas_op.indices, torch.arange(399, -1, -1), "Wrong indices")
-    assert_equal_all(meas_op._param_H_static.data, H_static.flip(0), "Wrong sorting with Ord")
+    assert_equal_all(
+        meas_op._param_H_static.data, H_static.flip(0), "Wrong sorting with Ord"
+    )
     # Ord setter
     Ord_new = torch.arange(399, -1, -1)  # put back in original order
     meas_op.Ord = Ord_new
