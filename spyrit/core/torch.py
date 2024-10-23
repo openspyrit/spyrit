@@ -33,11 +33,11 @@ def assert_power_of_2(n, raise_error=True):
 
     Returns:
         bool: True if n is a power of 2, False otherwise.
-    
+
     Example:
-    
+
     .. runblock:: pycon
-    
+
         >>> import os
         >>> print(os.getcwd())
     """
