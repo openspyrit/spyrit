@@ -44,7 +44,7 @@ class DirectPoisson(nn.Module):
         super().__init__()
         self.alpha = alpha
         self.meas_op = meas_op
-        
+
         self.M = meas_op.M
         self.N = meas_op.N
         self.h = meas_op.h
@@ -195,16 +195,16 @@ class SplitPoisson(DirectPoisson):
     def H_ones(self):
         return self.meas_op.forward_H(torch.ones(self.h, self.w))
 
-    def unsplit(self, x: torch.tensor, mode: str='diff') -> torch.tensor:
+    def unsplit(self, x: torch.tensor, mode: str = "diff") -> torch.tensor:
         """Unsplits measurements by combining odd and even indices.
-        
+
         The parameter `mode` can be either 'diff' or 'sum'. The first one
         computes the difference between the even and odd indices, while the
         second one computes the sum.
 
         Args:
             x (torch.tensor): Measurements, can have any shape.
-            
+
             mode (str): 'diff' or 'sum'. If 'diff', the difference between the
             even and odd indices is computed. If 'sum', the sum is computed.
             Defaults to 'diff'.
@@ -213,9 +213,9 @@ class SplitPoisson(DirectPoisson):
             torch.tensor: The input tensor with the even and odd indices
             of the last dimension combined (either by difference or sum).
         """
-        if mode == 'diff':
+        if mode == "diff":
             return x[..., 0::2] - x[..., 1::2]
-        elif mode == 'sum':
+        elif mode == "sum":
             return x[..., 0::2] + x[..., 1::2]
         else:
             raise ValueError("mode should be either 'diff' or 'sum'")
@@ -258,7 +258,7 @@ class SplitPoisson(DirectPoisson):
         """
         # s = x.shape[:-1] + torch.Size([self.M])  # torch.Size([*,M])
         # H_ones = self.H_ones.expand(s)
-        return super().forward(self.unsplit(x, mode='diff'))
+        return super().forward(self.unsplit(x, mode="diff"))
 
     def forward_expe(
         self, x: torch.tensor, meas_op: Union[LinearSplit, HadamSplit]
@@ -306,11 +306,11 @@ class SplitPoisson(DirectPoisson):
             torch.Size([10, 400])
             torch.Size([10])
         """
-        x = self.unsplit(x, mode='diff')
+        x = self.unsplit(x, mode="diff")
 
         # estimate alpha
         x_pinv = meas_op.pinv(x)
-        alpha = self.max(x_pinv).squeeze(-1) # shape is now (b, c, 1) 
+        alpha = self.max(x_pinv).squeeze(-1)  # shape is now (b, c, 1)
 
         # normalize
         alpha = alpha.expand(x.shape)
@@ -340,7 +340,7 @@ class SplitPoisson(DirectPoisson):
             torch.Size([10, 400])
 
         """
-        return super().sigma(self.unsplit(x, mode='sum'))
+        return super().sigma(self.unsplit(x, mode="sum"))
 
     def set_expe(self, gain=1.0, mudark=0.0, sigdark=0.0, nbin=1.0):
         r"""
@@ -385,7 +385,7 @@ class SplitPoisson(DirectPoisson):
         """
         # Input shape (b*c, 2*M)
         # output shape (b*c, M)
-        x = self.unsplit(x, mode='sum')
+        x = self.unsplit(x, mode="sum")
         x = (
             self.gain * (x - 2 * self.nbin * self.mudark)
             + 2 * self.nbin * self.sigdark**2
@@ -428,6 +428,6 @@ class SplitPoisson(DirectPoisson):
 
         """
         x = meas_op(x)
-        x = self.unsplit(x, mode='sum')
+        x = self.unsplit(x, mode="sum")
         x = 4 * x / self.alpha  # here alpha should not be squared
         return x
