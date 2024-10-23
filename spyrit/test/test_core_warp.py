@@ -49,36 +49,36 @@ def test_core_warp():
     print("\tforward greyscale... ", end="")
     matrix = torch.rand(n_frames, ny, nx, 2, dtype=torch.float64)
     def_field = DeformationField(matrix)
-    img = torch.rand(1, nx * ny, dtype=torch.float64)
+    img = torch.rand((1, 1, nx, ny), dtype=torch.float64)
     warped_img = def_field(img, 0, n_frames)
     assert_shape(
-        warped_img.shape, torch.Size([1, 10, nx * ny]), "Wrong forward greyscale size"
+        warped_img.shape, torch.Size([1, 10, 1, nx, ny]), "Wrong forward greyscale size"
     )
     print("ok")
 
     # forward color (3D)
     print("\tforward color... ", end="")
-    img = torch.rand(3, nx * ny, dtype=torch.float64)
+    img = torch.rand((1, 3, nx, ny), dtype=torch.float64)
     warped_img = def_field(img, 0, n_frames)
     assert_shape(
-        warped_img.shape, torch.Size([3, 10, nx * ny]), "Wrong forward color size"
+        warped_img.shape, torch.Size([1, 10, 3, nx, ny]), "Wrong forward color size"
     )
     print("ok")
 
-    # # forward color with batch of images
-    # print("\tforward color with batch of images... ", end="")
-    # batch_imgs = torch.rand(5, 3, nx, ny, dtype=torch.float)
-    # warped_batch_imgs = def_field(batch_imgs, 0, n_frames)
-    # assert_shape(
-    #     warped_batch_imgs.shape,
-    #     torch.Size([5, 10, 3, nx, ny]),
-    #     "Wrong forward color with batch of images size",
-    # )
-    # print("ok")
+    # forward color with batch of images
+    print("\tforward color with batch of images... ", end="")
+    batch_imgs = torch.rand((5, 3, nx, ny), dtype=torch.float)
+    warped_batch_imgs = def_field(batch_imgs, 0, n_frames)
+    assert_shape(
+        warped_batch_imgs.shape,
+        torch.Size([5, n_frames, 3, nx, ny]),
+        "Wrong forward color with batch of images size",
+    )
+    print("ok")
 
     # forward rotating clockwise
     print("\tforward rotating clockwise... ", end="")
-    img = torch.tensor([[1, 2, 3, 4]], dtype=torch.float64)
+    img = torch.tensor([1, 2, 3, 4], dtype=torch.float64).reshape(1, 1, 2, 2)
     v = torch.tensor(
         [[[[-1.0, 1.0], [-1.0, -1.0]], [[1.0, 1.0], [1.0, -1.0]]]], dtype=torch.float64
     )
@@ -86,7 +86,7 @@ def test_core_warp():
     warped_img = field(img, 0, 1)
     assert_equal_all(
         warped_img,
-        torch.tensor([[3, 1, 4, 2]], dtype=torch.float64),
+        torch.tensor([3, 1, 4, 2], dtype=torch.float64).reshape(1, 1, 2, 2),
         "Wrong forward rotating clockwise",
     )
     print("ok")
@@ -120,7 +120,7 @@ def test_core_warp():
             [[c(t), -s(t), 0], [s(t), c(t), 0], [0, 0, 1]], dtype=torch.float64
         )
 
-    img = torch.tensor([[1, 2, 3, 4]], dtype=torch.float64)
+    img = torch.tensor([1, 2, 3, 4], dtype=torch.float64).reshape(1, 1, 2, 2)
     img_size = (2, 2)
     # 4 frames, sampled at [0, 0.25, 0.5, 0.75]
     n_frames = 4
@@ -135,21 +135,21 @@ def test_core_warp():
             [3.0, 1, 4, 2],
         ],
         dtype=torch.float64,
-    )
+    ).reshape(1, 4, 1, 2, 2)
     assert_close_all(warped_img, expected_img, "Wrong forward 4 images")
     print("ok")
 
-    # # test 4 frames with 10 images in a batch
-    # print("\tforward 4 frames with 10 images in a batch... ", end="")
-    # nx, ny = 2, 2
-    # batch_imgs = torch.rand(10, 3, nx, ny, dtype=torch.float)
-    # warped_batch_imgs = field(batch_imgs, 0, n_frames, "bilinear")
-    # assert_shape(
-    #     warped_batch_imgs.shape,
-    #     torch.Size([10, 4, 3, nx, ny]),
-    #     "Wrong forward 4 frames with 10 images in a batch size",
-    # )
-    # print("ok")
+    # test 4 frames with 10 images in a batch
+    print("\tforward 4 frames with 10 images in a batch... ", end="")
+    nx, ny = 2, 2
+    batch_imgs = torch.rand(10, 3, nx, ny, dtype=torch.float)
+    warped_batch_imgs = field(batch_imgs, 0, n_frames, "bilinear")
+    assert_shape(
+        warped_batch_imgs.shape,
+        torch.Size([10, 4, 3, nx, ny]),
+        "Wrong forward 4 frames with 10 images in a batch size",
+    )
+    print("ok")
 
     # =========================================================================
     print("All tests passed for warp.py")
