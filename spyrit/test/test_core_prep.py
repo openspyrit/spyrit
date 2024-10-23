@@ -29,9 +29,9 @@ def test_core_prep():
 
     # forward
     print("\tforward... ", end="")
-    x = torch.rand([10, 400], dtype=torch.float)
+    x = torch.rand([10, 3, 400], dtype=torch.float)
     m = prep_op(x)
-    assert_shape(m.shape, torch.Size([10, 400]), "Wrong matrix size")
+    assert_shape(m.shape, torch.Size([10, 3, 400]), "Wrong matrix size")
     print("ok")
 
     # variance
@@ -63,9 +63,9 @@ def test_core_prep():
 
     # forward with LinearSplit
     print("\tforward with LinearSplit... ", end="")
-    x = torch.rand([10, 2 * 400], dtype=torch.float)
+    x = torch.rand([10, 3, 2 * 400], dtype=torch.float)
     m = split_op(x)
-    assert_shape(m.shape, torch.Size([10, 400]), "Wrong matrix size")
+    assert_shape(m.shape, torch.Size([10, 3, 400]), "Wrong matrix size")
     print("ok")
 
     # constructor with HadamSplit
@@ -77,23 +77,23 @@ def test_core_prep():
 
     # forward with HadamSplit
     print("\tforward with HadamSplit... ", end="")
-    x = torch.rand([10, 2 * 400], dtype=torch.float)
+    x = torch.rand([10, 3, 2 * 400], dtype=torch.float)
     m = split_op(x)
-    assert_shape(m.shape, torch.Size([10, 400]), "Wrong matrix size")
+    assert_shape(m.shape, torch.Size([10, 3, 400]), "Wrong matrix size")
     print("ok")
 
     # forward_expe
     print("\tforward_expe... ", end="")
     m, alpha = split_op.forward_expe(x, meas_op)
-    assert_shape(m.shape, torch.Size([10, 400]), "Wrong matrix size for m")
-    assert_shape(alpha.shape, torch.Size([10]), "Wrong matrix size for alpha")
+    assert_shape(m.shape, torch.Size([10, 3, 400]), "Wrong matrix size for m")
+    assert_shape(alpha.shape, torch.Size([10, 3]), "Wrong matrix size for alpha")
     print("ok")
 
     # sigma
     print("\tsigma... ", end="")
-    x = torch.rand([10, 2 * 400], dtype=torch.float)
+    x = torch.rand([10, 3, 2 * 400], dtype=torch.float)
     v = split_op.sigma(x)
-    assert_shape(v.shape, torch.Size([10, 400]), "Wrong matrix size")
+    assert_shape(v.shape, torch.Size([10, 3, 400]), "Wrong matrix size")
     print("ok")
 
     # set_expe
@@ -105,40 +105,23 @@ def test_core_prep():
     # sigma_expe
     print("\tsigma_expe... ", end="")
     v = split_op.sigma_expe(x)
-    assert_shape(v.shape, torch.Size([10, 400]), "Wrong matrix size")
+    assert_shape(v.shape, torch.Size([10, 3, 400]), "Wrong matrix size")
     print("ok")
 
     # sigma_from_image
     print("\tsigma_from_image... ", end="")
-    x = torch.rand([10, 32 * 32], dtype=torch.float)
+    x = torch.rand([10, 3, 32, 32], dtype=torch.float)
     v = split_op.sigma_from_image(x, meas_op)
-    assert_shape(v.shape, torch.Size([10, 400]), "Wrong matrix size")
+    assert_shape(v.shape, torch.Size([10, 3, 400]), "Wrong matrix size")
     print("ok")
 
     # denormalize_expe
     print("\tdenormalize_expe... ", end="")
-    x = torch.rand([10, 1, 32, 32], dtype=torch.float)
+    x = torch.rand([10, 3, 32, 32], dtype=torch.float)
     beta = 9 * torch.rand([10, 1])
     y = split_op.denormalize_expe(x, beta, 32, 32)
-    assert_shape(y.shape, torch.Size([10, 1, 32, 32]), "Wrong matrix size")
+    assert_shape(y.shape, torch.Size([10, 3, 32, 32]), "Wrong matrix size")
     print("ok")
-
-    # % Test SplitRowPoisson
-    # from spyrit.core.meas import LinearSplit
-    # from spyrit.core.prep import SplitRowPoisson
-
-    # # constructor
-    # split_op = SplitRowPoisson(2.0, 24, 64)
-
-    # # forward with LinearSplit
-    # x = torch.rand([10, 48, 64], dtype=torch.float)
-    # H_pos = np.random.random([24, 64])
-    # meas_op = LinearSplit(H_pos)
-
-    # # forward
-    # m = split_op(x, meas_op)
-    # print(m.shape)
-    # assert_shape(m.shape, torch.Size([10, 24, 64]), "Wrong matrix size")
 
     # =========================================================================
     print("All tests passed for prep.py")
