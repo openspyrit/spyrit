@@ -33,6 +33,13 @@ def assert_power_of_2(n, raise_error=True):
 
     Returns:
         bool: True if n is a power of 2, False otherwise.
+    
+    Example:
+    
+    .. runblock:: pycon
+
+        >>> from spyrit.core.torch import assert_power_of_2
+        >>> assert_power_of_2(8)
     """
     if n < 1:
         if raise_error:

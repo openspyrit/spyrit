@@ -40,6 +40,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx_gallery.gen_gallery",
     "sphinx.ext.coverage",
+    "sphinx_autorun", # for autorunned examples
 ]
 
 # Napoleon settings
