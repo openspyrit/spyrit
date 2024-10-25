@@ -134,7 +134,7 @@ class TikhonovMeasurementPriorDiag(nn.Module):
     def __init__(self, sigma: torch.tensor, M: int):
         super().__init__()
 
-        N = sigma.shape[0]
+        # N = sigma.shape[0]
 
         var_prior = sigma.diag()[:M]
 
@@ -493,17 +493,9 @@ class PinvNet(nn.Module):
             torch.Size([10, 1, 64, 64])
             tensor(5.8912e-06)
         """
-        original_shape = x.shape  # b, c, _, _ = x.shape
-
-        # Acquisition
-        x = x.reshape(
-            *original_shape[:-2], self.acqu.meas_op.N
-        )  # shape x = [b*c,h*w] = [b*c,N]
-        x = self.acqu(x)  # shape x = [b*c, 2*M]
-
-        # Reconstruction
-        x = self.reconstruct(x)  # shape x = [bc, 1, h,w]
-        return x.reshape(*original_shape)
+        x = self.acquire(x)
+        x = self.reconstruct(x)
+        return x
 
     def acquire(self, x):
         r"""Simulates data acquisition
@@ -528,9 +520,9 @@ class PinvNet(nn.Module):
             >>> print(z.shape)
             torch.Size([10, 8192])
         """
-        b, c, _, _ = x.shape
+        # b, c, _, _ = x.shape
         # Acquisition
-        x = x.reshape(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
+        # x = x.reshape(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
         return self.acqu(x)  # shape x = [b*c, 2*M]
 
     def meas2img(self, y):
@@ -540,28 +532,28 @@ class PinvNet(nn.Module):
             :attr:`x`: raw measurement vectors
 
         Shape:
-            :attr:`x`: :math:`(BC,2M)`
+            :attr:`x`: :math:`(*,2M)`
 
-            :attr:`output`: :math:`(BC,1,H,W)`
+            :attr:`output`: :math:`(*,H,W)`
 
         Example:
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = torch.ones((H,H))
+            >>> B, C, H, M = 10, 3, 64, 64**2
+            >>> Ord = torch.ones(H,H)
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H**2)
             >>> recnet = PinvNet(noise, prep)
-            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
+            >>> x = torch.rand((B,C,2*M), dtype=torch.float32)
             >>> z = recnet.reconstruct(x)
             >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
+            torch.Size([10, 3, 64, 64])
         """
         m = self.prep(y)
         m = torch.nn.functional.pad(m, (0, self.acqu.meas_op.N - self.acqu.meas_op.M))
-        # z = m @ self.acqu.meas_op.get_Perm().T  # old way
-        # new way, tested and working :
+
+        # reindex the measurements
         z = self.acqu.meas_op.reindex(m, "cols", False)
-        return z.reshape(-1, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
+        return z.reshape(*z.shape[:-1], self.acqu.meas_op.h, self.acqu.meas_op.w)
 
     def reconstruct(self, x):
         r"""Preprocesses, reconstructs, and denoises raw measurement vectors.
@@ -586,7 +578,6 @@ class PinvNet(nn.Module):
             >>> print(z.shape)
             torch.Size([10, 1, 64, 64])
         """
-        # Denoise image-domain
         return self.denoi(self.reconstruct_pinv(x))
 
     def reconstruct_pinv(self, x):
@@ -612,19 +603,8 @@ class PinvNet(nn.Module):
             >>> print(z.shape)
             torch.Size([10, 1, 64, 64])
         """
-        # Measurement to image domain mapping
-        bc = x.shape[0]  # bc, _ = x.shape
-
-        # Preprocessing in the measurement domain
-        x = self.prep(x)  # , self.acqu.meas_op) # shape x = [b*c, M]
-
-        # measurements to image-domain processing
-        x = self.pinv(x, self.acqu.meas_op)  # shape x = [b*c,N]
-
-        # Image-domain denoising
-        x = x.reshape(
-            bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
-        )  # shape x = [b*c,1,h,w]
+        x = self.prep(x)
+        x = self.pinv(x, self.acqu.meas_op) 
         return x
 
     def reconstruct_expe(self, x):
@@ -775,17 +755,8 @@ class DCNet(nn.Module):
             >>> print(z.shape)
             torch.Size([10, 1, 64, 64])
         """
-
-        b, c, _, _ = x.shape
-
-        # Acquisition
-        x = x.reshape(b * c, self.Acq.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
-        x = self.Acq(x)  # shape x = [b*c, 2*M]
-
-        # Reconstruction
-        x = self.reconstruct(x)  # shape x = [bc, 1, h,w]
-        x = x.reshape(b, c, self.Acq.meas_op.h, self.Acq.meas_op.w)
-
+        x = self.acquire(x)
+        x = self.reconstruct(x)
         return x
 
     def acquire(self, x):
@@ -812,14 +783,7 @@ class DCNet(nn.Module):
             >>> print(z.shape)
             torch.Size([10, 8192])
         """
-
-        b, c, _, _ = x.shape
-
-        # Acquisition
-        x = x.reshape(b * c, self.Acq.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
-        x = self.Acq(x)  # shape x = [b*c, 2*M]
-
-        return x
+        return self.Acq(x)
 
     def reconstruct(self, x):
         r"""Reconstruction step of a reconstruction network
@@ -845,23 +809,18 @@ class DCNet(nn.Module):
             >>> print(z.shape)
             torch.Size([10, 1, 64, 64])
         """
-        # x of shape [b*c, 2M]
-        bc, _ = x.shape
-
-        # Preprocessing
         var_noi = self.prep.sigma(x)
-        x = self.prep(x)  # shape x = [b*c, M]
+        x = self.prep(x)
 
-        # measurements to image domain processing
-        x_0 = torch.zeros((bc, self.Acq.meas_op.N), device=x.device)
+        # x.shape = (*, M), make x_0 (*, h, w)
+        x_0 = torch.zeros((*x.shape[:-1], *self.Acq.meas_op.meas_shape), device=x.device)
         x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
-        x = x.reshape(
-            bc, 1, self.Acq.meas_op.h, self.Acq.meas_op.w
-        )  # shape x = [b*c,1,h,w]
+
 
         # Image domain denoising
+       
+        # Image domain denoising
         x = self.denoi(x)
-
         return x
 
     def reconstruct_expe(self, x):

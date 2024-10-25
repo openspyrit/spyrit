@@ -34,16 +34,17 @@ def test_core_recon():
     print("\tforward from random measurement... ", end="")
     Ord = torch.rand([32, 32])
     meas_op = HadamSplit(400, 32, Ord)
-    y = torch.rand([85, 400], dtype=torch.float)
+    y = torch.rand([85, 3, 400], dtype=torch.float)
     x = recon_op(y, meas_op)
-    assert_shape(x.shape, torch.Size([85, 1024]), "Wrong forward size")
+    assert_shape(x.shape, torch.Size([85, 3, 32, 32]), "Wrong forward size")
     print("ok")
 
     # forward from measured random image
     print("\tforward from measured random image... ", end="")
-    B = 1
+    B = 10
+    C = 3
     H = 64
-    img = torch.FloatTensor(B, H**2).uniform_(-1, 1)
+    img = torch.FloatTensor(B, C, H, H).uniform_(-1, 1)
     Ord = torch.rand([H, H])
     M = 64
     meas_op = HadamSplit(M, H, Ord)
@@ -53,7 +54,7 @@ def test_core_recon():
     m = split_op(y)
     recon_op = PseudoInverse()
     z = recon_op(m, meas_op)
-    assert_shape(z.shape, torch.Size([1, 4096]), "Wrong recon size")
+    assert_shape(z.shape, torch.Size([B, C, H, H]), "Wrong recon size")
     tensor_test = torch.linalg.norm(img - z) / torch.linalg.norm(img)
     print(f"ok - {tensor_test=}")
 
@@ -73,7 +74,7 @@ def test_core_recon():
 
     channels = 1
     H = 16
-    img = torch.DoubleTensor(channels, H**2).uniform_(-1, 1)
+    img = torch.DoubleTensor(B, channels, H, H).uniform_(-1, 1)
     M = H**2
     H_matrix = torch.rand([M, M])
     meas_op = DynamicLinear(H_matrix)
@@ -89,7 +90,7 @@ def test_core_recon():
     # reconstruction
     recon_op = PseudoInverse()
     z = recon_op(y, meas_op)
-    assert_shape(z.shape, torch.Size([channels, H**2]), "Wrong recon size")
+    assert_shape(z.shape, torch.Size([B, channels, H, H]), "Wrong recon size")
     print("ok")
 
     # Inverse from moving object, DynamicHadamSplit, comparing images
@@ -109,7 +110,7 @@ def test_core_recon():
     meas_op.build_H_dyn_pinv()
     # reconstruction
     z = recon_op(y, meas_op)
-    assert_shape(z.shape, torch.Size([channels, H**2]), "Wrong recon size")
+    assert_shape(z.shape, torch.Size([B, channels, H, H]), "Wrong recon size")
     assert_close_all(img, z, "Wrong recon value", atol=1e-6)
     print("ok")
 
@@ -127,7 +128,7 @@ def test_core_recon():
     y = meas_op(img_motion)
     # reconstruction
     meas_op.build_H_dyn(field)
-    y_hat = img @ meas_op.H_dyn.T.to(img.dtype)
+    y_hat = img.reshape(B, channels, H*H) @ meas_op.H_dyn.T.to(img.dtype)
     assert_close_all(y, y_hat, "Wrong recon value", atol=1e-6)
     print("ok")
 
@@ -147,7 +148,7 @@ def test_core_recon():
     meas_op.build_H_dyn(field)
     meas_op.build_H_dyn_pinv()
     z = recon_op(y, meas_op)
-    y_hat = z @ meas_op.H_dyn.T.to(z.dtype)
+    y_hat = z.reshape(B, channels, H*H) @ meas_op.H_dyn.T.to(z.dtype)
     assert_close_all(y, y_hat, "Wrong recon value", atol=1e-5)
     print("ok")
 
@@ -158,7 +159,7 @@ def test_core_recon():
 
     # constructor
     print("\tconstructor... ", end="")
-    B, C, H, M = 10, 1, 64, 64**2
+    B, C, H, M = 10, 3, 64, 64**2
     Ord = torch.randn((H, H))
     meas = HadamSplit(M, H, Ord)
     noise = NoNoise(meas)
@@ -170,29 +171,29 @@ def test_core_recon():
     print("\tforward... ", end="")
     x = torch.FloatTensor(B, C, H, H).uniform_(-1, 1)
     z = recnet(x)
-    assert_shape(z.shape, torch.Size([10, 1, 64, 64]), "Wrong recon size")
+    assert_shape(z.shape, torch.Size([B, C, H, H]), "Wrong recon size")
     tensor_test = torch.linalg.norm(x - z) / torch.linalg.norm(x)
     print(f"ok - {tensor_test=}")
 
     # meas2img
     print("\tmeas2img... ", end="")
-    x = torch.rand(B * C, 2 * M)
+    x = torch.rand(B, C, 2 * M)
     z = recnet.meas2img(x)
-    assert_shape(z.shape, torch.Size([10, 1, 64, 64]), "Wrong recon size")
+    assert_shape(z.shape, torch.Size([B, C, H, H]), "Wrong recon size")
     print("ok")
 
     # acquire
     print("\tacquire... ", end="")
     x = torch.FloatTensor(B, C, H, H).uniform_(-1, 1)
     z = recnet.acquire(x)
-    assert_shape(z.shape, torch.Size([10, 8192]), "Wrong recon size")
+    assert_shape(z.shape, torch.Size([B, C, 2*H*H]), "Wrong recon size")
     print("ok")
 
     # reconstruct
     print("\treconstruct... ", end="")
-    x = torch.rand((B * C, 2 * M), dtype=torch.float)
+    x = torch.rand((B, C, 2 * M), dtype=torch.float)
     z = recnet.reconstruct(x)
-    assert_shape(z.shape, torch.Size([10, 1, 64, 64]), "Wrong recon size")
+    assert_shape(z.shape, torch.Size([B, C, H, H]), "Wrong recon size")
     print("ok")
 
     # =========================================================================
@@ -202,7 +203,7 @@ def test_core_recon():
 
     # constructor
     print("\tconstructor... ", end="")
-    B, H, M = 85, 32, 512
+    B, C, H, M = 85, 3, 32, 512
     sigma = torch.rand([H**2, H**2])
     recon = TikhonovMeasurementPriorDiag(sigma, M)
     print("ok")
@@ -211,11 +212,11 @@ def test_core_recon():
     print("\tforward... ", end="")
     Ord = torch.ones((H, H))
     meas = HadamSplit(M, H, Ord)
-    y = torch.rand([B, M], dtype=torch.float)
-    x_0 = torch.zeros((B, H**2), dtype=torch.float)
-    var = torch.zeros((B, M), dtype=torch.float)
+    y = torch.rand([B, C, M], dtype=torch.float)
+    x_0 = torch.zeros((B, C, H, H), dtype=torch.float)
+    var = torch.zeros((B, C, M), dtype=torch.float)
     x = recon(y, x_0, var, meas)
-    assert_shape(x.shape, torch.Size([85, 1024]), "Wrong recon size")
+    assert_shape(x.shape, torch.Size([B, C, H, H]), "Wrong recon size")
     print("ok")
 
     # =========================================================================
@@ -225,7 +226,7 @@ def test_core_recon():
 
     # constructor
     print("\tconstructor... ", end="")
-    B, C, H, M = 10, 1, 64, 64**2 // 2
+    B, C, H, M = 10, 3, 64, 64**2 // 2
     Ord = torch.ones((H, H))
     meas = HadamSplit(M, H, Ord)
     noise = NoNoise(meas)
@@ -238,14 +239,14 @@ def test_core_recon():
     print("\tforward... ", end="")
     x = torch.FloatTensor(B, C, H, H).uniform_(-1, 1)
     z = recnet(x)
-    assert_shape(z.shape, torch.Size([10, 1, 64, 64]), "Wrong recon size")
+    assert_shape(z.shape, torch.Size([B, C, H, H]), "Wrong recon size")
     print("ok")
 
     # reconstruct
     print("\treconstruct... ", end="")
-    x = torch.rand((B * C, 2 * M), dtype=torch.float)
+    x = torch.rand((B, C, 2 * M), dtype=torch.float)
     z = recnet.reconstruct(x)
-    assert_shape(z.shape, torch.Size([10, 1, 64, 64]), "Wrong recon size")
+    assert_shape(z.shape, torch.Size([B, C, H, H]), "Wrong recon size")
     print("ok")
 
     # =========================================================================
