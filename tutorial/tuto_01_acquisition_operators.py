@@ -32,7 +32,7 @@ These tutorials load image samples from `/images/`.
 # using the :func:`transform_gray_norm` function. Spyrit can handle images
 # with the shape :math:`(h, w)` or :math:`(*, h, w)`, where :math:`*` represents
 # any number of additional dimensions, e.g. batch size and number of channels.
-# In this case, we load a batch of black and white images of size :math:`64 \times 64`, 
+# In this case, we load a batch of black and white images of size :math:`64 \times 64`,
 # and select one image for the tutorial. This results in a tensor of shape :math:`(1, 1, 64, 64)`.
 
 import os
