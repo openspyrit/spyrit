@@ -883,7 +883,7 @@ class LearnedPGD(nn.Module):
 
     :math:`x_{k+1} = prox(\hat{x_k} - step * H^T (Hx_k - y))=
     denoi(\hat{x_k} - step * H^T (Hx_k - y))`
-    
+
     .. warning::
         This class is still under development and has not been tested yet.
         The input shape is not coherent with that of other classes, and it
