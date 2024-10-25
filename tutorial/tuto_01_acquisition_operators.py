@@ -29,7 +29,11 @@ These tutorials load image samples from `/images/`.
 
 ###############################################################################
 # Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
-# using the :func:`transform_gray_norm` function.
+# using the :func:`transform_gray_norm` function. Spyrit can handle images
+# with the shape :math:`(h, w)` or :math:`(*, h, w)`, where :math:`*` represents
+# any number of additional dimensions, e.g. batch size and number of channels.
+# In this case, we load a batch of black and white images of size :math:`64 \times 64`, 
+# and select one image for the tutorial. This results in a tensor of shape :math:`(1, 1, 64, 64)`.
 
 import os
 
@@ -61,11 +65,11 @@ print(f"Shape of input images: {x.shape}")
 # Select image
 x = x[i : i + 1, :, :, :]
 x = x.detach().clone()
+print(f"Shape of selected image: {x.shape}")
 b, c, h, w = x.shape
 
 # plot
-x_plot = x.view(-1, h, h).cpu().numpy()
-imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
+imagesc(x[0, 0, :, :], r"$x$ in [-1, 1]")
 
 # %%
 # The measurement and noise operators
@@ -116,20 +120,18 @@ noise_op = NoNoise(meas_op)
 
 ###############################################################################
 # We simulate the measurement vector :math:`y` that we visualise as an image.
-# Remember that the input image :math:`x` is handled as a vector.
+# The input image :math:`x` is now handled as an image. Please note that the
+# measurement vector :math:`y` is always vectorized.
 
-x = x.view(b * c, h * w)  # vectorized image
-print(f"Shape of vectorized image: {x.shape}")
 y_eye = noise_op(x)  # noisy measurement vector
 print(f"Shape of simulated measurements y: {y_eye.shape}")
 
 # plot
-x_plot = y_eye.view(-1, h, h).cpu().numpy()
-imagesc(x_plot[0, :, :], r"$\tilde{x}$ in [0, 1]")
+imagesc(y_eye[0, 0, :].reshape(h, h), r"$\tilde{x}$ in [0, 1]")
 
 ###############################################################################
 # .. note::
-#   Note that the image identical to the original one, except it has been
+#   Note that the image is identical to the original one, except it has been
 #   normalized in [0,1].
 
 # %%
@@ -172,24 +174,21 @@ y3 = noise_op(x)  # noisy measurement vector
 # We finally plot the measurement vectors as images
 
 # plot
-y1_plot = y1.view(b, h, h).detach().numpy()
-y2_plot = y2.view(b, h, h).detach().numpy()
-y3_plot = y3.view(b, h, h).detach().numpy()
-
 f, axs = plt.subplots(1, 3, figsize=(10, 5))
 axs[0].set_title("100 photons")
-im = axs[0].imshow(y1_plot[0, :, :], cmap="gray")
+im = axs[0].imshow(y1[0, 0, :].reshape(h, h), cmap="gray")
 add_colorbar(im, "bottom")
 
 axs[1].set_title("100 photons")
-im = axs[1].imshow(y2_plot[0, :, :], cmap="gray")
+im = axs[1].imshow(y2[0, 0, :].reshape(h, h), cmap="gray")
 add_colorbar(im, "bottom")
 
 axs[2].set_title("1000 photons")
-im = axs[2].imshow(y3_plot[0, :, :], cmap="gray")
+im = axs[2].imshow(y3[0, 0, :].reshape(h, h), cmap="gray")
 add_colorbar(im, "bottom")
 
 noaxis(axs)
+plt.show()
 
 ###############################################################################
 # As expected the signal-to-noise ratio of the measurement vector is higher for
@@ -261,24 +260,21 @@ m3 = prep_op(y3)
 # We finally plot the preprocessed measurement vectors as images
 
 # plot
-m1 = m1.view(b, h, h).detach().numpy()
-m2 = m2.view(b, h, h).detach().numpy()
-m3 = m3.view(b, h, h).detach().numpy()
-
 f, axs = plt.subplots(1, 3, figsize=(10, 5))
 axs[0].set_title("100 photons")
-im = axs[0].imshow(m1[0, :, :], cmap="gray")
+im = axs[0].imshow(m1[0, 0, :].reshape(h, h), cmap="gray")
 add_colorbar(im, "bottom")
 
 axs[1].set_title("100 photons")
-im = axs[1].imshow(m2[0, :, :], cmap="gray")
+im = axs[1].imshow(m2[0, 0, :].reshape(h, h), cmap="gray")
 add_colorbar(im, "bottom")
 
 axs[2].set_title("1000 photons")
-im = axs[2].imshow(m3[0, :, :], cmap="gray")
+im = axs[2].imshow(m3[0, 0, :].reshape(h, h), cmap="gray")
 add_colorbar(im, "bottom")
 
 noaxis(axs)
+plt.show()
 
 ###############################################################################
 #
@@ -291,4 +287,4 @@ noaxis(axs)
 # We show again one of the preprocessed measurement vectors (tutorial thumbnail purpose)
 
 # Plot
-imagesc(m2[0, :, :], "100 photons", title_fontsize=20)
+imagesc(m2[0, 0, :].reshape(h, h), "100 photons", title_fontsize=20)
