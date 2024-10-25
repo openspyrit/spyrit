@@ -26,7 +26,7 @@ def test_core_prep():
     meas_op = Linear(H)
     prep_op = DirectPoisson(1.0, meas_op)
     print("ok")
-    print(prep_op.meas_op.H.shape)
+
     # forward
     print("\tforward... ", end="")
     x = torch.rand([10, 3, 400], dtype=torch.float)
