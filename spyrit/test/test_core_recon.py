@@ -250,6 +250,11 @@ def test_core_recon():
     print("ok")
 
     # =========================================================================
+    ## LearnedPGD
+    print("NO TEST YET FOR LearnedPGD")
+    
+    
+    # =========================================================================
     print("All tests passed for recon.py")
     print("===============================")
     return True
