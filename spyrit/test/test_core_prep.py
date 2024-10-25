@@ -26,7 +26,7 @@ def test_core_prep():
     meas_op = Linear(H)
     prep_op = DirectPoisson(1.0, meas_op)
     print("ok")
-
+    print(prep_op.meas_op.H.shape)
     # forward
     print("\tforward... ", end="")
     x = torch.rand([10, 3, 400], dtype=torch.float)
@@ -36,17 +36,17 @@ def test_core_prep():
 
     # variance
     print("\tvariance... ", end="")
-    x = torch.rand([10, 400], dtype=torch.float)
+    x = torch.rand([10, 3, 400], dtype=torch.float)
     v = prep_op.sigma(x)
-    assert_shape(v.shape, torch.Size([10, 400]), "Wrong matrix size")
+    assert_shape(v.shape, torch.Size([10, 3, 400]), "Wrong matrix size")
     print("ok")
 
     # denormalize_expe
     print("\tdenormalize_expe... ", end="")
-    x = torch.rand([10, 1, 32, 32], dtype=torch.float)
+    x = torch.rand([10, 3, 32, 32], dtype=torch.float)
     beta = 9 * torch.rand([10])
     y = prep_op.denormalize_expe(x, beta, 32, 32)
-    assert_shape(y.shape, torch.Size([10, 1, 32, 32]), "Wrong matrix size")
+    assert_shape(y.shape, torch.Size([10, 3, 32, 32]), "Wrong matrix size")
     print("ok")
 
     # =========================================================================

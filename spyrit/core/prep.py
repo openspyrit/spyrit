@@ -56,7 +56,7 @@ class DirectPoisson(nn.Module):
     # generate H_ones on the fly as it is memmory intensive and easy to compute
     @property
     def H_ones(self):
-        return self.meas_op(torch.ones((self.h, self.w)))
+        return self.meas_op.H.sum(dim=-1)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
@@ -191,9 +191,9 @@ class SplitPoisson(DirectPoisson):
     def odd_index(self):
         return range(1, 2 * self.M, 2)
 
-    @property
-    def H_ones(self):
-        return self.meas_op.forward_H(torch.ones(self.h, self.w))
+    # @property
+    # def H_ones(self):
+    #     return self.meas_op.forward_H(torch.ones(self.h, self.w))
 
     def unsplit(self, x: torch.tensor, mode: str='diff') -> torch.tensor:
         """Unsplits measurements by combining odd and even indices.
