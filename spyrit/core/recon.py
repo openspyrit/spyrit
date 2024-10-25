@@ -604,7 +604,7 @@ class PinvNet(nn.Module):
             torch.Size([10, 1, 64, 64])
         """
         x = self.prep(x)
-        x = self.pinv(x, self.acqu.meas_op) 
+        x = self.pinv(x, self.acqu.meas_op)
         return x
 
     def reconstruct_expe(self, x):
@@ -813,12 +813,13 @@ class DCNet(nn.Module):
         x = self.prep(x)
 
         # x.shape = (*, M), make x_0 (*, h, w)
-        x_0 = torch.zeros((*x.shape[:-1], *self.Acq.meas_op.meas_shape), device=x.device)
+        x_0 = torch.zeros(
+            (*x.shape[:-1], *self.Acq.meas_op.meas_shape), device=x.device
+        )
         x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
 
-
         # Image domain denoising
-       
+
         # Image domain denoising
         x = self.denoi(x)
         return x

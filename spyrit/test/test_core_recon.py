@@ -128,7 +128,7 @@ def test_core_recon():
     y = meas_op(img_motion)
     # reconstruction
     meas_op.build_H_dyn(field)
-    y_hat = img.reshape(B, channels, H*H) @ meas_op.H_dyn.T.to(img.dtype)
+    y_hat = img.reshape(B, channels, H * H) @ meas_op.H_dyn.T.to(img.dtype)
     assert_close_all(y, y_hat, "Wrong recon value", atol=1e-6)
     print("ok")
 
@@ -148,7 +148,7 @@ def test_core_recon():
     meas_op.build_H_dyn(field)
     meas_op.build_H_dyn_pinv()
     z = recon_op(y, meas_op)
-    y_hat = z.reshape(B, channels, H*H) @ meas_op.H_dyn.T.to(z.dtype)
+    y_hat = z.reshape(B, channels, H * H) @ meas_op.H_dyn.T.to(z.dtype)
     assert_close_all(y, y_hat, "Wrong recon value", atol=1e-5)
     print("ok")
 
@@ -186,7 +186,7 @@ def test_core_recon():
     print("\tacquire... ", end="")
     x = torch.FloatTensor(B, C, H, H).uniform_(-1, 1)
     z = recnet.acquire(x)
-    assert_shape(z.shape, torch.Size([B, C, 2*H*H]), "Wrong recon size")
+    assert_shape(z.shape, torch.Size([B, C, 2 * H * H]), "Wrong recon size")
     print("ok")
 
     # reconstruct
