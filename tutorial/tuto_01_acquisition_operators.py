@@ -8,7 +8,7 @@ submodule. The simulation is based on three modules:
 
 1. **Measurement operators** compute linear measurements :math:`y = Hx` from
    images :math:`x`, where :math:`H` is a linear operator (matrix) and :math:`x`
-   is a vectorized image (see :mod:`spyrit.core.meas`)
+   is an image (see :mod:`spyrit.core.meas`)
 
 2. **Noise operator** corrupts measurements :math:`y` with noise (see :mod:`spyrit.core.noise`)
 
@@ -21,6 +21,11 @@ submodule. The simulation is based on three modules:
    :alt: Measurement, noise, and preprocessing sketches
 
 These tutorials load image samples from `/images/`.
+
+Please note that as of v.2.4.0, the inputs to the measurement operators are
+no longer vectorized images, but rather image tensors with shape :math:`(*, H, W)`,
+where :math:`*` represents any number of additional dimensions, e.g. batch size
+and number of channels.
 """
 
 # %%
@@ -110,7 +115,12 @@ imagesc(x[0, 0, :, :], r"$x$ in [-1, 1]")
 # We start with a simple example where the measurement matrix :math:`H` is
 # the identity, which can be handled  by the more general
 # :class:`spyrit.core.meas.Linear` class. We consider the noiseless case handled
-# by the :class:`spyrit.core.noise.NoNoise` class.
+# by the :class:`spyrit.core.noise.NoNoise` class. 
+# 
+# Usually, the measurement tensor is in another space than the image tensor (e.g. Fourier space or
+# Hadamard space), but using the identity matrix results in the measurement
+# vector being (identical and) in the same space as the image tensor. As measurements
+# are always vectorized, the measurement vector is a vectorized image.
 
 from spyrit.core.meas import Linear
 from spyrit.core.noise import NoNoise
@@ -119,9 +129,9 @@ meas_op = Linear(torch.eye(h * h))
 noise_op = NoNoise(meas_op)
 
 ###############################################################################
-# We simulate the measurement vector :math:`y` that we visualise as an image.
-# The input image :math:`x` is now handled as an image. Please note that the
-# measurement vector :math:`y` is always vectorized.
+# We simulate the measurement vector :math:`y` that we want to visualise as an image.
+# Note that the measurement vector :math:`y` lost a dimension compared to the image :math:`x`,
+# because the measurement operator acts on the last 2 dimensions of the image tensor.
 
 y_eye = noise_op(x)  # noisy measurement vector
 print(f"Shape of simulated measurements y: {y_eye.shape}")
@@ -150,7 +160,7 @@ imagesc(y_eye[0, 0, :].reshape(h, h), r"$\tilde{x}$ in [0, 1]")
 
 ###############################################################################
 # We consider the :class:`spyrit.core.noise.Poisson` class and set :math:`\alpha`
-# to 100 photons.
+# to 100 photons (which corresponds to the Poisson parameter).
 
 from spyrit.core.noise import Poisson
 from spyrit.misc.disp import add_colorbar, noaxis
@@ -196,7 +206,7 @@ plt.show()
 #
 # .. note::
 #   Not only the signal-to-noise, but also the scale of the measurements
-#   depends on :math:`\alpha`, which motivate the introduction of the
+#   depends on :math:`\alpha`, which motivates the introduction of the
 #   preprocessing operator.
 
 # %%
