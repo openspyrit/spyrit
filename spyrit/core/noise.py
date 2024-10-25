@@ -31,7 +31,7 @@ class NoNoise(nn.Module):
     # =========================================================================
     r"""
     Simulates measurements not corrupted by noise.
-    
+
     Assuming incoming images :math:`x` in the range [-1;1], measurements are
     first simulated from images in the range [0;1] by computing
     :math:`y = \frac{1}{2} H(1+x)`.
@@ -103,7 +103,7 @@ class NoNoise(nn.Module):
         self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
     ) -> torch.tensor:
         """Sorts a tensor along a specified axis using the indices tensor.
-        
+
         The indices tensor is contained in the attribute :attr:`self.meas_op.indices`.
         This is equivalent to calling :math:`self.meas_op.reindex` with the same
         arguments.
@@ -197,13 +197,13 @@ class Poisson(NoNoise):
 
         Output:
             :attr:`y` The batch of measurements. Its shape depends on the input
-            shape. 
+            shape.
 
         Shape:
             :attr:`x`: :math:`(*, h, w)` if `self.meas_op` is a static
             measurement operator, :math:`(*, t, c, h, w)` if it is a dynamic
             measurement operator.
-            
+
             :attr:`Output`: :math:`(*, M)` (static measurements) or `(*, c, M)`
             (dynamic measurements)
 
@@ -251,7 +251,9 @@ class Poisson(NoNoise):
         """
         x = super().forward(x)  # NoNoise forward (scaling to [0, 1])
         x *= self.alpha
-        return torch.poisson(F.relu(x)) # truncate negative values to zero, otherwise error    
+        return torch.poisson(
+            F.relu(x)
+        )  # truncate negative values to zero, otherwise error
 
 
 # =============================================================================
@@ -259,7 +261,7 @@ class PoissonApproxGauss(NoNoise):
     # =========================================================================
     r"""
     Simulates measurements corrupted by gaussian-approximated Poisson noise.
-    
+
     To accelerate the computation, we consider a Gaussian approximation to the Poisson
     distribution.
 
@@ -311,12 +313,12 @@ class PoissonApproxGauss(NoNoise):
             :attr:`x`: Batch of images. The input is directly passed to the
             measurement operator, so its shape depends on the type of the
             measurement operator.
-            
+
         Shape:
             :attr:`x`: :math:`(*, h, w)` if `self.meas_op` is a static
             measurement operator, :math:`(*, t, c, h, w)` if it is a dynamic
             measurement operator.
-            
+
             :attr:`Output`: :math:`(*, M)` (static measurements) or `(*, c, M)`
             (dynamic measurements)
 
@@ -374,7 +376,7 @@ class PoissonApproxGaussSameNoise(NoNoise):
     # =========================================================================
     r"""
     Simulates measurements corrupted by identical Gaussian-approximated Poisson noise.
-    
+
     To accelerate the
     computation, we consider a Gaussian approximation to the Poisson
     distribution. Contrary to :class:`~spyrit.core.noise.PoissonApproxGauss`,
@@ -420,12 +422,12 @@ class PoissonApproxGaussSameNoise(NoNoise):
             :attr:`x`: Batch of images. The input is directly passed to the
             measurement operator, so its shape depends on the type of the
             measurement operator.
-            
+
         Shape:
             :attr:`x`: :math:`(*, h, w)` if `self.meas_op` is a static
             measurement operator, :math:`(*, t, c, h, w)` if it is a dynamic
             measurement operator.
-            
+
             :attr:`Output`: :math:`(*, M)` (static measurements) or `(*, c, M)`
             (dynamic measurements)
 
@@ -460,5 +462,5 @@ class PoissonApproxGaussSameNoise(NoNoise):
         x = super().forward(x)  # NoNoise forward
         x *= self.alpha
         x = F.relu(x)  # remove small negative values
-        x = x + torch.sqrt(x) * torch.randn((*[1]*(x.ndim-1), x.shape[-1]))
+        x = x + torch.sqrt(x) * torch.randn((*[1] * (x.ndim - 1), x.shape[-1]))
         return x

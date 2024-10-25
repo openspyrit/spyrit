@@ -5,7 +5,12 @@ Test for module noise.py
 import torch
 
 from test_helpers import assert_shape
-from spyrit.core.meas import Linear, LinearSplit, HadamSplit, DynamicLinear  # , LinearRowSplit
+from spyrit.core.meas import (
+    Linear,
+    LinearSplit,
+    HadamSplit,
+    DynamicLinear,
+)  # , LinearRowSplit
 
 
 def test_core_noise():
@@ -37,15 +42,19 @@ def test_core_noise():
     split_op = HadamSplit(400, 32, Perm)
     split_acq = NoNoise(split_op)
     y = split_acq(x)
-    assert_shape(y.shape, torch.Size([10, 3, 800]), "wrong forward size with HadamSplit")
+    assert_shape(
+        y.shape, torch.Size([10, 3, 800]), "wrong forward size with HadamSplit"
+    )
     print(f"ok - Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-    
+
     # forward with DynamicLinear
     print("\tforward with DynamicLinear... ", end="")
     dyn_meas_op = DynamicLinear(torch.rand(400, 32 * 32))
     x_dyn = torch.randn(10, 400, 3, 32, 32)
     y = dyn_meas_op(x_dyn)
-    assert_shape(y.shape, torch.Size([10, 3, 400]), "wrong forward size with DynamicLinear")
+    assert_shape(
+        y.shape, torch.Size([10, 3, 400]), "wrong forward size with DynamicLinear"
+    )
     print("ok")
 
     # =========================================================================
