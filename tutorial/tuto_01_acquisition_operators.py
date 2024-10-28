@@ -115,8 +115,8 @@ imagesc(x[0, 0, :, :], r"$x$ in [-1, 1]")
 # We start with a simple example where the measurement matrix :math:`H` is
 # the identity, which can be handled  by the more general
 # :class:`spyrit.core.meas.Linear` class. We consider the noiseless case handled
-# by the :class:`spyrit.core.noise.NoNoise` class. 
-# 
+# by the :class:`spyrit.core.noise.NoNoise` class.
+#
 # Usually, the measurement tensor is in another space than the image tensor (e.g. Fourier space or
 # Hadamard space), but using the identity matrix results in the measurement
 # vector being (identical and) in the same space as the image tensor. As measurements
