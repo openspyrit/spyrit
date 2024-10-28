@@ -27,7 +27,6 @@ import os
 
 import torch
 import torchvision
-import numpy as np
 
 import spyrit.core.torch as spytorch
 from spyrit.misc.disp import imagesc
@@ -79,7 +78,7 @@ F = torch.max(F, torch.zeros_like(F))
 #
 # Next, we subsample the rows of the measurement matrix to simulate an
 # accelerated acquisition. For this, we use the
-# :func:`spyrit.misc.sampling.sort_by_significance` function
+# :func:`spyrit.core.torch.sort_by_significance` function
 # that returns an input matrix whose rows are ordered in increasing order of
 # significance according to a given array. The array is a sampling map that
 # indicates the location of the most significant coefficients in the
@@ -133,7 +132,7 @@ print(f"Shape of raw measurements: {y.shape}")
 
 ###############################################################################
 # To display the subsampled measurement vector as an image in the transformed
-# domain, we use the :func:`spyrit.misc.sampling.meas2img` function
+# domain, we use the :func:`spyrit.core.torch.meas2img` function
 
 # plot
 y_plot = spytorch.meas2img(y, Sampling_map)
@@ -201,7 +200,8 @@ print("Shape of the explicit pseudo-inverse reconstructed image:", x_rec1.shape)
 # The code is very similar to the previous case, but we need to make sure the
 # measurement operator has no pseudo-inverse computed. We can also specify
 # regularization parameters for the least-squares solution when calling
-# `recon_op`.
+# `recon_op`. In our case, the pseudo-inverse was computed at initialization
+# of the meas_op object.
 
 print(f"Pseudo-inverse computed: {hasattr(meas_op, 'H_pinv')}")
 temp = meas_op.H_pinv  # save the pseudo-inverse
