@@ -30,9 +30,9 @@ import os
 
 import torch
 import torchvision
-import numpy as np
 import matplotlib.pyplot as plt
 
+import spyrit.core.torch as spytorch
 from spyrit.misc.disp import imagesc
 from spyrit.misc.statistics import transform_gray_norm
 
@@ -55,11 +55,11 @@ print(f"Shape of input images: {x.shape}")
 # Select image
 x = x[i : i + 1, :, :, :]
 x = x.detach().clone()
+print(f"Shape of selected image: {x.shape}")
 b, c, h, w = x.shape
 
 # plot
-x_plot = x.view(-1, h, h).cpu().numpy()
-imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
+imagesc(x[0, 0, :, :], r"$x$ in [-1, 1]")
 
 # %%
 # Define a dataloader
@@ -82,7 +82,7 @@ data_root = Path("./data")  # path to data folder (where the dataset is stored)
 batch_size = 512
 
 # Dataloader for STL-10 dataset
-mode_run = False
+mode_run = True
 if mode_run:
     dataloaders = data_loaders_stl10(
         data_root,
@@ -105,23 +105,20 @@ if mode_run:
 # :attr:`M` low-frequency coefficients (see :ref:`low frequency sampling <low_frequency>`).
 
 import math
-from spyrit.misc.walsh_hadamard import walsh2_matrix
-from spyrit.misc.sampling import sort_by_significance
 
 und = 4  # undersampling factor
 M = h**2 // und  # number of measurements (undersampling factor = 4)
 
-F = walsh2_matrix(h)
-F = np.where(F > 0, F, 0)
+F = spytorch.walsh2_matrix(h)
+F = torch.max(F, torch.zeros_like(F))
 
-Sampling_map = np.ones((h, h))
+Sampling_map = torch.zeros(h, h)
 M_xy = math.ceil(M**0.5)
-Sampling_map[:, M_xy:] = 0
-Sampling_map[M_xy:, :] = 0
+Sampling_map[:M_xy, :M_xy] = 1
 
 # imagesc(Sampling_map, 'low-frequency sampling map')
 
-F = sort_by_significance(F, Sampling_map, "rows", False)
+F = spytorch.sort_by_significance(F, Sampling_map, "rows", False)
 H = F[:M, :]
 
 print(f"Shape of the measurement matrix: {H.shape}")
@@ -135,7 +132,7 @@ from spyrit.core.meas import Linear
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import DirectPoisson
 
-meas_op = Linear(torch.from_numpy(H), pinv=True)
+meas_op = Linear(H, pinv=True)
 noise = NoNoise(meas_op)
 N0 = 1.0  # Mean maximum total number of photons
 prep = DirectPoisson(N0, meas_op)  # "Undo" the NoNoise operator
