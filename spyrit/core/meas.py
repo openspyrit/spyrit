@@ -221,21 +221,23 @@ class _Base(nn.Module):
                 # driver = 'gels'
 
             if reg == "rcond":
-                A = H_to_inv.expand(*x.shape[:-1], *H_to_inv.shape) # shape (*, M, N)
-                B = x.unsqueeze(-1).to(A.dtype) # shape (*, M, 1)
+                A = H_to_inv.expand(*x.shape[:-1], *H_to_inv.shape)  # shape (*, M, N)
+                B = x.unsqueeze(-1).to(A.dtype)  # shape (*, M, 1)
                 ans = torch.linalg.lstsq(A, B, rcond=eta, driver=driver)
-                ans = ans.solution.to(x.dtype).squeeze(-1) # shape (*, N)
+                ans = ans.solution.to(x.dtype).squeeze(-1)  # shape (*, N)
 
             elif reg == "L2":
-                A = torch.matmul(H_to_inv.mT, H_to_inv) + eta * torch.eye(H_to_inv.shape[1])
+                A = torch.matmul(H_to_inv.mT, H_to_inv) + eta * torch.eye(
+                    H_to_inv.shape[1]
+                )
                 A = A.expand(*x.shape[:-1], *A.shape)
                 B = torch.matmul(x.to(H_to_inv.dtype), H_to_inv)
                 ans = torch.linalg.solve(A, B).to(x.dtype)
-                
+
             elif reg == "H1":
                 Dx, Dy = spytorch.neumann_boundary(self.img_shape)
                 D2 = Dx.T @ Dx + Dy.T @ Dy
-                
+
                 A = torch.matmul(H_to_inv.mT, H_to_inv) + eta * D2
                 A = A.expand(*x.shape[:-1], *A.shape)
                 B = torch.matmul(x.to(H_to_inv.dtype), H_to_inv)
@@ -1702,7 +1704,7 @@ class DynamicLinearSplit(DynamicLinear):
             2 * self.H_static.shape[0], self.H_static.shape[1]
         )
 
-    @property # override _Base definition
+    @property  # override _Base definition
     def operator(self) -> torch.tensor:
         return self.P
 

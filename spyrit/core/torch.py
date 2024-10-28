@@ -322,7 +322,7 @@ def fwht_2d(x, order=True):
 def meas2img(meas: torch.tensor, Ord: torch.tensor) -> torch.tensor:
     r"""Returns measurement image from a single measurement tensor or from a
     batch of measurement tensors.
-    
+
     This function is particulatly useful if the
     number of measurements is less than the number of pixels in the image, i.e.
     the image is undersampled.
@@ -342,7 +342,7 @@ def meas2img(meas: torch.tensor, Ord: torch.tensor) -> torch.tensor:
     """
     out_shape = *meas.shape[:-1], Ord.numel()
     meas_padded = torch.zeros(out_shape, device=meas.device)
-    meas_padded[..., :meas.shape[-1]] = meas
+    meas_padded[..., : meas.shape[-1]] = meas
     Img = sort_by_significance(meas_padded, Ord, axis="cols", inverse_permutation=False)
     return Img.reshape(*meas.shape[:-1], *Ord.shape)
 
