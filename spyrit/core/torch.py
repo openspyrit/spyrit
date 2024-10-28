@@ -319,6 +319,34 @@ def fwht_2d(x, order=True):
     return fwht(fwht(x, order, dim=-1), order, dim=-2)
 
 
+def meas2img(meas: torch.tensor, Ord: torch.tensor) -> torch.tensor:
+    r"""Returns measurement image from a single measurement tensor or from a
+    batch of measurement tensors.
+    
+    This function is particulatly useful if the
+    number of measurements is less than the number of pixels in the image, i.e.
+    the image is undersampled.
+
+    Args:
+        meas : `torch.tensor` with shape :math:`(*, M)` where
+        :math:`*` is any dimension (e.g. the batch size, channel, etc) and
+        :math:`M` is the length of the measurement vector.
+
+        Ord : `torch.tensor` with shape :math:`(N,N)`. Sampling order matrix, where
+        high values indicate high significance. This matrix determines the order
+        of the measurements. It must be the matrix used when generating the measurement vector.
+
+    Returns:
+        Img : `torch.tensor` with shape :math:`(*, N,N)`. batch of N-by-N
+        measurement images.
+    """
+    out_shape = *meas.shape[:-1], Ord.numel()
+    meas_padded = torch.zeros(out_shape, device=meas.device)
+    meas_padded[..., :meas.shape[-1]] = meas
+    Img = sort_by_significance(meas_padded, Ord, axis="cols", inverse_permutation=False)
+    return Img.reshape(*meas.shape[:-1], *Ord.shape)
+
+
 # =============================================================================
 # Finite difference matrices
 # =============================================================================
