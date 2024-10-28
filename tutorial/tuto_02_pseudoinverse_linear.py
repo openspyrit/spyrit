@@ -29,6 +29,7 @@ import torch
 import torchvision
 import numpy as np
 
+import spyrit.core.torch as spytorch
 from spyrit.misc.disp import imagesc
 from spyrit.misc.statistics import transform_gray_norm
 
@@ -53,11 +54,11 @@ print(f"Shape of input images: {x.shape}")
 # Select image
 x = x[i : i + 1, :, :, :]
 x = x.detach().clone()
+print(f"Shape of selected image: {x.shape}")
 b, c, h, w = x.shape
 
 # plot
-x_plot = x.view(-1, h, h).cpu().numpy()
-imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
+imagesc(x[0, 0, :, :], r"$x$ in [-1, 1]")
 
 # %%
 # Define a measurement operator
@@ -70,10 +71,8 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # First, we compute a full Hadamard matrix that computes the 2D transform of an
 # image of size :attr:`h` and takes its positive part.
 
-from spyrit.misc.walsh_hadamard import walsh2_matrix
-
-F = walsh2_matrix(h)
-F = np.where(F > 0, F, 0)
+F = spytorch.walsh2_matrix(h)
+F = torch.max(F, torch.zeros_like(F))
 
 ###############################################################################
 # .. _low_frequency:
@@ -94,10 +93,9 @@ import math
 und = 4  # undersampling factor
 M = h**2 // und  # number of measurements (undersampling factor = 4)
 
-Sampling_map = np.ones((h, h))
+Sampling_map = torch.zeros(h, h)
 M_xy = math.ceil(M**0.5)
-Sampling_map[:, M_xy:] = 0
-Sampling_map[M_xy:, :] = 0
+Sampling_map[:M_xy, :M_xy] = 1
 
 imagesc(Sampling_map, "low-frequency sampling map")
 
@@ -105,9 +103,7 @@ imagesc(Sampling_map, "low-frequency sampling map")
 # After permutation of the full Hadamard matrix, we keep only its first
 # :attr:`M` rows
 
-from spyrit.misc.sampling import sort_by_significance
-
-F = sort_by_significance(F, Sampling_map, "rows", False)
+F = spytorch.sort_by_significance(F, Sampling_map, "rows", False)
 H = F[:M, :]
 
 print(f"Shape of the measurement matrix: {H.shape}")
@@ -117,7 +113,7 @@ print(f"Shape of the measurement matrix: {H.shape}")
 
 from spyrit.core.meas import Linear
 
-meas_op = Linear(torch.from_numpy(H), pinv=True)
+meas_op = Linear(H, pinv=True)
 
 # %%
 # Noiseless case
@@ -132,7 +128,7 @@ from spyrit.core.noise import NoNoise
 noise = NoNoise(meas_op)
 
 # Simulate measurements
-y = noise(x.view(b * c, h * w))
+y = noise(x)
 print(f"Shape of raw measurements: {y.shape}")
 
 ###############################################################################
@@ -140,13 +136,10 @@ print(f"Shape of raw measurements: {y.shape}")
 # domain, we use the :func:`spyrit.misc.sampling.meas2img` function
 
 # plot
-from spyrit.misc.sampling import meas2img
+y_plot = spytorch.meas2img(y, Sampling_map)
 
-y_plot = y.detach().numpy().squeeze()
-y_plot = meas2img(y_plot, Sampling_map)
 print(f"Shape of the raw measurement image: {y_plot.shape}")
-
-imagesc(y_plot, "Raw measurements (no noise)")
+imagesc(y_plot[0, 0, :, :], "Raw measurements (no noise)")
 
 
 ###############################################################################
@@ -167,11 +160,10 @@ m = prep(y)
 print(f"Shape of the preprocessed measurements: {m.shape}")
 
 # plot
-m_plot = m.detach().numpy().squeeze()
-m_plot = meas2img(m_plot, Sampling_map)
-print(f"Shape of the preprocessed measurement image: {m_plot.shape}")
+m_plot = spytorch.meas2img(m, Sampling_map)
 
-imagesc(m_plot, "Preprocessed measurements (no noise)")
+print(f"Shape of the preprocessed measurement image: {m_plot.shape}")
+imagesc(m_plot[0, 0, :, :], "Preprocessed measurements (no noise)")
 
 # %%
 # Pseudo inverse
@@ -201,7 +193,8 @@ from spyrit.core.recon import PseudoInverse
 recon_op = PseudoInverse()
 
 # Reconstruction
-x_rec1 = recon_op(y, meas_op)  # equivalent to: meas_op.pinv(y)
+x_rec1 = recon_op(m, meas_op)  # equivalent to: meas_op.pinv(y)
+print("Shape of the explicit pseudo-inverse reconstructed image:", x_rec1.shape)
 
 ###############################################################################
 # Second way: calling pinv method from the Linear operator
@@ -216,7 +209,8 @@ del meas_op.H_pinv  # delete the pseudo-inverse
 print(f"Pseudo-inverse computed: {hasattr(meas_op, 'H_pinv')}")
 
 # Reconstruction
-x_rec2 = recon_op(y, meas_op, reg="rcond", eta=1e-6)
+x_rec2 = recon_op(m, meas_op, reg="rcond", eta=1e-6)
+print("Shape of the least-squares reconstructed image:", x_rec2.shape)
 
 # restore the pseudo-inverse
 meas_op.H_pinv = temp
@@ -230,16 +224,13 @@ meas_op.H_pinv = temp
 import matplotlib.pyplot as plt
 from spyrit.misc.disp import add_colorbar
 
-x_plot1 = x_rec1.squeeze().view(h, h).cpu().numpy()
-x_plot2 = x_rec2.squeeze().view(h, h).cpu().numpy()
-
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
 
-im1 = ax1.imshow(x_plot1, cmap="gray")
+im1 = ax1.imshow(x_rec1[0, 0, :, :], cmap="gray")
 ax1.set_title("Explicit pseudo-inverse reconstruction")
 add_colorbar(im1, "right", size="20%")
 
-im2 = ax2.imshow(x_plot2, cmap="gray")
+im2 = ax2.imshow(x_rec2[0, 0, :, :], cmap="gray")
 ax2.set_title("Least-squares pseudo-inverse reconstruction")
 add_colorbar(im2, "right", size="20%")
 
@@ -270,13 +261,13 @@ pinv_net = PinvNet(noise, prep)
 
 ###############################################################################
 # Then, we reconstruct the image from the measurement vector :attr:`y` using the
-# :func:`~spyrit.core.recon.PinvNet.reconstruct` method
+# :func:`~spyrit.core.recon.PinvNet.reconstruct` method.
 
 x_rec = pinv_net.reconstruct(y)
+print("Shape of the PinvNet reconstructed image:", x_rec.shape)
 
 # plot
-x_plot = x_rec.squeeze().cpu().numpy()
-imagesc(x_plot, "PinvNet reconstruction (no noise)", title_fontsize=20)
+imagesc(x_rec[0, 0, :, :], "PinvNet reconstruction (no noise)", title_fontsize=20)
 
 ###############################################################################
 # Alternatively, the measurement vector can be simulated using the
@@ -286,8 +277,7 @@ y = pinv_net.acquire(x)
 x_rec = pinv_net.reconstruct(y)
 
 # plot
-x_plot = x_rec.squeeze().cpu().numpy()
-imagesc(x_plot, "Another pseudoinverse reconstruction (no noise)")
+imagesc(x_rec[0, 0, :, :], "Another pseudoinverse reconstruction (no noise)")
 
 ###############################################################################
 # Note that the full module :attr:`pinv_net` both simulates noisy measurements
@@ -298,8 +288,7 @@ print(f"Ground-truth image x: {x.shape}")
 print(f"Reconstructed x_rec: {x_rec.shape}")
 
 # plot
-x_plot = x_rec.squeeze().cpu().numpy()
-imagesc(x_plot, "One more pseudoinverse reconstruction (no noise)")
+imagesc(x_rec[0, 0, :, :], "One more pseudoinverse reconstruction (no noise)")
 
 # %%
 # Poisson-corrupted measurement
@@ -325,9 +314,9 @@ print(f"Ground-truth image x: {x.shape}")
 print(f"Reconstructed x_rec: {x_rec.shape}")
 
 # plot
-x_plot_1 = x_rec_1.squeeze().cpu().numpy()
+x_plot_1 = x_rec_1[0, 0, :, :]
 x_plot_1[:2, :2] = 0.0  # hide the top left "crazy pixel" that collects noise
-x_plot_2 = x_rec_2.squeeze().cpu().numpy()
+x_plot_2 = x_rec_2[0, 0, :, :]
 x_plot_2[:2, :2] = 0.0  # hide the top left "crazy pixel" that collects noise
 imagecomp(x_plot_1, x_plot_2, "Pseudoinverse reconstruction", "Noise #1", "Noise #2")
 
