@@ -194,8 +194,9 @@ class _Base(nn.Module):
         """
         # have we calculated the pseudo inverse ?
         if hasattr(self, "H_pinv"):
-            # if the pseudo inverse has been computed
-            ans = x @ self.H_pinv.T.to(x.dtype)
+            A = self.H_pinv.expand(*x.shape[:-1], *self.H_pinv.shape)
+            B = x.unsqueeze(-1).to(A.dtype)
+            ans = torch.matmul(A, B).to(x.dtype).squeeze(-1)
 
         else:
 
@@ -220,34 +221,25 @@ class _Base(nn.Module):
                 # driver = 'gels'
 
             if reg == "rcond":
-                ans = (
-                    torch.linalg.lstsq(
-                        H_to_inv, x.to(H_to_inv.dtype).T, rcond=eta, driver=driver
-                    )
-                    .solution.to(x.dtype)
-                    .T
-                )
+                A = H_to_inv.expand(*x.shape[:-1], *H_to_inv.shape) # shape (*, M, N)
+                B = x.unsqueeze(-1).to(A.dtype) # shape (*, M, 1)
+                ans = torch.linalg.lstsq(A, B, rcond=eta, driver=driver)
+                ans = ans.solution.to(x.dtype).squeeze(-1) # shape (*, N)
+
             elif reg == "L2":
-                # if under- over-determined problem ?
-                ans = (
-                    torch.linalg.solve(
-                        H_to_inv.T @ H_to_inv + eta * torch.eye(H_to_inv.shape[1]),
-                        H_to_inv.T @ x.to(H_to_inv.dtype).T,
-                    )
-                    .to(x.dtype)
-                    .T
-                )
+                A = torch.matmul(H_to_inv.mT, H_to_inv) + eta * torch.eye(H_to_inv.shape[1])
+                A = A.expand(*x.shape[:-1], *A.shape)
+                B = torch.matmul(x.to(H_to_inv.dtype), H_to_inv)
+                ans = torch.linalg.solve(A, B).to(x.dtype)
+                
             elif reg == "H1":
                 Dx, Dy = spytorch.neumann_boundary(self.img_shape)
                 D2 = Dx.T @ Dx + Dy.T @ Dy
-                ans = (
-                    torch.linalg.solve(
-                        H_to_inv.T @ H_to_inv + eta * D2,
-                        H_to_inv.T @ x.to(H_to_inv.dtype).T,
-                    )
-                    .to(x.dtype)
-                    .T
-                )
+                
+                A = torch.matmul(H_to_inv.mT, H_to_inv) + eta * D2
+                A = A.expand(*x.shape[:-1], *A.shape)
+                B = torch.matmul(x.to(H_to_inv.dtype), H_to_inv)
+                ans = torch.linalg.solve(A, B).to(x.dtype)
 
             elif reg is None:
                 raise ValueError(
@@ -273,7 +265,7 @@ class _Base(nn.Module):
                 .data
             )
 
-        return self.unvectorize(ans)
+        return ans.reshape(*ans.shape[:-1], *self.img_shape)
 
     def reindex(
         self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
@@ -1709,6 +1701,10 @@ class DynamicLinearSplit(DynamicLinear):
         return torch.cat([H_pos, H_neg], 1).reshape(
             2 * self.H_static.shape[0], self.H_static.shape[1]
         )
+
+    @property # override _Base definition
+    def operator(self) -> torch.tensor:
+        return self.P
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
