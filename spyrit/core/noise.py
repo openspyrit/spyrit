@@ -62,6 +62,10 @@ class NoNoise(nn.Module):
         super().__init__()
         self.meas_op = meas_op
 
+    @property
+    def device(self) -> torch.device:
+        return self.meas_op.device
+
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Simulates measurements
 
