@@ -23,9 +23,9 @@ import os
 
 import torch
 import torchvision
-import numpy as np
 import matplotlib.pyplot as plt
 
+import spyrit.core.torch as spytorch
 from spyrit.misc.disp import imagesc
 from spyrit.misc.statistics import transform_gray_norm
 
@@ -49,11 +49,11 @@ print(f"Shape of input images: {x.shape}")
 # Select image
 x = x[i : i + 1, :, :, :]
 x = x.detach().clone()
+print(f"Shape of selected image: {x.shape}")
 b, c, h, w = x.shape
 
 # plot
-x_plot = x.view(-1, h, h).cpu().numpy()
-imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
+imagesc(x[0, 0, :, :], r"$x$ in [-1, 1]")
 
 
 # %%
@@ -89,7 +89,7 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 ###############################################################################
 # Hadamard split measurement operator is defined in the :class:`spyrit.core.meas.HadamSplit` class.
 # It computes linear measurements from incoming images, where :math:`P` is a
-# linear operator (matrix) with positive entries and :math:`\tilde{x}` is a vectorized image.
+# linear operator (matrix) with positive entries and :math:`\tilde{x}` is an image.
 # The class relies on a matrix :math:`H` with
 # shape :math:`(M,N)` where :math:`N` represents the number of pixels in the
 # image and :math:`M \le N` the number of measurements. The matrix :math:`P`
@@ -117,53 +117,52 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 from spyrit.misc.load_data import download_girder
 
 # api Rest url of the warehouse
-url = "https://pilot-warehouse.creatis.insa-lyon.fr/api/v1"
-dataId = "63935b624d15dd536f0484a5"  # for reconstruction (imageNet, 64)
+url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
+dataId = "672207cbf03a54733161e95d"  # for reconstruction (imageNet, 64)
 data_folder = "./stat/"
-cov_name = "Cov_64x64.npy"
+cov_name = "Cov_64x64.pt"
 # download the covariance matrix and get the file path
 file_abs_path = download_girder(url, dataId, data_folder, cov_name)
 
 try:
     # Load covariance matrix for "variance subsampling"
-    Cov = np.load(file_abs_path)
+    Cov = torch.load(file_abs_path, weights_only=True)
     print(f"Cov matrix {cov_name} loaded")
 except:
     # Set to the identity if not found for "naive subsampling"
-    Cov = np.eye(h * h)
+    Cov = torch.eye(h * h)
     print(f"Cov matrix {cov_name} not found! Set to the identity")
 
-######################################################################
+###############################################################################
 # The permutation matrix is defined from a sampling matrix with shape :math:`(\sqrt{N},\sqrt{N})` (see the :mod:`~spyrit.misc.sampling` submodule).
 
-######################################################################
+###############################################################################
 # We compute the sampling matrix for the "naive" subsampling
-from spyrit.misc.statistics import Cov2Var
 from spyrit.misc.disp import add_colorbar, noaxis
 
 
-M = 64 * 64 // 4  # number of measurements (here, 1/4 of the pixels)
-Cov_eye = np.eye(h * h)
-Ord_nai = Cov2Var(Cov_eye)
+M = h ** 2 // 4  # number of measurements (here, 1/4 of the pixels)
+Ord_nai = spytorch.Cov2Var(torch.eye(h * h))
 
-######################################################################
+###############################################################################
 # And for the "variance" subsampling
-Ord_var = Cov2Var(Cov)
+Ord_var = spytorch.Cov2Var(Cov)
 
-#############################################################################
+###############################################################################
 # Further insight on the two strategies can be gained by plotting the masks corresponding to the sampling matrices.
 
 # sphinx_gallery_thumbnail_number = 2
-from spyrit.misc.sampling import sort_by_significance
 
-mask_basis = np.zeros((h, h))
-mask_basis.flat[:M] = 1
+mask_basis = torch.zeros(h*h)
+mask_basis[:M] = 1
 
 # Mask for "naive subsampling"
-mask_nai = sort_by_significance(mask_basis, Ord_nai, axis="flatten")
+mask_nai = spytorch.sort_by_significance(mask_basis, Ord_nai, axis="cols")
+mask_nai = mask_nai.reshape(h, h)
 
 # Mask for "variance subsampling"
-mask_var = sort_by_significance(mask_basis, Ord_var, axis="flatten")
+mask_var = spytorch.sort_by_significance(mask_basis, Ord_var, axis="cols")
+mask_var = mask_var.reshape(h, h)
 
 # Plot the masks
 f, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
@@ -177,9 +176,13 @@ ax2.set_title("Mask \n'variance subsampling'", fontsize=20)
 noaxis(ax2)
 add_colorbar(im2, "bottom", size="20%")
 
+plt.show()
+
 ###############################################################################
 # .. note::
-#   Note that in this tutorial the covariance matrix is used only for choosing the subsampling strategy. Although the covariance matrix can be also exploited to improve the reconstruction, this will be considered in a future tutorial.
+#   Note that in this tutorial the covariance matrix is used only for choosing
+# the subsampling strategy. Although the covariance matrix can be also exploited
+# to improve the reconstruction, this will be considered in a future tutorial.
 
 # %%
 # Measurement and noise operators
@@ -201,30 +204,28 @@ add_colorbar(im2, "bottom", size="20%")
 
 ###############################################################################
 # We use the :class:`spyrit.core.noise.Poisson` class, set :math:`\alpha`
-# to 100 photons, and simulate a noisy measurement vector for the two sampling strategies. Subsampling is handled internally by the :class:`~spyrit.core.meas.HadamSplit` class.
+# to 100 photons, and simulate a noisy measurement vector for the two sampling
+# strategies. Subsampling is handled internally by the :class:`~spyrit.core.meas.HadamSplit` class.
 
 from spyrit.core.noise import Poisson
 from spyrit.core.meas import HadamSplit
-from spyrit.core.noise import Poisson
 
 alpha = 100.0  # number of photons
 
 # "Naive subsampling"
 # Measurement and noise operators
-meas_nai_op = HadamSplit(M, h, torch.from_numpy(Ord_nai))
+meas_nai_op = HadamSplit(M, h, Ord_nai)
 noise_nai_op = Poisson(meas_nai_op, alpha)
 
 # Measurement operator
-x = x.view(b * c, h * w)  # vectorized image
 y_nai = noise_nai_op(x)  # a noisy measurement vector
 
 # "Variance subsampling"
-meas_var_op = HadamSplit(M, h, torch.from_numpy(Ord_var))
+meas_var_op = HadamSplit(M, h, Ord_var)
 noise_var_op = Poisson(meas_var_op, alpha)
 y_var = noise_var_op(x)  # a noisy measurement vector
 
-x = x.view(b * c, h * w)  # vectorized image
-print(f"Shape of vectorized image: {x.shape}")
+print(f"Shape of image: {x.shape}")
 print(f"Shape of simulated measurements y: {y_var.shape}")
 
 
@@ -284,7 +285,7 @@ m_var = prep_var_op(y_var)
 # We consider now noiseless measurements for the "naive subsampling" strategy.
 # We compute the required operators and the noiseless measurement vector.
 # For this we use the :class:`spyrit.core.noise.NoNoise` class, which normalizes
-# the input vector to get an image in [0,1], as explained in
+# the input image to get an image in [0,1], as explained in
 # :ref:`acquisition operators tutorial <tuto_acquisition_operators>`.
 # For the preprocessing operator, we assign the number of photons equal to one.
 
@@ -296,38 +297,34 @@ y_nai_nonoise = nonoise_nai_op(x)  # a noisy measurement vector
 prep_nonoise_op = SplitPoisson(1.0, meas_nai_op)
 m_nai_nonoise = prep_nonoise_op(y_nai_nonoise)
 
-#######################################E########################################
+###############################################################################
 # We can now plot the three measurement vectors
 
-from spyrit.misc.sampling import meas2img
-
 # Plot the three measurement vectors
-m_plot = m_nai_nonoise.numpy()
-m_plot = meas2img(m_plot, Ord_nai)
-m_plot_max = np.max(m_plot[0, :, :])
-m_plot_min = np.min(m_plot[0, :, :])
+m_plot = spytorch.meas2img(m_nai_nonoise, Ord_nai)
+m_plot2 = spytorch.meas2img(m_nai, Ord_nai)
+m_plot3 = spytorch.meas2img(m_var, Ord_var)
 
-m_plot2 = m_nai.numpy()
-m_plot2 = meas2img(m_plot2, Ord_nai)
-
-m_plot3 = m_var.numpy()
-m_plot3 = meas2img(m_plot3, Ord_var)
+m_plot_max = m_plot[0, 0, :, :].max()
+m_plot_min = m_plot[0, 0, :, :].min()
 
 f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 7))
-im1 = ax1.imshow(m_plot[0, :, :], cmap="gray")
+im1 = ax1.imshow(m_plot[0, 0, :, :], cmap="gray")
 ax1.set_title("Noiseless measurements $m$ \n 'Naive' subsampling", fontsize=20)
 noaxis(ax1)
 add_colorbar(im1, "bottom", size="20%")
 
-im2 = ax2.imshow(m_plot2[0, :, :], cmap="gray", vmin=m_plot_min, vmax=m_plot_max)
+im2 = ax2.imshow(m_plot2[0, 0, :, :], cmap="gray", vmin=m_plot_min, vmax=m_plot_max)
 ax2.set_title("Measurements $m$ \n 'Naive' subsampling", fontsize=20)
 noaxis(ax2)
 add_colorbar(im2, "bottom", size="20%")
 
-im3 = ax3.imshow(m_plot3[0, :, :], cmap="gray", vmin=m_plot_min, vmax=m_plot_max)
+im3 = ax3.imshow(m_plot3[0, 0, :, :], cmap="gray", vmin=m_plot_min, vmax=m_plot_max)
 ax3.set_title("Measurements $m$ \n 'Variance' subsampling", fontsize=20)
 noaxis(ax3)
 add_colorbar(im3, "bottom", size="20%")
+
+plt.show()
 
 # %%
 # PinvNet network
@@ -339,7 +336,6 @@ add_colorbar(im3, "bottom", size="20%")
 
 from spyrit.core.recon import PinvNet
 
-# PinvNet(meas_op, prep_op, denoi=torch.nn.Identity())
 pinvnet_nai_nonoise = PinvNet(nonoise_nai_op, prep_nonoise_op)
 pinvnet_nai = PinvNet(noise_nai_op, prep_nai_op)
 pinvnet_var = PinvNet(noise_var_op, prep_var_op)
@@ -354,28 +350,23 @@ z_var = pinvnet_var.reconstruct(y_var)
 from spyrit.misc.disp import add_colorbar, noaxis
 
 # Plot
-x_plot = x.view(-1, h, h).numpy()
-z_plot_nai_nonoise = z_nai_nonoise.view(-1, h, h).numpy()
-z_plot_nai = z_nai.view(-1, h, h).numpy()
-z_plot_var = z_var.view(-1, h, h).numpy()
-
 f, axs = plt.subplots(2, 2, figsize=(10, 10))
-im1 = axs[0, 0].imshow(x_plot[0, :, :], cmap="gray")
+im1 = axs[0, 0].imshow(x[0, 0, :, :], cmap="gray")
 axs[0, 0].set_title("Ground-truth image")
 noaxis(axs[0, 0])
 add_colorbar(im1, "bottom")
 
-im2 = axs[0, 1].imshow(z_plot_nai_nonoise[0, :, :], cmap="gray")
+im2 = axs[0, 1].imshow(z_nai_nonoise[0, 0, :, :], cmap="gray")
 axs[0, 1].set_title("Reconstruction noiseless")
 noaxis(axs[0, 1])
 add_colorbar(im2, "bottom")
 
-im3 = axs[1, 0].imshow(z_plot_nai[0, :, :], cmap="gray")
+im3 = axs[1, 0].imshow(z_nai[0, 0, :, :], cmap="gray")
 axs[1, 0].set_title("Reconstruction \n 'Naive' subsampling")
 noaxis(axs[1, 0])
 add_colorbar(im3, "bottom")
 
-im4 = axs[1, 1].imshow(z_plot_var[0, :, :], cmap="gray")
+im4 = axs[1, 1].imshow(z_var[0, 0, :, :], cmap="gray")
 axs[1, 1].set_title("Reconstruction \n 'Variance' subsampling")
 noaxis(axs[1, 1])
 add_colorbar(im4, "bottom")
@@ -391,3 +382,5 @@ plt.show()
 #
 #       Another way to further improve results is to include a nonlinear post-processing step,
 #       which we will consider in a future tutorial.
+
+# %%

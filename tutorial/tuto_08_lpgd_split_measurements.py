@@ -48,31 +48,42 @@ if False:
 
     import torch
     import torchvision
-    import numpy as np
+    import matplotlib.pyplot as plt
 
+    import spyrit.core.torch as spytorch
     from spyrit.misc.disp import imagesc
     from spyrit.misc.statistics import transform_gray_norm
 
-    h = 128  # image size hxh
-    i = 1  # Image index (modify to change the image)
     spyritPath = os.getcwd()
-    imgs_path = os.path.join(spyritPath, "images")
-    # Create a transform for natural images to normalized grayscale image tensors
+    imgs_path = os.path.join(spyritPath, "images/")
+
+    ######################################################################
+    # Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized and resized using the :func:`transform_gray_norm` function.
+
+    h = 128  # image is resized to h x h
     transform = transform_gray_norm(img_size=h)
-    # Create dataset and loader (expects class folder 'images/test/')
+
+    ######################################################################
+    # Create a data loader from some dataset (images must be in the folder `images/test/`)
+
     dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=7)
 
     x, _ = next(iter(dataloader))
-    print(f"Shape of input images: {x.shape}")  # torch.Size([7, 1, 128, 128])
-    # Select image
+    print(f"Shape of input images: {x.shape}")
+
+    ######################################################################
+    # Select the `i`-th image in the batch
+    i = 1  # Image index (modify to change the image)
     x = x[i : i + 1, :, :, :]
     x = x.detach().clone()
+    print(f"Shape of selected image: {x.shape}")
     b, c, h, w = x.shape
 
-    # plot
-    x_plot = x.view(-1, h, h).cpu().numpy()
-    imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
+    ######################################################################
+    # Plot the selected image
+
+    imagesc(x[0, 0, :, :], r"$x$ in [-1, 1]")
 
 ###############################################################################
 # .. image:: https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1/item/6679972abaa5a90007058950/download
@@ -99,34 +110,29 @@ if False:
     from spyrit.core.meas import HadamSplit
     from spyrit.core.noise import Poisson
     from spyrit.core.prep import SplitPoisson
-    from spyrit.misc.sampling import meas2img
 
     # Measurement parameters
-    M = 4096  # Number of measurements (here, 1/4 of the pixels)
+    M = h ** 2 // 4 # Number of measurements (here, 1/4 of the pixels)
     alpha = 10.0  # number of photons
 
     # Sampling: rectangular matrix
-    Ord_rec = np.ones((h, h))
+    Ord_rec = torch.zeros(h, h)
     n_sub = math.ceil(M**0.5)
-    Ord_rec[:, n_sub:] = 0
-    Ord_rec[n_sub:, :] = 0
+    Ord_rec[:n_sub, :n_sub] = 1
 
     # Measurement and noise operators
-    meas_op = HadamSplit(M, h, torch.from_numpy(Ord_rec))
+    meas_op = HadamSplit(M, h, Ord_rec)
     noise_op = Poisson(meas_op, alpha)
     prep_op = SplitPoisson(alpha, meas_op)
 
-    # Vectorize image
-    x = x.view(b * c, h * w)
-    print(f"Shape of vectorized image: {x.shape}")  # torch.Size([1, 16384])
+    print(f"Shape of image: {x.shape}")
 
     # Measurements
     y = noise_op(x)  # a noisy measurement vector
     m = prep_op(y)  # preprocessed measurement vector
 
-    m_plot = m.detach().numpy()
-    m_plot = meas2img(m_plot, Ord_rec)
-    imagesc(m_plot[0, :, :], r"Measurements $m$")
+    m_plot = spytorch.meas2img(m, Ord_rec)
+    imagesc(m_plot[0, 0, :, :], r"Measurements $m$")
 
 ###############################################################################
 # .. image:: https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1/item/6679972bbaa5a90007058953/download
@@ -154,6 +160,7 @@ if False:
 
     # use GPU, if available
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print("Using device:", device)
     # Define UNet denoiser
     denoi = Unet()
     # Define the LearnedPGD model
@@ -168,18 +175,11 @@ if False:
     from spyrit.core.train import load_net
     from spyrit.misc.load_data import download_girder
 
-    # Create model folder
-    if os.path.exists(local_folder):
-        print(f"{local_folder} found")
-    else:
-        os.mkdir(local_folder)
-        print(f"Created {local_folder}")
-
     # Download parameters
     url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
-    dataID = "667ebf20baa5a9000705895b"  # unique ID of the file
+    dataID = "67221f60f03a54733161e96c"  # unique ID of the file
     local_folder = "./model/"
-    data_name = "tuto8_model_lpgd.pth"
+    data_name = "tuto8_model_lpgd_light.pth"
     # Download from Girder
     model_abs_path = download_girder(url, dataID, local_folder, data_name)
 
@@ -194,24 +194,20 @@ if False:
 # and display the results.
 
 if False:
-    import matplotlib.pyplot as plt
-
     from spyrit.misc.disp import add_colorbar, noaxis
 
     with torch.no_grad():
         z_lpgd = lpgd_net.reconstruct(y.to(device))
 
     # Plot results
-    x_plot = x.view(-1, h, h).cpu().numpy()
-    x_plot2 = z_lpgd.view(-1, h, h).cpu().numpy()
-
     f, axs = plt.subplots(2, 1, figsize=(10, 10))
-    im1 = axs[0].imshow(x_plot[0, :, :], cmap="gray")
+    
+    im1 = axs[0].imshow(x.cpu()[0, 0, :, :], cmap="gray")
     axs[0].set_title("Ground-truth image", fontsize=16)
     noaxis(axs[0])
     add_colorbar(im1, "bottom")
 
-    im2 = axs[1].imshow(x_plot2[0, :, :], cmap="gray")
+    im2 = axs[1].imshow(z_lpgd.cpu()[0, 0, :, :], cmap="gray")
     axs[1].set_title("LPGD", fontsize=16)
     noaxis(axs[1])
     add_colorbar(im2, "bottom")
