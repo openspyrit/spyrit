@@ -884,11 +884,6 @@ class LearnedPGD(nn.Module):
     :math:`x_{k+1} = prox(\hat{x_k} - step * H^T (Hx_k - y))=
     denoi(\hat{x_k} - step * H^T (Hx_k - y))`
 
-    .. warning::
-        This class is still under development and has not been tested yet.
-        The input shape is not coherent with that of other classes, and it
-        may not work as expected.
-
     Args:
         :attr:`noise`: Acquisition operator (see :class:`~spyrit.core.noise`)
 
@@ -1035,7 +1030,7 @@ class LearnedPGD(nn.Module):
         self.step = step
 
     def forward(self, x):
-        r"""Full pipeline of reconstrcution network
+        r"""Full pipeline of reconstruction network
 
         Args:
             :attr:`x`: ground-truth images
@@ -1059,17 +1054,8 @@ class LearnedPGD(nn.Module):
             >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
             tensor(5.8912e-06)
         """
-
-        b, c, _, _ = x.shape
-
-        # Acquisition
-        x = x.reshape(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
-        x = self.acqu(x)  # shape x = [b*c, 2*M]
-
-        # Reconstruction
-        x = self.reconstruct(x)  # shape x = [bc, 1, h,w]
-        x = x.reshape(b, c, self.acqu.meas_op.h, self.acqu.meas_op.w)
-
+        x = self.acquire(x)
+        x = self.reconstruct(x)
         return x
 
     def acquire(self, x):
@@ -1095,17 +1081,10 @@ class LearnedPGD(nn.Module):
             >>> print(z.shape)
             torch.Size([10, 8192])
         """
-
-        b, c, _, _ = x.shape
-
-        # Acquisition
-        x = x.reshape(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
-        x = self.acqu(x)  # shape x = [b*c, 2*M]
-
-        return x
+        return self.acqu(x)
 
     def hessian_sv(self):
-        H = self.acqu.meas_op.get_H()
+        H = self.acqu.meas_op.H
         if self.wls:
             std_mat = 1 / torch.sqrt(self.meas_variance)
             std_mat = torch.diag(std_mat.reshape(-1))
@@ -1155,17 +1134,6 @@ class LearnedPGD(nn.Module):
             torch.Size([10, 1, 64, 64])
         """
 
-        # Measurement to image domain mapping
-        bc, _ = x.shape
-
-        # Compute the stepsize from the Lipschitz constant
-        if self.step_estimation:
-            self.stepsize_gd()
-
-        step = self.step
-        if not isinstance(step, torch.Tensor):
-            step = step.params
-
         # Compute the stepsize from the Lipschitz constant
         if self.step_estimation:
             self.stepsize_gd()
@@ -1175,7 +1143,7 @@ class LearnedPGD(nn.Module):
             step = step.params
 
         # Preprocessing in the measurement domain
-        m = self.prep(x)  # shape x = [b*c, M]
+        m = self.prep(x)
 
         if self.wls:
             # Get variance of the measurements
@@ -1200,18 +1168,18 @@ class LearnedPGD(nn.Module):
                 x = self.acqu.meas_op.pinv(m)
 
                 # proximal step (prior)
-                x = x.reshape(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
                 if isinstance(self.denoi, nn.ModuleList):
                     x = self.denoi[0](x)
                 else:
                     x = self.denoi(x)
-                x = x.reshape(bc, self.acqu.meas_op.N)
+                    
             if self.res_learn:
                 z0 = x.detach().clone()
-                z0 = z0.reshape(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
         else:
             # zero init
-            x = torch.zeros((bc, self.acqu.meas_op.N), device=x.device)
+            x = torch.zeros((*x.shape[:-1], *self.acqu.meas_op.meas_shape), device=x.device)
+        
+        print("x shape:", x.shape)
 
         if self.log_fidelity:
             self.cost = []
@@ -1234,7 +1202,6 @@ class LearnedPGD(nn.Module):
             else:
                 upd = step[i] * self.acqu.meas_op.adjoint(res)
             x = x - upd
-            x = x.reshape(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
 
             if i == 0 and self.res_learn and self.x0 == 0:
                 # if x0 does not exist
@@ -1245,7 +1212,7 @@ class LearnedPGD(nn.Module):
                 x = self.denoi[i](x)
             else:
                 x = self.denoi(x)
-            x = x.reshape(bc, self.acqu.meas_op.N)
+            
             if self.log_fidelity:
                 with torch.no_grad():
                     self.cost.append(self.cost_fun(x, m).cpu().numpy().tolist())
@@ -1259,7 +1226,6 @@ class LearnedPGD(nn.Module):
         if self.x_gt is not None:
             print(f"|x - x_gt| = {self.mse}")
 
-        x = x.reshape(bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w)
         if self.res_learn:
             # z=x-step*grad(L), x = P(z), x_end = z0 + P(z)
             x = x + z0
@@ -1282,25 +1248,17 @@ class LearnedPGD(nn.Module):
 
             :attr:`output`: :math:`(BC,1,H,W)`
         """
-        # x of shape [b*c, 2M]
-        bc, _ = x.shape
-
         # Preprocessing
         x, N0_est = self.prep.forward_expe(x, self.acqu.meas_op)  # shape x = [b*c, M]
-        print(N0_est)
+        # print(N0_est)
 
         # measurements to image domain processing
-        x = self.pinv(x, self.acqu.meas_op)  # shape x = [b*c,N]
+        x = self.pinv(x, self.acqu.meas_op)
 
-        # Image domain denoising
-        x = x.reshape(
-            bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
-        )  # shape x = [b*c,1,h,w]
-        x = self.denoi(x)  # shape x = [b*c,1,h,w]
-        print(x.max())
+        # Denoising
+        x = self.denoi(x)
+        # print(x.max())
 
         # Denormalization
-        x = self.prep.denormalize_expe(
-            x, N0_est, self.acqu.meas_op.h, self.acqu.meas_op.w
-        )
+        x = self.prep.denormalize_expe(x, N0_est, self.acqu.meas_op.h, self.acqu.meas_op.w)
         return x
