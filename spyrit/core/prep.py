@@ -155,14 +155,14 @@ class DirectPoisson(nn.Module):
             h = x.shape[-2]
         if w is None:
             w = x.shape[-1]
-        
+
         if beta.numel() == 1:
             beta = beta.expand(x.shape)
         else:
             # Denormalization
             beta = beta.reshape(*beta.shape, 1, 1)
             beta = beta.expand((*beta.shape[:-2], h, w))
-        
+
         return (x + 1) / 2 * beta
 
 
