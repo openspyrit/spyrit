@@ -82,7 +82,7 @@ data_root = Path("./data")  # path to data folder (where the dataset is stored)
 batch_size = 512
 
 # Dataloader for STL-10 dataset
-mode_run = True
+mode_run = False
 if mode_run:
     dataloaders = data_loaders_stl10(
         data_root,
