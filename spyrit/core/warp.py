@@ -235,9 +235,8 @@ class DeformationField(nn.Module):
         img_frames = img.reshape(1, b * c, h, w).expand(n_frames, -1, -1, -1)
 
         warped_frames = self.grid_sample(
-            img_frames.to(sel_inv_grid_frames.dtype),
-            sel_inv_grid_frames,
-            mode).to(img.dtype)
+            img_frames.to(sel_inv_grid_frames.dtype), sel_inv_grid_frames, mode
+        ).to(img.dtype)
         # has shape (n_frames, b*c, h, w), make it (b, n_frames, c, h, w)
         return warped_frames.reshape(n_frames, b, c, h, w).moveaxis(0, 1)
 
@@ -312,7 +311,7 @@ class DeformationField(nn.Module):
                 align_corners=self.align_corners,
             ).to(img_frames.dtype)
 
-            return out # has shape (n_frames, c, h, w)
+            return out  # has shape (n_frames, c, h, w)
 
     def _warn_field(self):
         # using float64 is preferred for accuracy
