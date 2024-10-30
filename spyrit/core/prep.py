@@ -56,7 +56,11 @@ class DirectPoisson(nn.Module):
     # generate H_ones on the fly as it is memmory intensive and easy to compute
     @property
     def H_ones(self):
-        return self.meas_op.H.sum(dim=-1)
+        return self.meas_op.H.sum(dim=-1).to(self.device)
+    
+    @property
+    def device(self):
+        return self.meas_op.device
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
