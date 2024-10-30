@@ -90,6 +90,7 @@ class DeformationField(nn.Module):
         super().__init__()
 
         self._align_corners = True
+        self._device_tracker = nn.Parameter(torch.tensor([0.0]), requires_grad=False)
 
         # field is None if AffineDeformationField is used
         if not isinstance(self, AffineDeformationField):
@@ -122,6 +123,10 @@ class DeformationField(nn.Module):
     @property
     def field(self) -> torch.tensor:
         return self._field.data
+
+    @property
+    def device(self) -> torch.device:
+        return self._device_tracker.device
 
     def forward(
         self,
@@ -226,9 +231,13 @@ class DeformationField(nn.Module):
             sel_inv_grid_frames = self.field[n0:n1, :, :, :]
 
         # img has current shape (b, c, h, w), make it (n_frames, b*c, h, w)
+        # because grid_sample will create the frames in the batch dimension
         img_frames = img.reshape(1, b * c, h, w).expand(n_frames, -1, -1, -1)
 
-        warped_frames = self.grid_sample(img_frames, sel_inv_grid_frames, mode)
+        warped_frames = self.grid_sample(
+            img_frames.to(sel_inv_grid_frames.dtype),
+            sel_inv_grid_frames,
+            mode).to(img.dtype)
         # has shape (n_frames, b*c, h, w), make it (b, n_frames, c, h, w)
         return warped_frames.reshape(n_frames, b, c, h, w).moveaxis(0, 1)
 
@@ -270,7 +279,7 @@ class DeformationField(nn.Module):
             # use scikit-image's order 5 warp. This implies:
             # putting the origin pixel coordinate (x,y) at dimension 0, not 3
             # using numpy instead of pytorch
-            inverse_grid_frames = inverse_grid_frames.moveaxis(-1, 0).numpy()
+            inverse_grid_frames = inverse_grid_frames.moveaxis(-1, 0).cpu().numpy()
             # changing from 'xy' notation to 'ij'
             inverse_grid_frames = inverse_grid_frames[::-1, :, :, :]
             # rescaling from [-1, 1] to [0, height-1] (same for width)
@@ -296,14 +305,14 @@ class DeformationField(nn.Module):
 
         else:
             out = nn.functional.grid_sample(
-                img_frames.to(inverse_grid_frames.dtype),
+                img_frames,
                 inverse_grid_frames,
                 mode=mode,
                 padding_mode="zeros",
                 align_corners=self.align_corners,
             ).to(img_frames.dtype)
 
-            return out  # has shape (n_frames, c, h, w)
+            return out # has shape (n_frames, c, h, w)
 
     def _warn_field(self):
         # using float64 is preferred for accuracy
@@ -453,7 +462,7 @@ class AffineDeformationField(DeformationField):
     # override the field property to generate it on the fly
     @property
     def field(self) -> torch.tensor:
-        return self._generate_inv_grid_frames(self.img_shape)
+        return self._generate_inv_grid_frames(self.img_shape).to(self.device)
 
     # override inherited properties
     @property
@@ -539,4 +548,4 @@ class AffineDeformationField(DeformationField):
             ),  # n_channels has no effect
             align_corners=self.align_corners,
         )
-        return inv_grid_frames
+        return inv_grid_frames.to(self.device)
