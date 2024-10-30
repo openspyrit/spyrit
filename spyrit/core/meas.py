@@ -138,11 +138,9 @@ class _Base(nn.Module):
         """Static measurement matrix H."""
         return self._param_H_static.data[: self.M, :]
 
-    # @property
-    # def P(self) -> torch.tensor:
-    #     """Measurement matrix P with positive and negative components. Used in
-    #     classes *Split and *HadamSplit."""
-    #     return self._param_P.data[: 2 * self.M, :]
+    @property
+    def device(self) -> torch.device:
+        return self.Ord.device
 
     ### -------------------
 
@@ -969,7 +967,8 @@ class HadamSplit(LinearSplit):
     # H_static is not supposed to be stored anymore
     @property
     def H_static(self) -> torch.tensor:
-        return self.reindex(spytorch.walsh2_matrix(self.h), "rows", False)[: self.M, :]
+        H_sorted = self.reindex(spytorch.walsh2_matrix(self.h), "rows", False)
+        return H_sorted[: self.M, :].to(self.device)
 
     # P is not supposed to be stored anymore
     @property
@@ -1436,7 +1435,7 @@ class DynamicLinear(_Base):
         )
         H_dyn = fold(meas_dxy_sorted).reshape(n_frames, self.img_h * self.img_w)
         # store in _param_H_dyn
-        self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False)
+        self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
 
     def build_H_dyn_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
         """Computes the pseudo-inverse of the dynamic measurement matrix
