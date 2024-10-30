@@ -113,24 +113,29 @@ class DirectPoisson(nn.Module):
         x = 4 * x / (self.alpha**2)  # Cov is in [-1,1] so *4
         return x
 
-    def denormalize_expe(self, x, beta, h, w):
+    def denormalize_expe(self, x: torch.tensor, beta: torch.tensor, h: int=None, w: int=None) -> torch.tensor:
         r"""Denormalize images from the range [-1;1] to the range [0; :math:`\beta`]
 
         It computes :math:`m = \frac{\beta}{2}(x+1)`, where
-        :math:`\beta` is the normalization factor.
+        :math:`\beta` is the normalization factor, that can be different for each
+        image or channel in the batch.
 
         Args:
-            - :attr:`x`: Batch of images
-            - :attr:`beta`: Normalizarion factor
-            - :attr:`h`: Image height
-            - :attr:`w`: Image width
+            - :attr:`x` (torch.tensor): Batch of images
+            - :attr:`beta` (torch.tensor): Normalization factor. It should have
+            the same shape as the batch.
+            - :attr:`h` (int, optional): Image height. If None, it is
+            deduced from the shape of :attr:`x`. Defaults to None.
+            - :attr:`w` (int): Image width. If None, it is deduced from the
+            shape of :attr:`x`. Defaults to None.
 
         Shape:
-            - :attr:`x`: :math:`(*, 1, h, w)`
-            - :attr:`beta`: :math:`(*)` or :math:`(*, 1)`
+            - :attr:`x`: :math:`(*, h, w)` where :math:`*` indicates any batch
+            dimensions
+            - :attr:`beta`: :math:`(*)` or 
             - :attr:`h`: int
             - :attr:`w`: int
-            - Output: :math:`(*, 1, h, w)`
+            - Output: :math:`(*, h, w)`
 
         Example:
             >>> x = torch.rand([10, 1, 32,32], dtype=torch.float)
@@ -139,11 +144,14 @@ class DirectPoisson(nn.Module):
             >>> print(y.shape)
             torch.Size([10, 1, 32, 32])
         """
-        bc = x.shape[0]
-
+        if h is None:
+            h = x.shape[-2]
+        if w is None:
+            w = x.shape[-1]
+        
         # Denormalization
-        beta = beta.reshape(bc, 1, 1, 1)
-        beta = beta.expand(bc, 1, h, w)
+        beta = beta.reshape(*beta.shape, 1, 1)
+        beta = beta.expand(*beta.shape, h, w)
         x = (x + 1) / 2 * beta
 
         return x
@@ -383,8 +391,6 @@ class SplitPoisson(DirectPoisson):
             >>> print(v.shape)
             torch.Size([10, 400])
         """
-        # Input shape (b*c, 2*M)
-        # output shape (b*c, M)
         x = self.unsplit(x, mode="sum")
         x = (
             self.gain * (x - 2 * self.nbin * self.mudark)
