@@ -468,6 +468,10 @@ class PinvNet(nn.Module):
         self.pinv = PseudoInverse()
         self.denoi = denoi
 
+    @property
+    def device(self):
+        return self.acqu.device
+
     def forward(self, x):
         r"""Full pipeline of reconstrcution network
 
@@ -730,6 +734,10 @@ class DCNet(nn.Module):
 
         # save in tikho
         self.tikho = TikhonovMeasurementPriorDiag(sigma_perm, noise.meas_op.M)
+
+    @property
+    def device(self):
+        return self.Acq.device
 
     def forward(self, x):
         r"""Full pipeline of the reconstruction network
