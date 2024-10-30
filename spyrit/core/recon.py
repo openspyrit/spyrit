@@ -1172,13 +1172,15 @@ class LearnedPGD(nn.Module):
                     x = self.denoi[0](x)
                 else:
                     x = self.denoi(x)
-                    
+
             if self.res_learn:
                 z0 = x.detach().clone()
         else:
             # zero init
-            x = torch.zeros((*x.shape[:-1], *self.acqu.meas_op.meas_shape), device=x.device)
-        
+            x = torch.zeros(
+                (*x.shape[:-1], *self.acqu.meas_op.meas_shape), device=x.device
+            )
+
         print("x shape:", x.shape)
 
         if self.log_fidelity:
@@ -1212,7 +1214,7 @@ class LearnedPGD(nn.Module):
                 x = self.denoi[i](x)
             else:
                 x = self.denoi(x)
-            
+
             if self.log_fidelity:
                 with torch.no_grad():
                     self.cost.append(self.cost_fun(x, m).cpu().numpy().tolist())
@@ -1260,5 +1262,7 @@ class LearnedPGD(nn.Module):
         # print(x.max())
 
         # Denormalization
-        x = self.prep.denormalize_expe(x, N0_est, self.acqu.meas_op.h, self.acqu.meas_op.w)
+        x = self.prep.denormalize_expe(
+            x, N0_est, self.acqu.meas_op.h, self.acqu.meas_op.w
+        )
         return x

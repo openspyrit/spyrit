@@ -57,7 +57,7 @@ class DirectPoisson(nn.Module):
     @property
     def H_ones(self):
         return self.meas_op.H.sum(dim=-1).to(self.device)
-    
+
     @property
     def device(self):
         return self.meas_op.device
@@ -117,7 +117,9 @@ class DirectPoisson(nn.Module):
         x = 4 * x / (self.alpha**2)  # Cov is in [-1,1] so *4
         return x
 
-    def denormalize_expe(self, x: torch.tensor, beta: torch.tensor, h: int=None, w: int=None) -> torch.tensor:
+    def denormalize_expe(
+        self, x: torch.tensor, beta: torch.tensor, h: int = None, w: int = None
+    ) -> torch.tensor:
         r"""Denormalize images from the range [-1;1] to the range [0; :math:`\beta`]
 
         It computes :math:`m = \frac{\beta}{2}(x+1)`, where
@@ -136,7 +138,7 @@ class DirectPoisson(nn.Module):
         Shape:
             - :attr:`x`: :math:`(*, h, w)` where :math:`*` indicates any batch
             dimensions
-            - :attr:`beta`: :math:`(*)` or 
+            - :attr:`beta`: :math:`(*)` or
             - :attr:`h`: int
             - :attr:`w`: int
             - Output: :math:`(*, h, w)`
@@ -152,7 +154,7 @@ class DirectPoisson(nn.Module):
             h = x.shape[-2]
         if w is None:
             w = x.shape[-1]
-        
+
         # Denormalization
         beta = beta.reshape(*beta.shape, 1, 1)
         beta = beta.expand(*beta.shape, h, w)
