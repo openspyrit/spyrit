@@ -41,7 +41,7 @@ def meas2img(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
         measurement vector.
 
         Mat : `np.ndarray` with shape :math:`(N,N)`. Sampling matrix, where
-        high values indicate high significance. It must be tha matrix used to
+        high values indicate high significance. It must be the matrix used to
         generate the measurement vector.
 
     Returns:

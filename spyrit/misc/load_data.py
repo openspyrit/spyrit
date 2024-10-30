@@ -146,9 +146,9 @@ def download_girder(
         # check the file exists
         if not os.path.exists(os.path.join(local_folder, name)):
             # connect to the server to download the file
-            print("Downloading file... ", end="")
+            print(f"Downloading {name}... ", end="\r")
             gc.downloadFile(id, os.path.join(local_folder, name))
-            print("done.")
+            print(f"Downloading {name}... done.")
 
         else:
             print("File already exists at", os.path.join(local_folder, name))

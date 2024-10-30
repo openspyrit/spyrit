@@ -34,7 +34,7 @@ def test_core_meas():
     assert_equal(meas_op.w, 50, "Wrong w")
     assert_equal(meas_op.meas_shape, torch.Size([50, 50]), "Wrong meas_shape")
     assert_equal_all(meas_op.indices, torch.arange(400), "Wrong indices")
-    # test reindex method
+    # test reindex method with no Ord
     test_reindex = torch.randn(400)
     test_reindexed = meas_op.reindex(test_reindex, "rows", False)
     assert_equal_all(test_reindexed, test_reindex, "Wrong reindex method")
@@ -84,16 +84,16 @@ def test_core_meas():
 
     # forward
     print("\tforward... ", end="")
-    x = torch.rand([10, 2500], dtype=torch.float)
+    x = torch.rand([10, 3, 50, 50], dtype=torch.float)
     y = meas_op(x)
-    assert_shape(y.shape, torch.Size([10, 400]), "Wrong forward size")
+    assert_shape(y.shape, torch.Size([10, 3, 400]), "Wrong forward size")
     print("ok")
 
     # adjoint
     print("\tadjoint... ", end="")
-    x = torch.rand([10, 400], dtype=torch.float)
+    x = torch.rand([10, 3, 400], dtype=torch.float)
     y = meas_op.adjoint(x)
-    assert_shape(y.shape, torch.Size([10, 2500]), "Wrong adjoint size")
+    assert_shape(y.shape, torch.Size([10, 3, 50, 50]), "Wrong adjoint size")
     print("ok")
 
     # get_mat
@@ -111,27 +111,28 @@ def test_core_meas():
     print("\tconstructor... ", end="")
     H = torch.rand(400, 2500)
     meas_op = LinearSplit(H)
+    assert_shape(meas_op.P.shape, torch.Size([800, 2500]), "Wrong P size")
     print("ok")
 
     # forward
     print("\tforward... ", end="")
-    x = torch.rand([10, 2500], dtype=torch.float)
+    x = torch.rand([10, 3, 50, 50], dtype=torch.float)
     y = meas_op(x)
-    assert_shape(y.shape, torch.Size([10, 800]), "Wrong forward size")
+    assert_shape(y.shape, torch.Size([10, 3, 800]), "Wrong forward size")
     print("ok")
 
     # forward_H
     print("\tforward_H... ", end="")
-    x = torch.rand([10, 2500], dtype=torch.float)
+    x = torch.rand([10, 3, 50, 50], dtype=torch.float)
     y = meas_op.forward_H(x)
-    assert_shape(y.shape, torch.Size([10, 400]), "Wrong forward_H size")
+    assert_shape(y.shape, torch.Size([10, 3, 400]), "Wrong forward_H size")
     print("ok")
 
     # adjoint
     print("\tadjoint... ", end="")
-    x = torch.rand([10, 400], dtype=torch.float)
+    x = torch.rand([10, 3, 400], dtype=torch.float)
     y = meas_op.adjoint(x)
-    assert_shape(y.shape, torch.Size([10, 2500]), "Wrong adjoint size")
+    assert_shape(y.shape, torch.Size([10, 3, 50, 50]), "Wrong adjoint size")
     print("ok")
 
     # get_mat
@@ -149,27 +150,28 @@ def test_core_meas():
     print("\tconstructor... ", end="")
     Ord = torch.rand(32, 32)
     meas_op = HadamSplit(400, 32, Ord)
+    assert_shape(meas_op.P.shape, torch.Size([800, 1024]), "Wrong P size")
     print("ok")
 
     # forward
     print("\tforward... ", end="")
-    x = torch.rand([10, 32 * 32], dtype=torch.float)
+    x = torch.rand([10, 3, 32, 32], dtype=torch.float)
     y = meas_op(x)
-    assert_shape(y.shape, torch.Size([10, 800]), "Wrong forward size")
+    assert_shape(y.shape, torch.Size([10, 3, 800]), "Wrong forward size")
     print("ok")
 
     # forward_H
     print("\tforward_H... ", end="")
-    x = torch.rand([10, 32 * 32], dtype=torch.float)
+    x = torch.rand([10, 3, 32, 32], dtype=torch.float)
     y = meas_op.forward_H(x)
-    assert_shape(y.shape, torch.Size([10, 400]), "Wrong forward_H size")
+    assert_shape(y.shape, torch.Size([10, 3, 400]), "Wrong forward_H size")
     print("ok")
 
     # adjoint
     print("\tadjoint... ", end="")
-    x = torch.rand([10, 400], dtype=torch.float)
+    x = torch.rand([10, 3, 400], dtype=torch.float)
     y = meas_op.adjoint(x)
-    assert_shape(y.shape, torch.Size([10, 1024]), "Wrong adjoint size")
+    assert_shape(y.shape, torch.Size([10, 3, 32, 32]), "Wrong adjoint size")
     print("ok")
 
     # get_mat
@@ -180,9 +182,9 @@ def test_core_meas():
 
     # pinv
     print("\tpinv... ", end="")
-    y = torch.rand([85, 400], dtype=torch.float)
+    y = torch.rand([85, 3, 400], dtype=torch.float)
     x = meas_op.pinv(y)
-    assert_shape(x.shape, torch.Size([85, 1024]), "Wrong pinv size")
+    assert_shape(x.shape, torch.Size([85, 3, 32, 32]), "Wrong pinv size")
     print("ok")
 
     # inverse
@@ -190,12 +192,12 @@ def test_core_meas():
     Ord = torch.rand(32, 32)
     # must build full matrix to use self.inverse()
     meas_op = HadamSplit(1024, 32, Ord)
-    x = torch.rand([85, 32 * 32], dtype=torch.float32)
+    x = torch.rand([85, 3, 32, 32], dtype=torch.float32)
     y = meas_op(x)
     # subtract positive and negative parts
-    y_sum = y[:, 0::2] - y[:, 1::2]
+    y_sum = y[..., 0::2] - y[..., 1::2]
     x_inv = meas_op.inverse(y_sum)
-    assert_shape(x_inv.shape, torch.Size([85, 1024]), "Wrong inverse size")
+    assert_shape(x_inv.shape, torch.Size([85, 3, 32, 32]), "Wrong inverse size")
     assert_close_all(x_inv, x, "Wrong inverse", atol=1e-5)
     print("ok")
 
@@ -235,9 +237,9 @@ def test_core_meas():
     # a batch of 10 motion pictures of 400 images each, of size 50x50
     H = torch.rand(400, 2500)
     meas_op = DynamicLinear(H)
-    x = torch.rand([10, 400, 2500], dtype=torch.float)
+    x = torch.rand([10, 400, 3, 50, 50], dtype=torch.float)
     y = meas_op(x)
-    assert_shape(y.shape, torch.Size([10, 400]), "Wrong forward size")
+    assert_shape(y.shape, torch.Size([10, 3, 400]), "Wrong forward size")
     print("ok")
 
     # Build dynamic measurement matrix
@@ -272,7 +274,7 @@ def test_core_meas():
     print("\tpinv... ", end="")
     y = torch.rand([10, 400], dtype=torch.float)
     x = meas_op.pinv(y)
-    assert_shape(x.shape, torch.Size([10, 2500]), "Wrong pinv size")
+    assert_shape(x.shape, torch.Size([10, 50, 50]), "Wrong pinv size")
     print("ok")
 
     # reset Ord
@@ -322,16 +324,16 @@ def test_core_meas():
     Ord = torch.arange(399, -1, -1)  # keep natural order, most important before
     H = torch.rand(400, 2500)  # only positive values
     meas_op = DynamicLinearSplit(H, Ord)
-    x = torch.rand([10, 800, 2500], dtype=torch.float)
+    x = torch.rand([10, 800, 3, 50, 50], dtype=torch.float)
     y = meas_op(x)
-    assert_shape(y.shape, torch.Size([10, 800]), "Wrong forward size")
+    assert_shape(y.shape, torch.Size([10, 3, 800]), "Wrong forward size")
     print("ok")
 
     # forward_H
     print("\tforward_H... ", end="")
-    x = torch.rand([10, 400, 2500], dtype=torch.float)
+    x = torch.rand([10, 400, 3, 50, 50], dtype=torch.float)
     y = meas_op.forward_H(x)
-    assert_shape(y.shape, torch.Size([10, 400]), "Wrong forward_H size")
+    assert_shape(y.shape, torch.Size([10, 3, 400]), "Wrong forward_H size")
     print("ok")
 
     # re-set Ord

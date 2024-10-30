@@ -8,7 +8,7 @@ submodule. The simulation is based on three modules:
 
 1. **Measurement operators** compute linear measurements :math:`y = Hx` from
    images :math:`x`, where :math:`H` is a linear operator (matrix) and :math:`x`
-   is a vectorized image (see :mod:`spyrit.core.meas`)
+   is an image (see :mod:`spyrit.core.meas`)
 
 2. **Noise operator** corrupts measurements :math:`y` with noise (see :mod:`spyrit.core.noise`)
 
@@ -21,6 +21,11 @@ submodule. The simulation is based on three modules:
    :alt: Measurement, noise, and preprocessing sketches
 
 These tutorials load image samples from `/images/`.
+
+Please note that as of v.2.4.0, the inputs to the measurement operators are
+no longer vectorized images, but rather image tensors with shape :math:`(*, H, W)`,
+where :math:`*` represents any number of additional dimensions, e.g. batch size
+and number of channels.
 """
 
 # %%
@@ -29,7 +34,11 @@ These tutorials load image samples from `/images/`.
 
 ###############################################################################
 # Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
-# using the :func:`transform_gray_norm` function.
+# using the :func:`transform_gray_norm` function. Spyrit can handle images
+# with the shape :math:`(h, w)` or :math:`(*, h, w)`, where :math:`*` represents
+# any number of additional dimensions, e.g. batch size and number of channels.
+# In this case, we load a batch of black and white images of size :math:`64 \times 64`,
+# and select one image for the tutorial. This results in a tensor of shape :math:`(1, 1, 64, 64)`.
 
 import os
 
@@ -61,11 +70,11 @@ print(f"Shape of input images: {x.shape}")
 # Select image
 x = x[i : i + 1, :, :, :]
 x = x.detach().clone()
+print(f"Shape of selected image: {x.shape}")
 b, c, h, w = x.shape
 
 # plot
-x_plot = x.view(-1, h, h).cpu().numpy()
-imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
+imagesc(x[0, 0, :, :], r"$x$ in [-1, 1]")
 
 # %%
 # The measurement and noise operators
@@ -107,6 +116,11 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # the identity, which can be handled  by the more general
 # :class:`spyrit.core.meas.Linear` class. We consider the noiseless case handled
 # by the :class:`spyrit.core.noise.NoNoise` class.
+#
+# Usually, the measurement tensor is in another space than the image tensor (e.g. Fourier space or
+# Hadamard space), but using the identity matrix results in the measurement
+# vector being (identical and) in the same space as the image tensor. As measurements
+# are always vectorized, the measurement vector is a vectorized image.
 
 from spyrit.core.meas import Linear
 from spyrit.core.noise import NoNoise
@@ -115,21 +129,19 @@ meas_op = Linear(torch.eye(h * h))
 noise_op = NoNoise(meas_op)
 
 ###############################################################################
-# We simulate the measurement vector :math:`y` that we visualise as an image.
-# Remember that the input image :math:`x` is handled as a vector.
+# We simulate the measurement vector :math:`y` that we want to visualise as an image.
+# Note that the measurement vector :math:`y` lost a dimension compared to the image :math:`x`,
+# because the measurement operator acts on the last 2 dimensions of the image tensor.
 
-x = x.view(b * c, h * w)  # vectorized image
-print(f"Shape of vectorized image: {x.shape}")
 y_eye = noise_op(x)  # noisy measurement vector
 print(f"Shape of simulated measurements y: {y_eye.shape}")
 
 # plot
-x_plot = y_eye.view(-1, h, h).cpu().numpy()
-imagesc(x_plot[0, :, :], r"$\tilde{x}$ in [0, 1]")
+imagesc(y_eye[0, 0, :].reshape(h, h), r"$\tilde{x}$ in [0, 1]")
 
 ###############################################################################
 # .. note::
-#   Note that the image identical to the original one, except it has been
+#   Note that the image is identical to the original one, except it has been
 #   normalized in [0,1].
 
 # %%
@@ -148,7 +160,7 @@ imagesc(x_plot[0, :, :], r"$\tilde{x}$ in [0, 1]")
 
 ###############################################################################
 # We consider the :class:`spyrit.core.noise.Poisson` class and set :math:`\alpha`
-# to 100 photons.
+# to 100 photons (which corresponds to the Poisson parameter).
 
 from spyrit.core.noise import Poisson
 from spyrit.misc.disp import add_colorbar, noaxis
@@ -172,24 +184,21 @@ y3 = noise_op(x)  # noisy measurement vector
 # We finally plot the measurement vectors as images
 
 # plot
-y1_plot = y1.view(b, h, h).detach().numpy()
-y2_plot = y2.view(b, h, h).detach().numpy()
-y3_plot = y3.view(b, h, h).detach().numpy()
-
 f, axs = plt.subplots(1, 3, figsize=(10, 5))
 axs[0].set_title("100 photons")
-im = axs[0].imshow(y1_plot[0, :, :], cmap="gray")
+im = axs[0].imshow(y1[0, 0, :].reshape(h, h), cmap="gray")
 add_colorbar(im, "bottom")
 
 axs[1].set_title("100 photons")
-im = axs[1].imshow(y2_plot[0, :, :], cmap="gray")
+im = axs[1].imshow(y2[0, 0, :].reshape(h, h), cmap="gray")
 add_colorbar(im, "bottom")
 
 axs[2].set_title("1000 photons")
-im = axs[2].imshow(y3_plot[0, :, :], cmap="gray")
+im = axs[2].imshow(y3[0, 0, :].reshape(h, h), cmap="gray")
 add_colorbar(im, "bottom")
 
 noaxis(axs)
+plt.show()
 
 ###############################################################################
 # As expected the signal-to-noise ratio of the measurement vector is higher for
@@ -197,7 +206,7 @@ noaxis(axs)
 #
 # .. note::
 #   Not only the signal-to-noise, but also the scale of the measurements
-#   depends on :math:`\alpha`, which motivate the introduction of the
+#   depends on :math:`\alpha`, which motivates the introduction of the
 #   preprocessing operator.
 
 # %%
@@ -261,24 +270,21 @@ m3 = prep_op(y3)
 # We finally plot the preprocessed measurement vectors as images
 
 # plot
-m1 = m1.view(b, h, h).detach().numpy()
-m2 = m2.view(b, h, h).detach().numpy()
-m3 = m3.view(b, h, h).detach().numpy()
-
 f, axs = plt.subplots(1, 3, figsize=(10, 5))
 axs[0].set_title("100 photons")
-im = axs[0].imshow(m1[0, :, :], cmap="gray")
+im = axs[0].imshow(m1[0, 0, :].reshape(h, h), cmap="gray")
 add_colorbar(im, "bottom")
 
 axs[1].set_title("100 photons")
-im = axs[1].imshow(m2[0, :, :], cmap="gray")
+im = axs[1].imshow(m2[0, 0, :].reshape(h, h), cmap="gray")
 add_colorbar(im, "bottom")
 
 axs[2].set_title("1000 photons")
-im = axs[2].imshow(m3[0, :, :], cmap="gray")
+im = axs[2].imshow(m3[0, 0, :].reshape(h, h), cmap="gray")
 add_colorbar(im, "bottom")
 
 noaxis(axs)
+plt.show()
 
 ###############################################################################
 #
@@ -291,4 +297,4 @@ noaxis(axs)
 # We show again one of the preprocessed measurement vectors (tutorial thumbnail purpose)
 
 # Plot
-imagesc(m2[0, :, :], "100 photons", title_fontsize=20)
+imagesc(m2[0, 0, :].reshape(h, h), "100 photons", title_fontsize=20)

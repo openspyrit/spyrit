@@ -28,13 +28,12 @@ These tutorials load image samples from `/images/`.
 # using the :func:`transform_gray_norm` function.
 
 import os
-import girder_client
 
 import torch
 import torchvision
-import numpy as np
 import matplotlib.pyplot as plt
 
+import spyrit.core.torch as spytorch
 from spyrit.misc.disp import imagesc
 from spyrit.misc.statistics import transform_gray_norm
 
@@ -58,11 +57,11 @@ print(f"Shape of input images: {x.shape}")
 # Select image
 x = x[i : i + 1, :, :, :]
 x = x.detach().clone()
+print(f"Shape of selected image: {x.shape}")
 b, c, h, w = x.shape
 
 # plot
-x_plot = x.view(-1, h, h).cpu().numpy()
-imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
+imagesc(x[0, 0, :, :], r"$x$ in [-1, 1]")
 
 
 # %%
@@ -76,31 +75,34 @@ imagesc(x_plot[0, :, :], r"$x$ in [-1, 1]")
 # (see :ref:`Positive Hadamard matrix <hadamard_positive>` for full explantion).
 
 import math
-from spyrit.misc.sampling import sort_by_significance
-from spyrit.misc.walsh_hadamard import walsh2_matrix
 
-F = walsh2_matrix(h)
-F = np.where(F > 0, F, 0)
+F = spytorch.walsh2_matrix(h)
+F = torch.max(F, torch.zeros_like(F))
+
 und = 4  # undersampling factor
 M = h**2 // und  # number of measurements (undersampling factor = 4)
 
-Sampling_map = np.ones((h, h))
+Sampling_map = torch.zeros(h, h)
 M_xy = math.ceil(M**0.5)
-Sampling_map[:, M_xy:] = 0
-Sampling_map[M_xy:, :] = 0
-
-F = sort_by_significance(F, Sampling_map, "rows", False)
-H = F[:M, :]
-print(f"Shape of the measurement matrix: {H.shape}")
+Sampling_map[:M_xy, :M_xy] = 1
 
 imagesc(Sampling_map, "low-frequency sampling map")
+
+###############################################################################
+# After permutation of the full Hadamard matrix, we keep only its first
+# :attr:`M` rows
+
+F = spytorch.sort_by_significance(F, Sampling_map, "rows", False)
+H = F[:M, :]
+
+print(f"Shape of the measurement matrix: {H.shape}")
 
 ###############################################################################
 # Then, we instantiate a :class:`spyrit.core.meas.Linear` measurement operator
 
 from spyrit.core.meas import Linear
 
-meas_op = Linear(torch.from_numpy(H), pinv=True)
+meas_op = Linear(H, pinv=True)
 
 # %%
 # Noiseless case
@@ -116,7 +118,7 @@ N0 = 1.0  # Noise level (noiseless)
 noise = NoNoise(meas_op)
 
 # Simulate measurements
-y = noise(x.view(b * c, h * w))
+y = noise(x)
 print(f"Shape of raw measurements: {y.shape}")
 
 ###############################################################################
@@ -132,16 +134,13 @@ print(f"Shape of the preprocessed measurements: {m.shape}")
 
 ###############################################################################
 # To display the subsampled measurement vector as an image in the transformed
-# domain, we use the :func:`spyrit.misc.sampling.meas2img` function
+# domain, we use the :func:`spyrit.core.torch.meas2img` function
 
 # plot
-from spyrit.misc.sampling import meas2img
-
-m_plot = m.detach().numpy().squeeze()
-m_plot = meas2img(m_plot, Sampling_map)
+m_plot = spytorch.meas2img(m, Sampling_map)
 print(f"Shape of the preprocessed measurement image: {m_plot.shape}")
 
-imagesc(m_plot, "Preprocessed measurements (no noise)")
+imagesc(m_plot[0, 0, :, :], "Preprocessed measurements (no noise)")
 
 # %%
 # PinvNet Network
@@ -183,7 +182,7 @@ x_rec = pinv_net.reconstruct(y)
 #    :align: center
 #    :alt: Sketch of the PinvNet with CNN architecture
 
-from spyrit.core.nnet import ConvNet, Unet
+from spyrit.core.nnet import ConvNet
 from spyrit.core.train import load_net
 
 # Define PInvNet with ConvNet denoising layer
@@ -192,6 +191,7 @@ pinv_net_cnn = PinvNet(noise, prep, denoi)
 
 # Send to GPU if available
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print("Using device:", device)
 pinv_net_cnn = pinv_net_cnn.to(device)
 
 ###############################################################################
@@ -202,9 +202,9 @@ from spyrit.misc.load_data import download_girder
 
 # Load pretrained model
 url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
-dataID = "668267b3baa5a9000705896a"  # unique ID of the file
+dataID = "67221889f03a54733161e963"  # unique ID of the file
 local_folder = "./model/"
-data_name = "tuto3_pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pth"
+data_name = "tuto3_pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07_light.pth"
 # download the model and save it in the local folder
 model_cnn_path = download_girder(url, dataID, local_folder, data_name)
 
@@ -215,40 +215,40 @@ load_net(model_cnn_path, pinv_net_cnn, device, False)
 ###############################################################################
 # We now reconstruct the image using PinvNet with pretrained CNN denoising
 # and plot results side by side with the PinvNet without denoising
+
+from spyrit.misc.disp import add_colorbar, noaxis
+
 with torch.no_grad():
     x_rec_cnn = pinv_net_cnn.reconstruct(y.to(device))
     x_rec_cnn = pinv_net_cnn(x.to(device))
 
 # plot
-x_plot = x.squeeze().cpu().numpy()
-x_plot2 = x_rec.squeeze().cpu().numpy()
-x_plot3 = x_rec_cnn.squeeze().cpu().numpy()
-
-from spyrit.misc.disp import add_colorbar, noaxis
-
 f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
-im1 = ax1.imshow(x_plot, cmap="gray")
+
+im1 = ax1.imshow(x[0, 0, :, :], cmap="gray")
 ax1.set_title("Ground-truth image", fontsize=20)
 noaxis(ax1)
 add_colorbar(im1, "bottom", size="20%")
 
-im2 = ax2.imshow(x_plot2, cmap="gray")
+im2 = ax2.imshow(x_rec[0, 0, :, :], cmap="gray")
 ax2.set_title("Pinv reconstruction", fontsize=20)
 noaxis(ax2)
 add_colorbar(im2, "bottom", size="20%")
 
-im3 = ax3.imshow(x_plot3, cmap="gray")
+im3 = ax3.imshow(x_rec_cnn.cpu()[0, 0, :, :], cmap="gray")
 ax3.set_title(f"Pinv + CNN (trained 30 epochs", fontsize=20)
 noaxis(ax3)
 add_colorbar(im3, "bottom", size="20%")
+
+plt.show()
 
 ###############################################################################
 # We show the best result again (tutorial thumbnail purpose)
 
 # Plot
-imagesc(x_plot3, f"Pinv + CNN (trained 30 epochs", title_fontsize=20)
-
-plt.show()
+imagesc(
+    x_rec_cnn.cpu()[0, 0, :, :], f"Pinv + CNN (trained 30 epochs", title_fontsize=20
+)
 
 ###############################################################################
 # In the next tutorial, we will show how to train PinvNet + CNN denoiser.

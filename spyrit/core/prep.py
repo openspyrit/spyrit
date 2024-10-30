@@ -15,12 +15,11 @@ import torch.nn as nn
 from spyrit.core.meas import LinearSplit, HadamSplit  # , Linear
 
 
-# ==============================================================================
+# =============================================================================
 class DirectPoisson(nn.Module):
-    # ==============================================================================
     r"""
     Preprocess the raw data acquired with a direct measurement operator assuming
-    Poisson noise.  It also compensates for the affine transformation applied
+    Poisson noise. It also compensates for the affine transformation applied
     to the images to get positive intensities.
 
     It computes :math:`m = \frac{2}{\alpha}y - H1` and the variance
@@ -44,11 +43,24 @@ class DirectPoisson(nn.Module):
     def __init__(self, alpha: float, meas_op):
         super().__init__()
         self.alpha = alpha
-        self.N = meas_op.N
-        self.M = meas_op.M
+        self.meas_op = meas_op
 
-        self.max = nn.MaxPool1d(self.N)
-        self.register_buffer("H_ones", meas_op(torch.ones((1, self.N))))
+        self.M = meas_op.M
+        self.N = meas_op.N
+        self.h = meas_op.h
+        self.w = meas_op.w
+
+        self.max = nn.MaxPool2d((self.h, self.w))
+        # self.register_buffer("H_ones", meas_op(torch.ones((1, self.N))))
+
+    # generate H_ones on the fly as it is memmory intensive and easy to compute
+    @property
+    def H_ones(self):
+        return self.meas_op.H.sum(dim=-1).to(self.device)
+
+    @property
+    def device(self):
+        return self.meas_op.device
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
@@ -78,8 +90,8 @@ class DirectPoisson(nn.Module):
             torch.Size([10, 400])
         """
         # normalize
-        H_ones = self.H_ones.expand(x.shape[0], self.M)
-        x = 2 * x / self.alpha - H_ones.to(x.dtype)
+        # H_ones = self.H_ones.expand(x.shape[0], self.M)
+        x = 2 * x / self.alpha - self.H_ones.to(x.dtype).expand(x.shape)
         return x
 
     def sigma(self, x: torch.tensor) -> torch.tensor:
@@ -105,54 +117,57 @@ class DirectPoisson(nn.Module):
         x = 4 * x / (self.alpha**2)  # Cov is in [-1,1] so *4
         return x
 
-    def denormalize_expe(self, x, beta, h, w):
-        r"""
-        Denormalize images from the range [-1;1] to the range [0; :math:`\beta`]
+    def denormalize_expe(
+        self, x: torch.tensor, beta: torch.tensor, h: int = None, w: int = None
+    ) -> torch.tensor:
+        r"""Denormalize images from the range [-1;1] to the range [0; :math:`\beta`]
 
         It computes :math:`m = \frac{\beta}{2}(x+1)`, where
-        :math:`\beta` is the normalization factor.
+        :math:`\beta` is the normalization factor, that can be different for each
+        image in the batch.
 
         Args:
-            :attr:`x`: Batch of images
-
-            :attr:`beta`: Normalizarion factor
-
-            :attr:`h`: Image height
-
-            :attr:`w`: Image width
+            - :attr:`x` (torch.tensor): Batch of images
+            - :attr:`beta` (torch.tensor): Normalization factor. It should have
+            the same shape as the batch.
+            - :attr:`h` (int, optional): Image height. If None, it is
+            deduced from the shape of :attr:`x`. Defaults to None.
+            - :attr:`w` (int): Image width. If None, it is deduced from the
+            shape of :attr:`x`. Defaults to None.
 
         Shape:
-            :attr:`x`: :math:`(*, 1, h, w)`
-
-            :attr:`beta`: :math:`(*)` or :math:`(*, 1)`
-
-            :attr:`h`: int
-
-            :attr:`w`: int
-
-            :attr:`Output`: :math:`(*, 1, h, w)`
+            - :attr:`x`: :math:`(*, h, w)` where :math:`*` indicates any batch
+            dimensions
+            - :attr:`beta`: :math:`(*)` or :math:`(1)` if the same for all
+            images
+            - :attr:`h`: int
+            - :attr:`w`: int
+            - Output: :math:`(*, h, w)`
 
         Example:
             >>> x = torch.rand([10, 1, 32,32], dtype=torch.float)
             >>> beta = 9*torch.rand([10])
-            >>> y = prep_op.denormalize_expe(x, beta, 32, 32)
+            >>> y = split_op.denormalize_expe(x, beta, 32, 32)
             >>> print(y.shape)
             torch.Size([10, 1, 32, 32])
-
         """
-        bc = x.shape[0]
+        if h is None:
+            h = x.shape[-2]
+        if w is None:
+            w = x.shape[-1]
 
-        # Denormalization
-        beta = beta.reshape(bc, 1, 1, 1)
-        beta = beta.expand(bc, 1, h, w)
-        x = (x + 1) / 2 * beta
+        if beta.numel() == 1:
+            beta = beta.expand(x.shape)
+        else:
+            # Denormalization
+            beta = beta.reshape(*beta.shape, 1, 1)
+            beta = beta.expand((*beta.shape[:-2], h, w))
 
-        return x
+        return (x + 1) / 2 * beta
 
 
-# ==============================================================================
-class SplitPoisson(nn.Module):
-    # ==============================================================================
+# =============================================================================
+class SplitPoisson(DirectPoisson):
     r"""
     Preprocess the raw data acquired with a split measurement operator assuming
     Poisson noise.  It also compensates for the affine transformation applied
@@ -183,21 +198,44 @@ class SplitPoisson(nn.Module):
     """
 
     def __init__(self, alpha: float, meas_op):
-        super().__init__()
-        self.alpha = alpha
-        self.N = meas_op.N
-        self.M = meas_op.M
+        super().__init__(alpha, meas_op)
 
-        self.even_index = range(0, 2 * self.M, 2)
-        self.odd_index = range(1, 2 * self.M, 2)
-        self.max = nn.MaxPool1d(self.N)
+    @property
+    def even_index(self):
+        return range(0, 2 * self.M, 2)
 
-        self.register_buffer(
-            "H_ones",
-            meas_op.forward_H(torch.ones((1, self.N))),
-            # torch.ones(1, self.N) @ meas_op.H.T,
-            # "H_ones", meas_op.H(torch.ones((1, self.N)))
-        )
+    @property
+    def odd_index(self):
+        return range(1, 2 * self.M, 2)
+
+    # @property
+    # def H_ones(self):
+    #     return self.meas_op.forward_H(torch.ones(self.h, self.w))
+
+    def unsplit(self, x: torch.tensor, mode: str = "diff") -> torch.tensor:
+        """Unsplits measurements by combining odd and even indices.
+
+        The parameter `mode` can be either 'diff' or 'sum'. The first one
+        computes the difference between the even and odd indices, while the
+        second one computes the sum.
+
+        Args:
+            x (torch.tensor): Measurements, can have any shape.
+
+            mode (str): 'diff' or 'sum'. If 'diff', the difference between the
+            even and odd indices is computed. If 'sum', the sum is computed.
+            Defaults to 'diff'.
+
+        Returns:
+            torch.tensor: The input tensor with the even and odd indices
+            of the last dimension combined (either by difference or sum).
+        """
+        if mode == "diff":
+            return x[..., 0::2] - x[..., 1::2]
+        elif mode == "sum":
+            return x[..., 0::2] + x[..., 1::2]
+        else:
+            raise ValueError("mode should be either 'diff' or 'sum'")
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
@@ -235,20 +273,14 @@ class SplitPoisson(nn.Module):
             >>> print(m.shape)
             torch.Size([10, 400])
         """
-        s = x.shape[:-1] + torch.Size([self.M])  # torch.Size([*,M])
-        H_ones = self.H_ones.expand(s)
-
-        # unsplit
-        x = x[..., self.even_index] - x[..., self.odd_index]
-        # normalize
-        x = 2 * x / self.alpha - H_ones
-        return x
+        # s = x.shape[:-1] + torch.Size([self.M])  # torch.Size([*,M])
+        # H_ones = self.H_ones.expand(s)
+        return super().forward(self.unsplit(x, mode="diff"))
 
     def forward_expe(
         self, x: torch.tensor, meas_op: Union[LinearSplit, HadamSplit]
     ) -> Tuple[torch.tensor, torch.tensor]:
-        r"""
-        Preprocess to compensate for image normalization and splitting of the
+        r"""Preprocess to compensate for image normalization and splitting of the
         measurement operator.
 
         It computes :math:`m = \frac{x[0::2]-x[1::2]}{\alpha}`, where
@@ -291,23 +323,18 @@ class SplitPoisson(nn.Module):
             torch.Size([10, 400])
             torch.Size([10])
         """
-        bc = x.shape[0]
-
-        # unsplit
-        x = x[:, self.even_index] - x[:, self.odd_index]
+        x = self.unsplit(x, mode="diff")
 
         # estimate alpha
         x_pinv = meas_op.pinv(x)
-        alpha = self.max(x_pinv)
-        alpha = alpha.expand(bc, self.M)  # shape is (b*c, M)
+        alpha = self.max(x_pinv).squeeze(-1)  # shape is now (b, c, 1)
 
         # normalize
-        H_ones = self.H_ones.expand(bc, self.M)
-
+        alpha = alpha.expand(x.shape)
         x = torch.div(x, alpha)
-        x = 2 * x - H_ones
+        x = 2 * x - self.H_ones.expand(x.shape)
 
-        alpha = alpha[:, 0]  # shape is (b*c,)
+        alpha = alpha[..., 0]  # shape is (b, c)
 
         return x, alpha
 
@@ -330,9 +357,7 @@ class SplitPoisson(nn.Module):
             torch.Size([10, 400])
 
         """
-        x = x[..., self.even_index] + x[..., self.odd_index]
-        x = 4 * x / (self.alpha**2)  # Cov is in [-1,1] so *4
-        return x
+        return super().sigma(self.unsplit(x, mode="sum"))
 
     def set_expe(self, gain=1.0, mudark=0.0, sigdark=0.0, nbin=1.0):
         r"""
@@ -375,9 +400,7 @@ class SplitPoisson(nn.Module):
             >>> print(v.shape)
             torch.Size([10, 400])
         """
-        # Input shape (b*c, 2*M)
-        # output shape (b*c, M)
-        x = x[:, self.even_index] + x[:, self.odd_index]
+        x = self.unsplit(x, mode="sum")
         x = (
             self.gain * (x - 2 * self.nbin * self.mudark)
             + 2 * self.nbin * self.sigdark**2
@@ -420,117 +443,6 @@ class SplitPoisson(nn.Module):
 
         """
         x = meas_op(x)
-        x = x[:, self.even_index] + x[:, self.odd_index]
+        x = self.unsplit(x, mode="sum")
         x = 4 * x / self.alpha  # here alpha should not be squared
         return x
-
-    def denormalize_expe(self, x, beta, h, w):
-        r"""
-        Denormalize images from the range [-1;1] to the range [0; :math:`\beta`]
-
-        It computes :math:`m = \frac{\beta}{2}(x+1)`, where
-        :math:`\beta` is the normalization factor.
-
-        Args:
-            - :attr:`x`: Batch of images
-            - :attr:`beta`: Normalizarion factor
-            - :attr:`h`: Image height
-            - :attr:`w`: Image width
-
-        Shape:
-            - :attr:`x`: :math:`(*, 1, h, w)`
-            - :attr:`beta`: :math:`(*)` or :math:`(*, 1)`
-            - :attr:`h`: int
-            - :attr:`w`: int
-            - Output: :math:`(*, 1, h, w)`
-
-        Example:
-            >>> x = torch.rand([10, 1, 32,32], dtype=torch.float)
-            >>> beta = 9*torch.rand([10])
-            >>> y = split_op.denormalize_expe(x, beta, 32, 32)
-            >>> print(y.shape)
-            torch.Size([10, 1, 32, 32])
-
-        """
-        bc = x.shape[0]
-
-        # Denormalization
-        beta = beta.reshape(bc, 1, 1, 1)
-        beta = beta.expand(bc, 1, h, w)
-        x = (x + 1) / 2 * beta
-
-        return x
-
-
-# ==============================================================================
-# class SplitRowPoisson(nn.Module):
-#     # ==============================================================================
-#     r"""
-#     Preprocess raw data acquired with a split measurement operator
-
-#     It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha}` and the variance
-#     :math:`\sigma^2 = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where
-#     :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using
-#     a split measurement operator such as :class:`spyrit.core.LinearSplit`.
-
-#     Args:
-#         - :math:`\alpha` (float): maximun image intensity (in counts)
-#         - :math:`M` (int): number of measurements
-#         - :math:`h` (int): number of rows in the image, i.e., image height
-
-#     Example:
-#         >>> split_op = SplitRawPoisson(2.0, 24, 64)
-
-#     """
-
-#     def __init__(self, alpha: float, M: int, h: int):
-#         super().__init__()
-#         self.alpha = alpha
-#         self.M = M
-#         self.h = h
-
-#         self.even_index = range(0, 2 * M, 2)
-#         self.odd_index = range(1, 2 * M, 2)
-#         # self.max = nn.MaxPool1d(h)
-
-#     def forward(
-#         self,
-#         x: torch.tensor,
-#         meas_op: LinearSplit,
-#     ) -> torch.tensor:
-#         """
-#         Args:
-#             x: batch of images that are Hadamard transformed across rows
-#             meas_op: measurement operator
-
-#         Shape:
-#             x: :math:`(b*c, 2M, w)` with :math:`b` the batch size, :math:`c` the
-#             number of channels, :math:`2M` is twice the number of patterns (as
-#             it includes both positive and negative components), and :math:`w`
-#             is the image width.
-
-#             meas_op: The number of measurement `meas_op.M` should match `M`,
-#             while the length of the measurements :math:`meas_op.N` should match
-#             image height :math:`h`.
-
-#             Output: :math:`(b*c,M)`
-
-#         Example:
-#             >>> x = torch.rand([10,48,64], dtype=torch.float)
-#             >>> H_pos = torch.rand([24,64])
-#             >>> H_neg = torch.rand([24,64])
-#             >>> meas_op = LinearSplit(H_pos, H_neg)
-#             >>> m = split_op(x, meas_op)
-#             >>> print(m.shape)
-#             torch.Size([10, 24, 64])
-
-#         """
-#         # unsplit
-#         x = x[:, self.even_index] - x[:, self.odd_index]
-#         # normalize
-#         e = torch.ones([x.shape[0], meas_op.N, self.h], device=x.device)
-#         print("shape of e:", e.shape)
-#         print("shape of x:", x.shape)
-#         print("shape of fwd:", meas_op.forward_H(e).shape)
-#         x = 2 * x / self.alpha - meas_op.forward_H(e)
-#         return x

@@ -5,8 +5,12 @@ Test for module noise.py
 import torch
 
 from test_helpers import assert_shape
-
-from spyrit.core.meas import Linear, LinearSplit, HadamSplit  # , LinearRowSplit
+from spyrit.core.meas import (
+    Linear,
+    LinearSplit,
+    HadamSplit,
+    DynamicLinear,
+)  # , LinearRowSplit
 
 
 def test_core_noise():
@@ -27,9 +31,9 @@ def test_core_noise():
 
     # forward
     print("\tforward... ", end="")
-    x = torch.FloatTensor(10, 32 * 32).uniform_(-1, 1)
+    x = torch.FloatTensor(10, 3, 32, 32).uniform_(-1, 1)
     y = linear_acq(x)
-    assert_shape(y.shape, torch.Size([10, 400]), "Wrong matrix size")
+    assert_shape(y.shape, torch.Size([10, 3, 400]), "wrong forward size with Linear")
     print(f"ok - Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
 
     # forward with HadamSplit
@@ -38,8 +42,20 @@ def test_core_noise():
     split_op = HadamSplit(400, 32, Perm)
     split_acq = NoNoise(split_op)
     y = split_acq(x)
-    assert_shape(y.shape, torch.Size([10, 800]), "Wrong matrix size")
+    assert_shape(
+        y.shape, torch.Size([10, 3, 800]), "wrong forward size with HadamSplit"
+    )
     print(f"ok - Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+
+    # forward with DynamicLinear
+    print("\tforward with DynamicLinear... ", end="")
+    dyn_meas_op = DynamicLinear(torch.rand(400, 32 * 32))
+    x_dyn = torch.randn(10, 400, 3, 32, 32)
+    y = dyn_meas_op(x_dyn)
+    assert_shape(
+        y.shape, torch.Size([10, 3, 400]), "wrong forward size with DynamicLinear"
+    )
+    print("ok")
 
     # =========================================================================
     ## Poisson
@@ -56,9 +72,9 @@ def test_core_noise():
 
     # forward (example 1)
     print("\tforward example 1... ", end="")
-    x = torch.FloatTensor(10, 32 * 32).uniform_(-1, 1)
+    x = torch.FloatTensor(10, 3, 32, 32).uniform_(-1, 1)
     y = noise_op(x)
-    assert_shape(y.shape, torch.Size([10, 400]), "Wrong matrix size")
+    assert_shape(y.shape, torch.Size([10, 3, 400]), "Wrong matrix size")
     print(f"ok - Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
     print("\tforward example 2... ", end="")
     y = noise_op(x)
@@ -74,9 +90,9 @@ def test_core_noise():
 
     # forward with HadamSplit
     print("\tforward with HadamSplit example 1... ", end="")
-    x = torch.FloatTensor(10, 32 * 32).uniform_(-1, 1)
+    x = torch.FloatTensor(10, 3, 32, 32).uniform_(-1, 1)
     y = noise_op(x)
-    assert_shape(y.shape, torch.Size([10, 800]), "Wrong matrix size")
+    assert_shape(y.shape, torch.Size([10, 3, 800]), "Wrong matrix size")
     print(f"ok - Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
     print("\tforward with HadamSplit example 2... ", end="")
     y = noise_op(x)
@@ -92,9 +108,9 @@ def test_core_noise():
 
     # forward with LinearSplit
     print("\tforward with LinearSplit example 1... ", end="")
-    x = torch.FloatTensor(10, 64).uniform_(-1, 1)
+    x = torch.FloatTensor(10, 3, 8, 8).uniform_(-1, 1)
     y = noise_op(x)
-    assert_shape(y.shape, torch.Size([10, 48]), "Wrong matrix size")
+    assert_shape(y.shape, torch.Size([10, 3, 48]), "Wrong matrix size")
     print(f"ok - Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
     print("\tforward with LinearSplit example 2... ", end="")
     y = noise_op(x)
@@ -115,9 +131,9 @@ def test_core_noise():
 
     # forward (example 1)
     print("\tforward example 1... ", end="")
-    x = torch.FloatTensor(10, 32 * 32).uniform_(-1, 1)
+    x = torch.FloatTensor(10, 3, 32, 32).uniform_(-1, 1)
     y = noise_op(x)
-    assert_shape(y.shape, torch.Size([10, 400]), "Wrong matrix size")
+    assert_shape(y.shape, torch.Size([10, 3, 400]), "Wrong matrix size")
     print(f"ok - Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
     print("\tforward example 2... ", end="")
     y = noise_op(x)
@@ -133,9 +149,9 @@ def test_core_noise():
 
     # forward with HadamSplit
     print("\tforward with HadamSplit example 1... ", end="")
-    x = torch.FloatTensor(10, 32 * 32).uniform_(-1, 1)
+    x = torch.FloatTensor(10, 3, 32, 32).uniform_(-1, 1)
     y = noise_op(x)
-    assert_shape(y.shape, torch.Size([10, 800]), "Wrong matrix size")
+    assert_shape(y.shape, torch.Size([10, 3, 800]), "Wrong matrix size")
     print(f"ok - Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
     print("\tforward with HadamSplit example 2... ", end="")
     y = noise_op(x)
@@ -151,9 +167,9 @@ def test_core_noise():
 
     # forward with LinearSplit
     print("\tforward with LinearSplit example 1... ", end="")
-    x = torch.FloatTensor(10, 64).uniform_(-1, 1)
+    x = torch.FloatTensor(10, 3, 8, 8).uniform_(-1, 1)
     y = noise_op(x)
-    assert_shape(y.shape, torch.Size([10, 48]), "Wrong matrix size")
+    assert_shape(y.shape, torch.Size([10, 3, 48]), "Wrong matrix size")
     print(f"ok - Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
     print("\tforward with LinearSplit example 2... ", end="")
     y = noise_op(x)
@@ -174,9 +190,9 @@ def test_core_noise():
 
     # forward (example 1)
     print("\tforward example 1... ", end="")
-    x = torch.FloatTensor(10, 32 * 32).uniform_(-1, 1)
+    x = torch.FloatTensor(10, 3, 32, 32).uniform_(-1, 1)
     y = noise_op(x)
-    assert_shape(y.shape, torch.Size([10, 400]), "Wrong matrix size")
+    assert_shape(y.shape, torch.Size([10, 3, 400]), "Wrong matrix size")
     print(f"ok - Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
     print("\tforward example 2... ", end="")
     y = noise_op(x)
@@ -192,9 +208,9 @@ def test_core_noise():
 
     # forward with HadamSplit
     print("\tforward with HadamSplit example 1... ", end="")
-    x = torch.FloatTensor(10, 32 * 32).uniform_(-1, 1)
+    x = torch.FloatTensor(10, 3, 32, 32).uniform_(-1, 1)
     y = noise_op(x)
-    assert_shape(y.shape, torch.Size([10, 800]), "Wrong matrix size")
+    assert_shape(y.shape, torch.Size([10, 3, 800]), "Wrong matrix size")
     print(f"ok - Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
     print("\tforward with HadamSplit example 2... ", end="")
     y = noise_op(x)

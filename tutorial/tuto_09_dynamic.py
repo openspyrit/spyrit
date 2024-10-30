@@ -69,10 +69,10 @@ print(f"Shape of input images: {x.shape}")
 x = x[i : i + 1, :, :, :]
 x = x.detach().clone()
 b, c, h, w = x.shape
+print(f"Shape of selected image: {x.shape}")
 
 # plot
-x_plot = x.view(img_shape).cpu()
-imagesc(x_plot, r"Original image $x$ in [-1, 1]")
+imagesc(x[0, 0, :, :], r"Original image $x$ in [-1, 1]")
 
 # %%
 # Define an affine warping
@@ -128,14 +128,11 @@ aff_field = AffineDeformationField(f, time_vector, img_shape)
 # Warp the image
 # -----------------------------------------------------------------------------
 #
-# Warping works with vectorized images. So, we first reshape the image from `(b,c,h,w)` to `(c, h*w)`.
-# The original image is casted to `torch.float64` to minimize numerical errors during the warping process.
-x = x.view(c, h * w).to(torch.float64)
+# Warping works with 2D `(h,w)` images. We can now warp the image:
 
-######################################################################
-# We can now warp the image
 x_motion = aff_field(x, 0, (meas_size**2) * 2)
-c, n_frames, n_pixels = x_motion.shape
+print("Shape of warped images:", x_motion.shape)
+b, n_frames, c, h, w = x_motion.shape
 
 ######################################################################
 # .. note::
@@ -295,11 +292,11 @@ print("x_hat1 and x_hat2 are equal:", (x_hat1 == x_hat2).all())
 
 plot, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
 
-im1 = ax1.imshow(x_hat1.view(img_shape), cmap="gray")
+im1 = ax1.imshow(x_hat1[0, 0, :, :], cmap="gray")
 ax1.set_title("Reconstructed image")
 add_colorbar(im1, "right", size="20%")
 
-im2 = ax2.imshow(x_plot.view(img_shape) - x_hat1.view(img_shape), cmap="gray")
+im2 = ax2.imshow(x[0, 0, :, :] - x_hat1[0, 0, :, :], cmap="gray")
 ax2.set_title("Reconstruction error")
 add_colorbar(im2, "right", size="20%")
 

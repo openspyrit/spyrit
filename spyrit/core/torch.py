@@ -9,6 +9,7 @@ functions, but using pytorch tensors instead of numpy arrays.
 
 import warnings
 
+import math
 import torch
 import torch.nn as nn
 import torchvision
@@ -33,6 +34,13 @@ def assert_power_of_2(n, raise_error=True):
 
     Returns:
         bool: True if n is a power of 2, False otherwise.
+
+    Example:
+
+    .. runblock:: pycon
+
+        >>> import os
+        >>> print(os.getcwd())
     """
     if n < 1:
         if raise_error:
@@ -312,6 +320,34 @@ def fwht_2d(x, order=True):
     return fwht(fwht(x, order, dim=-1), order, dim=-2)
 
 
+def meas2img(meas: torch.tensor, Ord: torch.tensor) -> torch.tensor:
+    r"""Returns measurement image from a single measurement tensor or from a
+    batch of measurement tensors.
+
+    This function is particulatly useful if the
+    number of measurements is less than the number of pixels in the image, i.e.
+    the image is undersampled.
+
+    Args:
+        meas : `torch.tensor` with shape :math:`(*, M)` where
+        :math:`*` is any dimension (e.g. the batch size, channel, etc) and
+        :math:`M` is the length of the measurement vector.
+
+        Ord : `torch.tensor` with shape :math:`(N,N)`. Sampling order matrix, where
+        high values indicate high significance. This matrix determines the order
+        of the measurements. It must be the matrix used when generating the measurement vector.
+
+    Returns:
+        Img : `torch.tensor` with shape :math:`(*, N,N)`. batch of N-by-N
+        measurement images.
+    """
+    out_shape = *meas.shape[:-1], Ord.numel()
+    meas_padded = torch.zeros(out_shape, device=meas.device)
+    meas_padded[..., : meas.shape[-1]] = meas
+    Img = sort_by_significance(meas_padded, Ord, axis="cols", inverse_permutation=False)
+    return Img.reshape(*meas.shape[:-1], *Ord.shape)
+
+
 # =============================================================================
 # Finite difference matrices
 # =============================================================================
@@ -446,6 +482,45 @@ def neumann_boundary(img_shape):
 # =============================================================================
 # Permutations and Sorting
 # =============================================================================
+
+
+def Cov2Var(Cov: torch.tensor, out_shape=None):
+    r"""
+    Extracts Variance Matrix from Covariance Matrix.
+
+    The Variance matrix is extracted from the diagonal of the Covariance matrix.
+
+    Args:
+        Cov (torch.tensor): Covariance matrix of shape :math:`(N_x, N_x)`.
+
+        out_shape (tuple, optional): Shape of the output variance matrix. If
+        `None`, :math:`N_x` must be a perfect square and the output is a square
+        matrix whose shape is :math:`(\sqrt{N_x}, \sqrt{N_x})`. Default is `None`.
+
+    Raises:
+        ValueError: If the input matrix is not square.
+
+        ValueError: If the output shape is not valid.
+
+    Returns:
+        torch.tensor: Variance matrix of shape :math:`(\sqrt{N_x}, \sqrt{N_x})` or
+        :math:`out_shape` if provided.
+    """
+    row, col = Cov.shape
+    # check Cov is square
+    if row != col:
+        raise ValueError("Covariance matrix must be a square matrix")
+
+    if out_shape is None:
+        out_shape = (int(math.sqrt(row)), int(math.sqrt(col)))
+
+    if out_shape[0] * out_shape[1] != row:
+        raise ValueError(
+            f"Invalid output shape, got {out_shape} with "
+            + f"{out_shape[0]}*{out_shape[1]} != {row}"
+        )
+    # copy is necessary (see np documentation about diagonal)
+    return torch.diagonal(Cov).clone().reshape(out_shape)
 
 
 def reindex(  # previously sort_by_indices

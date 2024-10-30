@@ -30,7 +30,10 @@ from spyrit.core.meas import Linear, LinearSplit, HadamSplit  # , LinearRowSplit
 class NoNoise(nn.Module):
     # =========================================================================
     r"""
-    Simulates measurements from images in the range [0;1] by computing
+    Simulates measurements not corrupted by noise.
+
+    Assuming incoming images :math:`x` in the range [-1;1], measurements are
+    first simulated from images in the range [0;1] by computing
     :math:`y = \frac{1}{2} H(1+x)`.
 
     .. note::
@@ -59,29 +62,42 @@ class NoNoise(nn.Module):
         super().__init__()
         self.meas_op = meas_op
 
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        r"""
-        Simulates measurements
+    @property
+    def device(self) -> torch.device:
+        return self.meas_op.device
 
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulates measurements
 
         Args:
-            :attr:`x`: Batch of images
+            :attr:`x`: Batch of images. The input is directly passed to the
+            measurement operator, so its shape depends on the type of the
+            measurement operator.
+
+        Output:
+            The batch of measurements. Its shape depends on the input shape.
 
         Shape:
-            - :attr:`x`: :math:`(*, N)`
-            - :attr:`Output`: :math:`(*, M)`
+            :attr:`x`: :math:`(*, h, w)` if `self.meas_op` is a static
+            measurement operator, :math:`(*, t, c, h, w)` if it is a dynamic
+            measurement operator.
+            :attr:`Output`: :math:`(*, M)` (static measurements) or `(*, c, M)`
+            (dynamic measurements)
 
         Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator
-            >>> x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
+            >>> x = torch.FloatTensor(10, 3, 32, 32).uniform_(-1, 1)
+            >>> linear_acq = NoNoise(linear_op)
             >>> y = linear_acq(x)
             >>> print(y.shape)
-            torch.Size([10, 400])
+            torch.Size([10, 3, 400])
 
-        Example 2: Using a :class:`~spyrit.core.meas.HadamSplit` measurement operator
-            >>> x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
+        Example 2: Using a :class:`~spyrit.core.meas.DynamicLinear` measurement operator
+            >>> x = torch.FloatTensor(10, 400, 3, 32, 32).uniform_(-1, 1)
+            >>> dyn_acq = DynamicLinear(torch.rand(400, 32*32))
+            >>> noise_acq = NoNoise(dyn_acq)
             >>> y = split_acq(x)
             >>> print(y.shape)
-            torch.Size([10, 800])
+            torch.Size([10, 3, 400])
         """
         x = (x + 1) / 2
         x = self.meas_op(x)
@@ -90,8 +106,11 @@ class NoNoise(nn.Module):
     def reindex(
         self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
     ) -> torch.tensor:
-        """Sorts a tensor along a specified axis using the indices tensor. The
-        indices tensor is contained in the attribute :attr:`self.meas_op.indices`.
+        """Sorts a tensor along a specified axis using the indices tensor.
+
+        The indices tensor is contained in the attribute :attr:`self.meas_op.indices`.
+        This is equivalent to calling :math:`self.meas_op.reindex` with the same
+        arguments.
 
         The indices tensor contains the new indices of the elements in the values
         tensor. `values[0]` will be placed at the index `indices[0]`, `values[1]`
@@ -176,11 +195,21 @@ class Poisson(NoNoise):
         Simulates measurements corrupted by Poisson noise
 
         Args:
-            :attr:`x`: Batch of images
+            :attr:`x`: Batch of images. The input is directly passed to the
+            measurement operator, so its shape depends on the type of the
+            measurement operator.
+
+        Output:
+            :attr:`y` The batch of measurements. Its shape depends on the input
+            shape.
 
         Shape:
-            - :attr:`x`: :math:`(*, N)`
-            - :attr:`Output`: :math:`(*, M)`
+            :attr:`x`: :math:`(*, h, w)` if `self.meas_op` is a static
+            measurement operator, :math:`(*, t, c, h, w)` if it is a dynamic
+            measurement operator.
+
+            :attr:`Output`: :math:`(*, M)` (static measurements) or `(*, c, M)`
+            (dynamic measurements)
 
         Example 1: Two noisy measurement vectors from a :class:`~spyrit.core.meas.Linear` measurement operator
             >>> H = torch.rand([400,32*32])
@@ -224,21 +253,20 @@ class Poisson(NoNoise):
             Measurements in (500.00 , 1134.00)
             Measurements in (465.00 , 1140.00)
         """
-        # x = self.alpha*(x+1)/2
-        # x = self.meas_op(x)
-        x = super().forward(x)  # NoNoise forward
-        x = self.alpha * x
-        x = F.relu(x)  # truncate negative values to zero, otherwise error
-        x = torch.poisson(x)
-        return x
+        x = super().forward(x)  # NoNoise forward (scaling to [0, 1])
+        x *= self.alpha
+        return torch.poisson(
+            F.relu(x)
+        )  # truncate negative values to zero, otherwise error
 
 
 # =============================================================================
 class PoissonApproxGauss(NoNoise):
     # =========================================================================
     r"""
-    Simulates measurements corrupted by Poisson noise. To accelerate the
-    computation, we consider a Gaussian approximation to the Poisson
+    Simulates measurements corrupted by gaussian-approximated Poisson noise.
+
+    To accelerate the computation, we consider a Gaussian approximation to the Poisson
     distribution.
 
     Assuming incoming images :math:`x` in the range [-1;1], measurements are
@@ -286,11 +314,17 @@ class PoissonApproxGauss(NoNoise):
         Simulates measurements corrupted by Poisson noise
 
         Args:
-            :attr:`x`: Batch of images
+            :attr:`x`: Batch of images. The input is directly passed to the
+            measurement operator, so its shape depends on the type of the
+            measurement operator.
 
         Shape:
-            - :attr:`x`: :math:`(*, N)`
-            - :attr:`Output`: :math:`(*, M)`
+            :attr:`x`: :math:`(*, h, w)` if `self.meas_op` is a static
+            measurement operator, :math:`(*, t, c, h, w)` if it is a dynamic
+            measurement operator.
+
+            :attr:`Output`: :math:`(*, M)` (static measurements) or `(*, c, M)`
+            (dynamic measurements)
 
         Example 1: Two noisy measurement vectors from a :class:`~spyrit.core.meas.Linear` measurement operator
             >>> H = torch.rand([400,32*32])
@@ -334,8 +368,8 @@ class PoissonApproxGauss(NoNoise):
             Measurements in (460.43 , 1216.94)
             Measurements in (441.85 , 1230.43)
         """
-        x = super().forward(x)  # NoNoise forward
-        x = self.alpha * x
+        x = super().forward(x)  # NoNoise forward, scaling to [0, 1]
+        x *= self.alpha
         x = F.relu(x)  # remove small negative values
         x = x + torch.sqrt(x) * torch.randn_like(x)
         return x
@@ -345,10 +379,13 @@ class PoissonApproxGauss(NoNoise):
 class PoissonApproxGaussSameNoise(NoNoise):
     # =========================================================================
     r"""
-    Simulates measurements corrupted by Poisson noise. To accelerate the
+    Simulates measurements corrupted by identical Gaussian-approximated Poisson noise.
+
+    To accelerate the
     computation, we consider a Gaussian approximation to the Poisson
     distribution. Contrary to :class:`~spyrit.core.noise.PoissonApproxGauss`,
-    all measurements in a batch are corrupted with the same noise sample.
+    all measurements in a batch are corrupted with the same noise sample, i.e.
+    the noise depends only on the measurement number (and order).
 
     Assuming incoming images :math:`x` in the range [-1;1], measurements are
     first simulated for images in the range [0; :math:`\alpha`]:
@@ -386,11 +423,17 @@ class PoissonApproxGaussSameNoise(NoNoise):
         Simulates measurements corrupted by Poisson noise
 
         Args:
-            :attr:`x`: Batch of images
+            :attr:`x`: Batch of images. The input is directly passed to the
+            measurement operator, so its shape depends on the type of the
+            measurement operator.
 
         Shape:
-            - :attr:`x`: :math:`(*, N)`
-            - :attr:`Output`: :math:`(*, M)`
+            :attr:`x`: :math:`(*, h, w)` if `self.meas_op` is a static
+            measurement operator, :math:`(*, t, c, h, w)` if it is a dynamic
+            measurement operator.
+
+            :attr:`Output`: :math:`(*, M)` (static measurements) or `(*, c, M)`
+            (dynamic measurements)
 
         Example 1: Two noisy measurement vectors from a :class:`~spyrit.core.meas.Linear` measurement operator
             >>> H = torch.rand([400,32*32])
@@ -421,7 +464,7 @@ class PoissonApproxGaussSameNoise(NoNoise):
             Measurements in (0.00 , 56216.86)
         """
         x = super().forward(x)  # NoNoise forward
-        x = self.alpha * x
+        x *= self.alpha
         x = F.relu(x)  # remove small negative values
-        x = x + torch.sqrt(x) * torch.randn(1, x.shape[1])
+        x = x + torch.sqrt(x) * torch.randn((*[1] * (x.ndim - 1), x.shape[-1]))
         return x
