@@ -112,7 +112,7 @@ if False:
     from spyrit.core.prep import SplitPoisson
 
     # Measurement parameters
-    M = h ** 2 // 4 # Number of measurements (here, 1/4 of the pixels)
+    M = h**2 // 4  # Number of measurements (here, 1/4 of the pixels)
     alpha = 10.0  # number of photons
 
     # Sampling: rectangular matrix
@@ -201,7 +201,7 @@ if False:
 
     # Plot results
     f, axs = plt.subplots(2, 1, figsize=(10, 10))
-    
+
     im1 = axs[0].imshow(x.cpu()[0, 0, :, :], cmap="gray")
     axs[0].set_title("Ground-truth image", fontsize=16)
     noaxis(axs[0])

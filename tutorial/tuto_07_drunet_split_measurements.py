@@ -26,8 +26,6 @@ The beginning of this tutorial is identical to the previous one.
 #       As in the previous tutorials, we consider a split Hadamard operator and measurements corrupted by Poisson noise (see :ref:`Tutorial 5 <tuto_acquisition_split_measurements>`).
 
 
-
-
 # %%
 # Load a batch of images
 # ====================================================================
@@ -116,7 +114,7 @@ from spyrit.core.noise import Poisson
 from spyrit.core.prep import SplitPoisson
 
 # Measurement parameters
-M = h **2 // 4  # Number of measurements (here, 1/4 of the pixels)
+M = h**2 // 4  # Number of measurements (here, 1/4 of the pixels)
 alpha = 100.0  # number of photons
 
 # Measurement and noise operators
@@ -140,8 +138,8 @@ imagesc(m_plot[0, 0, :, :], r"Measurements $m$")
 
 ######################################################################
 # Starting here, this tutorial differs from what has been seen in the previous
-# one. 
-# 
+# one.
+#
 # DRUNet is defined by the :class:`spyrit.external.drunet.DRUNet` class. This
 # class inherits from the original :class:`spyrit.external.drunet.UNetRes` class
 # introduced in [ZhLZ21]_, with some modifications to handle different noise levels.
@@ -172,7 +170,9 @@ data_name = "tuto7_drunet_gray.pth"
 model_drunet_abs_path = download_girder(url, dataID, local_folder, data_name)
 
 # Load pretrained weights
-denoi_drunet.load_state_dict(torch.load(model_drunet_abs_path, weights_only=True), strict=False)
+denoi_drunet.load_state_dict(
+    torch.load(model_drunet_abs_path, weights_only=True), strict=False
+)
 
 # %%
 # Pluggind the DRUnet in a DCNet
@@ -257,7 +257,9 @@ drunet_den = drunet(in_nc=n_channels + 1, out_nc=n_channels)
 
 # Load pretrained model
 try:
-    drunet_den.load_state_dict(torch.load(model_drunet_abs_path, weights_only=True), strict=True)
+    drunet_den.load_state_dict(
+        torch.load(model_drunet_abs_path, weights_only=True), strict=True
+    )
     print(f"Model {model_drunet_abs_path} loaded.")
 except:
     print(f"Model {model_drunet_abs_path} not found!")

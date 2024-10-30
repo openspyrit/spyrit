@@ -107,7 +107,7 @@ from spyrit.core.noise import Poisson
 from spyrit.core.prep import SplitPoisson
 
 # Measurement parameters
-M = h ** 2 // 4  # Number of measurements (here, 1/4 of the pixels)
+M = h**2 // 4  # Number of measurements (here, 1/4 of the pixels)
 alpha = 100.0  # number of photons
 
 # Measurement and noise operators
