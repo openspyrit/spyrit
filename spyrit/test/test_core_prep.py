@@ -44,7 +44,7 @@ def test_core_prep():
     # denormalize_expe
     print("\tdenormalize_expe... ", end="")
     x = torch.rand([10, 3, 32, 32], dtype=torch.float)
-    beta = 9 * torch.rand([10])
+    beta = 9 * torch.rand([10, 3])
     y = prep_op.denormalize_expe(x, beta, 32, 32)
     assert_shape(y.shape, torch.Size([10, 3, 32, 32]), "Wrong matrix size")
     print("ok")
@@ -118,8 +118,8 @@ def test_core_prep():
     # denormalize_expe
     print("\tdenormalize_expe... ", end="")
     x = torch.rand([10, 3, 32, 32], dtype=torch.float)
-    beta = 9 * torch.rand([10, 1])
-    y = split_op.denormalize_expe(x, beta, 32, 32)
+    beta_ = torch.rand([10, 3]) * 9
+    y = split_op.denormalize_expe(x, beta_, 32, 32)
     assert_shape(y.shape, torch.Size([10, 3, 32, 32]), "Wrong matrix size")
     print("ok")
 

@@ -122,7 +122,7 @@ class DirectPoisson(nn.Module):
 
         It computes :math:`m = \frac{\beta}{2}(x+1)`, where
         :math:`\beta` is the normalization factor, that can be different for each
-        image or channel in the batch.
+        image in the batch.
 
         Args:
             - :attr:`x` (torch.tensor): Batch of images
@@ -136,7 +136,8 @@ class DirectPoisson(nn.Module):
         Shape:
             - :attr:`x`: :math:`(*, h, w)` where :math:`*` indicates any batch
             dimensions
-            - :attr:`beta`: :math:`(*)` or 
+            - :attr:`beta`: :math:`(*)` o r :math:`(1)` if the same for all
+            images
             - :attr:`h`: int
             - :attr:`w`: int
             - Output: :math:`(*, h, w)`
@@ -153,12 +154,14 @@ class DirectPoisson(nn.Module):
         if w is None:
             w = x.shape[-1]
         
-        # Denormalization
-        beta = beta.reshape(*beta.shape, 1, 1)
-        beta = beta.expand(*beta.shape, h, w)
-        x = (x + 1) / 2 * beta
-
-        return x
+        if beta.numel() == 1:
+            beta = beta.expand(x.shape)
+        else:
+            # Denormalization
+            beta = beta.reshape(*beta.shape, 1, 1)
+            beta = beta.expand((*beta.shape[:-2], h, w))
+        
+        return (x + 1) / 2 * beta
 
 
 # =============================================================================
