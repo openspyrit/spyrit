@@ -246,7 +246,9 @@ plt.show()
 # We show the best result again (tutorial thumbnail purpose)
 
 # Plot
-imagesc(x_rec_cnn.cpu()[0, 0, :, :], f"Pinv + CNN (trained 30 epochs", title_fontsize=20)
+imagesc(
+    x_rec_cnn.cpu()[0, 0, :, :], f"Pinv + CNN (trained 30 epochs", title_fontsize=20
+)
 
 ###############################################################################
 # In the next tutorial, we will show how to train PinvNet + CNN denoiser.

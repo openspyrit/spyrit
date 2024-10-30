@@ -141,7 +141,7 @@ except:
 from spyrit.misc.disp import add_colorbar, noaxis
 
 
-M = h ** 2 // 4  # number of measurements (here, 1/4 of the pixels)
+M = h**2 // 4  # number of measurements (here, 1/4 of the pixels)
 Ord_nai = spytorch.Cov2Var(torch.eye(h * h))
 
 ###############################################################################
@@ -153,7 +153,7 @@ Ord_var = spytorch.Cov2Var(Cov)
 
 # sphinx_gallery_thumbnail_number = 2
 
-mask_basis = torch.zeros(h*h)
+mask_basis = torch.zeros(h * h)
 mask_basis[:M] = 1
 
 # Mask for "naive subsampling"

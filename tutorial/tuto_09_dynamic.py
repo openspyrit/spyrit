@@ -92,15 +92,17 @@ imagesc(x[0, 0, :, :], r"Original image $x$ in [-1, 1]")
 a = 0.2  # amplitude
 omega = math.pi  # angular speed
 
+
 def s(t):
     return 1 + a * math.sin(t * omega)  # base function for f
+
 
 def f(t):
     return torch.tensor(
         [
-            [1 / s(t), 0,    0],
-            [0,        s(t), 0],
-            [0,        0,    1],
+            [1 / s(t), 0, 0],
+            [0, s(t), 0],
+            [0, 0, 1],
         ],
         dtype=torch.float64,
     )
@@ -333,6 +335,7 @@ from spyrit.core.warp import DeformationField
 # define a rotation function
 omega = 2 * math.pi  # angular velocity
 
+
 def rot(t):
     ans = torch.tensor(
         [
@@ -343,6 +346,7 @@ def rot(t):
         dtype=torch.float64,
     )  # it is recommended to use float64
     return ans
+
 
 # create a time vector of length 100 (change this to fit your needs)
 t0 = 0
