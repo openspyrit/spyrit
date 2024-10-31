@@ -1534,9 +1534,8 @@ class DynamicLinear(_Base):
     ) -> torch.tensor:
         x_cropped = spytorch.center_crop(x, self.meas_shape)
         return torch.einsum(
-            "thw,...tchw->...ct",
-            self.unvectorize(op).to(x.dtype),
-            x_cropped)
+            "thw,...tchw->...ct", self.unvectorize(op).to(x.dtype), x_cropped
+        )
 
     @staticmethod
     def _spline(dx, mode):
