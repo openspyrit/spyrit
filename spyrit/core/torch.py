@@ -717,7 +717,7 @@ def center_crop(
         out_shape (tuple): Shape of the output image after cropping. Must be
         a tuple of two integers (height, width).
 
-        in_shape (tuple, optional): Shape of the input image, must be specified
+        vectorized_in_shape (tuple, optional): Shape of the input image, must be specified
         if and only if the input image is vectorized. Must be a tuple of two
         integers (height, width). If None, the input is supposed to be a 2D
         image. Defaults to None.
