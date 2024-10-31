@@ -1532,7 +1532,11 @@ class DynamicLinear(_Base):
     def _dynamic_forward_with_op(
         self, x: torch.tensor, op: torch.tensor
     ) -> torch.tensor:
-        return torch.einsum("thw,...tchw->...ct", self.unvectorize(op).to(x.dtype), x)
+        x_cropped = spytorch.center_crop(x, self.meas_shape)
+        return torch.einsum(
+            "thw,...tchw->...ct",
+            self.unvectorize(op).to(x.dtype),
+            x_cropped)
 
     @staticmethod
     def _spline(dx, mode):
