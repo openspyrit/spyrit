@@ -739,7 +739,7 @@ def center_crop(
 def center_pad(
     img: torch.tensor,
     out_shape: tuple,
-    in_shape: tuple = None,
+    vectorized_in_shape: tuple = None,
 ) -> torch.tensor:
     """Pads an image to the specified shape by centering it.
 
@@ -750,7 +750,7 @@ def center_pad(
         out_shape (tuple): Shape of the output image after padding. Must be
         a tuple of two integers (height, width).
 
-        in_shape (tuple, optional): Shape of the input image, must be specified
+        vectorized_in_shape (tuple, optional): Shape of the input image, must be specified
         if and only if the input image is vectorized. Must be a tuple of two
         integers (height, width). If None, the input is supposed to be a 2D
         image. Defaults to None.
@@ -760,17 +760,17 @@ def center_pad(
         the input image.
     """
     img_shape = img.shape
-    if in_shape is None:
-        in_shape = img_shape[-2:]
+    if vectorized_in_shape is None:
+        vectorized_in_shape = img_shape[-2:]
         reshape = False
     else:
-        img = img.reshape(*img_shape[:-1], *in_shape)
+        img = img.reshape(*img_shape[:-1], *vectorized_in_shape)
         reshape = True
 
-    pad_top = (out_shape[0] - in_shape[0]) // 2
-    pad_bottom = out_shape[0] - in_shape[0] - pad_top
-    pad_left = (out_shape[1] - in_shape[1]) // 2
-    pad_right = out_shape[1] - in_shape[1] - pad_left
+    pad_top = (out_shape[0] - vectorized_in_shape[0]) // 2
+    pad_bottom = out_shape[0] - vectorized_in_shape[0] - pad_top
+    pad_left = (out_shape[1] - vectorized_in_shape[1]) // 2
+    pad_right = out_shape[1] - vectorized_in_shape[1] - pad_left
     padding = (pad_left, pad_right, pad_top, pad_bottom)
     img_padded = nn.ConstantPad2d(padding, 0)(img)
 
