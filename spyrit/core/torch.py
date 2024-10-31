@@ -701,7 +701,7 @@ def Permutation_Matrix(sig: torch.tensor) -> torch.tensor:
 def center_crop(
     img: torch.tensor,
     out_shape: tuple,
-    in_shape: tuple = None,
+    vectorized_in_shape: tuple = None,
 ) -> torch.tensor:
     """Crops the center of an image to the specified shape.
 
@@ -717,7 +717,7 @@ def center_crop(
         out_shape (tuple): Shape of the output image after cropping. Must be
         a tuple of two integers (height, width).
 
-        in_shape (tuple, optional): Shape of the input image, must be specified
+        vectorized_in_shape (tuple, optional): Shape of the input image, must be specified
         if and only if the input image is vectorized. Must be a tuple of two
         integers (height, width). If None, the input is supposed to be a 2D
         image. Defaults to None.
@@ -728,10 +728,10 @@ def center_crop(
     """
     # if img has shape (..., h*w), reshape it to (..., h, w)
     img_shape = img.shape
-    if in_shape is not None:
-        img = img.reshape(*img_shape[:-1], *in_shape)
+    if vectorized_in_shape is not None:
+        img = img.reshape(*img_shape[:-1], *vectorized_in_shape)
     img_cropped = torchvision.transforms.CenterCrop(out_shape)(img)
-    if in_shape is not None:
+    if vectorized_in_shape is not None:
         img_cropped = img_cropped.reshape(*img_shape[:-1], -1)
     return img_cropped
 
