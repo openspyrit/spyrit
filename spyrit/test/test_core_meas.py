@@ -242,9 +242,9 @@ def test_core_meas():
     assert_shape(y.shape, torch.Size([10, 3, 400]), "Wrong forward size")
     print("ok")
 
-    # forward
+    # forward with extended field of view
     print("\tforward with extended field of view... ", end="")
-    # a batch of 10 motion pictures of 400 images each, of size 50x50
+    # a batch of 10 motion pictures of 400 images each, of size 70x70
     H = torch.rand(400, 2500)
     meas_op = DynamicLinear(H, meas_shape=(50, 50), img_shape=(70, 70))
     x = torch.rand([10, 400, 3, 70, 70], dtype=torch.float)
