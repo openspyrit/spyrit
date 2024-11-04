@@ -171,8 +171,9 @@ class _Base(nn.Module):
             :attr:`eta` (float, optional): Regularization parameter. Only
             relevant when :attr:`reg` is specified. Defaults to None.
 
-            :attr:`diff` (bool, optional): Use only with DynamicSplit measurements.
-            Whether to use the difference of positive and negative patterns.
+            :attr:`diff` (bool, optional): Use only if a split operator is used
+            and if the pseudo inverse has not been computed. Whether to use the
+            difference of positive and negative patterns.
             The difference is applied to the measurements and to the dynamic
             measurement matrix. Defaults to False.
 
@@ -193,25 +194,33 @@ class _Base(nn.Module):
         """
         # have we calculated the pseudo inverse ?
         if hasattr(self, "H_pinv"):
-            A = self.H_pinv.expand(*x.shape[:-1], *self.H_pinv.shape)
-            B = x.unsqueeze(-1).to(A.dtype)
-            ans = torch.matmul(A, B).to(x.dtype).squeeze(-1)
+            ans = self._pinv_mult(x)
 
         else:
 
-            if isinstance(self, Linear):
-                # can we compute the inverse of H ?
+            if type(self) == Linear:
                 H_to_inv = self.H_static
-            elif isinstance(self, DynamicLinear):
-                H_to_inv = self.H_dyn
+            elif isinstance(self, LinearSplit):
                 if diff:
                     x = x[..., ::2] - x[..., 1::2]
-                    H_to_inv = H_to_inv[::2, :] - H_to_inv[1::2, :]
+                    H_to_inv = self.P
+            elif type(self) == DynamicLinear:
+                H_to_inv = self.H_dyn
+            elif isinstance(self, DynamicLinearSplit):
+                if diff:
+                    x = x[..., ::2] - x[..., 1::2]
+                    H_to_inv = self.H_dyn[::2, :] - self.H_dyn[1::2, :]
+                else:
+                    H_to_inv = self.H_dyn
             else:
                 raise NotImplementedError(
                     "It seems you have instanciated a _Base element. This class "
                     + "Should not be called on its own."
                 )
+
+            # cast to dtype of x
+            H_to_inv = H_to_inv.to(x.dtype)
+            # devices are supposed to be the same, don't bother checking
 
             driver = "gelsd"
             if H_to_inv.device != torch.device("cpu"):
@@ -330,6 +339,16 @@ class _Base(nn.Module):
             and N the total number of pixels in the image.
         """
         return input.reshape(*input.shape[:-2], self.N)
+
+    def _pinv_mult(self, y: torch.tensor) -> torch.tensor:
+        """Uses the pre-calculated pseudo inverse to compute the solution.
+        We assume that the pseudo inverse has been calculated and stored in the
+        attribute :attr:`H_pinv`.
+        """
+        A = self.H_pinv.expand(*y.shape[:-1], *self.H_pinv.shape)
+        B = y.unsqueeze(-1).to(A.dtype)
+        ans = torch.matmul(A, B).to(y.dtype).squeeze(-1)
+        return ans
 
     def _set_Ord(self, Ord: torch.tensor) -> None:
         """Set the order matrix used to sort the rows of H. This is used in
@@ -543,15 +562,19 @@ class Linear(_Base):
         :attr:`H_pinv`.
 
         Args:
-            rtol (float, optional): Regularization parameter (cutoff for small
+            reg (str, optional): Regularization method to use. Available options
+            are 'rcond', 'L2' and 'H1'. 'rcond' uses the :attr:`rcond` parameter
+            found in :func:`torch.linalg.lstsq`. This parameter must be specified
+            if the pseudo inverse has not been computed. Defaults to None.
+        
+            eta (float, optional): Regularization parameter (cutoff for small
             singular values, see :mod:`torch.linalg.pinv`). Defaults to None,
             in which case the default value of :mod:`torch.linalg.pinv` is used.
 
         Returns:
             None. The pseudo inverse is stored in the attribute :attr:`H_pinv`.
         """
-        pinv = self._build_pinv(self.H_static, reg, eta)
-        self.H_pinv = pinv
+        self.H_pinv = self._build_pinv(self.H_static, reg, eta)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Applies linear transform to incoming images: :math:`y = Hx`.
@@ -971,7 +994,17 @@ class HadamSplit(LinearSplit):
     # we can build this instead of storing it
     @property
     def H_pinv(self) -> torch.tensor:
-        return self.H.T / self.N
+        return self._param_H_static_pinv.data / self.N
+    
+    @H_pinv.setter
+    def H_pinv(self, value: torch.tensor) -> None:
+        self._param_H_static_pinv = nn.Parameter(
+            value.to(torch.float64), requires_grad=False
+        )
+    
+    @H_pinv.deleter
+    def H_pinv(self) -> None:
+        del self._param_H_static_pinv
 
     def forward_H(self, x: torch.tensor) -> torch.tensor:
         r"""Optimized measurement simulation using the Fast Hadamard Transform.
@@ -1002,6 +1035,26 @@ class HadamSplit(LinearSplit):
         m_flat = self.vectorize(m)
         return self.reindex(m_flat, "cols", True)[..., : self.M]
 
+    def build_H_pinv(self):
+        """ Build the pseudo-inverse (inverse) of the Hadamard matrix H.
+        
+        This computes the pseudo-inverse of the Hadamard matrix H, and stores it
+        in the attribute H_pinv. In the case of an invertible matrix, the
+        pseudo-inverse is the inverse.
+        
+        Args:
+            None.
+        
+        Returns:
+            None. The pseudo-inverse is stored in the attribute H_pinv.        
+        """
+        # the division by self.N is done in the property so as to avoid
+        # memory overconsumption
+        self.H_pinv = self.H.T
+
+    def pinv(self, x, reg = "rcond", eta = 0.001, diff=False):
+        return super().pinv(x, reg, eta, diff)
+
     def inverse(self, y: torch.tensor) -> torch.tensor:
         r"""Inverse transform of Hadamard-domain images.
 
@@ -1013,6 +1066,10 @@ class HadamSplit(LinearSplit):
             For this inverse to work, the input vector must have the same number
             of measurements as there are pixels in the original image
             (:math:`M = N`), i.e. no subsampling is allowed.
+        
+        .. warning::
+            This method is deprecated and will be removed in a future version.
+            Use self.pinv instead.
 
         Args:
             :math:`y`: batch of images in the Hadamard domain of shape
@@ -1054,6 +1111,29 @@ class HadamSplit(LinearSplit):
         x = 1 / self.N * spytorch.fwht_2d(y, True)
         return x
 
+    def _pinv_mult(self, y):
+        """We use fast walsh-hadamard transform to compute the pseudo inverse.
+        
+        Args:
+            y (torch.tensor): batch of images in the Hadamard domain of shape
+            (*,M). * denotes any size, and M the number of measurements.
+        
+        Returns:
+            torch.tensor: batch of images in the image domain of shape (*,N).
+        """
+        # zero-pad the measurements until size N
+        y_shape = y.shape
+        y_new_shape = y_shape[:-1] + (self.N,)
+        y_new = torch.zeros(y_new_shape, device=y.device, dtype=y.dtype)
+        y_new[..., : y_shape[-1]] = y
+        
+        # unsort the measurements
+        y_new = self.reindex(y_new, "cols", False)
+        y_new = self.unvectorize(y_new)
+
+        # inverse of full transform
+        return 1 / self.N * spytorch.fwht_2d(y_new, True)
+        
     def _set_Ord(self, Ord: torch.tensor) -> None:
         """Set the order matrix used to sort the rows of H."""
         # get only the indices, as done in spyrit.core.torch.sort_by_significance
