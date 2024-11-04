@@ -76,6 +76,7 @@ class _Base(nn.Module):
 
         self._param_Ord = nn.Parameter(Ord.to(torch.float32), requires_grad=False)
         self._indices = ind.to(torch.int32)
+        self._device_tracker = nn.Parameter(torch.tensor(0.), requires_grad=False)
 
     ### PROPERTIES ------
     @property
@@ -140,7 +141,7 @@ class _Base(nn.Module):
 
     @property
     def device(self) -> torch.device:
-        return self.Ord.device
+        return self._device_tracker.device
 
     ### -------------------
 
@@ -341,21 +342,8 @@ class _Base(nn.Module):
             H_natural, Ord, "rows", False, get_indices=True
         )
         # update values of H, Ord
-        self._param_H_static.data = H_resorted
-        self._param_Ord.data = Ord
-
-    # def _set_P(self, H_static: torch.tensor) -> None:
-    #     """Set the positive and negative components of the measurement matrix
-    #     P from the static measurement matrix H_static. For internal use only.
-    #     Used in classes *Split and *HadamSplit."""
-    #     H_pos = nn.functional.relu(H_static)
-    #     H_neg = nn.functional.relu(-H_static)
-    #     self._param_P = nn.Parameter(
-    #         torch.cat([H_pos, H_neg], 1).reshape(
-    #             2 * H_static.shape[0], H_static.shape[1]
-    #         ),
-    #         requires_grad=False,
-    #     )
+        self._param_H_static.data = H_resorted.to(self.device)
+        self._param_Ord.data = Ord.to(self.device)
 
     def _build_pinv(self, tensor: torch.tensor, reg: str, eta: float) -> torch.tensor:
 
@@ -1066,14 +1054,12 @@ class HadamSplit(LinearSplit):
         x = 1 / self.N * spytorch.fwht_2d(y, True)
         return x
 
-    # def _set_Ord(self, Ord: torch.tensor) -> None:
-    #     """Set the order matrix used to sort the rows of H."""
-    #     super()._set_Ord(Ord)
-    #     # update P /// DO NOT NEED ANYMORE AS P IS NOT STORED
-    #     # self._set_P(self.H_static)
-
-    # def forward_transform(self, x):
-    #     return spytorch.fwht_2d(x)
+    def _set_Ord(self, Ord: torch.tensor) -> None:
+        """Set the order matrix used to sort the rows of H."""
+        # get only the indices, as done in spyrit.core.torch.sort_by_significance
+        self._indices = torch.argsort(-Ord.flatten(), stable=True).to(torch.int32)
+        # update the Ord attribute
+        self._param_Ord.data = Ord.to(self.device)
 
 
 # =============================================================================
@@ -1232,7 +1218,7 @@ class DynamicLinear(_Base):
 
     @H_pinv.deleter
     def H_pinv(self) -> None:
-        del self._param_H_dyn_pinv
+        del self.H_dyn_pinv
 
     @property
     def H_dyn_pinv(self) -> torch.tensor:
@@ -1289,10 +1275,13 @@ class DynamicLinear(_Base):
             without Warping the Patterns. 2024. hal-04533981
         """
 
+        if self.device != motion.device:
+            raise RuntimeError(
+                "The device of the motion and the measurement operator must be the same."
+            )
+        
         # store the mode in attribute
         self._recon_mode = mode
-        # store the device used in the deformation field
-        device = motion.field.device
 
         try:
             del self._param_H_dyn
@@ -1306,19 +1295,14 @@ class DynamicLinear(_Base):
         except AttributeError:
             pass
 
-        if isinstance(self, DynamicLinearSplit):
-            meas_pattern = self.P
-        else:
-            meas_pattern = self.H_static
-
-        n_frames = meas_pattern.shape[0]
+        n_frames = motion.n_frames
 
         # get deformation field from motion
         # scale from [-1;1] x [-1;1] to [0;width-1] x [0;height-1]
-        scale_factor = (torch.tensor(self.img_shape) - 1).to(device)
+        scale_factor = (torch.tensor(self.img_shape) - 1).to(self.device)
         def_field = (motion.field + 1) / 2 * scale_factor
 
-        # drawings of the kernels for bilinear and bicubic interpolation
+        # drawings of the kernels for bilinear and bicubic 'interpolation'
         #   00    point      01
         #    +------+--------+
         #    |      |        |
@@ -1354,14 +1338,14 @@ class DynamicLinear(_Base):
         # moveaxis because crop expects (h,w) as last dimensions
         def_field = spytorch.center_crop(
             def_field.moveaxis(-1, 0), self.meas_shape
-        ).moveaxis(
-            0, -1
-        )  # shape (n_frames, meas_h, meas_w, 2)
+        ).moveaxis(0, -1)  # shape (n_frames, meas_h, meas_w, 2)
+        
         # coordinate of top-left closest corner
         def_field_floor = def_field.floor().to(torch.int64)
         # shape (n_frames, meas_h, meas_w, 2)
         # compute decimal part in x y direction
         dx, dy = torch.split((def_field - def_field_floor), [1, 1], dim=-1)
+        del def_field
         dx, dy = dx.squeeze(-1), dy.squeeze(-1)
         # dx.shape = dy.shape = (n_frames, meas_h, meas_w)
         # evaluate the spline at the decimal part
@@ -1370,9 +1354,9 @@ class DynamicLinear(_Base):
                 "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
             )
             .reshape(n_frames, kernel_n_pts, self.h * self.w)
-            .to(device)
         )
         # shape (n_frames, kernel_n_pts, meas_h*meas_w)
+        del dx, dy
 
         # PART 2: FLATTEN THE INDICES
         # _________________________________________________________________
@@ -1381,18 +1365,19 @@ class DynamicLinear(_Base):
         # point grid to contribute to the interpolation.
         # get coordinate of point _00
         def_field_00 = def_field_floor - (kernel_size // 2 - 1)
+        del def_field_floor
         # shift the grid for phantom rows/columns
         def_field_00 += kernel_width
         # create a mask indicating if either of the 2 indices is out of bounds
         # (w,h) because the def_field is in (x,y) coordinates
         maxs = torch.tensor(
-            [self.img_w + kernel_width, self.img_h + kernel_width], device=device
+            [self.img_w + kernel_width, self.img_h + kernel_width], device=self.device
         )
         mask = torch.logical_or(
             (def_field_00 < 0).any(dim=-1), (def_field_00 >= maxs).any(dim=-1)
         )  # shape (n_frames, meas_h, meas_w)
         # trash index receives all the out-of-bounds indices
-        trash = (maxs[0] * maxs[1]).to(torch.int64).to(device)
+        trash = (maxs[0] * maxs[1]).to(torch.int64).to(self.device)
         # if the indices are out of bounds, we put the trash index
         # otherwise we put the flattened index (y*w + x)
         flattened_indices = torch.where(
@@ -1400,13 +1385,19 @@ class DynamicLinear(_Base):
             trash,
             def_field_00[..., 0] + def_field_00[..., 1] * (self.img_w + kernel_width),
         ).reshape(n_frames, self.h * self.w)
+        del def_field_00, mask
 
         # PART 3: WARP H MATRIX WITH FLATTENED INDICES
         # _________________________________________________________________
         # Build 4 submatrices with 4 weights for bilinear interpolation
+        if isinstance(self, DynamicLinearSplit):
+            meas_pattern = self.P
+        else:
+            meas_pattern = self.H_static
         meas_dxy = (
-            meas_pattern.reshape(n_frames, 1, self.h * self.w).to(torch.float64) * dxy
-        ).to(device)
+            meas_pattern.reshape(n_frames, 1, self.h * self.w).to(dxy.dtype) * dxy
+        )
+        del dxy, meas_pattern
         # shape (n_frames, kernel_size^2, meas_h*meas_w)
         # Create a larger H_dyn that will be folded
         meas_dxy_sorted = torch.zeros(
@@ -1416,12 +1407,14 @@ class DynamicLinear(_Base):
                 (self.img_h + kernel_width) * (self.img_w + kernel_width)
                 + 1,  # +1 for trash
             ),
-            dtype=torch.float64,
-        ).to(device)
+            dtype = torch.float64,
+            device = self.device
+        )
         # add at flattened_indices the values of meas_dxy (~warping)
         meas_dxy_sorted.scatter_add_(
             2, flattened_indices.unsqueeze(1).expand_as(meas_dxy), meas_dxy
         )
+        del flattened_indices, meas_dxy
         # drop last column (trash)
         meas_dxy_sorted = meas_dxy_sorted[:, :, :-1]
         self.meas_dxy_sorted = meas_dxy_sorted
@@ -1537,8 +1530,7 @@ class DynamicLinear(_Base):
             "thw,...tchw->...ct", self.unvectorize(op).to(x.dtype), x_cropped
         )
 
-    @staticmethod
-    def _spline(dx, mode):
+    def _spline(self, dx, mode):
         """
         Returns a 2D row-like tensor containing the values of dx evaluated at
         each B-spline (2 values for bilinear, 4 for bicubic).
@@ -1549,9 +1541,9 @@ class DynamicLinear(_Base):
             out: (n_frames, {2,4}, self.h, self.w)
         """
         if mode == "bilinear":
-            return torch.stack((1 - dx, dx), dim=1)
-        if mode == "bicubic":
-            return torch.stack(
+            ans = torch.stack((1 - dx, dx), dim=1)
+        elif mode == "bicubic":
+            ans = torch.stack(
                 (
                     (1 - dx) ** 3 / 6,
                     2 / 3 - dx**2 * (2 - dx) / 2,
@@ -1560,8 +1552,8 @@ class DynamicLinear(_Base):
                 ),
                 dim=1,
             )
-        if mode == "schaum":
-            return torch.stack(
+        elif mode == "schaum":
+            ans = torch.stack(
                 (
                     dx / 6 * (dx - 1) * (2 - dx),
                     (1 - dx / 2) * (1 - dx**2),
@@ -1575,7 +1567,7 @@ class DynamicLinear(_Base):
                 f"The mode {mode} is invalid, please choose bilinear, "
                 + "bicubic or schaum."
             )
-
+        return ans.to(self.device)
 
 # =============================================================================
 class DynamicLinearSplit(DynamicLinear):
@@ -1941,4 +1933,11 @@ class DynamicHadamSplit(DynamicLinearSplit):
     def H_static(self) -> torch.tensor:
         return self.reindex(spytorch.walsh2_matrix(self.h), "rows", False)[
             : self.M, :
-        ].to(self.indices.device)
+        ].to(self.device)
+
+    def _set_Ord(self, Ord: torch.tensor) -> None:
+        """Set the order matrix used to sort the rows of H."""
+        # get only the indices, as done in spyrit.core.torch.sort_by_significance
+        self._indices = torch.argsort(-Ord.flatten(), stable=True).to(torch.int32)
+        # update the Ord attribute
+        self._param_Ord.data = Ord.to(self.device)
