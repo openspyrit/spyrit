@@ -69,10 +69,9 @@ class _Base(nn.Module):
             H_static = H_static.to(torch.float32)
 
         # attributes for internal use
-        if self.save_H:
-            self._param_H_static = nn.Parameter(H_static, requires_grad=False)
-            # need to store M because H_static may be cropped (see HadamSplit)
-            self._M = H_static.shape[0]
+        self._param_H_static = nn.Parameter(H_static, requires_grad=False)
+        # need to store M because H_static may be cropped (see HadamSplit)
+        self._M = H_static.shape[0]
 
         self._param_Ord = nn.Parameter(Ord.to(torch.float32), requires_grad=False)
         self._indices = ind.to(torch.int32)
@@ -138,6 +137,12 @@ class _Base(nn.Module):
     def H_static(self) -> torch.tensor:
         """Static measurement matrix H."""
         return self._param_H_static.data[: self.M, :]
+
+    @property
+    def P(self) -> torch.tensor:
+        """Measurement matrix P with positive and negative components. Used in
+        classes *Split and *HadamSplit."""
+        return self._param_P.data[: 2 * self.M, :]
 
     @property
     def device(self) -> torch.device:
@@ -364,6 +369,19 @@ class _Base(nn.Module):
         self._param_H_static.data = H_resorted.to(self.device)
         self._param_Ord.data = Ord.to(self.device)
 
+    def _set_P(self, H_static: torch.tensor) -> None:
+        """Set the positive and negative components of the measurement matrix
+        P from the static measurement matrix H_static. For internal use only.
+        Used in classes *Split and *HadamSplit."""
+        H_pos = nn.functional.relu(H_static)
+        H_neg = nn.functional.relu(-H_static)
+        self._param_P = nn.Parameter(
+            torch.cat([H_pos, H_neg], 1).reshape(
+                2 * H_static.shape[0], H_static.shape[1]
+            ),
+            requires_grad=False,
+        )
+
     def _build_pinv(self, tensor: torch.tensor, reg: str, eta: float) -> torch.tensor:
 
         if reg == "rcond":
@@ -514,8 +532,6 @@ class Linear(_Base):
           (H_pinv): True
         )
     """
-
-    save_H = True
 
     def __init__(
         self,
@@ -756,8 +772,6 @@ class LinearSplit(Linear):
         )
     """
 
-    save_H = True
-
     def __init__(
         self,
         H: torch.tensor,
@@ -767,18 +781,6 @@ class LinearSplit(Linear):
         meas_shape: tuple = None,  # (height, width)
     ):
         super().__init__(H, pinv, rtol, Ord, meas_shape)
-
-        # if self.save_H:
-        #     self._set_P(self.H_static)
-
-    # P is not supposed to be stored anymore
-    @property
-    def P(self) -> torch.tensor:
-        H_pos = nn.functional.relu(self.H_static)
-        H_neg = nn.functional.relu(-self.H_static)
-        return torch.cat([H_pos, H_neg], 1).reshape(
-            2 * self.H_static.shape[0], self.H_static.shape[1]
-        )
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Applies linear transform to incoming images: :math:`y = Px`.
@@ -955,8 +957,6 @@ class HadamSplit(LinearSplit):
         )
     """
 
-    save_H = False
-
     def __init__(
         self,
         M: int,
@@ -972,26 +972,6 @@ class HadamSplit(LinearSplit):
         super().__init__(empty, pinv=False, Ord=Ord, meas_shape=(h, h))
         self._M = M
 
-        # set H_pinv as it is the transpose of H / self.N
-        # self.H_pinv = self.H.T / self.N
-
-    # H_static is not supposed to be stored anymore
-    @property
-    def H_static(self) -> torch.tensor:
-        H_sorted = self.reindex(spytorch.walsh2_matrix(self.h), "rows", False)
-        return H_sorted[: self.M, :].to(self.device)
-
-    # P is not supposed to be stored anymore
-    @property
-    def P(self) -> torch.tensor:
-        H_static = self.H_static
-        H_pos = nn.functional.relu(H_static)
-        H_neg = nn.functional.relu(-H_static)
-        return torch.cat([H_pos, H_neg], 1).reshape(
-            2 * H_static.shape[0], H_static.shape[1]
-        )
-
-    # we can build this instead of storing it
     @property
     def H_pinv(self) -> torch.tensor:
         return self._param_H_static_pinv.data / self.N
@@ -1243,7 +1223,6 @@ class DynamicLinear(_Base):
 
     # Class variable
     _measurement_mode = "static"
-    save_H = True
 
     def __init__(
         self,
@@ -1754,8 +1733,6 @@ class DynamicLinearSplit(DynamicLinear):
         without Warping the Patterns. 2024. hal-04533981
     """
 
-    save_H = True
-
     def __init__(
         self,
         H: torch.tensor,
@@ -1765,18 +1742,6 @@ class DynamicLinearSplit(DynamicLinear):
     ):
         # call constructor of DynamicLinear
         super().__init__(H, Ord, meas_shape, img_shape)
-
-        # if self.save_H:
-        #     self._set_P(self.H_static)
-
-    # P is not supposed to be stored anymore
-    @property
-    def P(self) -> torch.tensor:
-        H_pos = nn.functional.relu(self.H_static)
-        H_neg = nn.functional.relu(-self.H_static)
-        return torch.cat([H_pos, H_neg], 1).reshape(
-            2 * self.H_static.shape[0], self.H_static.shape[1]
-        )
 
     @property  # override _Base definition
     def operator(self) -> torch.tensor:
@@ -1991,8 +1956,6 @@ class DynamicHadamSplit(DynamicLinearSplit):
         without Warping the Patterns. 2024. hal-04533981
     """
 
-    save_H = False
-
     def __init__(
         self,
         M: int,
@@ -2007,13 +1970,6 @@ class DynamicHadamSplit(DynamicLinearSplit):
         # we pass the whole F matrix to the constructor
         super().__init__(empty, Ord, (h, h), img_shape)
         self._M = M
-
-    # H_static is not supposed to be stored anymore
-    @property
-    def H_static(self) -> torch.tensor:
-        return self.reindex(spytorch.walsh2_matrix(self.h), "rows", False)[
-            : self.M, :
-        ].to(self.device)
 
     def _set_Ord(self, Ord: torch.tensor) -> None:
         """Set the order matrix used to sort the rows of H."""
