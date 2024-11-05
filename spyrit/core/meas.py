@@ -208,6 +208,8 @@ class _Base(nn.Module):
             elif isinstance(self, LinearSplit):
                 if diff:
                     x = x[..., ::2] - x[..., 1::2]
+                    H_to_inv = self.H
+                else:
                     H_to_inv = self.P
             elif type(self) == DynamicLinear:
                 H_to_inv = self.H_dyn
