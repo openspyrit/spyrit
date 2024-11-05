@@ -26,6 +26,9 @@
 </summary>
 
 ### spyrit.core
+* #### General changes
+    * The input and output shapes have been standardized across operators. All still images (i.e. not videos) have shape `(*, h, w)`, where `*` is any batch dimension (e.g. batch size and number of channels), and `h` and `w` are the height and width of the image. All measurements have shape `(*, M)`, where `*` is the same batch dimension than the images they come from. Videos have shape `(*, t, c, h, w)` where `t` is the time dimension, representing the number of frames in the video, `c` is the number of channels. Dynamic measurements from videos will thus have shape `(*, c, M)`.
+    * The overall use of gpu has been improved. Every class of the `core` module now has a method `self.device` that allows to track the device on which its parameters are.
 * #### spyrit.core.meas
     * / The regularization value 'L1' has been changed to 'rcond'. The behavior is unchanged but the reconstruction did not correspond to L1 regularization.
     * / Fixed .pinv() output shape (it was transposed with some regularisation methods)
@@ -36,7 +39,7 @@
     * \- The class core.recon.Denoise_layer is deprecated and will be removed in a future version
     * / The class TikhonovMeasurementPriorDiag no longer uses Denoise_layer and uses instead an internal method to handle the denoising.
 * #### spyrit.core.train
-    * / load_net() uses the weights_only=True parameter in the torch.load() function. Documentation updated
+    * / load_net() uses the weights_only=True parameter in the torch.load() function. Documentation updated.
 * #### spyrit.core.warp
     * / The warping operation (forward method) now has to be performed on (b,c,h,w) input tensors, and returns (b, time, c, h, w) output tensors.
     * / The AffineDeformationField does not store anymore the field as an attribute, but is rather generated on the fly. This allows for more efficient memory management.
@@ -44,7 +47,6 @@
     * \+ It is now possible to use biquintic (5th-order) warping. This uses scikit-image's (skimage) warp function, which relies on numpy arrays.
 
 ### Tutorials
-
 * Tutorial 2 integrated the change from 'L1' to 'rcond'
 
 </details>
