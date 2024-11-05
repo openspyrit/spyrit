@@ -317,26 +317,14 @@ class DeformationField(nn.Module):
         # using float64 is preferred for accuracy
         if self.field.dtype == torch.float32:
             if self.__class__ == DeformationField:
-                msg = (
-                    "Consider using float64 when storing the deformation "
-                    + "field for greater accuracy."
-                )
+                msg = "Consider using float64 when storing the deformation field for greater accuracy."
             if self.__class__ == AffineDeformationField:
-                msg = (
-                    "Consider using float64 when defining the output "
-                    + "type of the affine transformation matrix "
-                    + ":attr:`func` for greater accuracy."
-                )
+                msg = "Consider using float64 when defining the output type of the affine transformation matrix :attr:`func` for greater accuracy."
             warnings.warn(msg, UserWarning)
 
         # if the field goes bayond +/-2, warn the user
         if self.warn_range and (self.field.abs() > 2).any():
-            msg = (
-                "The deformation field goes beyond the range [-2;2], "
-                + "everything mapped outside [-1;1] will not be visible. "
-                + "Suppress this warning by setting "
-                + "self.warn_range = False."
-            )
+            msg = "The deformation field goes beyond the range [-2;2], everything mapped outside [-1;1] will not be visible. Suppress this warning by setting self.warn_range = False."
             warnings.warn(msg, UserWarning)
 
     def _attributeslist(self):
