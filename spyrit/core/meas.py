@@ -18,7 +18,7 @@ to simulate measurements of moving objects, represented as a sequence of images.
 """
 
 import warnings
-import memory_profiler as mprof
+# import memory_profiler as mprof
 
 import math
 import torch
@@ -1308,7 +1308,7 @@ class DynamicLinear(_Base):
         except UnboundLocalError:
             pass
 
-    @mprof.profile
+    # @mprof.profile
     def build_H_dyn(self, motion: DeformationField, mode: str = "bilinear") -> None:
         """Build the dynamic measurement matrix `H_dyn`.
 
