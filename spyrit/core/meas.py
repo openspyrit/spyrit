@@ -204,14 +204,8 @@ class _Base(nn.Module):
 
         else:
 
-            if type(self) == Linear:
+            if isinstance(self, Linear):
                 H_to_inv = self.H_static
-            elif isinstance(self, LinearSplit):
-                if diff:
-                    x = x[..., ::2] - x[..., 1::2]
-                    H_to_inv = self.H
-                else:
-                    H_to_inv = self.P
             elif type(self) == DynamicLinear:
                 H_to_inv = self.H_dyn
             elif isinstance(self, DynamicLinearSplit):
@@ -414,7 +408,7 @@ class _Base(nn.Module):
                 f"Regularization method '{reg}' is not implemented. Please "
                 + "choose either 'rcond', 'L2' or 'H1'."
             )
-        return pinv
+        return pinv.to(self.device)
 
     def _attributeslist(self) -> list:
         _list = [
@@ -784,7 +778,7 @@ class LinearSplit(Linear):
         meas_shape: tuple = None,  # (height, width)
     ):
         super().__init__(H, pinv, rtol, Ord, meas_shape)
-        self._set_P(H)
+        self._set_P(self.H_static)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Applies linear transform to incoming images: :math:`y = Px`.
@@ -968,12 +962,11 @@ class HadamSplit(LinearSplit):
         Ord: torch.tensor = None,
     ):
 
-        # F = spytorch.walsh2_matrix(h)
-        empty = torch.empty(h**2, h**2)  # just for correct shape
+        F = spytorch.walsh2_matrix(h)
 
         # we pass the whole F matrix to the constructor, but override the
         # calls self.H etc to only return the first M rows
-        super().__init__(empty, pinv=False, Ord=Ord, meas_shape=(h, h))
+        super().__init__(F, pinv=False, Ord=Ord, meas_shape=(h, h))
         self._M = M
 
     @property
@@ -1520,8 +1513,7 @@ class DynamicLinear(_Base):
                 "The dynamic measurement matrix H has not been set yet. "
                 + "Please call build_H_dyn() before computing the pseudo-inverse."
             ) from e
-        pinv = self._build_pinv(H_dyn, reg, eta)
-        self.H_dyn_pinv = pinv
+        self.H_dyn_pinv = self._build_pinv(H_dyn, reg, eta)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
