@@ -255,9 +255,9 @@ class Poisson(NoNoise):
         """
         x = super().forward(x)  # NoNoise forward (scaling to [0, 1])
         x *= self.alpha
-        return torch.poisson(
-            F.relu(x)
-        )  # truncate negative values to zero, otherwise error
+        x = F.relu(x)  # remove small negative values
+        x = torch.poisson(x)
+        return x
 
 
 # =============================================================================
