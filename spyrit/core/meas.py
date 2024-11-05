@@ -18,6 +18,7 @@ to simulate measurements of moving objects, represented as a sequence of images.
 """
 
 import warnings
+import memory_profiler as mprof
 
 import math
 import torch
@@ -783,6 +784,7 @@ class LinearSplit(Linear):
         meas_shape: tuple = None,  # (height, width)
     ):
         super().__init__(H, pinv, rtol, Ord, meas_shape)
+        self._set_P(H)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Applies linear transform to incoming images: :math:`y = Px`.
@@ -1306,6 +1308,7 @@ class DynamicLinear(_Base):
         except UnboundLocalError:
             pass
 
+    @mprof.profile
     def build_H_dyn(self, motion: DeformationField, mode: str = "bilinear") -> None:
         """Build the dynamic measurement matrix `H_dyn`.
 
@@ -1744,6 +1747,7 @@ class DynamicLinearSplit(DynamicLinear):
     ):
         # call constructor of DynamicLinear
         super().__init__(H, Ord, meas_shape, img_shape)
+        self._set_P(H)
 
     @property  # override _Base definition
     def operator(self) -> torch.tensor:
