@@ -18,6 +18,7 @@ to simulate measurements of moving objects, represented as a sequence of images.
 """
 
 import warnings
+
 # import memory_profiler as mprof
 
 import math
@@ -76,7 +77,7 @@ class _Base(nn.Module):
 
         self._param_Ord = nn.Parameter(Ord.to(torch.float32), requires_grad=False)
         self._indices = ind.to(torch.int32)
-        self._device_tracker = nn.Parameter(torch.tensor(0.), requires_grad=False)
+        self._device_tracker = nn.Parameter(torch.tensor(0.0), requires_grad=False)
 
     ### PROPERTIES ------
     @property
@@ -579,7 +580,7 @@ class Linear(_Base):
             are 'rcond', 'L2' and 'H1'. 'rcond' uses the :attr:`rcond` parameter
             found in :func:`torch.linalg.lstsq`. This parameter must be specified
             if the pseudo inverse has not been computed. Defaults to None.
-        
+
             eta (float, optional): Regularization parameter (cutoff for small
             singular values, see :mod:`torch.linalg.pinv`). Defaults to None,
             in which case the default value of :mod:`torch.linalg.pinv` is used.
@@ -972,13 +973,13 @@ class HadamSplit(LinearSplit):
     @property
     def H_pinv(self) -> torch.tensor:
         return self._param_H_static_pinv.data / self.N
-    
+
     @H_pinv.setter
     def H_pinv(self, value: torch.tensor) -> None:
         self._param_H_static_pinv = nn.Parameter(
             value.to(torch.float64), requires_grad=False
         )
-    
+
     @H_pinv.deleter
     def H_pinv(self) -> None:
         del self._param_H_static_pinv
@@ -1013,23 +1014,23 @@ class HadamSplit(LinearSplit):
         return self.reindex(m_flat, "cols", True)[..., : self.M]
 
     def build_H_pinv(self):
-        """ Build the pseudo-inverse (inverse) of the Hadamard matrix H.
-        
+        """Build the pseudo-inverse (inverse) of the Hadamard matrix H.
+
         This computes the pseudo-inverse of the Hadamard matrix H, and stores it
         in the attribute H_pinv. In the case of an invertible matrix, the
         pseudo-inverse is the inverse.
-        
+
         Args:
             None.
-        
+
         Returns:
-            None. The pseudo-inverse is stored in the attribute H_pinv.        
+            None. The pseudo-inverse is stored in the attribute H_pinv.
         """
         # the division by self.N is done in the property so as to avoid
         # memory overconsumption
         self.H_pinv = self.H.T
 
-    def pinv(self, x, reg = "rcond", eta = 0.001, diff=False):
+    def pinv(self, x, reg="rcond", eta=0.001, diff=False):
         return super().pinv(x, reg, eta, diff)
 
     def inverse(self, y: torch.tensor) -> torch.tensor:
@@ -1043,7 +1044,7 @@ class HadamSplit(LinearSplit):
             For this inverse to work, the input vector must have the same number
             of measurements as there are pixels in the original image
             (:math:`M = N`), i.e. no subsampling is allowed.
-        
+
         .. warning::
             This method is deprecated and will be removed in a future version.
             Use self.pinv instead.
@@ -1090,11 +1091,11 @@ class HadamSplit(LinearSplit):
 
     def _pinv_mult(self, y):
         """We use fast walsh-hadamard transform to compute the pseudo inverse.
-        
+
         Args:
             y (torch.tensor): batch of images in the Hadamard domain of shape
             (*,M). * denotes any size, and M the number of measurements.
-        
+
         Returns:
             torch.tensor: batch of images in the image domain of shape (*,N).
         """
@@ -1103,14 +1104,14 @@ class HadamSplit(LinearSplit):
         y_new_shape = y_shape[:-1] + (self.N,)
         y_new = torch.zeros(y_new_shape, device=y.device, dtype=y.dtype)
         y_new[..., : y_shape[-1]] = y
-        
+
         # unsort the measurements
         y_new = self.reindex(y_new, "cols", False)
         y_new = self.unvectorize(y_new)
 
         # inverse of full transform
         return 1 / self.N * spytorch.fwht_2d(y_new, True)
-        
+
     def _set_Ord(self, Ord: torch.tensor) -> None:
         """Set the order matrix used to sort the rows of H."""
         # get only the indices, as done in spyrit.core.torch.sort_by_significance
@@ -1336,7 +1337,7 @@ class DynamicLinear(_Base):
             raise RuntimeError(
                 "The device of the motion and the measurement operator must be the same."
             )
-        
+
         # store the mode in attribute
         self._recon_mode = mode
 
@@ -1395,8 +1396,10 @@ class DynamicLinear(_Base):
         # moveaxis because crop expects (h,w) as last dimensions
         def_field = spytorch.center_crop(
             def_field.moveaxis(-1, 0), self.meas_shape
-        ).moveaxis(0, -1)  # shape (n_frames, meas_h, meas_w, 2)
-        
+        ).moveaxis(
+            0, -1
+        )  # shape (n_frames, meas_h, meas_w, 2)
+
         # coordinate of top-left closest corner
         def_field_floor = def_field.floor().to(torch.int64)
         # shape (n_frames, meas_h, meas_w, 2)
@@ -1406,12 +1409,9 @@ class DynamicLinear(_Base):
         dx, dy = dx.squeeze(-1), dy.squeeze(-1)
         # dx.shape = dy.shape = (n_frames, meas_h, meas_w)
         # evaluate the spline at the decimal part
-        dxy = (
-            torch.einsum(
-                "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
-            )
-            .reshape(n_frames, kernel_n_pts, self.h * self.w)
-        )
+        dxy = torch.einsum(
+            "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
+        ).reshape(n_frames, kernel_n_pts, self.h * self.w)
         # shape (n_frames, kernel_n_pts, meas_h*meas_w)
         del dx, dy
 
@@ -1464,8 +1464,8 @@ class DynamicLinear(_Base):
                 (self.img_h + kernel_width) * (self.img_w + kernel_width)
                 + 1,  # +1 for trash
             ),
-            dtype = torch.float64,
-            device = self.device
+            dtype=torch.float64,
+            device=self.device,
         )
         # add at flattened_indices the values of meas_dxy (~warping)
         meas_dxy_sorted.scatter_add_(
@@ -1624,6 +1624,7 @@ class DynamicLinear(_Base):
                 + "bicubic or schaum."
             )
         return ans.to(self.device)
+
 
 # =============================================================================
 class DynamicLinearSplit(DynamicLinear):
