@@ -867,6 +867,10 @@ class LinearSplit(Linear):
         # call Linear.forward() method
         return super().forward(x)
 
+    def _set_Ord(self, Ord):
+        super()._set_Ord(Ord)
+        self._set_P(self.H_static)
+
 
 # =============================================================================
 class HadamSplit(LinearSplit):
@@ -1739,7 +1743,7 @@ class DynamicLinearSplit(DynamicLinear):
     ):
         # call constructor of DynamicLinear
         super().__init__(H, Ord, meas_shape, img_shape)
-        self._set_P(H)
+        self._set_P(self.H_static)
 
     @property  # override _Base definition
     def operator(self) -> torch.tensor:
@@ -1840,11 +1844,11 @@ class DynamicLinearSplit(DynamicLinear):
         """
         return super().forward(x)
 
-    # def _set_Ord(self, Ord: torch.tensor) -> None:
-    #     """Set the order matrix used to sort the rows of H."""
-    #     super()._set_Ord(Ord)
-    #     # update P /// DO NOT NEED ANYMORE AS P IS NOT STORED
-    #     # self._set_P(self.H_static)
+    def _set_Ord(self, Ord: torch.tensor) -> None:
+        """Set the order matrix used to sort the rows of H."""
+        super()._set_Ord(Ord)
+        # update P 
+        self._set_P(self.H_static)
 
 
 # =============================================================================
