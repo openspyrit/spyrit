@@ -34,7 +34,8 @@
     * / Fixed .pinv() output shape (it was transposed with some regularisation methods)
     * / Fixed some device errors when using cuda with .pinv()
     * / The measurement matrix H is now stored with the data type it is given to the constructor (it was previously converted to torch.float32 for memory reasons)
-    * \+ added in the .pinv() method a diff parameter enabling differentiated reconstructions (subtracting negative patterns/measurements to the positive patterns/measurements)
+    * \+ added in the .pinv() method a diff parameter enabling differentiated reconstructions (subtracting negative patterns/measurements to the positive patterns/measurements), only available for dynamic operators.
+    * / For HadamSplit, the pinv has been overwritten to use a fast Walsh-Hadamard transform, zero-padding the measurements if necessary (in the case of subsampling). The inverse() method has been deprecated and will be removed in a future release.
 * #### spyrit.core.recon
     * \- The class core.recon.Denoise_layer is deprecated and will be removed in a future version
     * / The class TikhonovMeasurementPriorDiag no longer uses Denoise_layer and uses instead an internal method to handle the denoising.
@@ -48,6 +49,7 @@
 
 ### Tutorials
 * Tutorial 2 integrated the change from 'L1' to 'rcond'
+* All Tutorials have been updated to include the above mentioned changes.
 
 </details>
 
