@@ -68,12 +68,12 @@ jobs:
       if: matrix.os != 'windows-latest'
       run: |
           pip install -e .
-          python spyrit/test/run_tests.py
+          python spyrit/test/run_tests.py || exit -1
     - name: Run the tests on Windows
       if: matrix.os == 'windows-latest'
       run: |
           pip install -e .
-          python spyrit\test\run_tests.py
+          python spyrit\test\run_tests.py || exit -1
 
   test_wheel:
     runs-on: ${{ matrix.os }}
@@ -105,7 +105,7 @@ jobs:
           cd dist
           pip install spyrit-*.whl
           cd ..
-          python spyrit/test/run_tests.py
+          python spyrit/test/run_tests.py || exit -1
     - name: Run the tests on Windows
       if: matrix.os == 'windows-latest'
       run: |
@@ -114,7 +114,7 @@ jobs:
           echo $package
           pip install $package
           cd ..
-          python spyrit\test\run_tests.py
+          python spyrit\test\run_tests.py || exit -1
 
   publish_wheel:
     runs-on: ubuntu-latest
