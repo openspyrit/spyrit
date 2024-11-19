@@ -165,6 +165,31 @@ class DirectPoisson(nn.Module):
 
         return (x + 1) / 2 * beta
 
+    def unsplit(self, x: torch.tensor, mode: str = "diff") -> torch.tensor:
+        """Unsplits measurements by combining odd and even indices.
+
+        The parameter `mode` can be either 'diff' or 'sum'. The first one
+        computes the difference between the even and odd indices, while the
+        second one computes the sum.
+
+        Args:
+            x (torch.tensor): Measurements, can have any shape.
+
+            mode (str): 'diff' or 'sum'. If 'diff', the difference between the
+            even and odd indices is computed. If 'sum', the sum is computed.
+            Defaults to 'diff'.
+
+        Returns:
+            torch.tensor: The input tensor with the even and odd indices
+            of the last dimension combined (either by difference or sum).
+        """
+        if mode == "diff":
+            return x[..., 0::2] - x[..., 1::2]
+        elif mode == "sum":
+            return x[..., 0::2] + x[..., 1::2]
+        else:
+            raise ValueError("mode should be either 'diff' or 'sum'")
+
 
 # =============================================================================
 class SplitPoisson(DirectPoisson):
@@ -210,32 +235,7 @@ class SplitPoisson(DirectPoisson):
 
     # @property
     # def H_ones(self):
-    #     return self.meas_op.forward_H(torch.ones(self.h, self.w))
-
-    def unsplit(self, x: torch.tensor, mode: str = "diff") -> torch.tensor:
-        """Unsplits measurements by combining odd and even indices.
-
-        The parameter `mode` can be either 'diff' or 'sum'. The first one
-        computes the difference between the even and odd indices, while the
-        second one computes the sum.
-
-        Args:
-            x (torch.tensor): Measurements, can have any shape.
-
-            mode (str): 'diff' or 'sum'. If 'diff', the difference between the
-            even and odd indices is computed. If 'sum', the sum is computed.
-            Defaults to 'diff'.
-
-        Returns:
-            torch.tensor: The input tensor with the even and odd indices
-            of the last dimension combined (either by difference or sum).
-        """
-        if mode == "diff":
-            return x[..., 0::2] - x[..., 1::2]
-        elif mode == "sum":
-            return x[..., 0::2] + x[..., 1::2]
-        else:
-            raise ValueError("mode should be either 'diff' or 'sum'")
+    #     return self.unsplit(super().H_ones, mode="diff")
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
