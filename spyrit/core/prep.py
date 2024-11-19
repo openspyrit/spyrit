@@ -341,7 +341,7 @@ class SplitPoisson(DirectPoisson):
     def sigma(self, x: torch.tensor) -> torch.tensor:
         r"""Estimates the variance of the preprocessed measurements
 
-        The variance is estimated as :math:`\frac{4}{\alpha^2} H(x[0::2]+x[1::2])`
+        The variance is estimated as :math:`\frac{4}{\alpha^2} (x[0::2]+x[1::2])`
 
         Args:
             :attr:`x`: batch of images in the Hadamard domain
