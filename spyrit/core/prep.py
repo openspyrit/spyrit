@@ -114,8 +114,8 @@ class DirectPoisson(nn.Module):
             torch.Size([10, 400])
 
         """
-        x = 4 * x / (self.alpha**2)  # Cov is in [-1,1] so *4
-        return x
+        # *4 to account for the image normalized [-1,1] -> [0,1]
+        return 4 * x / (self.alpha**2)
 
     def denormalize_expe(
         self, x: torch.tensor, beta: torch.tensor, h: int = None, w: int = None
