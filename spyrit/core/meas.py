@@ -1081,15 +1081,9 @@ class HadamSplit(LinearSplit):
             torch.Size([10, 32, 32])
         """
         # permutations
-        # todo: check walsh2_S_fold_torch to speed up
-        c, N = y.shape[-2:]
-
-        y = self.reindex(y, "cols", False)  # new way
-        # x = x @ self.Perm.T               # old way
-
+        y = self.reindex(y, "cols", False)
         y = self.unvectorize(y)
         # inverse of full transform
-
         x = 1 / self.N * spytorch.fwht_2d(y, True)
         return x
 
