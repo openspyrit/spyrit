@@ -343,6 +343,20 @@ class _Base(nn.Module):
         """
         return input.reshape(*input.shape[:-2], self.N)
 
+    def _static_forward_with_op(
+        self, x: torch.tensor, op: torch.tensor
+    ) -> torch.tensor:
+        return torch.einsum("mhw,...hw->...m", self.unvectorize(op).to(x.dtype), x)
+
+    # @mprof.profile
+    def _dynamic_forward_with_op(
+        self, x: torch.tensor, op: torch.tensor
+    ) -> torch.tensor:
+        x = spytorch.center_crop(x, self.meas_shape)
+        return torch.einsum(
+            "thw,...tchw->...ct", self.unvectorize(op).to(x.dtype), x
+        )
+
     def _pinv_mult(self, y: torch.tensor) -> torch.tensor:
         """Uses the pre-calculated pseudo inverse to compute the solution.
         We assume that the pseudo inverse has been calculated and stored in the
@@ -654,11 +668,6 @@ class Linear(_Base):
         """
         # return x @ self.H.to(x.dtype).to(x.device)
         return torch.einsum("mhw,...m->...hw", self.unvectorize(self.H).to(y.dtype), y)
-
-    def _static_forward_with_op(
-        self, x: torch.tensor, op: torch.tensor
-    ) -> torch.tensor:
-        return torch.einsum("mhw,...hw->...m", self.unvectorize(op).to(x.dtype), x)
 
     def _set_Ord(self, Ord: torch.tensor) -> None:
         """Set the order matrix used to sort the rows of H."""
@@ -1575,14 +1584,6 @@ class DynamicLinear(_Base):
             )
         except AttributeError:
             pass
-
-    def _dynamic_forward_with_op(
-        self, x: torch.tensor, op: torch.tensor
-    ) -> torch.tensor:
-        x_cropped = spytorch.center_crop(x, self.meas_shape)
-        return torch.einsum(
-            "thw,...tchw->...ct", self.unvectorize(op).to(x.dtype), x_cropped
-        )
 
     def _spline(self, dx, mode):
         """
