@@ -1563,6 +1563,24 @@ class DynamicLinear(_Base):
         """
         return self._dynamic_forward_with_op(x, self.H_static)
 
+    def forward_H_dyn(self, x: torch.tensor) -> torch.tensor:
+        """Simulates the acquisition of measurements using the dynamic measurement matrix H_dyn.
+        
+        This supposes the dynamic measurement matrix H_dyn has been set using the
+        method build_H_dyn(). An error will be raised if H_dyn has not been set yet.
+
+        Args:
+            x (torch.tensor): still image of shape (*, h, w). * denotes any dimension.
+            h and w are the height and width of the image. If h and w are larger
+            than the measurement pattern, the image is center-cropped to the measurement
+            pattern size.
+
+        Returns:
+            torch.tensor: Measurement of the input image. It has shape (*, M).
+        """
+        x = spytorch.center_crop(x, self.meas_shape)
+        return self._static_forward_with_op(x, self.H_dyn)
+
     def _set_Ord(self, Ord: torch.tensor) -> None:
         """Set the order matrix used to sort the rows of H."""
         super()._set_Ord(Ord)
