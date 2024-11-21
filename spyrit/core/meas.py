@@ -1967,11 +1967,11 @@ class DynamicHadamSplit(DynamicLinearSplit):
         img_shape: tuple = None,  # (height, width)
     ):
 
-        # F = spytorch.walsh2_matrix(h)
-        empty = torch.empty(h**2, h**2)  # just to get the shape
+        F = spytorch.walsh2_matrix(h)
+        # empty = torch.empty(h**2, h**2)  # just to get the shape
 
         # we pass the whole F matrix to the constructor
-        super().__init__(empty, Ord, (h, h), img_shape)
+        super().__init__(F, Ord, (h, h), img_shape)
         self._M = M
 
     def _set_Ord(self, Ord: torch.tensor) -> None:
