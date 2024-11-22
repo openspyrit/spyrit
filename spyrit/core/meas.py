@@ -353,9 +353,7 @@ class _Base(nn.Module):
         self, x: torch.tensor, op: torch.tensor
     ) -> torch.tensor:
         x = spytorch.center_crop(x, self.meas_shape)
-        return torch.einsum(
-            "thw,...tchw->...ct", self.unvectorize(op).to(x.dtype), x
-        )
+        return torch.einsum("thw,...tchw->...ct", self.unvectorize(op).to(x.dtype), x)
 
     def _pinv_mult(self, y: torch.tensor) -> torch.tensor:
         """Uses the pre-calculated pseudo inverse to compute the solution.
@@ -1565,7 +1563,7 @@ class DynamicLinear(_Base):
 
     def forward_H_dyn(self, x: torch.tensor) -> torch.tensor:
         """Simulates the acquisition of measurements using the dynamic measurement matrix H_dyn.
-        
+
         This supposes the dynamic measurement matrix H_dyn has been set using the
         method build_H_dyn(). An error will be raised if H_dyn has not been set yet.
 
