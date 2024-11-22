@@ -827,10 +827,7 @@ class DCNet(nn.Module):
         x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
 
         # Image domain denoising
-
-        # Image domain denoising
-        x = self.denoi(x)
-        return x
+        return self.denoi(x)
 
     def reconstruct_expe(self, x):
         r"""Reconstruction step of a reconstruction network
@@ -1079,7 +1076,7 @@ class LearnedPGD(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
@@ -1131,7 +1128,7 @@ class LearnedPGD(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H**2)
