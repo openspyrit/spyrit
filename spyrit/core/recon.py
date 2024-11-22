@@ -7,12 +7,9 @@ from typing import Union
 
 import math
 import torch
-
-# import torchvision
 import torch.nn as nn
-import numpy as np
 
-from spyrit.core.meas import Linear, DynamicLinear, HadamSplit
+import spyrit.core.meas as meas
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import DirectPoisson, SplitPoisson
 
@@ -55,7 +52,7 @@ class PseudoInverse(nn.Module):
     def forward(
         self,
         x: torch.tensor,
-        meas_op: Union[Linear, DynamicLinear],
+        meas_op: Union[meas.Linear, meas.DynamicLinear],
         **kwargs,
     ) -> torch.tensor:
         r"""Computes pseudo-inverse of measurements.
@@ -175,7 +172,7 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         return torch.mul((weights_squared / (weights_squared + var)), x)
 
     def forward(
-        self, x: torch.tensor, x_0: torch.tensor, var: torch.tensor, meas_op: HadamSplit
+        self, x: torch.tensor, x_0: torch.tensor, var: torch.tensor, meas_op: meas.HadamSplit
     ) -> torch.tensor:
         r"""
         Computes the Tikhonov regularization with prior in the measurement domain.
