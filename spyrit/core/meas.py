@@ -1861,7 +1861,7 @@ class DynamicLinearSplit(DynamicLinear):
     def _set_Ord(self, Ord: torch.tensor) -> None:
         """Set the order matrix used to sort the rows of H."""
         super()._set_Ord(Ord)
-        # update P 
+        # update P
         self._set_P(self.H_static)
 
 
