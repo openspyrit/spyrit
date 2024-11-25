@@ -19,6 +19,8 @@ to simulate measurements of moving objects, represented as a sequence of images.
 
 import warnings
 
+# import memory_profiler as mprof
+
 import math
 import torch
 import torch.nn as nn
@@ -69,13 +71,13 @@ class _Base(nn.Module):
             H_static = H_static.to(torch.float32)
 
         # attributes for internal use
-        if self.save_H:
-            self._param_H_static = nn.Parameter(H_static, requires_grad=False)
-            # need to store M because H_static may be cropped (see HadamSplit)
-            self._M = H_static.shape[0]
+        self._param_H_static = nn.Parameter(H_static, requires_grad=False)
+        # need to store M because H_static may be cropped (see HadamSplit)
+        self._M = H_static.shape[0]
 
         self._param_Ord = nn.Parameter(Ord.to(torch.float32), requires_grad=False)
         self._indices = ind.to(torch.int32)
+        self._device_tracker = nn.Parameter(torch.tensor(0.0), requires_grad=False)
 
     ### PROPERTIES ------
     @property
@@ -139,8 +141,14 @@ class _Base(nn.Module):
         return self._param_H_static.data[: self.M, :]
 
     @property
+    def P(self) -> torch.tensor:
+        """Measurement matrix P with positive and negative components. Used in
+        classes *Split and *HadamSplit."""
+        return self._param_P.data[: 2 * self.M, :]
+
+    @property
     def device(self) -> torch.device:
-        return self.Ord.device
+        return self._device_tracker.device
 
     ### -------------------
 
@@ -170,8 +178,9 @@ class _Base(nn.Module):
             :attr:`eta` (float, optional): Regularization parameter. Only
             relevant when :attr:`reg` is specified. Defaults to None.
 
-            :attr:`diff` (bool, optional): Use only with DynamicSplit measurements.
-            Whether to use the difference of positive and negative patterns.
+            :attr:`diff` (bool, optional): Use only if a split operator is used
+            and if the pseudo inverse has not been computed. Whether to use the
+            difference of positive and negative patterns.
             The difference is applied to the measurements and to the dynamic
             measurement matrix. Defaults to False.
 
@@ -192,25 +201,29 @@ class _Base(nn.Module):
         """
         # have we calculated the pseudo inverse ?
         if hasattr(self, "H_pinv"):
-            A = self.H_pinv.expand(*x.shape[:-1], *self.H_pinv.shape)
-            B = x.unsqueeze(-1).to(A.dtype)
-            ans = torch.matmul(A, B).to(x.dtype).squeeze(-1)
+            ans = self._pinv_mult(x)
 
         else:
 
             if isinstance(self, Linear):
-                # can we compute the inverse of H ?
                 H_to_inv = self.H_static
-            elif isinstance(self, DynamicLinear):
+            elif type(self) == DynamicLinear:
                 H_to_inv = self.H_dyn
+            elif isinstance(self, DynamicLinearSplit):
                 if diff:
                     x = x[..., ::2] - x[..., 1::2]
-                    H_to_inv = H_to_inv[::2, :] - H_to_inv[1::2, :]
+                    H_to_inv = self.H_dyn[::2, :] - self.H_dyn[1::2, :]
+                else:
+                    H_to_inv = self.H_dyn
             else:
                 raise NotImplementedError(
                     "It seems you have instanciated a _Base element. This class "
                     + "Should not be called on its own."
                 )
+
+            # cast to dtype of x
+            H_to_inv = H_to_inv.to(x.dtype)
+            # devices are supposed to be the same, don't bother checking
 
             driver = "gelsd"
             if H_to_inv.device != torch.device("cpu"):
@@ -330,6 +343,28 @@ class _Base(nn.Module):
         """
         return input.reshape(*input.shape[:-2], self.N)
 
+    def _static_forward_with_op(
+        self, x: torch.tensor, op: torch.tensor
+    ) -> torch.tensor:
+        return torch.einsum("mhw,...hw->...m", self.unvectorize(op).to(x.dtype), x)
+
+    # @mprof.profile
+    def _dynamic_forward_with_op(
+        self, x: torch.tensor, op: torch.tensor
+    ) -> torch.tensor:
+        x = spytorch.center_crop(x, self.meas_shape)
+        return torch.einsum("thw,...tchw->...ct", self.unvectorize(op).to(x.dtype), x)
+
+    def _pinv_mult(self, y: torch.tensor) -> torch.tensor:
+        """Uses the pre-calculated pseudo inverse to compute the solution.
+        We assume that the pseudo inverse has been calculated and stored in the
+        attribute :attr:`H_pinv`.
+        """
+        A = self.H_pinv.expand(*y.shape[:-1], *self.H_pinv.shape)
+        B = y.unsqueeze(-1).to(A.dtype)
+        ans = torch.matmul(A, B).to(y.dtype).squeeze(-1)
+        return ans
+
     def _set_Ord(self, Ord: torch.tensor) -> None:
         """Set the order matrix used to sort the rows of H. This is used in
         the Ord.setter property. This method is defined for simplified
@@ -341,21 +376,21 @@ class _Base(nn.Module):
             H_natural, Ord, "rows", False, get_indices=True
         )
         # update values of H, Ord
-        self._param_H_static.data = H_resorted
-        self._param_Ord.data = Ord
+        self._param_H_static.data = H_resorted.to(self.device)
+        self._param_Ord.data = Ord.to(self.device)
 
-    # def _set_P(self, H_static: torch.tensor) -> None:
-    #     """Set the positive and negative components of the measurement matrix
-    #     P from the static measurement matrix H_static. For internal use only.
-    #     Used in classes *Split and *HadamSplit."""
-    #     H_pos = nn.functional.relu(H_static)
-    #     H_neg = nn.functional.relu(-H_static)
-    #     self._param_P = nn.Parameter(
-    #         torch.cat([H_pos, H_neg], 1).reshape(
-    #             2 * H_static.shape[0], H_static.shape[1]
-    #         ),
-    #         requires_grad=False,
-    #     )
+    def _set_P(self, H_static: torch.tensor) -> None:
+        """Set the positive and negative components of the measurement matrix
+        P from the static measurement matrix H_static. For internal use only.
+        Used in classes *Split and *HadamSplit."""
+        H_pos = nn.functional.relu(H_static)
+        H_neg = nn.functional.relu(-H_static)
+        self._param_P = nn.Parameter(
+            torch.cat([H_pos, H_neg], 1).reshape(
+                2 * H_static.shape[0], H_static.shape[1]
+            ),
+            requires_grad=False,
+        )
 
     def _build_pinv(self, tensor: torch.tensor, reg: str, eta: float) -> torch.tensor:
 
@@ -386,7 +421,7 @@ class _Base(nn.Module):
                 f"Regularization method '{reg}' is not implemented. Please "
                 + "choose either 'rcond', 'L2' or 'H1'."
             )
-        return pinv
+        return pinv.to(self.device)
 
     def _attributeslist(self) -> list:
         _list = [
@@ -508,8 +543,6 @@ class Linear(_Base):
         )
     """
 
-    save_H = True
-
     def __init__(
         self,
         H: torch.tensor,
@@ -555,15 +588,19 @@ class Linear(_Base):
         :attr:`H_pinv`.
 
         Args:
-            rtol (float, optional): Regularization parameter (cutoff for small
+            reg (str, optional): Regularization method to use. Available options
+            are 'rcond', 'L2' and 'H1'. 'rcond' uses the :attr:`rcond` parameter
+            found in :func:`torch.linalg.lstsq`. This parameter must be specified
+            if the pseudo inverse has not been computed. Defaults to None.
+
+            eta (float, optional): Regularization parameter (cutoff for small
             singular values, see :mod:`torch.linalg.pinv`). Defaults to None,
             in which case the default value of :mod:`torch.linalg.pinv` is used.
 
         Returns:
             None. The pseudo inverse is stored in the attribute :attr:`H_pinv`.
         """
-        pinv = self._build_pinv(self.H_static, reg, eta)
-        self.H_pinv = pinv
+        self.H_pinv = self._build_pinv(self.H_static, reg, eta)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Applies linear transform to incoming images: :math:`y = Hx`.
@@ -629,11 +666,6 @@ class Linear(_Base):
         """
         # return x @ self.H.to(x.dtype).to(x.device)
         return torch.einsum("mhw,...m->...hw", self.unvectorize(self.H).to(y.dtype), y)
-
-    def _static_forward_with_op(
-        self, x: torch.tensor, op: torch.tensor
-    ) -> torch.tensor:
-        return torch.einsum("mhw,...hw->...m", self.unvectorize(op).to(x.dtype), x)
 
     def _set_Ord(self, Ord: torch.tensor) -> None:
         """Set the order matrix used to sort the rows of H."""
@@ -745,8 +777,6 @@ class LinearSplit(Linear):
         )
     """
 
-    save_H = True
-
     def __init__(
         self,
         H: torch.tensor,
@@ -756,18 +786,7 @@ class LinearSplit(Linear):
         meas_shape: tuple = None,  # (height, width)
     ):
         super().__init__(H, pinv, rtol, Ord, meas_shape)
-
-        # if self.save_H:
-        #     self._set_P(self.H_static)
-
-    # P is not supposed to be stored anymore
-    @property
-    def P(self) -> torch.tensor:
-        H_pos = nn.functional.relu(self.H_static)
-        H_neg = nn.functional.relu(-self.H_static)
-        return torch.cat([H_pos, H_neg], 1).reshape(
-            2 * self.H_static.shape[0], self.H_static.shape[1]
-        )
+        self._set_P(self.H_static)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Applies linear transform to incoming images: :math:`y = Px`.
@@ -855,6 +874,10 @@ class LinearSplit(Linear):
         """
         # call Linear.forward() method
         return super().forward(x)
+
+    def _set_Ord(self, Ord):
+        super()._set_Ord(Ord)
+        self._set_P(self.H_static)
 
 
 # =============================================================================
@@ -944,8 +967,6 @@ class HadamSplit(LinearSplit):
         )
     """
 
-    save_H = False
-
     def __init__(
         self,
         M: int,
@@ -953,37 +974,26 @@ class HadamSplit(LinearSplit):
         Ord: torch.tensor = None,
     ):
 
-        # F = spytorch.walsh2_matrix(h)
-        empty = torch.empty(h**2, h**2)  # just for correct shape
+        F = spytorch.walsh2_matrix(h)
 
         # we pass the whole F matrix to the constructor, but override the
         # calls self.H etc to only return the first M rows
-        super().__init__(empty, pinv=False, Ord=Ord, meas_shape=(h, h))
+        super().__init__(F, pinv=False, Ord=Ord, meas_shape=(h, h))
         self._M = M
 
-        # set H_pinv as it is the transpose of H / self.N
-        # self.H_pinv = self.H.T / self.N
-
-    # H_static is not supposed to be stored anymore
-    @property
-    def H_static(self) -> torch.tensor:
-        H_sorted = self.reindex(spytorch.walsh2_matrix(self.h), "rows", False)
-        return H_sorted[: self.M, :].to(self.device)
-
-    # P is not supposed to be stored anymore
-    @property
-    def P(self) -> torch.tensor:
-        H_static = self.H_static
-        H_pos = nn.functional.relu(H_static)
-        H_neg = nn.functional.relu(-H_static)
-        return torch.cat([H_pos, H_neg], 1).reshape(
-            2 * H_static.shape[0], H_static.shape[1]
-        )
-
-    # we can build this instead of storing it
     @property
     def H_pinv(self) -> torch.tensor:
-        return self.H.T / self.N
+        return self._param_H_static_pinv.data / self.N
+
+    @H_pinv.setter
+    def H_pinv(self, value: torch.tensor) -> None:
+        self._param_H_static_pinv = nn.Parameter(
+            value.to(torch.float64), requires_grad=False
+        )
+
+    @H_pinv.deleter
+    def H_pinv(self) -> None:
+        del self._param_H_static_pinv
 
     def forward_H(self, x: torch.tensor) -> torch.tensor:
         r"""Optimized measurement simulation using the Fast Hadamard Transform.
@@ -1014,6 +1024,26 @@ class HadamSplit(LinearSplit):
         m_flat = self.vectorize(m)
         return self.reindex(m_flat, "cols", True)[..., : self.M]
 
+    def build_H_pinv(self):
+        """Build the pseudo-inverse (inverse) of the Hadamard matrix H.
+
+        This computes the pseudo-inverse of the Hadamard matrix H, and stores it
+        in the attribute H_pinv. In the case of an invertible matrix, the
+        pseudo-inverse is the inverse.
+
+        Args:
+            None.
+
+        Returns:
+            None. The pseudo-inverse is stored in the attribute H_pinv.
+        """
+        # the division by self.N is done in the property so as to avoid
+        # memory overconsumption
+        self.H_pinv = self.H.T
+
+    def pinv(self, x, reg="rcond", eta=0.001, diff=False):
+        return super().pinv(x, reg, eta, diff)
+
     def inverse(self, y: torch.tensor) -> torch.tensor:
         r"""Inverse transform of Hadamard-domain images.
 
@@ -1025,6 +1055,10 @@ class HadamSplit(LinearSplit):
             For this inverse to work, the input vector must have the same number
             of measurements as there are pixels in the original image
             (:math:`M = N`), i.e. no subsampling is allowed.
+
+        .. warning::
+            This method is deprecated and will be removed in a future version.
+            Use self.pinv instead.
 
         Args:
             :math:`y`: batch of images in the Hadamard domain of shape
@@ -1054,26 +1088,41 @@ class HadamSplit(LinearSplit):
             torch.Size([10, 32, 32])
         """
         # permutations
-        # todo: check walsh2_S_fold_torch to speed up
-        c, N = y.shape[-2:]
-
-        y = self.reindex(y, "cols", False)  # new way
-        # x = x @ self.Perm.T               # old way
-
+        y = self.reindex(y, "cols", False)
         y = self.unvectorize(y)
         # inverse of full transform
-
         x = 1 / self.N * spytorch.fwht_2d(y, True)
         return x
 
-    # def _set_Ord(self, Ord: torch.tensor) -> None:
-    #     """Set the order matrix used to sort the rows of H."""
-    #     super()._set_Ord(Ord)
-    #     # update P /// DO NOT NEED ANYMORE AS P IS NOT STORED
-    #     # self._set_P(self.H_static)
+    def _pinv_mult(self, y):
+        """We use fast walsh-hadamard transform to compute the pseudo inverse.
 
-    # def forward_transform(self, x):
-    #     return spytorch.fwht_2d(x)
+        Args:
+            y (torch.tensor): batch of images in the Hadamard domain of shape
+            (*,M). * denotes any size, and M the number of measurements.
+
+        Returns:
+            torch.tensor: batch of images in the image domain of shape (*,N).
+        """
+        # zero-pad the measurements until size N
+        y_shape = y.shape
+        y_new_shape = y_shape[:-1] + (self.N,)
+        y_new = torch.zeros(y_new_shape, device=y.device, dtype=y.dtype)
+        y_new[..., : y_shape[-1]] = y
+
+        # unsort the measurements
+        y_new = self.reindex(y_new, "cols", False)
+        y_new = self.unvectorize(y_new)
+
+        # inverse of full transform
+        return 1 / self.N * spytorch.fwht_2d(y_new, True)
+
+    def _set_Ord(self, Ord: torch.tensor) -> None:
+        """Set the order matrix used to sort the rows of H."""
+        # get only the indices, as done in spyrit.core.torch.sort_by_significance
+        self._indices = torch.argsort(-Ord.flatten(), stable=True).to(torch.int32)
+        # update the Ord attribute
+        self._param_Ord.data = Ord.to(self.device)
 
 
 # =============================================================================
@@ -1177,7 +1226,6 @@ class DynamicLinear(_Base):
 
     # Class variable
     _measurement_mode = "static"
-    save_H = True
 
     def __init__(
         self,
@@ -1232,7 +1280,7 @@ class DynamicLinear(_Base):
 
     @H_pinv.deleter
     def H_pinv(self) -> None:
-        del self._param_H_dyn_pinv
+        del self.H_dyn_pinv
 
     @property
     def H_dyn_pinv(self) -> torch.tensor:
@@ -1259,6 +1307,7 @@ class DynamicLinear(_Base):
         except UnboundLocalError:
             pass
 
+    # @mprof.profile
     def build_H_dyn(self, motion: DeformationField, mode: str = "bilinear") -> None:
         """Build the dynamic measurement matrix `H_dyn`.
 
@@ -1289,10 +1338,13 @@ class DynamicLinear(_Base):
             without Warping the Patterns. 2024. hal-04533981
         """
 
+        if self.device != motion.device:
+            raise RuntimeError(
+                "The device of the motion and the measurement operator must be the same."
+            )
+
         # store the mode in attribute
         self._recon_mode = mode
-        # store the device used in the deformation field
-        device = motion.field.device
 
         try:
             del self._param_H_dyn
@@ -1306,19 +1358,14 @@ class DynamicLinear(_Base):
         except AttributeError:
             pass
 
-        if isinstance(self, DynamicLinearSplit):
-            meas_pattern = self.P
-        else:
-            meas_pattern = self.H_static
-
-        n_frames = meas_pattern.shape[0]
+        n_frames = motion.n_frames
 
         # get deformation field from motion
         # scale from [-1;1] x [-1;1] to [0;width-1] x [0;height-1]
-        scale_factor = (torch.tensor(self.img_shape) - 1).to(device)
+        scale_factor = (torch.tensor(self.img_shape) - 1).to(self.device)
         def_field = (motion.field + 1) / 2 * scale_factor
 
-        # drawings of the kernels for bilinear and bicubic interpolation
+        # drawings of the kernels for bilinear and bicubic 'interpolation'
         #   00    point      01
         #    +------+--------+
         #    |      |        |
@@ -1357,22 +1404,21 @@ class DynamicLinear(_Base):
         ).moveaxis(
             0, -1
         )  # shape (n_frames, meas_h, meas_w, 2)
+
         # coordinate of top-left closest corner
         def_field_floor = def_field.floor().to(torch.int64)
         # shape (n_frames, meas_h, meas_w, 2)
         # compute decimal part in x y direction
         dx, dy = torch.split((def_field - def_field_floor), [1, 1], dim=-1)
+        del def_field
         dx, dy = dx.squeeze(-1), dy.squeeze(-1)
         # dx.shape = dy.shape = (n_frames, meas_h, meas_w)
         # evaluate the spline at the decimal part
-        dxy = (
-            torch.einsum(
-                "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
-            )
-            .reshape(n_frames, kernel_n_pts, self.h * self.w)
-            .to(device)
-        )
+        dxy = torch.einsum(
+            "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
+        ).reshape(n_frames, kernel_n_pts, self.h * self.w)
         # shape (n_frames, kernel_n_pts, meas_h*meas_w)
+        del dx, dy
 
         # PART 2: FLATTEN THE INDICES
         # _________________________________________________________________
@@ -1381,18 +1427,19 @@ class DynamicLinear(_Base):
         # point grid to contribute to the interpolation.
         # get coordinate of point _00
         def_field_00 = def_field_floor - (kernel_size // 2 - 1)
+        del def_field_floor
         # shift the grid for phantom rows/columns
         def_field_00 += kernel_width
         # create a mask indicating if either of the 2 indices is out of bounds
         # (w,h) because the def_field is in (x,y) coordinates
         maxs = torch.tensor(
-            [self.img_w + kernel_width, self.img_h + kernel_width], device=device
+            [self.img_w + kernel_width, self.img_h + kernel_width], device=self.device
         )
         mask = torch.logical_or(
             (def_field_00 < 0).any(dim=-1), (def_field_00 >= maxs).any(dim=-1)
         )  # shape (n_frames, meas_h, meas_w)
         # trash index receives all the out-of-bounds indices
-        trash = (maxs[0] * maxs[1]).to(torch.int64).to(device)
+        trash = (maxs[0] * maxs[1]).to(torch.int64).to(self.device)
         # if the indices are out of bounds, we put the trash index
         # otherwise we put the flattened index (y*w + x)
         flattened_indices = torch.where(
@@ -1400,13 +1447,19 @@ class DynamicLinear(_Base):
             trash,
             def_field_00[..., 0] + def_field_00[..., 1] * (self.img_w + kernel_width),
         ).reshape(n_frames, self.h * self.w)
+        del def_field_00, mask
 
         # PART 3: WARP H MATRIX WITH FLATTENED INDICES
         # _________________________________________________________________
         # Build 4 submatrices with 4 weights for bilinear interpolation
+        if isinstance(self, DynamicLinearSplit):
+            meas_pattern = self.P
+        else:
+            meas_pattern = self.H_static
         meas_dxy = (
-            meas_pattern.reshape(n_frames, 1, self.h * self.w).to(torch.float64) * dxy
-        ).to(device)
+            meas_pattern.reshape(n_frames, 1, self.h * self.w).to(dxy.dtype) * dxy
+        )
+        del dxy, meas_pattern
         # shape (n_frames, kernel_size^2, meas_h*meas_w)
         # Create a larger H_dyn that will be folded
         meas_dxy_sorted = torch.zeros(
@@ -1417,11 +1470,13 @@ class DynamicLinear(_Base):
                 + 1,  # +1 for trash
             ),
             dtype=torch.float64,
-        ).to(device)
+            device=self.device,
+        )
         # add at flattened_indices the values of meas_dxy (~warping)
         meas_dxy_sorted.scatter_add_(
             2, flattened_indices.unsqueeze(1).expand_as(meas_dxy), meas_dxy
         )
+        del flattened_indices, meas_dxy
         # drop last column (trash)
         meas_dxy_sorted = meas_dxy_sorted[:, :, :-1]
         self.meas_dxy_sorted = meas_dxy_sorted
@@ -1463,8 +1518,7 @@ class DynamicLinear(_Base):
                 "The dynamic measurement matrix H has not been set yet. "
                 + "Please call build_H_dyn() before computing the pseudo-inverse."
             ) from e
-        pinv = self._build_pinv(H_dyn, reg, eta)
-        self.H_dyn_pinv = pinv
+        self.H_dyn_pinv = self._build_pinv(H_dyn, reg, eta)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
@@ -1507,6 +1561,24 @@ class DynamicLinear(_Base):
         """
         return self._dynamic_forward_with_op(x, self.H_static)
 
+    def forward_H_dyn(self, x: torch.tensor) -> torch.tensor:
+        """Simulates the acquisition of measurements using the dynamic measurement matrix H_dyn.
+
+        This supposes the dynamic measurement matrix H_dyn has been set using the
+        method build_H_dyn(). An error will be raised if H_dyn has not been set yet.
+
+        Args:
+            x (torch.tensor): still image of shape (*, h, w). * denotes any dimension.
+            h and w are the height and width of the image. If h and w are larger
+            than the measurement pattern, the image is center-cropped to the measurement
+            pattern size.
+
+        Returns:
+            torch.tensor: Measurement of the input image. It has shape (*, M).
+        """
+        x = spytorch.center_crop(x, self.meas_shape)
+        return self._static_forward_with_op(x, self.H_dyn)
+
     def _set_Ord(self, Ord: torch.tensor) -> None:
         """Set the order matrix used to sort the rows of H."""
         super()._set_Ord(Ord)
@@ -1529,16 +1601,7 @@ class DynamicLinear(_Base):
         except AttributeError:
             pass
 
-    def _dynamic_forward_with_op(
-        self, x: torch.tensor, op: torch.tensor
-    ) -> torch.tensor:
-        x_cropped = spytorch.center_crop(x, self.meas_shape)
-        return torch.einsum(
-            "thw,...tchw->...ct", self.unvectorize(op).to(x.dtype), x_cropped
-        )
-
-    @staticmethod
-    def _spline(dx, mode):
+    def _spline(self, dx, mode):
         """
         Returns a 2D row-like tensor containing the values of dx evaluated at
         each B-spline (2 values for bilinear, 4 for bicubic).
@@ -1549,9 +1612,9 @@ class DynamicLinear(_Base):
             out: (n_frames, {2,4}, self.h, self.w)
         """
         if mode == "bilinear":
-            return torch.stack((1 - dx, dx), dim=1)
-        if mode == "bicubic":
-            return torch.stack(
+            ans = torch.stack((1 - dx, dx), dim=1)
+        elif mode == "bicubic":
+            ans = torch.stack(
                 (
                     (1 - dx) ** 3 / 6,
                     2 / 3 - dx**2 * (2 - dx) / 2,
@@ -1560,8 +1623,8 @@ class DynamicLinear(_Base):
                 ),
                 dim=1,
             )
-        if mode == "schaum":
-            return torch.stack(
+        elif mode == "schaum":
+            ans = torch.stack(
                 (
                     dx / 6 * (dx - 1) * (2 - dx),
                     (1 - dx / 2) * (1 - dx**2),
@@ -1575,6 +1638,7 @@ class DynamicLinear(_Base):
                 f"The mode {mode} is invalid, please choose bilinear, "
                 + "bicubic or schaum."
             )
+        return ans.to(self.device)
 
 
 # =============================================================================
@@ -1682,8 +1746,6 @@ class DynamicLinearSplit(DynamicLinear):
         without Warping the Patterns. 2024. hal-04533981
     """
 
-    save_H = True
-
     def __init__(
         self,
         H: torch.tensor,
@@ -1693,18 +1755,7 @@ class DynamicLinearSplit(DynamicLinear):
     ):
         # call constructor of DynamicLinear
         super().__init__(H, Ord, meas_shape, img_shape)
-
-        # if self.save_H:
-        #     self._set_P(self.H_static)
-
-    # P is not supposed to be stored anymore
-    @property
-    def P(self) -> torch.tensor:
-        H_pos = nn.functional.relu(self.H_static)
-        H_neg = nn.functional.relu(-self.H_static)
-        return torch.cat([H_pos, H_neg], 1).reshape(
-            2 * self.H_static.shape[0], self.H_static.shape[1]
-        )
+        self._set_P(self.H_static)
 
     @property  # override _Base definition
     def operator(self) -> torch.tensor:
@@ -1805,11 +1856,11 @@ class DynamicLinearSplit(DynamicLinear):
         """
         return super().forward(x)
 
-    # def _set_Ord(self, Ord: torch.tensor) -> None:
-    #     """Set the order matrix used to sort the rows of H."""
-    #     super()._set_Ord(Ord)
-    #     # update P /// DO NOT NEED ANYMORE AS P IS NOT STORED
-    #     # self._set_P(self.H_static)
+    def _set_Ord(self, Ord: torch.tensor) -> None:
+        """Set the order matrix used to sort the rows of H."""
+        super()._set_Ord(Ord)
+        # update P
+        self._set_P(self.H_static)
 
 
 # =============================================================================
@@ -1919,8 +1970,6 @@ class DynamicHadamSplit(DynamicLinearSplit):
         without Warping the Patterns. 2024. hal-04533981
     """
 
-    save_H = False
-
     def __init__(
         self,
         M: int,
@@ -1929,16 +1978,16 @@ class DynamicHadamSplit(DynamicLinearSplit):
         img_shape: tuple = None,  # (height, width)
     ):
 
-        # F = spytorch.walsh2_matrix(h)
-        empty = torch.empty(h**2, h**2)  # just to get the shape
+        F = spytorch.walsh2_matrix(h)
+        # empty = torch.empty(h**2, h**2)  # just to get the shape
 
         # we pass the whole F matrix to the constructor
-        super().__init__(empty, Ord, (h, h), img_shape)
+        super().__init__(F, Ord, (h, h), img_shape)
         self._M = M
 
-    # H_static is not supposed to be stored anymore
-    @property
-    def H_static(self) -> torch.tensor:
-        return self.reindex(spytorch.walsh2_matrix(self.h), "rows", False)[
-            : self.M, :
-        ].to(self.indices.device)
+    def _set_Ord(self, Ord: torch.tensor) -> None:
+        """Set the order matrix used to sort the rows of H."""
+        # get only the indices, as done in spyrit.core.torch.sort_by_significance
+        self._indices = torch.argsort(-Ord.flatten(), stable=True).to(torch.int32)
+        # update the Ord attribute
+        self._param_Ord.data = Ord.to(self.device)

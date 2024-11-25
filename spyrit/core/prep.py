@@ -114,8 +114,8 @@ class DirectPoisson(nn.Module):
             torch.Size([10, 400])
 
         """
-        x = 4 * x / (self.alpha**2)  # Cov is in [-1,1] so *4
-        return x
+        # *4 to account for the image normalized [-1,1] -> [0,1]
+        return 4 * x / (self.alpha**2)
 
     def denormalize_expe(
         self, x: torch.tensor, beta: torch.tensor, h: int = None, w: int = None
@@ -165,6 +165,31 @@ class DirectPoisson(nn.Module):
 
         return (x + 1) / 2 * beta
 
+    def unsplit(self, x: torch.tensor, mode: str = "diff") -> torch.tensor:
+        """Unsplits measurements by combining odd and even indices.
+
+        The parameter `mode` can be either 'diff' or 'sum'. The first one
+        computes the difference between the even and odd indices, while the
+        second one computes the sum.
+
+        Args:
+            x (torch.tensor): Measurements, can have any shape.
+
+            mode (str): 'diff' or 'sum'. If 'diff', the difference between the
+            even and odd indices is computed. If 'sum', the sum is computed.
+            Defaults to 'diff'.
+
+        Returns:
+            torch.tensor: The input tensor with the even and odd indices
+            of the last dimension combined (either by difference or sum).
+        """
+        if mode == "diff":
+            return x[..., 0::2] - x[..., 1::2]
+        elif mode == "sum":
+            return x[..., 0::2] + x[..., 1::2]
+        else:
+            raise ValueError("mode should be either 'diff' or 'sum'")
+
 
 # =============================================================================
 class SplitPoisson(DirectPoisson):
@@ -210,32 +235,7 @@ class SplitPoisson(DirectPoisson):
 
     # @property
     # def H_ones(self):
-    #     return self.meas_op.forward_H(torch.ones(self.h, self.w))
-
-    def unsplit(self, x: torch.tensor, mode: str = "diff") -> torch.tensor:
-        """Unsplits measurements by combining odd and even indices.
-
-        The parameter `mode` can be either 'diff' or 'sum'. The first one
-        computes the difference between the even and odd indices, while the
-        second one computes the sum.
-
-        Args:
-            x (torch.tensor): Measurements, can have any shape.
-
-            mode (str): 'diff' or 'sum'. If 'diff', the difference between the
-            even and odd indices is computed. If 'sum', the sum is computed.
-            Defaults to 'diff'.
-
-        Returns:
-            torch.tensor: The input tensor with the even and odd indices
-            of the last dimension combined (either by difference or sum).
-        """
-        if mode == "diff":
-            return x[..., 0::2] - x[..., 1::2]
-        elif mode == "sum":
-            return x[..., 0::2] + x[..., 1::2]
-        else:
-            raise ValueError("mode should be either 'diff' or 'sum'")
+    #     return self.unsplit(super().H_ones, mode="diff")
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
@@ -341,7 +341,7 @@ class SplitPoisson(DirectPoisson):
     def sigma(self, x: torch.tensor) -> torch.tensor:
         r"""Estimates the variance of the preprocessed measurements
 
-        The variance is estimated as :math:`\frac{4}{\alpha^2} H(x[0::2]+x[1::2])`
+        The variance is estimated as :math:`\frac{4}{\alpha^2} (x[0::2]+x[1::2])`
 
         Args:
             :attr:`x`: batch of images in the Hadamard domain

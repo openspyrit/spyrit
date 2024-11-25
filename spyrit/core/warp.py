@@ -145,7 +145,7 @@ class DeformationField(nn.Module):
 
         Args:
             :attr:`img` (torch.tensor):
-            The batch of 2D images to deform of shape :math:`(b, c, h, w)`, where
+            The batch of 2D images to deform of shape :math:`(c, h, w)` or :math:`(b, c, h, w)`, where
             :math:`b` is the number of images in the batch, :math:`c` is the
             number of channels (usually 1 or 3), and :math:`h` and :math:`w`
             are the number of pixels along the height and width of the image
@@ -192,7 +192,8 @@ class DeformationField(nn.Module):
 
         Returns:
             :attr:`output` (torch.tensor):
-            The deformed batch of 2D images of shape :math:`(b, |n1-n0|, c, h, w)`, where each
+            The deformed batch of 2D images of shape :math:`(|n1-n0|, c, h, w)`
+            or :math:`(b, |n1-n0|, c, h, w)` depending on the input shape, where each
             image in the batch is deformed according to the *inverse deformation
             field* :math:`u` contained in the attribute :attr:`field`.
 
@@ -217,6 +218,11 @@ class DeformationField(nn.Module):
         tensor([[[[0.3000, 1.0000], [0.0000, 0.7000]]]])
         """
 
+        if img.ndim == 3:
+            img = img.unsqueeze(0)
+            no_batch = True
+        else:
+            no_batch = False
         # check that the input is shaped (b, c, h, w)
         b, c, h, w = img.shape
 
@@ -238,7 +244,10 @@ class DeformationField(nn.Module):
             img_frames.to(sel_inv_grid_frames.dtype), sel_inv_grid_frames, mode
         ).to(img.dtype)
         # has shape (n_frames, b*c, h, w), make it (b, n_frames, c, h, w)
-        return warped_frames.reshape(n_frames, b, c, h, w).moveaxis(0, 1)
+        warped_frames = warped_frames.reshape(n_frames, b, c, h, w).moveaxis(0, 1)
+        if no_batch:
+            return warped_frames.squeeze(0)
+        return warped_frames
 
     def grid_sample(self, img_frames, inverse_grid_frames, mode):
         """Used to warp frames of 2D images with a deformation field. Each
@@ -317,26 +326,14 @@ class DeformationField(nn.Module):
         # using float64 is preferred for accuracy
         if self.field.dtype == torch.float32:
             if self.__class__ == DeformationField:
-                msg = (
-                    "Consider using float64 when storing the deformation "
-                    + "field for greater accuracy."
-                )
+                msg = "Consider using float64 when storing the deformation field for greater accuracy."
             if self.__class__ == AffineDeformationField:
-                msg = (
-                    "Consider using float64 when defining the output "
-                    + "type of the affine transformation matrix "
-                    + ":attr:`func` for greater accuracy."
-                )
+                msg = "Consider using float64 when defining the output type of the affine transformation matrix :attr:`func` for greater accuracy."
             warnings.warn(msg, UserWarning)
 
         # if the field goes bayond +/-2, warn the user
         if self.warn_range and (self.field.abs() > 2).any():
-            msg = (
-                "The deformation field goes beyond the range [-2;2], "
-                + "everything mapped outside [-1;1] will not be visible. "
-                + "Suppress this warning by setting "
-                + "self.warn_range = False."
-            )
+            msg = "The deformation field goes beyond the range [-2;2], everything mapped outside [-1;1] will not be visible. Suppress this warning by setting self.warn_range = False."
             warnings.warn(msg, UserWarning)
 
     def _attributeslist(self):

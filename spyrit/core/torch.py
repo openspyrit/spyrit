@@ -302,7 +302,7 @@ def fwht_2d(x, order=True):
 
     Args:
         x (torch.tensor): Batch of 2D tensors to transform. The last two
-        dimensions msut be a power of two. Has shape :math:`(*, h, w)` where
+        dimensions must be a power of two. Has shape :math:`(*, h, w)` where
         :math:`h` and :math:`w` are the height and width of the image, and *
         represents any number of batch dimensions.
 
@@ -606,34 +606,36 @@ def sort_by_significance(
     significance, and so on. The significance tensor `sig` must have the same
     shape as `values` along the specified axis.
 
-    This function is equivalent to (but much faster than) the following code::
+    This function is equivalent to (but much faster than) the following code:
 
-    from spyrit.core.torch import Permutation_Matrix
+    .. code-block:: python
 
-    h = 64
-    values = torch.randn(2*h, h)
-    sig_rows = torch.randn(2*h)
-    sig_cols = torch.randn(h)
+        from spyrit.core.torch import Permutation_Matrix
 
-    # 1
-    y1 = sort_by_significance(values, sig_rows, 'rows', False)
-    y2 = Permutation_Matrix(sig_rows) @ values
-    assert torch.allclose(y1, y2) # True
+        h = 64
+        values = torch.randn(2*h, h)
+        sig_rows = torch.randn(2*h)
+        sig_cols = torch.randn(h)
 
-    # 2
-    y1 = sort_by_significance(values, sig_rows, 'rows', True)
-    y2 = Permutation_Matrix(sig_rows).T @ values
-    assert torch.allclose(y1, y2) # True
+        # 1
+        y1 = sort_by_significance(values, sig_rows, 'rows', False)
+        y2 = Permutation_Matrix(sig_rows) @ values
+        assert torch.allclose(y1, y2) # True
 
-    # 3
-    y1 = sort_by_significance(values, sig_cols, 'cols', False)
-    y2 = values @ Permutation_Matrix(sig_cols)
-    assert torch.allclose(y1, y2) # True
+        # 2
+        y1 = sort_by_significance(values, sig_rows, 'rows', True)
+        y2 = Permutation_Matrix(sig_rows).T @ values
+        assert torch.allclose(y1, y2) # True
 
-    # 4
-    y1 = sort_by_significance(values, sig_cols, 'cols', True)
-    y2 = values @ Permutation_Matrix(sig_cols).T
-    assert torch.allclose(y1, y2) # True
+        # 3
+        y1 = sort_by_significance(values, sig_cols, 'cols', False)
+        y2 = values @ Permutation_Matrix(sig_cols)
+        assert torch.allclose(y1, y2) # True
+
+        # 4
+        y1 = sort_by_significance(values, sig_cols, 'cols', True)
+        y2 = values @ Permutation_Matrix(sig_cols).T
+        assert torch.allclose(y1, y2) # True
 
     Args:
         values (torch.tensor): Tensor to sort by significance. Can be 1D, 2D,
@@ -739,7 +741,7 @@ def center_crop(
 def center_pad(
     img: torch.tensor,
     out_shape: tuple,
-    in_shape: tuple = None,
+    vectorized_in_shape: tuple = None,
 ) -> torch.tensor:
     """Pads an image to the specified shape by centering it.
 
@@ -750,7 +752,7 @@ def center_pad(
         out_shape (tuple): Shape of the output image after padding. Must be
         a tuple of two integers (height, width).
 
-        in_shape (tuple, optional): Shape of the input image, must be specified
+        vectorized_in_shape (tuple, optional): Shape of the input image, must be specified
         if and only if the input image is vectorized. Must be a tuple of two
         integers (height, width). If None, the input is supposed to be a 2D
         image. Defaults to None.
@@ -760,17 +762,17 @@ def center_pad(
         the input image.
     """
     img_shape = img.shape
-    if in_shape is None:
-        in_shape = img_shape[-2:]
+    if vectorized_in_shape is None:
+        vectorized_in_shape = img_shape[-2:]
         reshape = False
     else:
-        img = img.reshape(*img_shape[:-1], *in_shape)
+        img = img.reshape(*img_shape[:-1], *vectorized_in_shape)
         reshape = True
 
-    pad_top = (out_shape[0] - in_shape[0]) // 2
-    pad_bottom = out_shape[0] - in_shape[0] - pad_top
-    pad_left = (out_shape[1] - in_shape[1]) // 2
-    pad_right = out_shape[1] - in_shape[1] - pad_left
+    pad_top = (out_shape[0] - vectorized_in_shape[0]) // 2
+    pad_bottom = out_shape[0] - vectorized_in_shape[0] - pad_top
+    pad_left = (out_shape[1] - vectorized_in_shape[1]) // 2
+    pad_right = out_shape[1] - vectorized_in_shape[1] - pad_left
     padding = (pad_left, pad_right, pad_top, pad_bottom)
     img_padded = nn.ConstantPad2d(padding, 0)(img)
 

@@ -7,12 +7,9 @@ from typing import Union
 
 import math
 import torch
-
-# import torchvision
 import torch.nn as nn
-import numpy as np
 
-from spyrit.core.meas import Linear, DynamicLinear, HadamSplit
+import spyrit.core.meas as meas
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import DirectPoisson, SplitPoisson
 
@@ -55,7 +52,7 @@ class PseudoInverse(nn.Module):
     def forward(
         self,
         x: torch.tensor,
-        meas_op: Union[Linear, DynamicLinear],
+        meas_op: Union[meas.Linear, meas.DynamicLinear],
         **kwargs,
     ) -> torch.tensor:
         r"""Computes pseudo-inverse of measurements.
@@ -175,7 +172,11 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         return torch.mul((weights_squared / (weights_squared + var)), x)
 
     def forward(
-        self, x: torch.tensor, x_0: torch.tensor, var: torch.tensor, meas_op: HadamSplit
+        self,
+        x: torch.tensor,
+        x_0: torch.tensor,
+        var: torch.tensor,
+        meas_op: meas.HadamSplit,
     ) -> torch.tensor:
         r"""
         Computes the Tikhonov regularization with prior in the measurement domain.
@@ -232,6 +233,148 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         y = torch.cat((y1, y2), -1)
         x = x_0 + meas_op.inverse(y)
         return x
+
+
+# =============================================================================
+class Tikhonov(nn.Module):
+    r"""Implements Tikhonov regularization (ridge regression).
+
+    Tikhonov regularization allows to estimate missing measurements from noisy
+    measurements. Considering linear measurements :math:`y = Ax`, where
+    :math:`A` is the full measurement matrix (i.e. the matrix that leads to the
+    measurements :math:`y` and to the missing measurements :math:`z`) and
+    :math:`x` is a vectorized image, it estimates :math:`x` from :math:`y`
+    by minimizing:
+
+    .. math::
+        \| y - Ax \|^2_{\Sigma^{-1}_\alpha} + \|x - x_0\|^2_{\Sigma^{-1}}
+
+    where :math:`\ell_0` is a mean prior, :math:`\Sigma` is a covariance
+    prior, and :math:`\Sigma_\alpha` is the measurement noise covariance.
+
+    The class is constructed from :math:`A` and :math:`\Sigma`.
+
+    Args:
+        - :attr:`A` (torch.tensor): measurement matrix with shape :math:`(M, N)`
+
+        - :attr:`Sigma` (torch.tensor): covariance prior with shape :math:`(N, N)`
+
+    Attributes: !Update!
+        :attr:`B`: The learnable completion layer initialized as
+        :math:`\Sigma_1 \Sigma_{21}^{-1}`. This layer is a :class:`nn.Linear`
+
+        :attr:`C`: The learnable denoising layer initialized from
+        :math:`\Sigma_1`.
+
+    Example:
+        >>> sigma = np.random.random([32*32, 32*32])
+        >>> recon_op = TikhonovMeasurementPriorDiag(sigma, 400)
+    """
+
+    def __init__(self, meas_op, sigma: torch.tensor, diagonal_approximation=False):
+        """
+        meas_op is a measurement operator
+        sigma is the image covariance prior
+        """
+        super().__init__()
+
+        dtype = sigma.dtype
+        A = meas_op.H  # .to(sigma.dtype)
+        sigma = sigma.to(A.dtype)
+
+        if isinstance(meas_op, meas.DynamicLinearSplit):
+            # the measurement covariance prior is assumed to be for
+            # Hadamard-matrix measurements (i.e. no splitting)
+            A = A[::2, :] - A[1::2, :]
+
+        if diagonal_approximation:
+            # if we use the diagonal approximation, then we assume that the
+            # A @ sigma @ A.T is diagonal
+            self.sigma_meas = torch.diag(A @ sigma @ A.T).to(dtype)
+        else:
+            self.sigma_meas = (A @ sigma @ A.T).to(dtype)
+
+        # estimation of the missing measurements
+        self.sigma_A_T = torch.mm(sigma, A.mT).to(dtype)
+
+        self.meas_op = meas_op
+        self.img_shape = meas_op.img_shape
+        self.diagonal_approximation = diagonal_approximation
+
+    def filter(self, y: torch.tensor, cov: torch.tensor) -> torch.tensor:
+        """Applies a almost-Wiener filter to the measurements y."""
+        if self.diagonal_approximation:
+            return y / (self.sigma_meas + torch.diagonal(cov, dim1=-2, dim2=-1))
+        else:
+            # we need to expand the matrices for the solve/ matmul
+            batch_shape = y.shape[:-1]
+            expand_shape = batch_shape + (self.sigma_meas.shape)
+            y = y.unsqueeze(-1)  # add a dimension to y for batch matrix multiplications
+            y = torch.linalg.solve((self.sigma_meas + cov).expand(expand_shape), y)
+            return y.squeeze(-1)
+
+    def reconstruct_with_prior(self, y: torch.tensor) -> torch.tensor:
+        """Estimates missing measurements from the measurements y.
+
+        This uses the stored attributes :attr:`gamma` which is defined at
+        initialization. This function is usually called after a Wiener filter
+        has been applied to the measurements.
+
+        Args:
+            - :attr:`y`: A batch of measurement vectors :math:`y`, of shape
+            :math:`(*, M)` where :math:`M` is the number of measurements.
+
+        Returns:
+            - torch.tensor: The estimated missing measurements with shape
+            :math:`(*, N-M)`.
+        """
+        return torch.matmul(self.sigma_A_T, y.unsqueeze(-1)).squeeze(-1)
+
+    def forward(
+        self, y: torch.tensor, cov: torch.tensor  # x_0: torch.tensor,
+    ) -> torch.tensor:
+        r"""
+        The solution is computed as
+
+        .. math::
+            \hat{x} = x_0 + B^\top (C + \Sigma_\alpha)^{-1} (y - A x_0)
+
+        with :math:`y_1 = C(C + \Sigma_\alpha)^{-1} (y - GF x_0)` and
+        :math:`y_2 = \Sigma_1 \Sigma_{21}^{-1} y_1`, where
+        :math:`\Sigma = \begin{bmatrix} \Sigma_1 & \Sigma_{21}^\top \\ \Sigma_{21} & \Sigma_2\end{bmatrix}`
+        and  :math:`D_1 =\textrm{Diag}(\Sigma_1)`. Assuming the noise
+        covariance :math:`\Sigma_\alpha` is diagonal, the matrix inversion
+        involded in the computation of :math:`y_1` is straigtforward.
+
+        Args:
+            - :attr:`x`: A batch of measurement vectors :math:`y`
+            - :attr:`x_0`: A batch of prior images :math:`x_0`
+            - :attr:`cov`: A batch of measurement noise variances :math:`\Sigma_\alpha`
+
+        Shape:
+            - :attr:`x`: :math:`(*, M)`
+            - :attr:`x_0`: :math:`(*, N)`
+            - :attr:`var` :math:`(*, M)`
+            - Output: :math:`(*, N)`
+
+        Example: !Update!
+            >>> B, H, M = 85, 32, 512
+            >>> sigma = np.random.random([H**2, H**2])
+            >>> recon_op = TikhonovMeasurementPriorDiag(sigma, M)
+            >>> Ord = np.ones((H,H))
+            >> meas = HadamSplit(M, H, Ord)
+            >>> y = torch.rand([B,M], dtype=torch.float)
+            >>> x_0 = torch.zeros((B, H**2), dtype=torch.float)
+            >>> var = torch.zeros((B, M), dtype=torch.float)
+            >>> x = recon_op(y, x_0, var, meas)
+            torch.Size([85, 1024])
+        """
+        # filter the measurements
+        y = self.filter(y, cov)
+        # estimate the missing measurements
+        y = self.reconstruct_with_prior(y)
+
+        return y.reshape(*y.shape[:-1], *self.img_shape)
 
 
 # =============================================================================
@@ -827,10 +970,7 @@ class DCNet(nn.Module):
         x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
 
         # Image domain denoising
-
-        # Image domain denoising
-        x = self.denoi(x)
-        return x
+        return self.denoi(x)
 
     def reconstruct_expe(self, x):
         r"""Reconstruction step of a reconstruction network
@@ -1079,7 +1219,7 @@ class LearnedPGD(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H*H)
@@ -1131,7 +1271,7 @@ class LearnedPGD(nn.Module):
 
         Example:
             >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
+            >>> Ord = torch.ones((H,H))
             >>> meas = HadamSplit(M, H, Ord)
             >>> noise = NoNoise(meas)
             >>> prep = SplitPoisson(1.0, M, H**2)
