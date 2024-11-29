@@ -299,7 +299,7 @@ class SplitPoisson(nn.Module):
                      dim = -1
                      ) -> Tuple[torch.tensor, torch.tensor]:
 
-        # estimate intensity x gain (in counts)
+        # estimate intensity (in counts)
         z = x[..., self.even_index] + x[..., self.odd_index]
         mu = torch.mean(z, dim, keepdim=True)
         alpha = (2/self.N)*(mu - 2*self.mudark)/self.gain
@@ -314,16 +314,16 @@ class SplitPoisson(nn.Module):
         alpha = torch.amax(alpha, -2, keepdim=True)
         
         # intensity x gain (in counts)
-        alpha *= self.gain
+        norm = alpha*self.gain
         
         # unsplit
         x = x[..., self.even_index] - x[..., self.odd_index]
         
         # normalize
-        x = x/alpha
+        x = x / norm
         x = 2*x - self.H_ones
 
-        return x, alpha
+        return x, norm  # or alpha? Double check.
     
     def sigma(self, x: torch.tensor) -> torch.tensor:
         r""" Estimates the variance of the preprocessed measurements 
