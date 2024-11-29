@@ -237,41 +237,67 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 
 # =============================================================================
 class Tikhonov(nn.Module):
-    r"""Implements Tikhonov regularization (ridge regression).
+    r"""Tikhonov regularization (aka as ridge regression).
 
-    Tikhonov regularization allows to estimate missing measurements from noisy
-    measurements. Considering linear measurements :math:`y = Ax`, where
-    :math:`A` is the full measurement matrix (i.e. the matrix that leads to the
-    measurements :math:`y` and to the missing measurements :math:`z`) and
-    :math:`x` is a vectorized image, it estimates :math:`x` from :math:`y`
-    by minimizing:
-
+    It estimates the signal :math:`x\in\mathbb{R}^{N}` the from linear 
+    measurements :math:`y = Ax\in\mathbb{R}^{M}` corrupted by noise by solving 
+    
     .. math::
-        \| y - Ax \|^2_{\Sigma^{-1}_\alpha} + \|x - x_0\|^2_{\Sigma^{-1}}
+        \| y - Ax \|^2_{\Gamma{-1}} + \|x\|^2_{\Sigma^{-1}},
 
-    where :math:`\ell_0` is a mean prior, :math:`\Sigma` is a covariance
-    prior, and :math:`\Sigma_\alpha` is the measurement noise covariance.
-
-    The class is constructed from :math:`A` and :math:`\Sigma`.
+    where :math:`\Gamma` is covariance of the noise, and :math:`\Sigma` is the 
+    signal covariance. In the case :math:`M\le N`, the solution can be computed
+    as
+    
+    .. math::
+        \hat{x} = \Sigma A^\top (A \Sigma A^\top + \Gamma)^{-1} y, 
+    
+    where we assume that both covariance matrices are positive definite. The 
+    class is constructed from :math:`A` and :math:`\Sigma`, while 
+    :math:`\Gamma` is passed as an argument to :meth:`forward()`. Passing 
+    :math:`\Gamma` to :meth:`forward()` is useful in the presence of signal-
+    dependent noise. 
+    
+    .. note::
+        * :math:`x` can be a 1d signal or a vectorized image/volume. This can
+          be specified by setting the :attr:`meas_shape` attribute of the 
+          measurement operator.
+                                                         
+        * The above formulation assumes that the signal :math:`x` has zero mean.
+    
 
     Args:
-        - :attr:`A` (torch.tensor): measurement matrix with shape :math:`(M, N)`
+        :attr:`meas_op` (spyrit.core.meas): Measurement operator that gives acces the 
+        measurement matrix :math:`A` with shape :math:`(M, N)`.
 
-        - :attr:`Sigma` (torch.tensor): covariance prior with shape :math:`(N, N)`
+        :attr:`Sigma` (torch.tensor): Covariance prior with shape :math:`(N, N)`.
+        
+        :attr:`approx` (bool): Compute (faster) approximate 
+        solutions. Defaults to `False`. See :meth:`forward()` for details.
 
-    Attributes: !Update!
-        :attr:`B`: The learnable completion layer initialized as
-        :math:`\Sigma_1 \Sigma_{21}^{-1}`. This layer is a :class:`nn.Linear`
+    Attributes:
+        :attr:`B`: (torch.tensor): Matrix initialised as :math:`B = \Sigma A^\top`.
 
-        :attr:`C`: The learnable denoising layer initialized from
-        :math:`\Sigma_1`.
+        :attr:`C`: (torch.tensor): Matrix initialised as 
+        :math:`C = A \Sigma A^\top`. This corresponds to the covariance prior 
+        in the transformed domain.
 
     Example:
-        >>> sigma = np.random.random([32*32, 32*32])
-        >>> recon_op = TikhonovMeasurementPriorDiag(sigma, 400)
+        >>> B, H, M, N = 85, 17, 32, 64 
+        >>> sigma = torch.rand(N, N)
+        >>> gamma = torch.rand(M, M)
+        >>> A = torch.rand([M,N])
+        >>> meas  = Linear(A, meas_shape=(1,N))
+        >>> recon = Tikhonov(meas, sigma)
+        >>> y = torch.rand(B,H,M)
+        >>> x = recon(y, gamma)
+        >>> print(y.shape)
+        >>> print(x.shape)
+        torch.Size([85, 17, 32])
+        torch.Size([85, 17, 1, 64])
     """
 
-    def __init__(self, meas_op, sigma: torch.tensor, diagonal_approximation=False):
+    def __init__(self, meas_op, sigma: torch.tensor, approx=False):
         """
         meas_op is a measurement operator
         sigma is the image covariance prior
@@ -287,7 +313,7 @@ class Tikhonov(nn.Module):
             # Hadamard-matrix measurements (i.e. no splitting)
             A = A[::2, :] - A[1::2, :]
 
-        if diagonal_approximation:
+        if approx:
             # if we use the diagonal approximation, then we assume that the
             # A @ sigma @ A.T is diagonal
             self.sigma_meas = torch.diag(A @ sigma @ A.T).to(dtype)
@@ -299,11 +325,11 @@ class Tikhonov(nn.Module):
 
         self.meas_op = meas_op
         self.img_shape = meas_op.img_shape
-        self.diagonal_approximation = diagonal_approximation
+        self.approx = approx
 
-    def filter(self, y: torch.tensor, cov: torch.tensor) -> torch.tensor:
-        """Applies a almost-Wiener filter to the measurements y."""
-        if self.diagonal_approximation:
+    def divide(self, y: torch.tensor, cov: torch.tensor) -> torch.tensor:
+        
+        if self.approx:
             return y / (self.sigma_meas + torch.diagonal(cov, dim1=-2, dim2=-1))
         else:
             # we need to expand the matrices for the solve/ matmul
@@ -313,68 +339,39 @@ class Tikhonov(nn.Module):
             y = torch.linalg.solve((self.sigma_meas + cov).expand(expand_shape), y)
             return y.squeeze(-1)
 
-    def reconstruct_with_prior(self, y: torch.tensor) -> torch.tensor:
-        """Estimates missing measurements from the measurements y.
-
-        This uses the stored attributes :attr:`gamma` which is defined at
-        initialization. This function is usually called after a Wiener filter
-        has been applied to the measurements.
-
-        Args:
-            - :attr:`y`: A batch of measurement vectors :math:`y`, of shape
-            :math:`(*, M)` where :math:`M` is the number of measurements.
-
-        Returns:
-            - torch.tensor: The estimated missing measurements with shape
-            :math:`(*, N-M)`.
-        """
-        return torch.matmul(self.sigma_A_T, y.unsqueeze(-1)).squeeze(-1)
 
     def forward(
-        self, y: torch.tensor, cov: torch.tensor  # x_0: torch.tensor,
+        self, y: torch.tensor, gamma: torch.tensor  # x_0: torch.tensor,
     ) -> torch.tensor:
         r"""
-        The solution is computed as
+        The Tikhonov solution is computed as
 
         .. math::
-            \hat{x} = x_0 + B^\top (C + \Sigma_\alpha)^{-1} (y - A x_0)
+            \hat{x} = B^\top (C + \Gamma)^{-1} y
 
-        with :math:`y_1 = C(C + \Sigma_\alpha)^{-1} (y - GF x_0)` and
-        :math:`y_2 = \Sigma_1 \Sigma_{21}^{-1} y_1`, where
-        :math:`\Sigma = \begin{bmatrix} \Sigma_1 & \Sigma_{21}^\top \\ \Sigma_{21} & \Sigma_2\end{bmatrix}`
-        and  :math:`D_1 =\textrm{Diag}(\Sigma_1)`. Assuming the noise
-        covariance :math:`\Sigma_\alpha` is diagonal, the matrix inversion
-        involded in the computation of :math:`y_1` is straigtforward.
+        with :math:`B = \Sigma A^\top` and :math:`C = A \Sigma A^\top`. When 
+        :attr:`self.approx` is True, it is approximated as
+        
+        .. math::
+            \hat{x} = B^\top  \frac{y}{\text{diag}(C + \Gamma)}
 
         Args:
-            - :attr:`x`: A batch of measurement vectors :math:`y`
-            - :attr:`x_0`: A batch of prior images :math:`x_0`
-            - :attr:`cov`: A batch of measurement noise variances :math:`\Sigma_\alpha`
+            :attr:`y` (torch.tensor):  A batch of measurement vectors :math:`y`
+            
+            :attr:`gamma` (torch.tensor): A batch of noise covariance :math:`\Gamma`
 
         Shape:
-            - :attr:`x`: :math:`(*, M)`
-            - :attr:`x_0`: :math:`(*, N)`
-            - :attr:`var` :math:`(*, M)`
-            - Output: :math:`(*, N)`
-
-        Example: !Update!
-            >>> B, H, M = 85, 32, 512
-            >>> sigma = np.random.random([H**2, H**2])
-            >>> recon_op = TikhonovMeasurementPriorDiag(sigma, M)
-            >>> Ord = np.ones((H,H))
-            >> meas = HadamSplit(M, H, Ord)
-            >>> y = torch.rand([B,M], dtype=torch.float)
-            >>> x_0 = torch.zeros((B, H**2), dtype=torch.float)
-            >>> var = torch.zeros((B, M), dtype=torch.float)
-            >>> x = recon_op(y, x_0, var, meas)
-            torch.Size([85, 1024])
+            :attr:`y` (torch.tensor): :math:`(*, M)`
+            
+            :attr:`gamma` (torch.tensor): :math:`(*, M, M)`
+            
+            Output (torch.tensor): :math:`(*, N)`
         """
-        # filter the measurements
-        y = self.filter(y, cov)
-        # estimate the missing measurements
-        y = self.reconstruct_with_prior(y)
+        y = self.divide(y, gamma)
+        y = torch.matmul(self.sigma_A_T, y.unsqueeze(-1)).squeeze(-1)
+        y = y.reshape(*y.shape[:-1], *self.img_shape)
 
-        return y.reshape(*y.shape[:-1], *self.img_shape)
+        return y
 
 
 # =============================================================================
@@ -398,7 +395,7 @@ class Denoise_layer(nn.Module):
     can then be multiplied by the measurement vector to obtain the denoised
     measurement vector.
 
-    ..note::
+    .. note::
         The weight (defined at initialization or accessible through the
         attribute :attr:`weight`) should not be squared (as it is squared when
         the forward method is called).
@@ -492,7 +489,7 @@ class Denoise_layer(nn.Module):
         :math:`\sigma_\text{prior}` is the standard deviation prior defined
         upon construction of the class (see :attr:`self.weight`).
 
-        ..note::
+        .. note::
             The measurement variance should be squared before being passed to
             this method, unlike the standard deviation prior (defined at construction).
 
