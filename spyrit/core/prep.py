@@ -54,6 +54,7 @@ class DirectPoisson(nn.Module):
         # self.register_buffer("H_ones", meas_op(torch.ones((1, self.N))))
 
     # generate H_ones on the fly as it is memmory intensive and easy to compute
+    # ?? Why does it returns float64 ??
     @property
     def H_ones(self):
         return self.meas_op.H.sum(dim=-1).to(self.device)

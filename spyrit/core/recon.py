@@ -316,27 +316,29 @@ class Tikhonov(nn.Module):
         if approx:
             # if we use the diagonal approximation, then we assume that the
             # A @ sigma @ A.T is diagonal
-            self.sigma_meas = torch.diag(A @ sigma @ A.T).to(dtype)
+            sigma_meas = torch.diag(A @ sigma @ A.T).to(dtype)
         else:
-            self.sigma_meas = (A @ sigma @ A.T).to(dtype)
+            sigma_meas = (A @ sigma @ A.T).to(dtype)
 
         # estimation of the missing measurements
-        self.sigma_A_T = torch.mm(sigma, A.mT).to(dtype)
+        sigma_A_T = torch.mm(sigma, A.mT).to(dtype)
 
+        self.register_buffer('sigma_meas', sigma_meas)
+        self.register_buffer('sigma_A_T', sigma_A_T)
         self.meas_op = meas_op
         self.img_shape = meas_op.img_shape
         self.approx = approx
 
-    def divide(self, y: torch.tensor, cov: torch.tensor) -> torch.tensor:
+    def divide(self, y: torch.tensor, gamma: torch.tensor) -> torch.tensor:
         
         if self.approx:
-            return y / (self.sigma_meas + torch.diagonal(cov, dim1=-2, dim2=-1))
+            return y / (self.sigma_meas + torch.diagonal(gamma, dim1=-2, dim2=-1))
         else:
             # we need to expand the matrices for the solve/ matmul
             batch_shape = y.shape[:-1]
             expand_shape = batch_shape + (self.sigma_meas.shape)
             y = y.unsqueeze(-1)  # add a dimension to y for batch matrix multiplications
-            y = torch.linalg.solve((self.sigma_meas + cov).expand(expand_shape), y)
+            y = torch.linalg.solve((self.sigma_meas + gamma).expand(expand_shape), y)
             return y.squeeze(-1)
 
 
@@ -369,7 +371,7 @@ class Tikhonov(nn.Module):
         """
         y = self.divide(y, gamma)
         y = torch.matmul(self.sigma_A_T, y.unsqueeze(-1)).squeeze(-1)
-        y = y.reshape(*y.shape[:-1], *self.img_shape)
+        #y = y.reshape(*y.shape[:-1], *self.img_shape)
 
         return y
 
@@ -859,15 +861,6 @@ class DCNet(nn.Module):
         self.denoi = denoi
         sigma = sigma.to(torch.float32)
 
-        # old way
-        # Perm = noise.meas_op.get_Perm().cpu().T #.numpy()
-        # sigma = Perm @ sigma @ Perm.T
-
-        # new way
-        # Ord = noise.meas_op.Ord
-        # Perm = torch.from_numpy(samp.Permutation_Matrix(noise.meas_op.Ord)).to(torch.float32)
-        # sigma = samp.sort_by_significance(sigma, Ord, 'rows', True)
-        # sigma = samp.sort_by_significance(sigma, Ord, 'cols', False)
         sigma = noise.reindex(sigma, "rows", False)
         sigma = noise.reindex(sigma, "cols", True)
         sigma_perm = sigma
@@ -1019,6 +1012,145 @@ class DCNet(nn.Module):
 
         return x
 
+# =============================================================================    
+class TikhoNet(nn.Module):
+
+    def __init__(self, 
+                 noise, 
+                 prep, 
+                 sigma: torch.tensor,
+                 denoi = nn.Identity()):
+        
+        super().__init__()
+        self.acqu = noise 
+        self.prep = prep
+        #device = noise.meas_op.H.device        # spyrit 2.3.
+        #sigma = torch.as_tensor(sigma, dtype=torch.float32, device=device)
+        self.tikho = Tikhonov(noise.meas_op, sigma)
+        self.denoi = denoi
+        
+    def forward(self, x):
+        r""" ! update ! Full pipeline of the reconstruction network
+            
+        Args:
+            :attr:`x`: ground-truth images
+        
+        Shape:
+            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
+            
+            :attr:`output`: reconstructed images with shape :math:`(B,C,H,W)`
+        
+        Example: 
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H*H)
+            >>> sigma = np.random.random([H**2, H**2])
+            >>> recnet = DCNet(noise,prep,sigma)
+            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+            >>> z = recnet(x)
+            >>> print(z.shape)
+            torch.Size([10, 1, 64, 64])
+        """
+        # Acquisition
+        x = self.acqu(x)                     # shape x = [b*c, 2*M]
+        # Reconstruction 
+        x = self.reconstruct(x)             # shape x = [bc, 1, h,w]
+        
+        return x
+    
+    def reconstruct(self, x):
+        r""" ! update ! Reconstruction step of a reconstruction network
+            
+        Args:
+            :attr:`x`: raw measurement vectors
+        
+        Shape:
+            :attr:`x`: raw measurement vectors with shape :math:`(BC,2M)`
+            
+            :attr:`output`: reconstructed images with shape :math:`(BC,1,H,W)`
+        
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H*H)
+            >>> sigma = np.random.random([H**2, H**2])
+            >>> recnet = DCNet(noise,prep,sigma)
+            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
+            >>> z = recnet.reconstruct(x)
+            >>> print(z.shape)
+            torch.Size([10, 1, 64, 64])
+        """    
+        # Preprocessing
+        cov_meas = self.prep.sigma(x)
+        x = self.prep(x)
+    
+        # covariance of measurements
+        cov_meas = torch.diag_embed(cov_meas) # 
+        
+        #print(cov_meas)
+        
+        # measurements to image domain processing
+        x = self.tikho(x, cov_meas)
+        
+        # Image domain denoising
+        x = self.denoi(x)               
+        
+        return x
+    
+    def reconstruct_expe(self, x):
+        r""" ! update ! Reconstruction step of a reconstruction network
+            
+        Args:
+            :attr:`x`: raw measurement vectors
+        
+        Shape:
+            :attr:`x`: raw measurement vectors with shape :math:`(BC,2M)`
+            
+            :attr:`output`: reconstructed images with shape :math:`(BC,1,H,W)`
+        
+        Example:
+            >>> B, C, H, M = 10, 1, 64, 64**2
+            >>> Ord = np.ones((H,H))
+            >>> meas = HadamSplit(M, H, Ord)
+            >>> noise = NoNoise(meas)
+            >>> prep = SplitPoisson(1.0, M, H*H)
+            >>> sigma = np.random.random([H**2, H**2])
+            >>> recnet = DCNet(noise,prep,sigma)
+            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
+            >>> z = recnet.reconstruct(x)
+            >>> print(z.shape)
+            torch.Size([10, 1, 64, 64])
+        """    
+        # Preprocessing
+        cov_meas = self.prep.sigma_expe(x)
+        # print(cov_meas)
+        # print(self.prep.nbin, self.prep.mudark)
+        #x, norm = self.prep.forward_expe(x, self.acqu.meas_op, (-2,-1)) # shape: [*, M]
+        
+        # Alternative where the mean is computed on each row
+        x, norm = self.prep.forward_expe(x, self.acqu.meas_op) # shape: [*, M]
+
+    
+        # covariance of measurements
+        cov_meas = cov_meas / norm**2
+        cov_meas = torch.diag_embed(cov_meas)
+        
+        #print(cov_meas)
+        
+        # measurements to image domain processing
+        x = self.tikho(x, cov_meas) 
+        
+        # Image domain denoising
+        x = self.denoi(x)
+
+        # Denormalization
+        x = self.prep.denormalize_expe(x, norm, x.shape[-2], x.shape[-1])          
+        
+        return x, norm 
 
 # =============================================================================
 class LearnedPGD(nn.Module):
