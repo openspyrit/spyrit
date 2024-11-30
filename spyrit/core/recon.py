@@ -294,7 +294,7 @@ class Tikhonov(nn.Module):
         >>> print(y.shape)
         >>> print(x.shape)
         torch.Size([85, 17, 32])
-        torch.Size([85, 17, 1, 64])
+        torch.Size([85, 17, 64])
     """
 
     def __init__(self, meas_op, sigma: torch.tensor, approx=False):
@@ -1014,6 +1014,57 @@ class DCNet(nn.Module):
 
 # =============================================================================    
 class TikhoNet(nn.Module):
+    r"""Tikhonov reconstruction network.
+
+    This is a two-step reconstruction method. Typically, only the last step involves learnable parameters.
+
+    #. Tikhonov regularisation.
+    #. (Learned) Denoising in the image domain.
+    
+
+    Args:
+        :attr:`noise` (spyrit.core.noise): Acquisition operator (see :mod:`~spyrit.core.noise`)
+
+        :attr:`prep` (spyrit.core.prep): Preprocessing operator (see :mod:`~spyrit.core.prep`)
+
+        :attr:`sigma` (torch.tensor): Covariance prior (for details, see the
+        :class:`~spyrit.core.recon.Tikhonov()` class)
+
+        :attr:`denoi` (torch.nn.Module, optional): Image denoising operator
+        (see :class:`~spyrit.core.nnet`).
+        Default :class:`~spyrit.core.nnet.Identity`
+
+    Input / Output:
+        :attr:`input` (torch.tensor): Ground-truth images with shape :math:`(B,C,H,W)`
+
+        :attr:`output` (torch.tensor): Reconstructed images with shape :math:`(B,C,H,W)`
+
+    Attributes:
+        :attr:`acqu`: Acquisition operator initialized as :attr:`noise`
+
+        :attr:`prep`: Preprocessing operator initialized as :attr:`prep`
+
+        :attr:`tikho`: Data consistency layer initialized as :attr:`Tikhonov(noise.meas_op, sigma)`
+
+        :attr:`denoi`: Image denoising operator initialized as :attr:`denoi`
+
+
+    Example:
+        >>> B, H, M, N = 85, 17, 32, 64 
+        >>> sigma = torch.rand(N, N)
+        >>> gamma = torch.rand(M, M)
+        >>> A = torch.rand([M,N])
+        >>> meas = Linear(A, meas_shape=(1,N))
+        >>> noise = NoNoise(meas)
+        >>> prep = DirectPoisson(1, meas)
+        >>> recon = TikhoNet(noise, prep, sigma)
+        >>> y = torch.rand(B,H,M)
+        >>> x = recon(y, gamma)
+        >>> print(y.shape)
+        >>> print(x.shape)
+        torch.Size([85, 17, 32])
+        torch.Size([85, 17, 1, 64])
+    """
 
     def __init__(self, 
                  noise, 
@@ -1030,29 +1081,7 @@ class TikhoNet(nn.Module):
         self.denoi = denoi
         
     def forward(self, x):
-        r""" ! update ! Full pipeline of the reconstruction network
-            
-        Args:
-            :attr:`x`: ground-truth images
         
-        Shape:
-            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
-            
-            :attr:`output`: reconstructed images with shape :math:`(B,C,H,W)`
-        
-        Example: 
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = np.random.random([H**2, H**2])
-            >>> recnet = DCNet(noise,prep,sigma)
-            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
-            >>> z = recnet(x)
-            >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
-        """
         # Acquisition
         x = self.acqu(x)                     # shape x = [b*c, 2*M]
         # Reconstruction 
@@ -1061,29 +1090,7 @@ class TikhoNet(nn.Module):
         return x
     
     def reconstruct(self, x):
-        r""" ! update ! Reconstruction step of a reconstruction network
-            
-        Args:
-            :attr:`x`: raw measurement vectors
-        
-        Shape:
-            :attr:`x`: raw measurement vectors with shape :math:`(BC,2M)`
-            
-            :attr:`output`: reconstructed images with shape :math:`(BC,1,H,W)`
-        
-        Example:
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = np.random.random([H**2, H**2])
-            >>> recnet = DCNet(noise,prep,sigma)
-            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
-            >>> z = recnet.reconstruct(x)
-            >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
-        """    
+  
         # Preprocessing
         cov_meas = self.prep.sigma(x)
         x = self.prep(x)
@@ -1102,29 +1109,7 @@ class TikhoNet(nn.Module):
         return x
     
     def reconstruct_expe(self, x):
-        r""" ! update ! Reconstruction step of a reconstruction network
-            
-        Args:
-            :attr:`x`: raw measurement vectors
-        
-        Shape:
-            :attr:`x`: raw measurement vectors with shape :math:`(BC,2M)`
-            
-            :attr:`output`: reconstructed images with shape :math:`(BC,1,H,W)`
-        
-        Example:
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = np.ones((H,H))
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = np.random.random([H**2, H**2])
-            >>> recnet = DCNet(noise,prep,sigma)
-            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
-            >>> z = recnet.reconstruct(x)
-            >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
-        """    
+   
         # Preprocessing
         cov_meas = self.prep.sigma_expe(x)
         # print(cov_meas)
@@ -1134,12 +1119,9 @@ class TikhoNet(nn.Module):
         # Alternative where the mean is computed on each row
         x, norm = self.prep.forward_expe(x, self.acqu.meas_op) # shape: [*, M]
 
-    
         # covariance of measurements
         cov_meas = cov_meas / norm**2
         cov_meas = torch.diag_embed(cov_meas)
-        
-        #print(cov_meas)
         
         # measurements to image domain processing
         x = self.tikho(x, cov_meas) 
