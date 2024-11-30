@@ -1020,7 +1020,7 @@ class TikhoNet(nn.Module):
 
     #. Tikhonov regularisation.
     #. (Learned) Denoising in the image domain.
-    
+
 
     Args:
         :attr:`noise` (spyrit.core.noise): Acquisition operator (see :mod:`~spyrit.core.noise`)
@@ -1050,7 +1050,7 @@ class TikhoNet(nn.Module):
 
 
     Example:
-        >>> B, H, M, N = 85, 17, 32, 64 
+        >>> B, H, M, N = 85, 17, 32, 64
         >>> sigma = torch.rand(N, N)
         >>> gamma = torch.rand(M, M)
         >>> A = torch.rand([M,N])
@@ -1086,7 +1086,7 @@ class TikhoNet(nn.Module):
         return x
 
     def reconstruct(self, x):
-  
+
         # Preprocessing
         cov_meas = self.prep.sigma(x)
         x = self.prep(x)
@@ -1129,6 +1129,7 @@ class TikhoNet(nn.Module):
         x = self.prep.denormalize_expe(x, norm, x.shape[-2], x.shape[-1])
 
         return x, norm
+
 
 # =============================================================================
 class LearnedPGD(nn.Module):
