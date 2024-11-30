@@ -239,51 +239,51 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 class Tikhonov(nn.Module):
     r"""Tikhonov regularization (aka as ridge regression).
 
-    It estimates the signal :math:`x\in\mathbb{R}^{N}` the from linear 
-    measurements :math:`y = Ax\in\mathbb{R}^{M}` corrupted by noise by solving 
-    
+    It estimates the signal :math:`x\in\mathbb{R}^{N}` the from linear
+    measurements :math:`y = Ax\in\mathbb{R}^{M}` corrupted by noise by solving
+
     .. math::
         \| y - Ax \|^2_{\Gamma{-1}} + \|x\|^2_{\Sigma^{-1}},
 
-    where :math:`\Gamma` is covariance of the noise, and :math:`\Sigma` is the 
+    where :math:`\Gamma` is covariance of the noise, and :math:`\Sigma` is the
     signal covariance. In the case :math:`M\le N`, the solution can be computed
     as
-    
+
     .. math::
-        \hat{x} = \Sigma A^\top (A \Sigma A^\top + \Gamma)^{-1} y, 
-    
-    where we assume that both covariance matrices are positive definite. The 
-    class is constructed from :math:`A` and :math:`\Sigma`, while 
-    :math:`\Gamma` is passed as an argument to :meth:`forward()`. Passing 
+        \hat{x} = \Sigma A^\top (A \Sigma A^\top + \Gamma)^{-1} y,
+
+    where we assume that both covariance matrices are positive definite. The
+    class is constructed from :math:`A` and :math:`\Sigma`, while
+    :math:`\Gamma` is passed as an argument to :meth:`forward()`. Passing
     :math:`\Gamma` to :meth:`forward()` is useful in the presence of signal-
-    dependent noise. 
-    
+    dependent noise.
+
     .. note::
         * :math:`x` can be a 1d signal or a vectorized image/volume. This can
-          be specified by setting the :attr:`meas_shape` attribute of the 
+          be specified by setting the :attr:`meas_shape` attribute of the
           measurement operator.
-                                                         
+
         * The above formulation assumes that the signal :math:`x` has zero mean.
-    
+
 
     Args:
-        :attr:`meas_op` (spyrit.core.meas): Measurement operator that gives acces the 
+        :attr:`meas_op` (spyrit.core.meas): Measurement operator that gives acces the
         measurement matrix :math:`A` with shape :math:`(M, N)`.
 
         :attr:`Sigma` (torch.tensor): Covariance prior with shape :math:`(N, N)`.
-        
-        :attr:`approx` (bool): Compute (faster) approximate 
+
+        :attr:`approx` (bool): Compute (faster) approximate
         solutions. Defaults to `False`. See :meth:`forward()` for details.
 
     Attributes:
         :attr:`B`: (torch.tensor): Matrix initialised as :math:`B = \Sigma A^\top`.
 
-        :attr:`C`: (torch.tensor): Matrix initialised as 
-        :math:`C = A \Sigma A^\top`. This corresponds to the covariance prior 
+        :attr:`C`: (torch.tensor): Matrix initialised as
+        :math:`C = A \Sigma A^\top`. This corresponds to the covariance prior
         in the transformed domain.
 
     Example:
-        >>> B, H, M, N = 85, 17, 32, 64 
+        >>> B, H, M, N = 85, 17, 32, 64
         >>> sigma = torch.rand(N, N)
         >>> gamma = torch.rand(M, M)
         >>> A = torch.rand([M,N])
@@ -323,14 +323,14 @@ class Tikhonov(nn.Module):
         # estimation of the missing measurements
         sigma_A_T = torch.mm(sigma, A.mT).to(dtype)
 
-        self.register_buffer('sigma_meas', sigma_meas)
-        self.register_buffer('sigma_A_T', sigma_A_T)
+        self.register_buffer("sigma_meas", sigma_meas)
+        self.register_buffer("sigma_A_T", sigma_A_T)
         self.meas_op = meas_op
         self.img_shape = meas_op.img_shape
         self.approx = approx
 
     def divide(self, y: torch.tensor, gamma: torch.tensor) -> torch.tensor:
-        
+
         if self.approx:
             return y / (self.sigma_meas + torch.diagonal(gamma, dim1=-2, dim2=-1))
         else:
@@ -341,7 +341,6 @@ class Tikhonov(nn.Module):
             y = torch.linalg.solve((self.sigma_meas + gamma).expand(expand_shape), y)
             return y.squeeze(-1)
 
-
     def forward(
         self, y: torch.tensor, gamma: torch.tensor  # x_0: torch.tensor,
     ) -> torch.tensor:
@@ -351,27 +350,27 @@ class Tikhonov(nn.Module):
         .. math::
             \hat{x} = B^\top (C + \Gamma)^{-1} y
 
-        with :math:`B = \Sigma A^\top` and :math:`C = A \Sigma A^\top`. When 
+        with :math:`B = \Sigma A^\top` and :math:`C = A \Sigma A^\top`. When
         :attr:`self.approx` is True, it is approximated as
-        
+
         .. math::
             \hat{x} = B^\top  \frac{y}{\text{diag}(C + \Gamma)}
 
         Args:
             :attr:`y` (torch.tensor):  A batch of measurement vectors :math:`y`
-            
+
             :attr:`gamma` (torch.tensor): A batch of noise covariance :math:`\Gamma`
 
         Shape:
             :attr:`y` (torch.tensor): :math:`(*, M)`
-            
+
             :attr:`gamma` (torch.tensor): :math:`(*, M, M)`
-            
+
             Output (torch.tensor): :math:`(*, N)`
         """
         y = self.divide(y, gamma)
         y = torch.matmul(self.sigma_A_T, y.unsqueeze(-1)).squeeze(-1)
-        #y = y.reshape(*y.shape[:-1], *self.img_shape)
+        # y = y.reshape(*y.shape[:-1], *self.img_shape)
 
         return y
 
@@ -1012,7 +1011,8 @@ class DCNet(nn.Module):
 
         return x
 
-# =============================================================================    
+
+# =============================================================================
 class TikhoNet(nn.Module):
     r"""Tikhonov reconstruction network.
 
@@ -1066,73 +1066,69 @@ class TikhoNet(nn.Module):
         torch.Size([85, 17, 1, 64])
     """
 
-    def __init__(self, 
-                 noise, 
-                 prep, 
-                 sigma: torch.tensor,
-                 denoi = nn.Identity()):
-        
+    def __init__(self, noise, prep, sigma: torch.tensor, denoi=nn.Identity()):
+
         super().__init__()
-        self.acqu = noise 
+        self.acqu = noise
         self.prep = prep
-        #device = noise.meas_op.H.device        # spyrit 2.3.
-        #sigma = torch.as_tensor(sigma, dtype=torch.float32, device=device)
+        # device = noise.meas_op.H.device        # spyrit 2.3.
+        # sigma = torch.as_tensor(sigma, dtype=torch.float32, device=device)
         self.tikho = Tikhonov(noise.meas_op, sigma)
         self.denoi = denoi
-        
+
     def forward(self, x):
-        
+
         # Acquisition
-        x = self.acqu(x)                     # shape x = [b*c, 2*M]
-        # Reconstruction 
-        x = self.reconstruct(x)             # shape x = [bc, 1, h,w]
-        
+        x = self.acqu(x)  # shape x = [b*c, 2*M]
+        # Reconstruction
+        x = self.reconstruct(x)  # shape x = [bc, 1, h,w]
+
         return x
-    
+
     def reconstruct(self, x):
   
         # Preprocessing
         cov_meas = self.prep.sigma(x)
         x = self.prep(x)
-    
+
         # covariance of measurements
-        cov_meas = torch.diag_embed(cov_meas) # 
-        
-        #print(cov_meas)
-        
+        cov_meas = torch.diag_embed(cov_meas)  #
+
+        # print(cov_meas)
+
         # measurements to image domain processing
         x = self.tikho(x, cov_meas)
-        
+
         # Image domain denoising
-        x = self.denoi(x)               
-        
+        x = self.denoi(x)
+
         return x
-    
+
     def reconstruct_expe(self, x):
-   
+
         # Preprocessing
         cov_meas = self.prep.sigma_expe(x)
         # print(cov_meas)
         # print(self.prep.nbin, self.prep.mudark)
-        #x, norm = self.prep.forward_expe(x, self.acqu.meas_op, (-2,-1)) # shape: [*, M]
-        
+        # x, norm = self.prep.forward_expe(x, self.acqu.meas_op, (-2,-1)) # shape: [*, M]
+
         # Alternative where the mean is computed on each row
-        x, norm = self.prep.forward_expe(x, self.acqu.meas_op) # shape: [*, M]
+        x, norm = self.prep.forward_expe(x, self.acqu.meas_op)  # shape: [*, M]
 
         # covariance of measurements
         cov_meas = cov_meas / norm**2
         cov_meas = torch.diag_embed(cov_meas)
-        
+
         # measurements to image domain processing
-        x = self.tikho(x, cov_meas) 
-        
+        x = self.tikho(x, cov_meas)
+
         # Image domain denoising
         x = self.denoi(x)
 
         # Denormalization
-        x = self.prep.denormalize_expe(x, norm, x.shape[-2], x.shape[-1])          
-        
-        return x, norm 
+        x = self.prep.denormalize_expe(x, norm, x.shape[-2], x.shape[-1])
+
+        return x, norm
 
 # =============================================================================
 class LearnedPGD(nn.Module):
