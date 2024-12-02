@@ -9,10 +9,13 @@ import torchvision
 import numpy as np
 from scipy.stats import rankdata
 
+from spyrit.misc.disp import imagepanel
+import matplotlib.pyplot as plt
+
 import spyrit.misc.walsh_hadamard as wh
 import spyrit.core.torch as spytorch
 
-
+#%%
 def stat_walsh_ImageNet(
     stat_root=Path("./stats/"),
     data_root=Path("./data/ILSVRC2012_img_test_v10102019/"),
@@ -497,6 +500,313 @@ def stat_fwalsh_S_stl10(
     time_elapsed = time.perf_counter() - time_start
     print(time_elapsed)
 
+#%% image-domain
+
+def stat_imagenet(stat_root = Path('./stats/'), 
+                data_root = Path('./data/ILSVRC2012_img_test_v10102019/'),
+                img_size:int = 64, 
+                batch_size:int = 1024,
+                get_size:str = 'resize',
+                n_loop:int = 1,
+                device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+                ):
+    """
+    Args:
+        :attr:`stat_root`: path to the folder where the mean and covariance 
+        matrices are saved
+        
+        :attr:`data_root`: path to image database.  :attr:`data_root` needs to 
+        have all images in a subfolder
+        
+        :attr:`img_size`: image size
+        
+        :attr:`batch_size`: batch size
+        
+        :attr:`get_size`: specifies how images of size :attr:`img_size` are 
+        obtained (see :mod:`~spyrit.misc.statistics.data_loaders_imagenet`)
+    
+    
+    Example:
+        data_root =  Path('../data/ILSVRC2012_img_test_v10102019/')
+        stat_root =  Path('../stat/ILSVRC2012_img_test_v10102019')
+    
+        from spyrit.misc.statistics import stat_imagenet
+        stat_imagenet(stat_root = stat_root, data_root = data_root)
+    
+    """
+    dataloaders = data_loaders_imagenet(data_root,
+                                     img_size=img_size, 
+                                     batch_size=batch_size, 
+                                     seed=7,
+                                     get_size=get_size)
+    # Walsh ordered transforms
+    time_start = time.perf_counter()
+    mean, cov = stat_2(dataloaders['train'], device, stat_root, n_loop)
+    time_elapsed = (time.perf_counter() - time_start)
+    
+    print(f'Computed in {time_elapsed} seconds')
+    
+    # save a few images
+    inputs, _ = next(iter(dataloaders['train']))
+    imagepanel(inputs[0,0,:,:], inputs[1,0,:,:], inputs[2,0,:,:], inputs[3,0,:,:])
+    plt.savefig(stat_root / f'images_{img_size}x{img_size}.png')
+    
+    # save a few covariances
+    i1 = int(img_size*img_size/10)
+    i2 = int(img_size*img_size/5)
+    i3 = int(img_size*img_size//2 + img_size//2)
+    im1 = cov[i1,:].reshape(img_size,img_size).cpu()
+    im2 = cov[i2,:].reshape(img_size,img_size).cpu()
+    im3 = cov[i3,:].reshape(img_size,img_size).cpu()
+    im4 = torch.diag(cov).reshape(img_size,img_size).cpu()
+    
+    imagepanel(im1, im2, im3, im4, '', 'cov', 'cov', 'cov', 'var')
+    plt.savefig(stat_root / f'cov_{img_size}x{img_size}.png')
+  
+    
+def data_loaders_imagenet(train_root, 
+                          val_root = None, 
+                          img_size:int = 64, 
+                          batch_size:int = 512, 
+                          seed:int = 7, 
+                          shuffle = False,
+                          get_size:str = 'original'): 
+    """ 
+    Args:
+        Both 'train_root' and 'val_root' need to have images in a subfolder
+        
+        :attr:`data_root`: path to image database, expected to contain an 
+        `/stl10_binary/` subfolder with the  `test*.bin`, `train*.bin` 
+        and `unlabeled_X.bin` files.
+        
+        :attr:`img_size`: image size
+        
+        :attr:`batch_size`: batch size
+        
+        :attr:`seed`: seed, only relevant for random transforms
+        
+        :attr:`shuffle`: True to shuffle train set (test set is not shuffled)
+        
+        :attr:`get_size`: specifies how images of size :attr:`img_size` are 
+        obtained
+            - 'original': random crop with padding
+            - 'resize': resize
+            - 'ccrop': center crop
+            - 'rcrop': random crop
+        
+    The output of torchvision datasets are PILImage images in the range [0, 1].
+    We transform them to Tensors in the range [-1, 1]. Also RGB images are 
+    converted into grayscale images.   
+    """
+
+    if get_size == 'original':
+        torch.manual_seed(seed) # reproductibility of random transform
+        #    
+        transform = torchvision.transforms.Compose(
+            [torchvision.transforms.functional.to_grayscale,
+             torchvision.transforms.RandomCrop(
+                 size=(img_size, img_size), pad_if_needed=True, padding_mode='edge'),
+             torchvision.transforms.ToTensor(),
+             torchvision.transforms.Normalize([0.5], [0.5])
+            ])
+        
+    elif get_size == 'resize':
+        transform = torchvision.transforms.Compose(
+            [torchvision.transforms.functional.to_grayscale,
+             torchvision.transforms.Resize(img_size),
+             torchvision.transforms.CenterCrop(img_size),
+             torchvision.transforms.ToTensor(),
+             torchvision.transforms.Normalize([0.5], [0.5])
+            ])
+        
+    elif get_size == 'ccrop':
+        transform = torchvision.transforms.Compose(
+            [torchvision.transforms.functional.to_grayscale,
+             torchvision.transforms.CenterCrop(img_size),
+             torchvision.transforms.ToTensor(),
+             torchvision.transforms.Normalize([0.5], [0.5])
+            ])
+        
+    elif get_size == 'rcrop':
+        torch.manual_seed(seed) # reproductibility of random transform
+        #    
+        transform = torchvision.transforms.Compose(
+            [torchvision.transforms.functional.to_grayscale,
+             torchvision.transforms.RandomCrop(size=(img_size, img_size)),
+             torchvision.transforms.ToTensor(),
+             torchvision.transforms.Normalize([0.5], [0.5])
+            ])
+    
+    # train set
+    trainset = torchvision.datasets.ImageFolder(root=train_root, transform=transform)
+    trainloader =  torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=shuffle)
+    
+    # validation set (if any)
+    if val_root is not None:
+        valset = torchvision.datasets.ImageFolder(root=val_root, transform=transform)
+        valloader =  torch.utils.data.DataLoader(valset, batch_size=batch_size, shuffle=False)
+    else:
+        valloader = None
+        
+    dataloaders = {'train':trainloader, 'val':valloader}
+    
+    return dataloaders
+
+
+def stat_2(dataloader, device, root, n_loop:int=1):
+    """
+    Computes and saves 2D mean image and covariance matrix of an image database
+
+    Args:
+        dataloader (torch.utils.data.DataLoader): Dataloader. The fetch data are Torch tensors with shape `(B,C,N,N)`.
+        
+        device (torch.device): Device.
+        
+        root (file, str, or pathlib.Path): Path where the covariance and mean are saved.
+        
+        n_loop (int, optional): Number of loops across image database. Defaults to 1. nloop > 1 is relevant for dataloaders with random transforms.
+
+    Returns:
+        mean (np.array): Mean image with shape `(N, N)`.
+        
+        cov (np.array): Covariance matrix with shape `(N*N, N*N)`.
+
+    """
+    # Get dimensions and estimate total number of images in the dataset
+    inputs, _ = next(iter(dataloader))
+    (_, _, nx, ny) = inputs.shape
+
+    #--------------------------------------------------------------------------
+    # 1. Mean
+    #--------------------------------------------------------------------------
+    mean = mean_2(dataloader, device, n_loop=n_loop)
+    
+    # Save
+    if n_loop==1:
+        path = root / Path('Average_2_{}x{}'.format(nx,ny)+'.npy')
+    else:
+        path = root / Path('Average_2_{}_{}x{}'.format(n_loop,nx,ny)+'.npy')
+        
+    if not root.exists():
+        root.mkdir()
+    np.save(path, mean.cpu().detach().numpy())
+    
+    #--------------------------------------------------------------------------
+    # 2. Covariance
+    #-------------------------------------------------------------------------
+    cov = cov_2(dataloader, mean, device, n_loop=n_loop)
+        
+    # Save
+    if n_loop==1:
+        path = root / Path('Cov_2_{}x{}'.format(nx,ny)+'.npy')
+    else:
+        path = root / Path('Cov_2_{}_{}x{}'.format(n_loop,nx,ny)+'.npy')
+        
+    if not root.exists():
+        root.mkdir()
+    np.save(path, cov.cpu().detach().numpy())
+    
+    return mean, cov
+
+def mean_2(dataloader:torch.utils.data.DataLoader, device:torch.device, n_loop:int=1):
+    """
+    Computes 2D mean image computed across batches and channels
+
+    Args:
+        dataloader (torch.utils.data.DataLoader): Dataloader. The fetch data are Torch tensors with shape `(B,C,N,N)`.
+        
+        device (torch.device): Device.
+        
+        n_loop (int, optional): Number of loops across image database. Defaults to 1. nloop > 1 is relevant for dataloaders with random transforms.
+
+    Returns:
+        mean (np.array): Mean image with shape `(N, N)`.
+
+    """
+    
+    # Get dimensions and estimate total number of images in the dataset
+    inputs, _ = next(iter(dataloader))
+    (b, _, nx, ny) = inputs.shape
+    tot_num = len(dataloader)*b
+    
+    # Init
+    n = 0
+    mean = torch.zeros((nx,ny), dtype=torch.float32, device=device)
+    
+    # Compute Mean 
+    # Accumulate sum over all images in dataset
+    for i in range(n_loop):
+        torch.manual_seed(i)
+        for inputs,_ in dataloader:
+            inputs = inputs.to(device)
+            mean += torch.sum(inputs,(0,1))
+            # print
+            n = n + inputs.shape[0]
+            print(f'Mean:  {n} / (less than) {tot_num*n_loop} images', end='\n')
+            # test
+            #print(f' | {inputs[53,0,33,49]}', end='\n')
+        print('', end='\n')
+    
+    # Normalize
+    mean = mean/n
+    mean = torch.squeeze(mean)
+    
+    return mean
+
+def cov_2(dataloader:torch.utils.data.DataLoader, 
+          mean:np.array, 
+          device:torch.device, 
+          n_loop:int=1):
+    """
+    Computes 2D covariance matrix computed across batches and channels.
+
+    Args:
+        dataloader (torch.utils.data.DataLoader): Dataloader. The fetch data are Torch tensors with shape `(B,C,N,N)`.
+        
+        mean (np.array): Mean image with shape `(N, N)`.
+        
+        device (torch.device): Device.
+        
+        n_loop (int, optional): Number of loops across image database. Defaults to 1. nloop > 1 is relevant for dataloaders with random transforms.
+
+    Returns:
+        cov (np.array): Covariance matrix with shape `(N*N, N*N)`.
+
+    """
+    
+    # Get dimensions and estimate total number of images in the dataset
+    inputs, _ = next(iter(dataloader))
+    (b, c, nx, ny) = inputs.shape
+    tot_num = len(dataloader)*b
+    
+    # Covariance --------------------------------------------------------------
+    # Init
+    n = 0
+    cov = torch.zeros((nx*ny,nx*ny), dtype=torch.float32, device=device)
+    
+    # Accumulate (im - mu)*(im - mu)^T over all images in dataset
+    for i in range(n_loop):
+        torch.manual_seed(i)
+        for inputs,_ in dataloader:
+            inputs = inputs.to(device)
+            
+            inputs -= mean
+            inputs = inputs.view(inputs.shape[0], nx*ny, 1)
+            
+            cov = torch.addbmm(cov, inputs, inputs.mT)
+            #cov += torch.sum(inputs @ inputs.mT, 0) # slower
+            
+            # print
+            n += inputs.shape[0]
+            print(f'Cov:  {n} / (less than) {tot_num*n_loop} images', end='\n')
+            # test
+            #print(f' | {inputs[53,0,33,49]}', end='\n')
+        print('', end='\n')
+    
+    # Normalize
+    cov = cov/(n-1)
+    
+    return cov
 
 # %% delete ? Deprecated ?
 
