@@ -790,50 +790,51 @@ class PinvNet(nn.Module):
         x = self.prep.denormalize_expe(
             x, N0_est, self.acqu.meas_op.h, self.acqu.meas_op.w
         )
-        #return x
+        # return x
         return x, N0_est
-    
+
+
 # =============================================================================
 class Pinv1Net(nn.Module):
-# =============================================================================
-    r""" 1D pseudo inverse reconstruction network.
-    
-    Considering linear measurements :math:`Y = HX`, where 
+    # =============================================================================
+    r"""1D pseudo inverse reconstruction network.
+
+    Considering linear measurements :math:`Y = HX`, where
     :math:`H\in\mathbb{R}^{k\times h}` is the
     measurement matrix and :math:`X \in\mathbb{R}^{h\times w}` is an image, it estimates
-    :math:`X` from :math:`Y` by computing 
-    
-    .. math:: \hat{X} = \mathcal{G}_\theta(H^\dagger Y), 
-    
+    :math:`X` from :math:`Y` by computing
+
+    .. math:: \hat{X} = \mathcal{G}_\theta(H^\dagger Y),
+
     where :math:`H` is the Moore-Penrose pseudo inverse of :math:`H`, and
     :math:`\mathcal{G}_\theta` is a neural network.
-    
-    The pseudo-inverse is computed along the last dimension, while (learnable) 
-    denoising applies to the last two dimensions. 
-        
-        
+
+    The pseudo-inverse is computed along the last dimension, while (learnable)
+    denoising applies to the last two dimensions.
+
+
     Args:
-        :attr:`noise`: Acquisition operator that compute (noisy) measurements :math:`Y = HX` (see :class:`~spyrit.core.noise`) 
-        
+        :attr:`noise`: Acquisition operator that compute (noisy) measurements :math:`Y = HX` (see :class:`~spyrit.core.noise`)
+
         :attr:`prep`: Preprocessing operator (see :class:`~spyrit.core.prep`)
-        
-        :attr:`denoi` (optional): Image denoising operator 
-        :math:`\mathcal{G}_\theta` (see :class:`~spyrit.core.nnet`). Defaults 
+
+        :attr:`denoi` (optional): Image denoising operator
+        :math:`\mathcal{G}_\theta` (see :class:`~spyrit.core.nnet`). Defaults
         to :class:`~spyrit.core.nnet.Identity`.
-    
+
     Input / Output:
         :attr:`input`: Ground-truth images :math:`X` with shape :math:`(b,c,h,w)`.
-        
+
         :attr:`output`: Reconstructed images :math:`\hat{X}` with shape :math:`(b,c,h,w)`.
-    
+
     Attributes:
         :attr:`acqu`: Acquisition operator initialized as :attr:`noise`.
-        
+
         :attr:`prep`: Preprocessing operator initialized as :attr:`prep`.
-        
-        :attr:`pinv`: Analytical reconstruction operator initialized as 
+
+        :attr:`pinv`: Analytical reconstruction operator initialized as
         :class:`~spyrit.core.recon.PseudoInverse()`.
-        
+
         :attr:`denoi`: Image denoising operator initialized as :attr:`denoi`.
 
     Example:
@@ -849,31 +850,32 @@ class Pinv1Net(nn.Module):
         >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
         torch.Size([10, 1, 64, 64])
         tensor(5.8912e-06)
-        
-        
+
+
     .. note::
-        The measurement operator applies to the last dimension of the input 
-        tensor, contrary :class:`~spyrit.core.recon.PinvNet` where it applies 
-        to the last two dimension. In both cases, the denoising operator 
+        The measurement operator applies to the last dimension of the input
+        tensor, contrary :class:`~spyrit.core.recon.PinvNet` where it applies
+        to the last two dimension. In both cases, the denoising operator
         applies to the last two dimensions.
-        
+
     """
+
     def __init__(self, noise, prep, denoi=nn.Identity()):
         super().__init__()
-        self.acqu = noise 
+        self.acqu = noise
         self.prep = prep
         self.pinv = PseudoInverse()
         self.denoi = denoi
 
     def forward(self, x):
-        r""" Full pipeline (image-to-image mapping)
-            
+        r"""Full pipeline (image-to-image mapping)
+
         Args:
             :attr:`x`: Ground-truth images with shape :math:`(b,c,h,w)`.
-        
-        Output:            
+
+        Output:
             Reconstructed images with shape :math:`(b,c,h,w)`
-        
+
         Example:
             >>> b,c,h,w = 10,1,48,64
             >>> H = torch.rand(15,w)
@@ -888,63 +890,63 @@ class Pinv1Net(nn.Module):
             torch.Size([10, 1, 64, 64])
             tensor(5.8912e-06)
         """
-        
+
         # Acquisition
         x = self.acqu(x)
 
-        # Reconstruction 
+        # Reconstruction
         x = self.reconstruct(x)
-        
+
         return x
-    
 
     def reconstruct(self, x):
-        r""" Reconstruction (measurement-to-image mapping)
-            
+        r"""Reconstruction (measurement-to-image mapping)
+
         Args:
             :attr:`x`: Raw measurement vectors with shape :math:`(*,h,k)`.
-        
+
         Output:
             Reconstructed images with shape :math:`(*,h,w)`
         """
         # Preprocessing in the measurement domain
         x = self.prep(x)
-    
+
         # measurements to image-domain processing
         x = self.pinv(x, self.acqu.meas_op)
-        x = x.squeeze(-2)     # shape x = [*,1,N] -> x = [*,N]
-                
+        x = x.squeeze(-2)  # shape x = [*,1,N] -> x = [*,N]
+
         # Image-domain denoising
-        x = self.denoi(x)                       
-        
+        x = self.denoi(x)
+
         return x
-    
+
     def reconstruct_expe(self, x):
-        r""" Reconstruction (measurement-to-image mapping)
-            
+        r"""Reconstruction (measurement-to-image mapping)
+
         Args:
             :attr:`x`: Raw measurement vectors with shape :math:`(*,h,k)`.
-        
+
         Output:
             Reconstructed images with shape :math:`(*,h,w)`
         """
-        
+
         # Preprocessing
-        #x, norm = self.prep.forward_expe(x, self.acqu.meas_op, (-2,-1)) # shape: [*, M]
-                
+        # x, norm = self.prep.forward_expe(x, self.acqu.meas_op, (-2,-1)) # shape: [*, M]
+
         # Alternative where the mean is computed on each row
-        x, norm = self.prep.forward_expe(x, self.acqu.meas_op) # shape: [*, M]
-    
+        x, norm = self.prep.forward_expe(x, self.acqu.meas_op)  # shape: [*, M]
+
         # measurements to image domain processing
-        x = self.pinv(x, self.acqu.meas_op)     # shape: [*,N]
-        x = x.squeeze(-2)                       # shape: [*,1,N] -> [*,N]
-        
+        x = self.pinv(x, self.acqu.meas_op)  # shape: [*,N]
+        x = x.squeeze(-2)  # shape: [*,1,N] -> [*,N]
+
         # Image-domain denoising
-        x = self.denoi(x)                       # shape: [*,h,w]
-        
-        # Denormalization 
+        x = self.denoi(x)  # shape: [*,h,w]
+
+        # Denormalization
         x = self.prep.denormalize_expe(x, norm, x.shape[-2], x.shape[-1])
         return x, norm
+
 
 # =============================================================================
 class DCNet(nn.Module):

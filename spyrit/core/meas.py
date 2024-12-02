@@ -322,7 +322,7 @@ class _Base(nn.Module):
 
         Input:
             input (torch.tensor): A tensor of shape (*, N) where * denotes the
-            batch size and :math:`N = hw` is the total number of pixels in the 
+            batch size and :math:`N = hw` is the total number of pixels in the
             image.
 
         Output:
