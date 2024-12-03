@@ -374,7 +374,7 @@ class Tikhonov(nn.Module):
         # estimate the missing measurements
         y = self.reconstruct_with_prior(y)
 
-        return y.reshape(*y.shape[:-1], *self.img_shape)
+        return y  # .reshape(*y.shape[:-1], *self.img_shape)
 
 
 # =============================================================================
