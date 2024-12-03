@@ -353,9 +353,7 @@ class _Base(nn.Module):
         self, x: torch.tensor, op: torch.tensor
     ) -> torch.tensor:
         x = spytorch.center_crop(x, self.meas_shape)
-        return torch.einsum(
-            "thw,...tchw->...ct", self.unvectorize(op).to(x.dtype), x
-        )
+        return torch.einsum("thw,...tchw->...ct", self.unvectorize(op).to(x.dtype), x)
 
     def _pinv_mult(self, y: torch.tensor) -> torch.tensor:
         """Uses the pre-calculated pseudo inverse to compute the solution.
@@ -1268,7 +1266,11 @@ class DynamicLinear(_Base):
     @H_dyn.setter
     def H_dyn(self, value: torch.tensor) -> None:
         self._param_H_dyn = nn.Parameter(value.to(torch.float64), requires_grad=False)
-        del H_pinv
+        try:
+            del H_pinv
+        except UnboundLocalError as e:
+            if "H_pinv" in str(e):
+                pass
 
     @property
     def recon_mode(self) -> str:
@@ -1471,7 +1473,7 @@ class DynamicLinear(_Base):
                 (self.img_h + kernel_width) * (self.img_w + kernel_width)
                 + 1,  # +1 for trash
             ),
-            dtype=torch.float64,
+            dtype=meas_dxy.dtype,
             device=self.device,
         )
         # add at flattened_indices the values of meas_dxy (~warping)
@@ -1565,7 +1567,7 @@ class DynamicLinear(_Base):
 
     def forward_H_dyn(self, x: torch.tensor) -> torch.tensor:
         """Simulates the acquisition of measurements using the dynamic measurement matrix H_dyn.
-        
+
         This supposes the dynamic measurement matrix H_dyn has been set using the
         method build_H_dyn(). An error will be raised if H_dyn has not been set yet.
 
