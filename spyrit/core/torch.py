@@ -607,7 +607,7 @@ def sort_by_significance(
     shape as `values` along the specified axis.
 
     This function is equivalent to (but much faster than) the following code:
-    
+
     .. code-block:: python
 
         from spyrit.core.torch import Permutation_Matrix
