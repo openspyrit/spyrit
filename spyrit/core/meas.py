@@ -322,11 +322,12 @@ class _Base(nn.Module):
 
         Input:
             input (torch.tensor): A tensor of shape (*, N) where * denotes the
-            batch size and N the total number of pixels in the image.
+            batch size and :math:`N = hw` is the total number of pixels in the
+            image.
 
         Output:
             torch.tensor: A tensor of shape (*, h, w) where * denotes the batch
-            size and h, w the height and width of the measurement patterns.
+            size and h, w the height and width of the image.
         """
         return input.reshape(*input.shape[:-1], *self.meas_shape)
 
@@ -335,11 +336,11 @@ class _Base(nn.Module):
 
         Input:
             input (torch.tensor): A tensor of shape (*, h, w) where * denotes the
-            batch size and h, w the height and width of the measurement patterns.
+            batch size and h, w the height and width of the image.
 
         Output:
             torch.tensor: A tensor of shape (*, N) where * denotes the batch size
-            and N the total number of pixels in the image.
+            and :math:`N = hw` is the total number of pixels in the image.
         """
         return input.reshape(*input.shape[:-2], self.N)
 
@@ -482,9 +483,9 @@ class Linear(_Base):
         :math:`M` values. If some values repeat, the order is kept. Defaults to
         None.
 
-        :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
+        :attr:`meas_shape` (tuple, optional): Shape of the image :math:`x`.
         Must be a tuple of two integers representing the height and width of the
-        patterns. If not specified, the shape is suppposed to be a square image.
+        image. If not specified, the image is suppposed to be a square.
         If not, an error is raised. Defaults to None.
 
     Attributes:
@@ -504,7 +505,7 @@ class Linear(_Base):
 
         :attr:`w` (int): Measurement pattern width.
 
-        :attr:`meas_shape` (tuple): Shape of the measurement patterns
+        :attr:`meas_shape` (tuple): Shape of the image :math:`x`
         (height, width). Is equal to `(self.h, self.w)`.
 
         :attr:`indices` (torch.tensor): Indices used to sort the rows of H.	It

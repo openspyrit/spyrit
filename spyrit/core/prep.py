@@ -54,6 +54,7 @@ class DirectPoisson(nn.Module):
         # self.register_buffer("H_ones", meas_op(torch.ones((1, self.N))))
 
     # generate H_ones on the fly as it is memmory intensive and easy to compute
+    # ?? Why does it returns float64 ??
     @property
     def H_ones(self):
         return self.meas_op.H.sum(dim=-1).to(self.device)
@@ -198,9 +199,18 @@ class SplitPoisson(DirectPoisson):
     Poisson noise.  It also compensates for the affine transformation applied
     to the images to get positive intensities.
 
-    It computes :math:`m = \frac{y_{+}-y_{-}}{\alpha} - H1` and the variance
-    :math:`var = \frac{2(y_{+} + y_{-})}{\alpha^{2}}`, where
-    :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using a
+    It computes
+
+    .. math::
+
+        m = \frac{y_{+}-y_{-}}{\alpha} - H1
+
+    and the variance
+
+    .. math::
+        \sigma^2 = \frac{2(y_{+} + y_{-})}{\alpha^{2}},
+
+    where :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using a
     split measurement operator (see :mod:`spyrit.core.LinearSplit`),
     :math:`\alpha` is the image intensity, and 1 is the all-ones vector.
 
@@ -283,13 +293,17 @@ class SplitPoisson(DirectPoisson):
         r"""Preprocess to compensate for image normalization and splitting of the
         measurement operator.
 
-        It computes :math:`m = \frac{x[0::2]-x[1::2]}{\alpha}`, where
-        :math:`\alpha = \max H^\dagger (x[0::2]-x[1::2])`.
+        It computes
 
-        Contrary to :meth:`~forward`, the image intensity :math:`\alpha`
-        is estimated from the pseudoinverse of the unsplit measurements. This
-        method is typically called for the reconstruction of experimental
-        measurements, while :meth:`~forward` is called in simulations.
+        .. math:: m = \frac{x[0::2]-x[1::2]}{\alpha},
+
+        where :math:`\alpha = \max H^\dagger (x[0::2]-x[1::2])`.
+
+        .. note::
+            Contrary to :meth:`~forward`, the image intensity :math:`\alpha`
+            is estimated from the pseudoinverse of the unsplit measurements. This
+            method is typically called for the reconstruction of experimental
+            measurements, while :meth:`~forward` is called in simulations.
 
         The method returns a tuple containing both :math:`m` and :math:`\alpha`
 
@@ -446,3 +460,155 @@ class SplitPoisson(DirectPoisson):
         x = self.unsplit(x, mode="sum")
         x = 4 * x / self.alpha  # here alpha should not be squared
         return x
+
+
+# ==============================================================================
+class SplitPoissonRaw(SplitPoisson):
+    # ==============================================================================
+    r"""
+    Preprocess the raw data acquired with a split measurement operator assuming
+    Poisson noise.  It also compensates for the affine transformation applied
+    to the images to get positive intensities.
+
+    It computes the differential measurements
+
+    .. math::
+
+        m = \frac{y_{+}-y_{-}}{\alpha} - H1
+
+    and the corresponding variance
+
+    .. math::
+        \sigma^2 = \frac{2(y_{+} + y_{-})}{\alpha^{2}},
+
+    where :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using a
+    split measurement operator (see :mod:`spyrit.core.LinearSplit`),
+    :math:`\alpha` is a normalisation factor, and 1 is the all-ones vector. This
+    class also estimates the normalisation factor :math:`\alpha`.
+
+
+    .. note::
+
+        Contrary to :class:`SplitPoisson`, the estimation of the normalisation
+        factor is based on the mean of the raw measurement, **not** on the
+        pseudo inverse of the differential mesurements.
+
+
+    Args:
+        alpha (float): maximun image intensity :math:`\alpha` (in counts)
+
+        :attr:`meas_op`: measurement operator (see :mod:`~spyrit.core.meas`)
+
+
+    Example:
+        >>> H = torch.rand([400,32*32])
+        >>> meas_op =  LinearSplit(H)
+        >>> split_op = SplitPoissonRaw(10, meas_op)
+
+    """
+
+    def __init__(self, alpha: float, meas_op):
+        super().__init__(alpha, meas_op)
+
+    def forward_expe(
+        self, x: torch.tensor, meas_op: Union[LinearSplit, HadamSplit], dim=-1
+    ) -> Tuple[torch.tensor, torch.tensor]:
+        r"""Preprocess to compensate for image normalization and splitting of the
+        measurement operator.
+
+        .. note::
+            Contrary to :meth:`~forward`, the image intensity :math:`\alpha`
+            is estimated from the raw measurements. This
+            method is typically called for the reconstruction of experimental
+            measurements, while :meth:`~forward` is called in simulations.
+
+        Args:
+            :attr:`x`: batch of measurement vectors with shape :math:`(*, 2M)`
+
+            :attr:`meas_op`: measurement operator (see :mod:`~spyrit.core.meas`).
+            The number of measurements :attr:`meas_op.M` should be equal to
+            :math:`M`.
+
+            :attr:`dim`: dimensions where the max of the pseudo inverse is
+            computed. Defaults to -1 (i.e., last dimension).
+
+        Output:
+            Preprocessed measurements :math:`m` with shape :math:`(*, M)`.
+
+            Estimated intensities :math:`\alpha` with shape :math:`(*)`.
+
+        Example:
+            >>> H = torch.rand([400,32*32])
+            >>> meas =  LinearSplit(H)
+            >>> split = SplitPoissonRaw(10, meas_op)
+            >>> x = torch.rand([10,2*400], dtype=torch.float)
+            >>> split.set_expe()
+            >>> m, alpha = split.forward_expe(x, meas)
+            >>> print(m.shape)
+            >>> print(alpha.shape)
+            torch.Size([10, 400])
+            torch.Size([1])
+        """
+
+        # estimate intensity (in counts)
+        z = x[..., self.even_index] + x[..., self.odd_index]
+        mu = torch.mean(z, dim, keepdim=True)
+        alpha = (2 / self.N) * (mu - 2 * self.mudark) / self.gain
+
+        # alternative based on the variance
+        # var = torch.var(z, dim, keepdim=True)
+        # alpha_2 = (2/self.N)*(var - 2*self.sigdark**2)/self.gain**2
+
+        # gain = (var - 2*self.sigdark**2)/(mu - 2*self.mudark)
+
+        # Alternative where all rows of an image have the same normalization
+        alpha = torch.amax(alpha, -2, keepdim=True)
+
+        # intensity x gain (in counts)
+        norm = alpha * self.gain
+
+        # unsplit
+        x = x[..., self.even_index] - x[..., self.odd_index]
+
+        # normalize
+        x = x / norm
+        x = 2 * x - self.H_ones.to(x.dtype)
+
+        return x, norm  # or alpha? Double check
+
+    def sigma_expe(self, x: torch.tensor) -> torch.tensor:
+        r"""
+        Estimates the variance of the measurements that are compensated for
+        splitting but **NOT** for image normalization
+
+
+        Args:
+            :attr:`x`: Raw measurements with shape :math:`(*, 2M)`.
+
+
+        Output:
+            Variance with shape :math:`(*, M)`.
+
+        Example:
+            >>> x = torch.rand([10,2*32*32], dtype=torch.float)
+            >>> split_op.set_expe(gain=1.6)
+            >>> v = split_op.sigma_expe(x)
+            >>> print(v.shape)
+            torch.Size([10, 400])
+        """
+        # Input shape (b*c, 2*M)
+        # output shape (b*c, M)
+        x = x[..., self.even_index] + x[..., self.odd_index]
+        x = (
+            self.gain * (x - 2 * self.nbin * self.mudark)
+            + 2 * self.nbin * self.sigdark**2
+        )
+        x = 4 * x  # to get the cov of an image in [-1,1], not in [0,1]
+
+        return x
+
+    def denormalize_expe(
+        self, x: torch.tensor, beta: torch.tensor, h: int = None, w: int = None
+    ) -> torch.tensor:
+
+        return (x + 1) / 2 * beta
