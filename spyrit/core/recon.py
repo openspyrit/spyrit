@@ -237,45 +237,64 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 
 # =============================================================================
 class Tikhonov(nn.Module):
-    r"""Implements Tikhonov regularization (ridge regression).
+    r"""Implements Tikhonov regularization.
 
-    Tikhonov regularization allows to estimate missing measurements from noisy
-    measurements. Considering linear measurements :math:`y = Ax`, where
-    :math:`A` is the full measurement matrix (i.e. the matrix that leads to the
-    measurements :math:`y` and to the missing measurements :math:`z`) and
+    Tikhonov regularization reconstructs an image and improves the
+    reconstruction by using a prior image covariance.
+    Considering linear measurements :math:`y = Ax`, where
+    :math:`A` is the measurement matrix and
     :math:`x` is a vectorized image, it estimates :math:`x` from :math:`y`
-    by minimizing:
+    by computing:
 
     .. math::
-        \| y - Ax \|^2_{\Sigma^{-1}_\alpha} + \|x - x_0\|^2_{\Sigma^{-1}}
+        \hat{x} = \begin{bmatrix} \Sigma_{11} \\ \Sigma_{21} \end{bmatrix} (A \Sigma A^T + \Sigma_\alpha)^{-1} y
 
-    where :math:`\ell_0` is a mean prior, :math:`\Sigma` is a covariance
-    prior, and :math:`\Sigma_\alpha` is the measurement noise covariance.
+    where :math:`\Sigma` is the image covariance prior, :math:`\Sigma_\alpha`
+    is the measurement noise covariance. :math:`\Sigma_{11}` and :math:`\Sigma_{21}`
+    are blocks of the covariance matrix :math:`\Sigma`, so that:
 
-    The class is constructed from :math:`A` and :math:`\Sigma`.
+    .. math::
+        \Sigma = \begin{bmatrix} \Sigma_{11} & \Sigma_{21}^T \\ \Sigma_{21} & \Sigma_{22} \end{bmatrix}
 
     Args:
-        - :attr:`A` (torch.tensor): measurement matrix with shape :math:`(M, N)`
+        - :attr:`meas_op` : Measurement operator (see :class:`~spyrit.core.meas`).
+        Its measurement operator has shape :math:`(M, N)`, with :math:`M` the
+        number of measurements and :math:`N` the number of pixels in the image.
 
-        - :attr:`Sigma` (torch.tensor): covariance prior with shape :math:`(N, N)`
+        - :attr:`sigma` : Image covariance prior, of shape :math:`(N, N)`.
 
-    Attributes: !Update!
-        :attr:`B`: The learnable completion layer initialized as
-        :math:`\Sigma_1 \Sigma_{21}^{-1}`. This layer is a :class:`nn.Linear`
+        - :attr:`diagonal_approximation` : A boolean indicating whether to set
+        the non-diagonal elements of :math:`A \Sigma A^T` to zero. Default is
+        False. If True, this speeds up the computation of the inverse
+        :math:`(A \Sigma A^T + \Sigma_\alpha)^{-1}`.
 
-        :attr:`C`: The learnable denoising layer initialized from
-        :math:`\Sigma_1`.
+    Attributes:
+        - :attr:`meas_op` : Measurement operator initialized as :attr:`meas_op`.
+
+        - :attr:`diagonal_approximation` : Indicates if the diagonal approximation
+        is used.
+
+        - :attr:`img_shape` : Shape of the image, initialized as :attr:`meas_op.img_shape`.
+
+        - :attr:`sigma_meas` : Measurement covariance prior initialized as
+        :math:`A \Sigma A^T`. If :attr:`diagonal_approximation` is True, the
+        non-diagonal elements are set to zero.
+
+        - :attr:`sigma_A_T` : Covariance of the missing measurements initialized
+        as :math:`\Sigma A^T`.
+
+        - :attr:`noise_scale` : Hidden parameter to use to scale the noise
+        regularization. It is used in the computation of the inverse:
+        :math:`(A \Sigma A^T \times noisescale + \Sigma_\alpha)^{-1}`. Default is 1.
 
     Example:
-        >>> sigma = np.random.random([32*32, 32*32])
-        >>> recon_op = TikhonovMeasurementPriorDiag(sigma, 400)
+        >>> meas_op = spyrit.core.meas.HadamSplit(32**2, 32)
+        >>> sigma_img = torch.rand(32*32, 32*32)
+        >>> Tikho = Tikhonov(meas_op, sigma_img, False)
     """
 
     def __init__(self, meas_op, sigma: torch.tensor, diagonal_approximation=False):
-        """
-        meas_op is a measurement operator
-        sigma is the image covariance prior
-        """
+
         super().__init__()
 
         dtype = sigma.dtype
