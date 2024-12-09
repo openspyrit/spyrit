@@ -20,8 +20,10 @@ as a class attribute.
 
 import warnings
 
+import math
 import torch
 import torch.nn as nn
+from torchvision.transforms import v2
 
 
 # =============================================================================
