@@ -300,17 +300,24 @@ class Tikhonov(nn.Module):
         self.meas_op = meas_op
         self.img_shape = meas_op.img_shape
         self.diagonal_approximation = diagonal_approximation
+        # hidden parameter to use as a hyperparameter for dynamic reconstructions
+        self.noise_scale = 1
 
     def filter(self, y: torch.tensor, cov: torch.tensor) -> torch.tensor:
         """Applies a almost-Wiener filter to the measurements y."""
         if self.diagonal_approximation:
-            return y / (self.sigma_meas + torch.diagonal(cov, dim1=-2, dim2=-1))
+            return y / (
+                self.sigma_meas * self.noise_scale
+                + torch.diagonal(cov, dim1=-2, dim2=-1)
+            )
         else:
             # we need to expand the matrices for the solve/ matmul
             batch_shape = y.shape[:-1]
             expand_shape = batch_shape + (self.sigma_meas.shape)
             y = y.unsqueeze(-1)  # add a dimension to y for batch matrix multiplications
-            y = torch.linalg.solve((self.sigma_meas + cov).expand(expand_shape), y)
+            y = torch.linalg.solve(
+                (self.sigma_meas * self.noise_scale + cov).expand(expand_shape), y
+            )
             return y.squeeze(-1)
 
     def reconstruct_with_prior(self, y: torch.tensor) -> torch.tensor:
