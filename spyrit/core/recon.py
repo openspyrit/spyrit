@@ -271,7 +271,7 @@ class Tikhonov(nn.Module):
         Its measurement operator has shape :math:`(M, N)`, with :math:`M` the
         number of measurements and :math:`N` the number of pixels in the image.
 
-        - :attr:`sigma` : Image covariance prior, of shape :math:`(N, N)`.
+        - :attr:`sigma` : Signal covariance prior, of shape :math:`(N, N)`.
 
         - :attr:`diagonal_approximation` : A boolean indicating whether to set
         the non-diagonal elements of :math:`A \Sigma A^T` to zero. Default is
@@ -313,10 +313,6 @@ class Tikhonov(nn.Module):
     """
 
     def __init__(self, meas_op, sigma: torch.tensor, approx=False):
-        """
-        meas_op is a measurement operator
-        sigma is the image covariance prior
-        """
         super().__init__()
 
         dtype = sigma.dtype
@@ -349,14 +345,17 @@ class Tikhonov(nn.Module):
     def divide(self, y: torch.tensor, gamma: torch.tensor) -> torch.tensor:
 
         if self.approx:
-            return y / (self.sigma_meas + torch.diagonal(gamma, dim1=-2, dim2=-1))
+            return y / (
+                self.sigma_meas
+                + self.noise_scale * torch.diagonal(gamma, dim1=-2, dim2=-1)
+            )
         else:
             # we need to expand the matrices for the solve/ matmul
             batch_shape = y.shape[:-1]
             expand_shape = batch_shape + (self.sigma_meas.shape)
             y = y.unsqueeze(-1)  # add a dimension to y for batch matrix multiplications
             y = torch.linalg.solve(
-                (self.sigma_meas * self.noise_scale + gamma).expand(expand_shape), y
+                (self.sigma_meas + self.noise_scale * gamma).expand(expand_shape), y
             )
             return y.squeeze(-1)
 
@@ -890,12 +889,10 @@ class Pinv1Net(nn.Module):
         r"""Full pipeline (image-to-image mapping)
 
         Args:
-            :attr:`x` (torch.tensor): Ground-truth images with shape :math:`(*,h,w)`, where
-            :math:`*` is any batch size.
+            :attr:`x` (torch.tensor): Ground-truth images with shape :math:`(b,c,h,w)`.
 
         Output:
-            torch.tensor: Reconstructed images with shape :math:`(*,h,w)`, where
-            :math:`*` is any batch size.
+            torch.tensor: Reconstructed images with shape :math:`(b,c,h,w)`.
 
         Example:
             >>> b,c,h,w = 10,1,48,64
@@ -924,10 +921,10 @@ class Pinv1Net(nn.Module):
         r"""Reconstruction (measurement-to-image mapping)
 
         Args:
-            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(*,h,k)`.
+            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(b,c,h,k)`.
 
         Output:
-            torch.tensor: Reconstructed images with shape :math:`(*,h,w)`
+            torch.tensor: Reconstructed images with shape :math:`(b,c,h,w)`
         """
         # Preprocessing in the measurement domain
         x = self.prep(x)
@@ -945,10 +942,10 @@ class Pinv1Net(nn.Module):
         r"""Reconstruction (measurement-to-image mapping) for experimental data.
 
         Args:
-            :attr:`x`: Raw measurement vectors with shape :math:`(*,h,k)`.
+            :attr:`x`: Raw measurement vectors with shape :math:`(b,c,h,k)`.
 
         Output:
-            Reconstructed images with shape :math:`(*,h,w)`
+            Reconstructed images with shape :math:`(b,c,h,w)`
         """
 
         # Preprocessing
@@ -1213,11 +1210,9 @@ class TikhoNet(nn.Module):
         Default :class:`~spyrit.core.nnet.Identity`
 
     Input / Output:
-        :attr:`input` (torch.tensor): Ground-truth images with shape :math:`(*,H,W)`, with
-        :math:`*` being any batch size.
+        :attr:`input` (torch.tensor): Ground-truth images with shape :math:`(B,C,H,W)`.
 
-        :attr:`output` (torch.tensor): Reconstructed images with shape :math:`(*,H,W)`, with
-        :math:`*` being any batch size.
+        :attr:`output` (torch.tensor): Reconstructed images with shape :math:`(B,C,H,W)`.
 
     Attributes:
         :attr:`acqu`: Acquisition operator initialized as :attr:`noise`
@@ -1260,12 +1255,10 @@ class TikhoNet(nn.Module):
         """Full pipeline (image-to-image mapping)
 
         Args:
-            x (torch.tensor): Ground-truth images with shape :math:`(*,H,W)`, with
-            :math:`*` being any batch size.
+            x (torch.tensor): Ground-truth images with shape :math:`(B,C,H,W)`.
 
         Returns:
-            torch.tensor: Reconstruction images with shape :math:`(*,H,W)`, with
-            :math:`*` being any batch size.
+            torch.tensor: Reconstruction images with shape :math:`(B,C,H,W)`.
         """
         # Acquisition
         x = self.acqu(x)  # shape x = [b*c, 2*M]
@@ -1278,10 +1271,10 @@ class TikhoNet(nn.Module):
         r"""Reconstruction (measurement-to-image mapping)
 
         Args:
-            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(*,M)`.
+            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(B,C,M)`.
 
         Output:
-            torch.tensor: Reconstructed images with shape :math:`(*,H,W)`
+            torch.tensor: Reconstructed images with shape :math:`(B,C,H,W)`
         """
         # Preprocessing
         cov_meas = self.prep.sigma(x)
@@ -1305,10 +1298,10 @@ class TikhoNet(nn.Module):
         r"""Reconstruction (measurement-to-image mapping) for experimental data.
 
         Args:
-            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(*,M)`.
+            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(B,C,M)`.
 
         Output:
-            torch.tensor: Reconstructed images with shape :math:`(*,H,W)`
+            torch.tensor: Reconstructed images with shape :math:`(B,C,H,W)`
         """
         # Preprocessing
         cov_meas = self.prep.sigma_expe(x)
@@ -1661,7 +1654,7 @@ class LearnedPGD(nn.Module):
             res = self.acqu.meas_op.forward_H(x) - m
             if self.wls:
                 res = res / meas_variance
-                upd = step[i].reshape(bc, 1) * self.acqu.meas_op.adjoint(res)
+                upd = step[i].reshape(-1, 1) * self.acqu.meas_op.adjoint(res)
             else:
                 upd = step[i] * self.acqu.meas_op.adjoint(res)
             x = x - upd
