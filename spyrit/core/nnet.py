@@ -11,9 +11,17 @@ import copy
 
 # =============================================================================
 class Unet(nn.Module):
-    # =============================================================================
-    def __init__(self, in_channel=1, out_channel=1):
+    # =========================================================================
+    def __init__(
+        self,
+        in_channel=1,
+        out_channel=1,
+        upsample=False,
+        upsample_mode="nearest",
+    ):
         super(Unet, self).__init__()
+        self.upsample = upsample
+        self.upsample_mode = upsample_mode
         # Descending branch
         self.conv_encode1 = self.contract(in_channels=in_channel, out_channels=16)
         self.conv_maxpool1 = torch.nn.MaxPool2d(kernel_size=2)
@@ -24,9 +32,9 @@ class Unet(nn.Module):
         # Bottleneck
         self.bottleneck = self.bottle_neck(64)
         # Decode branch
-        self.conv_decode4 = self.expans(64, 64, 64)
-        self.conv_decode3 = self.expans(128, 64, 32)
-        self.conv_decode2 = self.expans(64, 32, 16)
+        self.conv_decode4 = self.expans(64, 64, 64, self.upsample)
+        self.conv_decode3 = self.expans(128, 64, 32, self.upsample)
+        self.conv_decode2 = self.expans(64, 32, 16, self.upsample)
         self.final_layer = self.final_block(32, 16, out_channel)
 
     def contract(self, in_channels, out_channels, kernel_size=3, padding=1):
@@ -50,7 +58,33 @@ class Unet(nn.Module):
         )
         return block
 
-    def expans(self, in_channels, mid_channel, out_channels, kernel_size=3, padding=1):
+    def expans(
+        self,
+        in_channels,
+        mid_channel,
+        out_channels,
+        kernel_size=3,
+        padding=1,
+    ):
+        if self.upsample:
+            upsample_subblock = torch.nn.Sequential(
+                torch.nn.Upsample(scale_factor=2, mode=self.upsample_mode),
+                torch.nn.Conv2d(
+                    kernel_size=kernel_size,
+                    in_channels=mid_channel,
+                    out_channels=out_channels,
+                    padding=padding,
+                ),
+            )
+        else:
+            upsample_subblock = torch.nn.ConvTranspose2d(
+                in_channels=mid_channel,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=2,
+                padding=padding,
+                output_padding=1,
+            )
         block = torch.nn.Sequential(
             torch.nn.Conv2d(
                 kernel_size=kernel_size,
@@ -68,14 +102,7 @@ class Unet(nn.Module):
             ),
             torch.nn.ReLU(),
             torch.nn.BatchNorm2d(mid_channel),
-            torch.nn.ConvTranspose2d(
-                in_channels=mid_channel,
-                out_channels=out_channels,
-                kernel_size=kernel_size,
-                stride=2,
-                padding=padding,
-                output_padding=1,
-            ),
+            upsample_subblock,
         )
 
         return block
