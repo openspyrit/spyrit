@@ -237,24 +237,34 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 
 # =============================================================================
 class Tikhonov(nn.Module):
-    r"""Implements Tikhonov regularization.
+    r"""Tikhonov regularization (aka as ridge regression).
 
-    Tikhonov regularization reconstructs an image and improves the
-    reconstruction by using a prior image covariance.
-    Considering linear measurements :math:`y = Ax`, where
-    :math:`A` is the measurement matrix and
-    :math:`x` is a vectorized image, it estimates :math:`x` from :math:`y`
-    by computing:
+    It estimates the signal :math:`x\in\mathbb{R}^{N}` the from linear
+    measurements :math:`y = Ax\in\mathbb{R}^{M}` corrupted by noise by solving
 
     .. math::
-        \hat{x} = \begin{bmatrix} \Sigma_{11} \\ \Sigma_{21} \end{bmatrix} (A \Sigma A^T + \Sigma_\alpha)^{-1} y
+        \| y - Ax \|^2_{\Gamma{-1}} + \|x\|^2_{\Sigma^{-1}},
 
-    where :math:`\Sigma` is the image covariance prior, :math:`\Sigma_\alpha`
-    is the measurement noise covariance. :math:`\Sigma_{11}` and :math:`\Sigma_{21}`
-    are blocks of the covariance matrix :math:`\Sigma`, so that:
+    where :math:`\Gamma` is covariance of the noise, and :math:`\Sigma` is the
+    signal covariance. In the case :math:`M\le N`, the solution can be computed
+    as
 
     .. math::
-        \Sigma = \begin{bmatrix} \Sigma_{11} & \Sigma_{21}^T \\ \Sigma_{21} & \Sigma_{22} \end{bmatrix}
+        \hat{x} = \Sigma A^\top (A \Sigma A^\top + \Gamma)^{-1} y,
+
+    where we assume that both covariance matrices are positive definite. The
+    class is constructed from :math:`A` and :math:`\Sigma`, while
+    :math:`\Gamma` is passed as an argument to :meth:`forward()`. Passing
+    :math:`\Gamma` to :meth:`forward()` is useful in the presence of signal-
+    dependent noise.
+
+    .. note::
+        * :math:`x` can be a 1d signal or a vectorized image/volume. This can
+          be specified by setting the :attr:`meas_shape` attribute of the
+          measurement operator.
+
+        * The above formulation assumes that the signal :math:`x` has zero mean.
+
 
     Args:
         - :attr:`meas_op` : Measurement operator (see :class:`~spyrit.core.meas`).
@@ -288,13 +298,25 @@ class Tikhonov(nn.Module):
         :math:`(A \Sigma A^T \times noisescale + \Sigma_\alpha)^{-1}`. Default is 1.
 
     Example:
-        >>> meas_op = spyrit.core.meas.HadamSplit(32**2, 32)
-        >>> sigma_img = torch.rand(32*32, 32*32)
-        >>> Tikho = Tikhonov(meas_op, sigma_img, False)
+        >>> B, H, M, N = 85, 17, 32, 64
+        >>> sigma = torch.rand(N, N)
+        >>> gamma = torch.rand(M, M)
+        >>> A = torch.rand([M,N])
+        >>> meas  = Linear(A, meas_shape=(1,N))
+        >>> recon = Tikhonov(meas, sigma)
+        >>> y = torch.rand(B,H,M)
+        >>> x = recon(y, gamma)
+        >>> print(y.shape)
+        >>> print(x.shape)
+        torch.Size([85, 17, 32])
+        torch.Size([85, 17, 64])
     """
 
-    def __init__(self, meas_op, sigma: torch.tensor, diagonal_approximation=False):
-
+    def __init__(self, meas_op, sigma: torch.tensor, approx=False):
+        """
+        meas_op is a measurement operator
+        sigma is the image covariance prior
+        """
         super().__init__()
 
         dtype = sigma.dtype
@@ -306,101 +328,70 @@ class Tikhonov(nn.Module):
         # Hadamard-matrix measurements (i.e. no splitting)
         # A = A[::2, :] - A[1::2, :]
 
-        if diagonal_approximation:
+        if approx:
             # if we use the diagonal approximation, then we assume that the
             # A @ sigma @ A.T is diagonal
-            self.sigma_meas = torch.diag(A @ sigma @ A.T).to(dtype)
+            sigma_meas = torch.diag(A @ sigma @ A.T).to(dtype)
         else:
-            self.sigma_meas = (A @ sigma @ A.T).to(dtype)
+            sigma_meas = (A @ sigma @ A.T).to(dtype)
 
         # estimation of the missing measurements
-        self.sigma_A_T = torch.mm(sigma, A.mT).to(dtype)
+        sigma_A_T = torch.mm(sigma, A.mT).to(dtype)
 
+        self.register_buffer("sigma_meas", sigma_meas)
+        self.register_buffer("sigma_A_T", sigma_A_T)
         self.meas_op = meas_op
         self.img_shape = meas_op.img_shape
-        self.diagonal_approximation = diagonal_approximation
+        self.approx = approx
         # hidden parameter to use as a hyperparameter for dynamic reconstructions
         self.noise_scale = 1
 
-    def filter(self, y: torch.tensor, cov: torch.tensor) -> torch.tensor:
-        """Applies a almost-Wiener filter to the measurements y."""
-        if self.diagonal_approximation:
-            return y / (
-                self.sigma_meas * self.noise_scale
-                + torch.diagonal(cov, dim1=-2, dim2=-1)
-            )
+    def divide(self, y: torch.tensor, gamma: torch.tensor) -> torch.tensor:
+
+        if self.approx:
+            return y / (self.sigma_meas + torch.diagonal(gamma, dim1=-2, dim2=-1))
         else:
             # we need to expand the matrices for the solve/ matmul
             batch_shape = y.shape[:-1]
             expand_shape = batch_shape + (self.sigma_meas.shape)
             y = y.unsqueeze(-1)  # add a dimension to y for batch matrix multiplications
             y = torch.linalg.solve(
-                (self.sigma_meas * self.noise_scale + cov).expand(expand_shape), y
+                (self.sigma_meas * self.noise_scale + gamma).expand(expand_shape), y
             )
             return y.squeeze(-1)
 
-    def reconstruct_with_prior(self, y: torch.tensor) -> torch.tensor:
-        """Estimates missing measurements from the measurements y.
-
-        This uses the stored attributes :attr:`gamma` which is defined at
-        initialization. This function is usually called after a Wiener filter
-        has been applied to the measurements.
-
-        Args:
-            - :attr:`y`: A batch of measurement vectors :math:`y`, of shape
-            :math:`(*, M)` where :math:`M` is the number of measurements.
-
-        Returns:
-            - torch.tensor: The estimated missing measurements with shape
-            :math:`(*, N-M)`.
-        """
-        return torch.matmul(self.sigma_A_T, y.unsqueeze(-1)).squeeze(-1)
-
     def forward(
-        self, y: torch.tensor, cov: torch.tensor  # x_0: torch.tensor,
+        self, y: torch.tensor, gamma: torch.tensor  # x_0: torch.tensor,
     ) -> torch.tensor:
         r"""
-        The solution is computed as
+        The Tikhonov solution is computed as
 
         .. math::
-            \hat{x} = x_0 + B^\top (C + \Sigma_\alpha)^{-1} (y - A x_0)
+            \hat{x} = B^\top (C + \Gamma)^{-1} y
 
-        with :math:`y_1 = C(C + \Sigma_\alpha)^{-1} (y - GF x_0)` and
-        :math:`y_2 = \Sigma_1 \Sigma_{21}^{-1} y_1`, where
-        :math:`\Sigma = \begin{bmatrix} \Sigma_1 & \Sigma_{21}^\top \\ \Sigma_{21} & \Sigma_2\end{bmatrix}`
-        and  :math:`D_1 =\textrm{Diag}(\Sigma_1)`. Assuming the noise
-        covariance :math:`\Sigma_\alpha` is diagonal, the matrix inversion
-        involded in the computation of :math:`y_1` is straigtforward.
+        with :math:`B = \Sigma A^\top` and :math:`C = A \Sigma A^\top`. When
+        :attr:`self.approx` is True, it is approximated as
+
+        .. math::
+            \hat{x} = B^\top  \frac{y}{\text{diag}(C + \Gamma)}
 
         Args:
-            - :attr:`x`: A batch of measurement vectors :math:`y`
-            - :attr:`x_0`: A batch of prior images :math:`x_0`
-            - :attr:`cov`: A batch of measurement noise variances :math:`\Sigma_\alpha`
+            :attr:`y` (torch.tensor):  A batch of measurement vectors :math:`y`
+
+            :attr:`gamma` (torch.tensor): A batch of noise covariance :math:`\Gamma`
 
         Shape:
-            - :attr:`x`: :math:`(*, M)`
-            - :attr:`x_0`: :math:`(*, N)`
-            - :attr:`var` :math:`(*, M)`
-            - Output: :math:`(*, N)`
+            :attr:`y` (torch.tensor): :math:`(*, M)`
 
-        Example: !Update!
-            >>> B, H, M = 85, 32, 512
-            >>> sigma = np.random.random([H**2, H**2])
-            >>> recon_op = TikhonovMeasurementPriorDiag(sigma, M)
-            >>> Ord = np.ones((H,H))
-            >> meas = HadamSplit(M, H, Ord)
-            >>> y = torch.rand([B,M], dtype=torch.float)
-            >>> x_0 = torch.zeros((B, H**2), dtype=torch.float)
-            >>> var = torch.zeros((B, M), dtype=torch.float)
-            >>> x = recon_op(y, x_0, var, meas)
-            torch.Size([85, 1024])
+            :attr:`gamma` (torch.tensor): :math:`(*, M, M)`
+
+            Output (torch.tensor): :math:`(*, N)`
         """
-        # filter the measurements
-        y = self.filter(y, cov)
-        # estimate the missing measurements
-        y = self.reconstruct_with_prior(y)
+        y = self.divide(y, gamma)
+        y = torch.matmul(self.sigma_A_T, y.unsqueeze(-1)).squeeze(-1)
+        # y = y.reshape(*y.shape[:-1], *self.img_shape)
 
-        return y  # .reshape(*y.shape[:-1], *self.img_shape)
+        return y
 
 
 # =============================================================================
@@ -424,7 +415,7 @@ class Denoise_layer(nn.Module):
     can then be multiplied by the measurement vector to obtain the denoised
     measurement vector.
 
-    ..note::
+    .. note::
         The weight (defined at initialization or accessible through the
         attribute :attr:`weight`) should not be squared (as it is squared when
         the forward method is called).
@@ -518,7 +509,7 @@ class Denoise_layer(nn.Module):
         :math:`\sigma_\text{prior}` is the standard deviation prior defined
         upon construction of the class (see :attr:`self.weight`).
 
-        ..note::
+        .. note::
             The measurement variance should be squared before being passed to
             this method, unlike the standard deviation prior (defined at construction).
 
@@ -818,7 +809,164 @@ class PinvNet(nn.Module):
         x = self.prep.denormalize_expe(
             x, N0_est, self.acqu.meas_op.h, self.acqu.meas_op.w
         )
+        # return x
+        return x, N0_est
+
+
+# =============================================================================
+class Pinv1Net(nn.Module):
+    # =============================================================================
+    r"""1D pseudo inverse reconstruction network.
+
+    Considering linear measurements :math:`Y = HX`, where
+    :math:`H\in\mathbb{R}^{k\times h}` is the
+    measurement matrix and :math:`X \in\mathbb{R}^{h\times w}` is an image, it estimates
+    :math:`X` from :math:`Y` by computing
+
+    .. math:: \hat{X} = \mathcal{G}_\theta(H^\dagger Y),
+
+    where :math:`H` is the Moore-Penrose pseudo inverse of :math:`H`, and
+    :math:`\mathcal{G}_\theta` is a neural network.
+
+    The pseudo-inverse is computed along the last dimension, while (learnable)
+    denoising applies to the last two dimensions.
+
+
+    Args:
+        :attr:`noise`: Acquisition operator that compute (noisy) measurements :math:`Y = HX` (see :class:`~spyrit.core.noise`)
+
+        :attr:`prep`: Preprocessing operator (see :class:`~spyrit.core.prep`)
+
+        :attr:`denoi` (optional): Image denoising operator
+        :math:`\mathcal{G}_\theta` (see :class:`~spyrit.core.nnet`). Defaults
+        to :class:`~spyrit.core.nnet.Identity`.
+
+    Input / Output:
+        :attr:`input`: Ground-truth images :math:`X` with shape :math:`(b,c,h,w)`.
+
+        :attr:`output`: Reconstructed images :math:`\hat{X}` with shape :math:`(b,c,h,w)`.
+
+    Attributes:
+        :attr:`acqu`: Acquisition operator initialized as :attr:`noise`.
+
+        :attr:`prep`: Preprocessing operator initialized as :attr:`prep`.
+
+        :attr:`pinv`: Analytical reconstruction operator initialized as
+        :class:`~spyrit.core.recon.PseudoInverse()`.
+
+        :attr:`denoi`: Image denoising operator initialized as :attr:`denoi`.
+
+    Example:
+        >>> b,c,h,w = 10,1,48,64
+        >>> H = torch.rand(15,w)
+        >>> meas = Linear(H, meas_shape=(1,w))
+        >>> noise = NoNoise(meas)
+        >>> prep = DirectPoisson(1.0, meas)
+        >>> recnet = Pinv1Net(noise, prep)
+        >>> x = torch.FloatTensor(b,c,h,n).uniform_(-1, 1)
+        >>> z = recnet(x)
+        >>> print(z.shape)
+        >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
+        torch.Size([10, 1, 64, 64])
+        tensor(5.8912e-06)
+
+
+    .. note::
+        The measurement operator applies to the last dimension of the input
+        tensor, contrary :class:`~spyrit.core.recon.PinvNet` where it applies
+        to the last two dimensions. In both cases, the denoising operator
+        applies to the last two dimensions.
+
+    """
+
+    def __init__(self, noise, prep, denoi=nn.Identity()):
+        super().__init__()
+        self.acqu = noise
+        self.prep = prep
+        self.pinv = PseudoInverse()
+        self.denoi = denoi
+
+    def forward(self, x):
+        r"""Full pipeline (image-to-image mapping)
+
+        Args:
+            :attr:`x` (torch.tensor): Ground-truth images with shape :math:`(*,h,w)`, where
+            :math:`*` is any batch size.
+
+        Output:
+            torch.tensor: Reconstructed images with shape :math:`(*,h,w)`, where
+            :math:`*` is any batch size.
+
+        Example:
+            >>> b,c,h,w = 10,1,48,64
+            >>> H = torch.rand(15,w)
+            >>> meas = Linear(H, meas_shape=(1,w))
+            >>> noise = NoNoise(meas)
+            >>> prep = DirectPoisson(1.0, meas)
+            >>> recnet = Pinv1Net(noise, prep)
+            >>> x = torch.FloatTensor(b,c,h,n).uniform_(-1, 1)
+            >>> z = recnet(x)
+            >>> print(z.shape)
+            >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
+            torch.Size([10, 1, 64, 64])
+            tensor(5.8912e-06)
+        """
+
+        # Acquisition
+        x = self.acqu(x)
+
+        # Reconstruction
+        x = self.reconstruct(x)
+
         return x
+
+    def reconstruct(self, x):
+        r"""Reconstruction (measurement-to-image mapping)
+
+        Args:
+            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(*,h,k)`.
+
+        Output:
+            torch.tensor: Reconstructed images with shape :math:`(*,h,w)`
+        """
+        # Preprocessing in the measurement domain
+        x = self.prep(x)
+
+        # measurements to image-domain processing
+        x = self.pinv(x, self.acqu.meas_op)
+        x = x.squeeze(-2)  # shape x = [*,1,N] -> x = [*,N]
+
+        # Image-domain denoising
+        x = self.denoi(x)
+
+        return x
+
+    def reconstruct_expe(self, x):
+        r"""Reconstruction (measurement-to-image mapping) for experimental data.
+
+        Args:
+            :attr:`x`: Raw measurement vectors with shape :math:`(*,h,k)`.
+
+        Output:
+            Reconstructed images with shape :math:`(*,h,w)`
+        """
+
+        # Preprocessing
+        # x, norm = self.prep.forward_expe(x, self.acqu.meas_op, (-2,-1)) # shape: [*, M]
+
+        # Alternative where the mean is computed on each row
+        x, norm = self.prep.forward_expe(x, self.acqu.meas_op)  # shape: [*, M]
+
+        # measurements to image domain processing
+        x = self.pinv(x, self.acqu.meas_op)  # shape: [*,N]
+        x = x.squeeze(-2)  # shape: [*,1,N] -> [*,N]
+
+        # Image-domain denoising
+        x = self.denoi(x)  # shape: [*,h,w]
+
+        # Denormalization
+        x = self.prep.denormalize_expe(x, norm, x.shape[-2], x.shape[-1])
+        return x, norm
 
 
 # =============================================================================
@@ -847,9 +995,11 @@ class DCNet(nn.Module):
         Default :class:`~spyrit.core.nnet.Identity`
 
     Input / Output:
-        :attr:`input`: Ground-truth images with shape :math:`(B,C,H,W)`
+        :attr:`input`: Ground-truth images with shape :math:`(*,H,W)`, with
+        :math:`*` being any batch size.
 
-        :attr:`output`: Reconstructed images with shape :math:`(B,C,H,W)`
+        :attr:`output`: Reconstructed images with shape :math:`(*,H,W)`, with
+        :math:`*` being any batch size.
 
     Attributes:
         :attr:`Acq`: Acquisition operator initialized as :attr:`noise`
@@ -888,15 +1038,6 @@ class DCNet(nn.Module):
         self.denoi = denoi
         sigma = sigma.to(torch.float32)
 
-        # old way
-        # Perm = noise.meas_op.get_Perm().cpu().T #.numpy()
-        # sigma = Perm @ sigma @ Perm.T
-
-        # new way
-        # Ord = noise.meas_op.Ord
-        # Perm = torch.from_numpy(samp.Permutation_Matrix(noise.meas_op.Ord)).to(torch.float32)
-        # sigma = samp.sort_by_significance(sigma, Ord, 'rows', True)
-        # sigma = samp.sort_by_significance(sigma, Ord, 'cols', False)
         sigma = noise.reindex(sigma, "rows", False)
         sigma = noise.reindex(sigma, "cols", True)
         sigma_perm = sigma
@@ -1047,6 +1188,152 @@ class DCNet(nn.Module):
         x = self.prep.denormalize_expe(x, norm, self.Acq.meas_op.h, self.Acq.meas_op.w)
 
         return x
+
+
+# =============================================================================
+class TikhoNet(nn.Module):
+    r"""Tikhonov reconstruction network.
+
+    This is a two-step reconstruction method. Typically, only the last step involves learnable parameters.
+
+    #. Tikhonov regularisation.
+    #. (Learned) Denoising in the image domain.
+
+
+    Args:
+        :attr:`noise` (spyrit.core.noise): Acquisition operator (see :mod:`~spyrit.core.noise`)
+
+        :attr:`prep` (spyrit.core.prep): Preprocessing operator (see :mod:`~spyrit.core.prep`)
+
+        :attr:`sigma` (torch.tensor): Image-domain covariance prior (for details, see the
+        :class:`~spyrit.core.recon.Tikhonov()` class)
+
+        :attr:`denoi` (torch.nn.Module, optional): Image denoising operator
+        (see :class:`~spyrit.core.nnet`).
+        Default :class:`~spyrit.core.nnet.Identity`
+
+    Input / Output:
+        :attr:`input` (torch.tensor): Ground-truth images with shape :math:`(*,H,W)`, with
+        :math:`*` being any batch size.
+
+        :attr:`output` (torch.tensor): Reconstructed images with shape :math:`(*,H,W)`, with
+        :math:`*` being any batch size.
+
+    Attributes:
+        :attr:`acqu`: Acquisition operator initialized as :attr:`noise`
+
+        :attr:`prep`: Preprocessing operator initialized as :attr:`prep`
+
+        :attr:`tikho`: Data consistency layer initialized as :attr:`Tikhonov(noise.meas_op, sigma)`
+
+        :attr:`denoi`: Image denoising operator initialized as :attr:`denoi`
+
+
+    Example:
+        >>> B, H, M, N = 85, 17, 32, 64
+        >>> sigma = torch.rand(N, N)
+        >>> gamma = torch.rand(M, M)
+        >>> A = torch.rand([M,N])
+        >>> meas = Linear(A, meas_shape=(1,N))
+        >>> noise = NoNoise(meas)
+        >>> prep = DirectPoisson(1, meas)
+        >>> recon = TikhoNet(noise, prep, sigma)
+        >>> y = torch.rand(B,H,M)
+        >>> x = recon(y, gamma)
+        >>> print(y.shape)
+        >>> print(x.shape)
+        torch.Size([85, 17, 32])
+        torch.Size([85, 17, 1, 64])
+    """
+
+    def __init__(self, noise, prep, sigma: torch.tensor, denoi=nn.Identity()):
+
+        super().__init__()
+        self.acqu = noise
+        self.prep = prep
+        # device = noise.meas_op.H.device        # spyrit 2.3.
+        # sigma = torch.as_tensor(sigma, dtype=torch.float32, device=device)
+        self.tikho = Tikhonov(noise.meas_op, sigma)
+        self.denoi = denoi
+
+    def forward(self, x):
+        """Full pipeline (image-to-image mapping)
+
+        Args:
+            x (torch.tensor): Ground-truth images with shape :math:`(*,H,W)`, with
+            :math:`*` being any batch size.
+
+        Returns:
+            torch.tensor: Reconstruction images with shape :math:`(*,H,W)`, with
+            :math:`*` being any batch size.
+        """
+        # Acquisition
+        x = self.acqu(x)  # shape x = [b*c, 2*M]
+        # Reconstruction
+        x = self.reconstruct(x)  # shape x = [bc, 1, h,w]
+
+        return x
+
+    def reconstruct(self, x):
+        r"""Reconstruction (measurement-to-image mapping)
+
+        Args:
+            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(*,M)`.
+
+        Output:
+            torch.tensor: Reconstructed images with shape :math:`(*,H,W)`
+        """
+        # Preprocessing
+        cov_meas = self.prep.sigma(x)
+        x = self.prep(x)
+
+        # covariance of measurements
+        cov_meas = torch.diag_embed(cov_meas)  #
+
+        # print(cov_meas)
+
+        # measurements to image domain processing
+        x = self.tikho(x, cov_meas)
+        x = x.reshape(*x.shape[:-1], self.acqu.meas_op.h, self.acqu.meas_op.w)
+
+        # Image domain denoising
+        x = self.denoi(x)
+
+        return x
+
+    def reconstruct_expe(self, x):
+        r"""Reconstruction (measurement-to-image mapping) for experimental data.
+
+        Args:
+            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(*,M)`.
+
+        Output:
+            torch.tensor: Reconstructed images with shape :math:`(*,H,W)`
+        """
+        # Preprocessing
+        cov_meas = self.prep.sigma_expe(x)
+        # print(cov_meas)
+        # print(self.prep.nbin, self.prep.mudark)
+        # x, norm = self.prep.forward_expe(x, self.acqu.meas_op, (-2,-1)) # shape: [*, M]
+
+        # Alternative where the mean is computed on each row
+        x, norm = self.prep.forward_expe(x, self.acqu.meas_op)  # shape: [*, M]
+
+        # covariance of measurements
+        cov_meas = cov_meas / norm**2
+        cov_meas = torch.diag_embed(cov_meas)
+
+        # measurements to image domain processing
+        x = self.tikho(x, cov_meas)
+        x = x.reshape(*x.shape[:-1], self.acqu.meas_op.h, self.acqu.meas_op.w)
+
+        # Image domain denoising
+        x = self.denoi(x)
+
+        # Denormalization
+        x = self.prep.denormalize_expe(x, norm, x.shape[-2], x.shape[-1])
+
+        return x, norm
 
 
 # =============================================================================
