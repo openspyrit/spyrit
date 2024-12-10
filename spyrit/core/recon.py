@@ -855,7 +855,7 @@ class Pinv1Net(nn.Module):
     .. note::
         The measurement operator applies to the last dimension of the input
         tensor, contrary :class:`~spyrit.core.recon.PinvNet` where it applies
-        to the last two dimension. In both cases, the denoising operator
+        to the last two dimensions. In both cases, the denoising operator
         applies to the last two dimensions.
 
     """
@@ -871,10 +871,12 @@ class Pinv1Net(nn.Module):
         r"""Full pipeline (image-to-image mapping)
 
         Args:
-            :attr:`x`: Ground-truth images with shape :math:`(b,c,h,w)`.
+            :attr:`x` (torch.tensor): Ground-truth images with shape :math:`(*,h,w)`, where
+            :math:`*` is any batch size.
 
         Output:
-            Reconstructed images with shape :math:`(b,c,h,w)`
+            torch.tensor: Reconstructed images with shape :math:`(*,h,w)`, where
+            :math:`*` is any batch size.
 
         Example:
             >>> b,c,h,w = 10,1,48,64
@@ -903,10 +905,10 @@ class Pinv1Net(nn.Module):
         r"""Reconstruction (measurement-to-image mapping)
 
         Args:
-            :attr:`x`: Raw measurement vectors with shape :math:`(*,h,k)`.
+            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(*,h,k)`.
 
         Output:
-            Reconstructed images with shape :math:`(*,h,w)`
+            torch.tensor: Reconstructed images with shape :math:`(*,h,w)`
         """
         # Preprocessing in the measurement domain
         x = self.prep(x)
@@ -921,7 +923,7 @@ class Pinv1Net(nn.Module):
         return x
 
     def reconstruct_expe(self, x):
-        r"""Reconstruction (measurement-to-image mapping)
+        r"""Reconstruction (measurement-to-image mapping) for experimental data.
 
         Args:
             :attr:`x`: Raw measurement vectors with shape :math:`(*,h,k)`.
@@ -974,9 +976,11 @@ class DCNet(nn.Module):
         Default :class:`~spyrit.core.nnet.Identity`
 
     Input / Output:
-        :attr:`input`: Ground-truth images with shape :math:`(B,C,H,W)`
+        :attr:`input`: Ground-truth images with shape :math:`(*,H,W)`, with
+        :math:`*` being any batch size.
 
-        :attr:`output`: Reconstructed images with shape :math:`(B,C,H,W)`
+        :attr:`output`: Reconstructed images with shape :math:`(*,H,W)`, with
+        :math:`*` being any batch size.
 
     Attributes:
         :attr:`Acq`: Acquisition operator initialized as :attr:`noise`
@@ -1182,7 +1186,7 @@ class TikhoNet(nn.Module):
 
         :attr:`prep` (spyrit.core.prep): Preprocessing operator (see :mod:`~spyrit.core.prep`)
 
-        :attr:`sigma` (torch.tensor): Covariance prior (for details, see the
+        :attr:`sigma` (torch.tensor): Image-domain covariance prior (for details, see the
         :class:`~spyrit.core.recon.Tikhonov()` class)
 
         :attr:`denoi` (torch.nn.Module, optional): Image denoising operator
@@ -1190,9 +1194,11 @@ class TikhoNet(nn.Module):
         Default :class:`~spyrit.core.nnet.Identity`
 
     Input / Output:
-        :attr:`input` (torch.tensor): Ground-truth images with shape :math:`(B,C,H,W)`
+        :attr:`input` (torch.tensor): Ground-truth images with shape :math:`(*,H,W)`, with
+        :math:`*` being any batch size.
 
-        :attr:`output` (torch.tensor): Reconstructed images with shape :math:`(B,C,H,W)`
+        :attr:`output` (torch.tensor): Reconstructed images with shape :math:`(*,H,W)`, with
+        :math:`*` being any batch size.
 
     Attributes:
         :attr:`acqu`: Acquisition operator initialized as :attr:`noise`
@@ -1232,7 +1238,16 @@ class TikhoNet(nn.Module):
         self.denoi = denoi
 
     def forward(self, x):
+        """Full pipeline (image-to-image mapping)
 
+        Args:
+            x (torch.tensor): Ground-truth images with shape :math:`(*,H,W)`, with
+            :math:`*` being any batch size.
+
+        Returns:
+            torch.tensor: Reconstruction images with shape :math:`(*,H,W)`, with
+            :math:`*` being any batch size.
+        """
         # Acquisition
         x = self.acqu(x)  # shape x = [b*c, 2*M]
         # Reconstruction
@@ -1241,7 +1256,14 @@ class TikhoNet(nn.Module):
         return x
 
     def reconstruct(self, x):
+        r"""Reconstruction (measurement-to-image mapping)
 
+        Args:
+            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(*,M)`.
+
+        Output:
+            torch.tensor: Reconstructed images with shape :math:`(*,H,W)`
+        """
         # Preprocessing
         cov_meas = self.prep.sigma(x)
         x = self.prep(x)
@@ -1261,7 +1283,14 @@ class TikhoNet(nn.Module):
         return x
 
     def reconstruct_expe(self, x):
+        r"""Reconstruction (measurement-to-image mapping) for experimental data.
 
+        Args:
+            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(*,M)`.
+
+        Output:
+            torch.tensor: Reconstructed images with shape :math:`(*,H,W)`
+        """
         # Preprocessing
         cov_meas = self.prep.sigma_expe(x)
         # print(cov_meas)
