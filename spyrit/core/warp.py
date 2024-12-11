@@ -20,8 +20,10 @@ as a class attribute.
 
 import warnings
 
+import math
 import torch
 import torch.nn as nn
+from torchvision.transforms import v2
 
 
 # =============================================================================
@@ -93,12 +95,12 @@ class DeformationField(nn.Module):
         self._device_tracker = nn.Parameter(torch.tensor([0.0]), requires_grad=False)
 
         # field is None if AffineDeformationField is used
-        if not isinstance(self, AffineDeformationField):
+        if type(self) is DeformationField:
             # store as nn.Parameter
             self._field = nn.Parameter(field, requires_grad=False)
 
-        self.warn_range = True  # warn the user if the field goes beyond +/-2
-        self._warn_field()
+        self.warn_range = False  # warn the user if the field goes beyond +/-2
+        # self._warn_field()
 
     @property
     def align_corners(self) -> bool:
@@ -545,3 +547,101 @@ class AffineDeformationField(DeformationField):
             align_corners=self.align_corners,
         )
         return inv_grid_frames.to(self.device)
+
+
+# =============================================================================
+class ElasticDeformation(DeformationField):
+    """ """
+
+    def __init__(self, alpha, sigma, img_shape, n_frames, n_interpolation):
+        """_summary_
+
+        Args:
+            alpha (float): Magnitude of displacements
+            sigma (float): Smoothness of displacements in the spatial domain
+            n_interpolation (int): Number of frames in the output animation
+            between two consecutive input frames. 1 results in no interpolation
+            sigma_time (float): Smoothness of displacements in the frequency domain
+        """
+        super().__init__(None)
+
+        # self.sigma_time = sigma_time
+        self.alpha = alpha * 10
+        self._img_shape = img_shape
+        self._n_frames = n_frames
+        self.n_interpolation = n_interpolation
+        self.ElasticTransform = v2.ElasticTransform(self.alpha, sigma)
+
+        self._field = nn.Parameter(
+            self._generate_inv_grid_frames(), requires_grad=False
+        )
+
+    @property
+    def field(self):
+        return self._field.data
+
+    @field.setter
+    def field(self, field):
+        self._field = nn.Parameter(field, requires_grad=False)
+        self.n_frames = field.shape[0]
+
+    @property
+    def img_shape(self):
+        return self._img_shape
+
+    @img_shape.setter
+    def img_shape(self, img_shape):
+        self._img_shape = img_shape
+
+    @property
+    def n_frames(self):
+        return self._n_frames
+
+    @n_frames.setter
+    def n_frames(self, n_frames):
+        self._n_frames = n_frames
+
+    def _generate_inv_grid_frames(self):
+        """ """
+        # create base frame between -1 and 1
+        base_frame_i = torch.linspace(-1, 1, self.img_shape[0])
+        base_frame_j = torch.linspace(-1, 1, self.img_shape[1])
+        # shape (h, w, 2)
+        base_frame = torch.stack(
+            torch.meshgrid(base_frame_i, base_frame_j, indexing="ij"), dim=-1
+        )
+        window_width = self.n_interpolation * 3
+
+        elastic_frames_to_generate = 1 + int(
+            math.ceil(self.n_frames / self.n_interpolation)
+        )
+        total_frames_after_conv = (
+            1 + (elastic_frames_to_generate - 1) * self.n_interpolation
+        )
+        # account for the window width
+        total_frames_to_generate = total_frames_after_conv + window_width - 1
+        grid = base_frame.repeat(total_frames_to_generate, 1, 1, 1)
+
+        for i in range(total_frames_to_generate // self.n_interpolation):
+            # generate a random field
+            grid[i * self.n_interpolation] += self.ElasticTransform._get_params(
+                torch.empty([1, *self.img_shape])
+            )["displacement"][0, :, :, :]
+
+        # Define Gaussian convolution operator
+        Conv = nn.Conv1d(1, 1, window_width, bias=False, padding=0)
+        gaussian_window = torch.signal.windows.gaussian(
+            window_width, std=window_width / 4
+        )  # , std=self.sigma_time)
+        gaussian_window /= gaussian_window.sum()
+        Conv.weight = nn.Parameter(gaussian_window.view(1, 1, -1), requires_grad=False)
+
+        # reshape, convolute, reshape back
+        grid = grid.permute(1, 2, 3, 0)  # put time in the last dimension
+        grid = grid.reshape(-1, 1, total_frames_to_generate)  # (h*w*2, 1, n_frames)
+        grid = Conv(grid)
+        grid = grid.reshape(*self.img_shape, 2, total_frames_after_conv)
+        grid = grid.permute(3, 0, 1, 2)  # (n_frames, h, w, 2)
+
+        # truncate to the desired number of frames
+        return grid[: self.n_frames, ...]

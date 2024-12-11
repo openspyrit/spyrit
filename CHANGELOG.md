@@ -22,7 +22,7 @@
 
 <details><summary>
 
-## v2.3.4 (not released yet)
+## v2.3.4
 </summary>
 
 ### spyrit.core

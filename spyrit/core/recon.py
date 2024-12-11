@@ -265,22 +265,36 @@ class Tikhonov(nn.Module):
 
         * The above formulation assumes that the signal :math:`x` has zero mean.
 
-
     Args:
-        :attr:`meas_op` (spyrit.core.meas): Measurement operator that gives acces the
-        measurement matrix :math:`A` with shape :math:`(M, N)`.
+        - :attr:`meas_op` : Measurement operator (see :class:`~spyrit.core.meas`).
+        Its measurement operator has shape :math:`(M, N)`, with :math:`M` the
+        number of measurements and :math:`N` the number of pixels in the image.
 
-        :attr:`Sigma` (torch.tensor): Covariance prior with shape :math:`(N, N)`.
+        - :attr:`sigma` : Signal covariance prior, of shape :math:`(N, N)`.
 
-        :attr:`approx` (bool): Compute (faster) approximate
-        solutions. Defaults to `False`. See :meth:`forward()` for details.
+        - :attr:`diagonal_approximation` : A boolean indicating whether to set
+        the non-diagonal elements of :math:`A \Sigma A^T` to zero. Default is
+        False. If True, this speeds up the computation of the inverse
+        :math:`(A \Sigma A^T + \Sigma_\alpha)^{-1}`.
 
     Attributes:
-        :attr:`B`: (torch.tensor): Matrix initialised as :math:`B = \Sigma A^\top`.
+        - :attr:`meas_op` : Measurement operator initialized as :attr:`meas_op`.
 
-        :attr:`C`: (torch.tensor): Matrix initialised as
-        :math:`C = A \Sigma A^\top`. This corresponds to the covariance prior
-        in the transformed domain.
+        - :attr:`diagonal_approximation` : Indicates if the diagonal approximation
+        is used.
+
+        - :attr:`img_shape` : Shape of the image, initialized as :attr:`meas_op.img_shape`.
+
+        - :attr:`sigma_meas` : Measurement covariance prior initialized as
+        :math:`A \Sigma A^T`. If :attr:`diagonal_approximation` is True, the
+        non-diagonal elements are set to zero.
+
+        - :attr:`sigma_A_T` : Covariance of the missing measurements initialized
+        as :math:`\Sigma A^T`.
+
+        - :attr:`noise_scale` : Hidden parameter to use to scale the noise
+        regularization. It is used in the computation of the inverse:
+        :math:`(A \Sigma A^T  + noisescale \times \Sigma_\alpha)^{-1}`. Default is 1.
 
     Example:
         >>> B, H, M, N = 85, 17, 32, 64
@@ -298,20 +312,16 @@ class Tikhonov(nn.Module):
     """
 
     def __init__(self, meas_op, sigma: torch.tensor, approx=False):
-        """
-        meas_op is a measurement operator
-        sigma is the image covariance prior
-        """
         super().__init__()
 
         dtype = sigma.dtype
         A = meas_op.H  # .to(sigma.dtype)
         sigma = sigma.to(A.dtype)
 
-        if isinstance(meas_op, meas.DynamicLinearSplit):
-            # the measurement covariance prior is assumed to be for
-            # Hadamard-matrix measurements (i.e. no splitting)
-            A = A[::2, :] - A[1::2, :]
+        # if isinstance(meas_op, meas.DynamicLinearSplit):
+        # the measurement covariance prior is assumed to be for
+        # Hadamard-matrix measurements (i.e. no splitting)
+        # A = A[::2, :] - A[1::2, :]
 
         if approx:
             # if we use the diagonal approximation, then we assume that the
@@ -328,23 +338,46 @@ class Tikhonov(nn.Module):
         self.meas_op = meas_op
         self.img_shape = meas_op.img_shape
         self.approx = approx
+        # hidden parameter to use as a hyperparameter for dynamic reconstructions
+        self.noise_scale = 1
 
     def divide(self, y: torch.tensor, gamma: torch.tensor) -> torch.tensor:
+        """Computes the division :math:`y \cdot (\sigma_\alpha \times noisescale + (A \Sigma A^T))^{-1}`.
 
+        Measurements `y` are divided by the sum of the measurement covariance.
+
+        If :attr:`self.approx` is True, the inverse is approximated as
+        a diagonal matrix, speeding up the computation. Otherwise, the
+        inverse is computed with the whole matrix.
+
+        Args:
+            y (torch.tensor): Input measurement tensor. Shape :math:`(*, M)`.
+
+            gamma (torch.tensor): Noise covariance tensor. Shape :math:`(*, M, M)`.
+
+        Returns:
+            torch.tensor: The divided tensor. Shape :math:`(*, M)`.
+        """
         if self.approx:
-            return y / (self.sigma_meas + torch.diagonal(gamma, dim1=-2, dim2=-1))
+            return y / (
+                self.sigma_meas
+                + self.noise_scale * torch.diagonal(gamma, dim1=-2, dim2=-1)
+            )
         else:
             # we need to expand the matrices for the solve/ matmul
             batch_shape = y.shape[:-1]
             expand_shape = batch_shape + (self.sigma_meas.shape)
             y = y.unsqueeze(-1)  # add a dimension to y for batch matrix multiplications
-            y = torch.linalg.solve((self.sigma_meas + gamma).expand(expand_shape), y)
+            y = torch.linalg.solve(
+                (self.sigma_meas + self.noise_scale * gamma).expand(expand_shape), y
+            )
             return y.squeeze(-1)
 
     def forward(
         self, y: torch.tensor, gamma: torch.tensor  # x_0: torch.tensor,
     ) -> torch.tensor:
-        r"""
+        r"""Reconstructs the signal from measurements and noise covariance.
+
         The Tikhonov solution is computed as
 
         .. math::
@@ -558,7 +591,7 @@ class Denoise_layer(nn.Module):
 
 # =============================================================================
 class PinvNet(nn.Module):
-    r"""Pseudo inverse reconstruction network
+    r"""Pseudo inverse reconstruction network.
 
     Args:
         :attr:`noise`: Acquisition operator (see :class:`~spyrit.core.noise`)
@@ -871,12 +904,10 @@ class Pinv1Net(nn.Module):
         r"""Full pipeline (image-to-image mapping)
 
         Args:
-            :attr:`x` (torch.tensor): Ground-truth images with shape :math:`(*,h,w)`, where
-            :math:`*` is any batch size.
+            :attr:`x` (torch.tensor): Ground-truth images with shape :math:`(b,c,h,w)`.
 
         Output:
-            torch.tensor: Reconstructed images with shape :math:`(*,h,w)`, where
-            :math:`*` is any batch size.
+            torch.tensor: Reconstructed images with shape :math:`(b,c,h,w)`.
 
         Example:
             >>> b,c,h,w = 10,1,48,64
@@ -905,10 +936,10 @@ class Pinv1Net(nn.Module):
         r"""Reconstruction (measurement-to-image mapping)
 
         Args:
-            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(*,h,k)`.
+            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(b,c,h,k)`.
 
         Output:
-            torch.tensor: Reconstructed images with shape :math:`(*,h,w)`
+            torch.tensor: Reconstructed images with shape :math:`(b,c,h,w)`
         """
         # Preprocessing in the measurement domain
         x = self.prep(x)
@@ -926,10 +957,10 @@ class Pinv1Net(nn.Module):
         r"""Reconstruction (measurement-to-image mapping) for experimental data.
 
         Args:
-            :attr:`x`: Raw measurement vectors with shape :math:`(*,h,k)`.
+            :attr:`x`: Raw measurement vectors with shape :math:`(b,c,h,k)`.
 
         Output:
-            Reconstructed images with shape :math:`(*,h,w)`
+            Reconstructed images with shape :math:`(b,c,h,w)`
         """
 
         # Preprocessing
@@ -1194,11 +1225,9 @@ class TikhoNet(nn.Module):
         Default :class:`~spyrit.core.nnet.Identity`
 
     Input / Output:
-        :attr:`input` (torch.tensor): Ground-truth images with shape :math:`(*,H,W)`, with
-        :math:`*` being any batch size.
+        :attr:`input` (torch.tensor): Ground-truth images with shape :math:`(B,C,H,W)`.
 
-        :attr:`output` (torch.tensor): Reconstructed images with shape :math:`(*,H,W)`, with
-        :math:`*` being any batch size.
+        :attr:`output` (torch.tensor): Reconstructed images with shape :math:`(B,C,H,W)`.
 
     Attributes:
         :attr:`acqu`: Acquisition operator initialized as :attr:`noise`
@@ -1241,12 +1270,10 @@ class TikhoNet(nn.Module):
         """Full pipeline (image-to-image mapping)
 
         Args:
-            x (torch.tensor): Ground-truth images with shape :math:`(*,H,W)`, with
-            :math:`*` being any batch size.
+            x (torch.tensor): Ground-truth images with shape :math:`(B,C,H,W)`.
 
         Returns:
-            torch.tensor: Reconstruction images with shape :math:`(*,H,W)`, with
-            :math:`*` being any batch size.
+            torch.tensor: Reconstruction images with shape :math:`(B,C,H,W)`.
         """
         # Acquisition
         x = self.acqu(x)  # shape x = [b*c, 2*M]
@@ -1259,10 +1286,10 @@ class TikhoNet(nn.Module):
         r"""Reconstruction (measurement-to-image mapping)
 
         Args:
-            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(*,M)`.
+            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(B,C,M)`.
 
         Output:
-            torch.tensor: Reconstructed images with shape :math:`(*,H,W)`
+            torch.tensor: Reconstructed images with shape :math:`(B,C,H,W)`
         """
         # Preprocessing
         cov_meas = self.prep.sigma(x)
@@ -1286,10 +1313,10 @@ class TikhoNet(nn.Module):
         r"""Reconstruction (measurement-to-image mapping) for experimental data.
 
         Args:
-            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(*,M)`.
+            :attr:`x` (torch.tensor): Raw measurement vectors with shape :math:`(B,C,M)`.
 
         Output:
-            torch.tensor: Reconstructed images with shape :math:`(*,H,W)`
+            torch.tensor: Reconstructed images with shape :math:`(B,C,H,W)`
         """
         # Preprocessing
         cov_meas = self.prep.sigma_expe(x)
@@ -1642,7 +1669,7 @@ class LearnedPGD(nn.Module):
             res = self.acqu.meas_op.forward_H(x) - m
             if self.wls:
                 res = res / meas_variance
-                upd = step[i].reshape(bc, 1) * self.acqu.meas_op.adjoint(res)
+                upd = step[i].reshape(-1, 1) * self.acqu.meas_op.adjoint(res)
             else:
                 upd = step[i] * self.acqu.meas_op.adjoint(res)
             x = x - upd

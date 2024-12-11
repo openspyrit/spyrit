@@ -1267,7 +1267,11 @@ class DynamicLinear(_Base):
     @H_dyn.setter
     def H_dyn(self, value: torch.tensor) -> None:
         self._param_H_dyn = nn.Parameter(value.to(torch.float64), requires_grad=False)
-        del H_pinv
+        try:
+            del H_pinv
+        except UnboundLocalError as e:
+            if "H_pinv" in str(e):
+                pass
 
     @property
     def recon_mode(self) -> str:
@@ -1470,7 +1474,7 @@ class DynamicLinear(_Base):
                 (self.img_h + kernel_width) * (self.img_w + kernel_width)
                 + 1,  # +1 for trash
             ),
-            dtype=torch.float64,
+            dtype=meas_dxy.dtype,
             device=self.device,
         )
         # add at flattened_indices the values of meas_dxy (~warping)

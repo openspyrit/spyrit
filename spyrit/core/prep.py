@@ -96,7 +96,7 @@ class DirectPoisson(nn.Module):
         return x
 
     def sigma(self, x: torch.tensor) -> torch.tensor:
-        r"""Estimates the variance of the preprocessed measurements
+        r"""Estimates the variance of raw measurements
 
         The variance is estimated as :math:`\frac{4}{\alpha^2} x`
 
@@ -353,7 +353,7 @@ class SplitPoisson(DirectPoisson):
         return x, alpha
 
     def sigma(self, x: torch.tensor) -> torch.tensor:
-        r"""Estimates the variance of the preprocessed measurements
+        r"""Estimates the variance of raw measurements
 
         The variance is estimated as :math:`\frac{4}{\alpha^2} (x[0::2]+x[1::2])`
 
