@@ -8,6 +8,7 @@ import numpy as np
 import warnings
 from typing import Tuple
 
+
 # %%
 def wavelength_to_rgb(
     wavelength: float, gamma: float = 0.8
