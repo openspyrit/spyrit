@@ -265,7 +265,6 @@ class Tikhonov(nn.Module):
 
         * The above formulation assumes that the signal :math:`x` has zero mean.
 
-
     Args:
         - :attr:`meas_op` : Measurement operator (see :class:`~spyrit.core.meas`).
         Its measurement operator has shape :math:`(M, N)`, with :math:`M` the
@@ -295,7 +294,7 @@ class Tikhonov(nn.Module):
 
         - :attr:`noise_scale` : Hidden parameter to use to scale the noise
         regularization. It is used in the computation of the inverse:
-        :math:`(A \Sigma A^T \times noisescale + \Sigma_\alpha)^{-1}`. Default is 1.
+        :math:`(A \Sigma A^T  + noisescale \times \Sigma_\alpha)^{-1}`. Default is 1.
 
     Example:
         >>> B, H, M, N = 85, 17, 32, 64
@@ -343,7 +342,22 @@ class Tikhonov(nn.Module):
         self.noise_scale = 1
 
     def divide(self, y: torch.tensor, gamma: torch.tensor) -> torch.tensor:
+        """Computes the division :math:`y \cdot (\sigma_\alpha \times noisescale + (A \Sigma A^T))^{-1}`.
 
+        Measurements `y` are divided by the sum of the measurement covariance.
+
+        If :attr:`self.approx` is True, the inverse is approximated as
+        a diagonal matrix, speeding up the computation. Otherwise, the
+        inverse is computed with the whole matrix.
+
+        Args:
+            y (torch.tensor): Input measurement tensor. Shape :math:`(*, M)`.
+
+            gamma (torch.tensor): Noise covariance tensor. Shape :math:`(*, M, M)`.
+
+        Returns:
+            torch.tensor: The divided tensor. Shape :math:`(*, M)`.
+        """
         if self.approx:
             return y / (
                 self.sigma_meas
@@ -362,7 +376,8 @@ class Tikhonov(nn.Module):
     def forward(
         self, y: torch.tensor, gamma: torch.tensor  # x_0: torch.tensor,
     ) -> torch.tensor:
-        r"""
+        r"""Reconstructs the signal from measurements and noise covariance.
+
         The Tikhonov solution is computed as
 
         .. math::
@@ -576,7 +591,7 @@ class Denoise_layer(nn.Module):
 
 # =============================================================================
 class PinvNet(nn.Module):
-    r"""Pseudo inverse reconstruction network
+    r"""Pseudo inverse reconstruction network.
 
     Args:
         :attr:`noise`: Acquisition operator (see :class:`~spyrit.core.noise`)
