@@ -102,9 +102,9 @@ class Unet(nn.Module):
         # Bottleneck
         self.bottleneck = self.bottle_neck(64)
         # Decode branch
-        self.conv_decode4 = self.expans(64, 64, 64, self.upsample)
-        self.conv_decode3 = self.expans(128, 64, 32, self.upsample)
-        self.conv_decode2 = self.expans(64, 32, 16, self.upsample)
+        self.conv_decode4 = self.expans(64, 64, 64)
+        self.conv_decode3 = self.expans(128, 64, 32)
+        self.conv_decode2 = self.expans(64, 32, 16)
         self.final_layer = self.final_block(32, 16, out_channel)
 
     def contract(
@@ -201,9 +201,9 @@ class Unet(nn.Module):
             )
         else:
             upsample_subblock = torch.nn.ConvTranspose2d(
+                kernel_size=kernel_size,
                 in_channels=mid_channel,
                 out_channels=out_channels,
-                kernel_size=kernel_size,
                 stride=2,
                 padding=padding,
                 output_padding=1,
