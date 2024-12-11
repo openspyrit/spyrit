@@ -25,7 +25,7 @@ find = {}  # Scanning implicit namespaces is active by default
 
 [project]
 name = "spyrit"
-version = "2.3.3"
+version = "2.4.0"
 dynamic = ["readme"]
 authors = [{name = "Nicolas Ducros", email = "Nicolas.Ducros@insa-lyon.fr"}]
 description = "Toolbox for deep image reconstruction"
