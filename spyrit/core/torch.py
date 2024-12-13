@@ -563,7 +563,7 @@ def reindex(  # previously sort_by_indices
     Example:
         >>> values = torch.tensor([[10, 20, 30], [100, 200, 300]])
         >>> indices = torch.tensor([2, 0, 1])
-        >>> out = reindex(values, indices, axis="cols", False)
+        >>> out = reindex(values, indices, axis="cols", inverse_permutation=False)
         >>> out
         tensor([[ 20,  30,  10],
                 [200, 300, 100]])
