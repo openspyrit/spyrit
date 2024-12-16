@@ -5,6 +5,11 @@ Created on Mon Dec  2 20:53:59 2024
 @author: ducros
 """
 
+import warnings
+from typing import Tuple
+
+import numpy as np
+
 
 # %%
 def wavelength_to_rgb(
