@@ -292,10 +292,6 @@ class Tikhonov(nn.Module):
         - :attr:`sigma_A_T` : Covariance of the missing measurements initialized
         as :math:`\Sigma A^T`.
 
-        - :attr:`noise_scale` : Hidden parameter to use to scale the noise
-        regularization. It is used in the computation of the inverse:
-        :math:`(A \Sigma A^T  + noisescale \times \Sigma_\alpha)^{-1}`. Default is 1.
-
     Example:
         >>> B, H, M, N = 85, 17, 32, 64
         >>> sigma = torch.rand(N, N)
@@ -338,8 +334,6 @@ class Tikhonov(nn.Module):
         self.meas_op = meas_op
         self.img_shape = meas_op.img_shape
         self.approx = approx
-        # hidden parameter to use as a hyperparameter for dynamic reconstructions
-        self.noise_scale = 1
 
     def divide(self, y: torch.tensor, gamma: torch.tensor) -> torch.tensor:
         """Computes the division :math:`y \cdot (\sigma_\alpha \times noisescale + (A \Sigma A^T))^{-1}`.
@@ -359,18 +353,13 @@ class Tikhonov(nn.Module):
             torch.tensor: The divided tensor. Shape :math:`(*, M)`.
         """
         if self.approx:
-            return y / (
-                self.sigma_meas
-                + self.noise_scale * torch.diagonal(gamma, dim1=-2, dim2=-1)
-            )
+            return y / (self.sigma_meas + torch.diagonal(gamma, dim1=-2, dim2=-1))
         else:
             # we need to expand the matrices for the solve/ matmul
             batch_shape = y.shape[:-1]
             expand_shape = batch_shape + (self.sigma_meas.shape)
             y = y.unsqueeze(-1)  # add a dimension to y for batch matrix multiplications
-            y = torch.linalg.solve(
-                (self.sigma_meas + self.noise_scale * gamma).expand(expand_shape), y
-            )
+            y = torch.linalg.solve((self.sigma_meas + gamma).expand(expand_shape), y)
             return y.squeeze(-1)
 
     def forward(
