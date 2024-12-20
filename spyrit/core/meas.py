@@ -18,6 +18,8 @@ to simulate measurements of moving objects, represented as a sequence of images.
 """
 
 import warnings
+from typing import Any, Union
+from collections.abc import Iterable
 
 # import memory_profiler as mprof
 
@@ -680,6 +682,402 @@ class Linear(_Base):
             )
         except AttributeError:
             pass
+
+
+# =============================================================================
+class Linear2(nn.Module):
+    """_summary_
+
+    Args:
+        nn (_type_): _description_
+    """
+
+    def __init__(
+        self,
+        matrix: torch.tensor,
+        meas_shape: Union[int, torch.Size, Iterable[int]] = None,
+        meas_dims: Union[int, torch.Size, Iterable[int]] = None,
+        noise_model: bool = None,
+        # mask=None,  # must have shape (len(meas_shape), matrix.shape[-1])
+    ):
+        super().__init__()
+
+        if type(meas_shape) is int:
+            meas_shape = [meas_shape]
+        if type(meas_dims) is int:
+            meas_dims = [meas_dims]
+
+        self.matrix = nn.Parameter(matrix)
+        self.meas_shape = torch.Size(meas_shape)
+        self.meas_dims = torch.Size(meas_dims)
+        self.noise_model = noise_model
+
+        # additional attributes
+        self.num_meas = matrix.shape[0]
+        self.meas_ndim = len(meas_dims)
+        self.meas_numel = meas_shape.numel()
+        self.last_dims = tuple(range(-self.meas_ndim, 0))
+
+        if len(meas_shape) != len(meas_dims):
+            raise ValueError("meas_shape and meas_dims must have the same length")
+        if matrix.ndim != 2:
+            raise ValueError("matrix must have 2 dimensions")
+        if matrix.shape[1] != self.meas_numel:
+            raise ValueError(
+                f"The number of columns in the matrix ({matrix.shape[1]}) does "
+                + f"not match the number of measured items ({self.meas_numel}) "
+                + f"in the measurement shape {self.meas_shape}."
+            )
+
+    @property
+    def device(self) -> torch.device:
+        return self.matrix.device
+
+    def measure(self, x: torch.tensor) -> torch.tensor:
+        """Apply the measurement patterns (no noise) to the incoming tensor.
+
+        The input tensor is multiplied by the measurement patterns.
+
+        .. note::
+            This method does not include the noise model.
+
+        Args:
+            x (torch.tensor): A tensor where the dimensions indexed by
+            `self.meas_dims` match the measurement shape `self.meas_shape`.
+
+        Returns:
+            torch.tensor: A tensor of shape (*, self.num_meas) where * denotes
+            all the dimensions of the input tensor not included in `self.meas_dims`.
+
+        Example with a RGB 15x4 pixel image:
+            >>> matrix = torch.randn(10, 60)
+            >>> meas_op = Linear2(matrix, meas_shape=(15, 4))
+            >>> x = torch.randn(3, 15, 4)
+            >>> y = meas_op.measure(x)
+            >>> print(y.shape)
+            torch.Size([3, 10])
+        """
+        x = self.vectorize(x)
+        x = torch.einsum("mn,...n->...m", self.matrix, x)
+        return x
+
+    def forward(self, x):
+        """Forward pass (measurement + noise) of the measurement operator.
+
+        The forward pass includes both the measurement and the noise model. It
+        is equivalent to the method `measure()` followed by the noise model
+        :meth:`forward()` method.
+
+        Args:
+            x (torch.tensor): A tensor where the dimensions indexed by
+            `self.meas_dims` match the measurement shape `self.meas_shape`.
+
+        Returns:
+            torch.tensor: A tensor of shape (*, self.num_meas) where * denotes
+            all the dimensions of the input tensor not included in `self.meas_dims`.
+
+        Example:
+            >>> matrix = torch.randn(10, 60)
+            >>> meas_op = Linear2(matrix, meas_shape=(15, 4)
+        """
+        x = self.measure(x)
+        x = self.noise_model(x)
+        return x
+
+    def unvectorize(self, input: torch.tensor) -> torch.tensor:
+        """Unflatten the last dimension of a tensor to the measurement shape at
+        the measured dimensions.
+
+        This method first expands the last dimension into the measurement
+        shape (`self.meas_shape`), and then moves the expanded dimensions to
+        their original positions as defined by `self.meas_dims`.
+
+        Input:
+            input (torch.tensor): A tensor of shape (*, self.meas_numel) where
+            * denotes any batch size and `self.meas_numel` is the number of
+            measured items (pixels for instance).
+
+        Output:
+            torch.tensor: A tensor where the dimensions indexed by
+            `self.meas_dims` match the measurement shape `self.meas_shape`.
+
+        Example:
+            >>> matrix = torch.randn(10, 60)
+            >>> meas_op = Linear2(matrix, meas_shape=(12, 5), dim=(-1,-3))
+            >>> x = torch.randn(3, 7, 60)
+            >>> print(meas_op.unvectorize(x).shape)
+            torch.Size([3, 5, 7, 12]
+        """
+        # unvectorize the last dimension
+        input = input.reshape(*input.shape[:-1], *self.meas_shape)
+        # move the measured dimensions to their original positions
+        return torch.movedim(input, self.last_dims, self.meas_dims)
+
+    def vectorize(self, input: torch.tensor) -> torch.tensor:
+        """Flatten a tensor along the measured dimensions `self.meas_dims`.
+
+        The tensor is flattened at the indicated `self.meas_dims` dimensions. The
+        flattened dimensions are then collapsed into one, which is the last
+        dimension of the output tensor.
+
+        Input:
+            input (torch.tensor): A tensor where the dimensions indexed by
+            `self.meas_dims` match the measurement shape `self.meas_shape`.
+
+        Output:
+            torch.tensor: A tensor of shape (*, self.meas_numel) where * denotes
+            all the dimensions of the input tensor not included in `self.meas_dims`.
+
+        Example:
+            >>> matrix = torch.randn(10, 60)
+            >>> meas_op = Linear2(matrix, meas_shape=(12, 5), dim=(-1,-3))
+            >>> x = torch.randn(3, 5, 7, 12)
+            >>> print(meas_op.vectorize(x).shape)
+            torch.Size([3, 7, 60])
+        """
+        # move all measured dimensions to the end
+        input = torch.movedim(input, self.meas_dims, self.last_dims)
+        # flatten the measured dimensions
+        return input.reshape(*input.shape[: -self.meas_ndim], self.meas_numel)
+
+    # def _extract_patterns(self, matrix: torch.tensor) -> torch.tensor:
+    #     matrix_pos, matrix_neg = self.split_tensor(matrix)
+    #     return torch.cat([matrix_pos, matrix_neg], 1).reshape(
+    #         2 * matrix.shape[0], matrix.shape[1]
+    #     )
+
+    # def _set_patterns(self, matrix: torch.tensor) -> None:
+    #     if self.split:
+    #         self.patterns = nn.Parameter(
+    #             self._extract_patterns(matrix), requires_grad=False
+    #         )
+    #     else:
+    #         self.patterns = nn.Parameter(matrix, requires_grad=False)
+
+
+class FreeformLinear2(Linear2):
+    """Performs linear measurements on a subset (mask) of pixels in the image."""
+
+    def __init__(
+        self,
+        matrix: torch.tensor,
+        index_mask: torch.tensor = None,  # must have shape (len(meas_shape), matrix.shape[-1])
+        bool_mask: torch.tensor = None,
+        meas_shape: Union[int, torch.Size, Iterable[int]] = None,
+        meas_dims: Union[int, torch.Size, Iterable[int]] = None,
+        noise_model: bool = None,
+    ):
+        super().__init__(matrix, meas_shape, meas_dims, noise_model)
+
+        # select mask type
+        if index_mask is not None:
+            if bool_mask is not None:
+                warnings.warn(
+                    "Both index_mask and bool_mask have been specified. Using index_mask."
+                )
+            self.index_mask = index_mask
+            self.mask_type = "index"
+        else:
+            if bool_mask is not None:
+                self.bool_mask = bool_mask
+                self.mask_type = "bool"
+            else:
+                raise ValueError("Either index_mask or bool_mask must be specified.")
+
+        # check mask dimensions in the case of index mask
+        if self.mask_type == "index":
+            if index_mask.ndim != 2:
+                raise ValueError("index_mask must have 2 dimensions.")
+            if index_mask.shape[0] != len(meas_shape):
+                raise ValueError(
+                    "The first dimension of index_mask must match the number of dimensions in meas_shape."
+                )
+            if index_mask.shape[1] != self.meas_numel:
+                raise ValueError(
+                    f"The second dimension of index_mask ({index_mask.shape[1]}) must "
+                    + f"match the number of measured items ({self.meas_numel})."
+                )
+        # check in the case of bool mask
+        elif self.mask_type == "bool":
+            if bool_mask.shape != meas_shape:
+                raise ValueError("bool_mask must have the same shape as meas_shape.")
+        # no other case
+        else:
+            raise ValueError(
+                f"mask_type must be either 'index' or 'bool', found {self.mask_type}."
+            )
+
+    def apply_mask(self, x: torch.tensor) -> torch.tensor:
+        """Appplies the saved mask to the input tensor, where the masked
+        dimensions are collapsed into one.
+
+        This method first selects the elements from the input tensor at the
+        specified dimensions `self.meas_dims` and based on the mask. The selected
+        elements are then flattened into a single dimension which is the last
+        dimension of the output tensor.
+
+        Args:
+            x (torch.tensor): The input tensor to select the mask from. The
+            dimensions indexed by `self.meas_dims` should match the measurement shape
+            `self.meas_shape`.
+
+        Returns:
+            torch.tensor: A tensor of shape (*, self.meas_numel) where * denotes
+            all the dimensions of the input tensor not included in `self.meas_dims`.
+
+        Example: Select one every second point on the diagonal of a batch of images
+            >>> images = torch.rand(17, 3, 40, 40)  # b, c, h, w
+            >>> # create a (2,20) mask
+            >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
+            >>> matrix = torch.randn(13, 20)
+            >>> meas_op = FreeformLinear(matrix, mask, meas_shape=(40,40), dim=(-1,-2))
+            >>> y = meas_op.apply_mask(images)
+            >>> print(y.shape)
+            torch.Size([17, 3, 20])
+        """
+        x = torch.movedim(x, self.meas_dims, self.last_dims)
+
+        if self.mask_type == "index":
+            return x[..., *self.index_mask]
+
+        elif self.mask_type == "bool":
+            # flatten along the masked dimensions
+            x = x.reshape(*x.shape[: -self.meas_ndim], self.meas_numel)
+            return x[..., self.bool_mask.reshape(-1)]
+
+        else:
+            raise ValueError(
+                f"mask_type must be either 'index' or 'bool', found {self.mask_type}."
+            )
+
+    def measure(self, x: torch.tensor) -> torch.tensor:
+        """Apply the measurement patterns (no noise) to the incoming tensor.
+
+        The mask is first applied to the input tensor, then the input tensor
+        is multiplied by the measurement patterns.
+
+        .. note::
+            This method does not include the noise model.
+
+        Args:
+            x (torch.tensor): A tensor where the dimensions indexed by
+            `self.meas_dims` match the measurement shape `self.meas_shape`.
+
+        Returns:
+            torch.tensor: A tensor of shape (*, self.num_meas) where * denotes
+            all the dimensions of the input tensor not included in `self.meas_dims`.
+        """
+        x = self.mask_vectorize(x)
+        return torch.einsum("mn,...n->...m", self.matrix, x)
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        """Forward pass (measurement + noise) of the measurement operator.
+
+        The mask is first applied to the input tensor, then the input tensor
+        goes through the measurement model and the noise model. It
+        is equivalent to the method `measure()` followed by the noise model
+        :meth:`forward()` method.
+
+        Args:
+            x (torch.tensor): A tensor where the dimensions indexed by
+            `self.meas_dims` match the measurement shape `self.meas_shape`.
+
+        Returns:
+            torch.tensor: A tensor of shape (*, self.num_meas) where * denotes
+            all the dimensions of the input tensor not included in `self.meas_dims`.
+
+        Example: Measure the upper half of 32x32 images
+            >>> matrix = torch.randn(10, 16*32)
+            >>>
+
+        """
+        super().forward(x)
+
+    def mask_unvectorize(self, x: torch.tensor, fill_value: Any = 0) -> torch.tensor:
+        """Unflatten the last dimension of a tensor to the measurement shape at
+        the measured dimensions based on the mask.
+
+        This method expands the last dimension into the measurement shape
+        `self.meas_shape`, filling the elements not in the mask with the
+        `fill_value`. The expanded dimensions are then moved to their original
+        positions as defined by `self.meas_dims`.
+
+        .. note::
+            This function creates a new tensor filled with the `fill_value` and
+            then fills the elements in the mask with the corresponding elements.
+            The output tensor is not a view of the input tensor.
+
+        Args:
+            x (torch.tensor): tensor to be expanded. Its last dimension must
+            contain `self.meas_numel` elements.
+
+            fill_value (Any, optional): Fill value for all the indices not
+            covered by the mask. Defaults to 0.
+
+        Returns:
+            torch.tensor: A tensor where the dimensions indexed by `self.meas_dims`
+            match the measurement shape `self.meas_shape`.
+        """
+
+        if self.mask_type == "index":
+            # create a new tensor with the final shape
+            output = torch.full(
+                (*x.shape[:-1], *self.meas_shape),
+                fill_value,
+                dtype=x.dtype,
+                device=x.device,
+            )
+            output[..., *self.index_mask] = x
+
+        elif self.mask_type == "bool":
+            # create a new tensor with an intermediate shape
+            output = torch.full(
+                (*x.shape[:-1], self.meas_numel),
+                fill_value,
+                dtype=x.dtype,
+                device=x.device,
+            )
+            output[..., self.bool_mask.reshape(-1)] = x
+            output = output.reshape(*output.shape[:-1], *self.meas_shape)
+
+        else:
+            raise ValueError(
+                f"mask_type must be either 'index' or 'bool', found {self.mask_type}."
+            )
+
+        return torch.movedim(output, self.last_dims, self.meas_dims)
+
+    def mask_vectorize(self, x: torch.tensor) -> torch.tensor:
+        """Flatten a tensor along the measured dimensions, which are collapsed into one.
+
+        This method first selects the elements from the input tensor at the
+        specified dimensions `self.meas_dims` and based on the mask. The selected
+        elements are then flattened into a single dimension which is the last
+        dimension of the output tensor.
+
+        Args:
+            x (torch.tensor): The input tensor to select the mask from. The
+            dimensions indexed by `self.meas_dims` should match the measurement shape
+            `self.meas_shape`.
+
+        .. note::
+            This function is an alias for the method :meth:`apply_mask`.
+
+        Returns:
+            torch.tensor: A tensor of shape (*, self.meas_numel) where * denotes
+            all the dimensions of the input tensor not included in `self.meas_dims`.
+
+        Example: Select one every second point on the diagonal of a batch of images
+            >>> images = torch.rand(17, 3, 40, 40)  # b, c, h, w
+            >>> # create a (2,20) mask
+            >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
+            >>> matrix = torch.randn(13, 20)
+            >>> meas_op = FreeformLinear(matrix, mask, meas_shape=(40,40), dim=(-1,-2))
+            >>> y = meas_op.mask_vectorize(images)
+            >>> print(y.shape)
+            torch.Size([17, 3, 20])
+        """
+        return self.apply_mask(x)
 
 
 # =============================================================================
