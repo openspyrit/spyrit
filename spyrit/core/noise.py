@@ -468,3 +468,194 @@ class PoissonApproxGaussSameNoise(NoNoise):
         x = F.relu(x)  # remove small negative values
         x = x + torch.sqrt(x) * torch.randn((*[1] * (x.ndim - 1), x.shape[-1]))
         return x
+
+
+# =============================================================================
+class NoNoise2(nn.Module):
+    """A placeholder that returns measurements without noise.
+
+    This is the base class for the noise models. All noise models should inherit
+    from this class. It returns any given measurement tensor without any noise.
+
+    Args:
+        None
+
+    Attributes:
+        noise_function (function): The function that adds noise to the incoming
+        measurements. It is `lambda x: x`.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+        def noise_function(x: torch.tensor) -> torch.tensor:
+            return x
+
+        self.noise_function = noise_function
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        """Returns measurements as they are.
+
+        Args:
+            x (torch.tensor): Any measurement tensor.
+
+        Returns:
+            torch.tensor: The same measurement tensor.
+        """
+        return self.noise_function(x)
+
+
+# =============================================================================
+class Poisson2(NoNoise2):
+    """Adds Poisson noise to incoming measurements.
+
+    The Poisson noise is parameterized by its intensity :math:`\alpha`. The
+    incoming measurements are multiplied by :math:`\alpha` and then corrupted
+    by Poisson noise as follows: :math:`\mathcal{P}(\alpha x)`. The noise
+    intensity is defined in the constructor.
+
+    Args:
+        alpha (float): The intensity of the incoming measurements.
+
+    Attributes:
+        alpha (float): The intensity of the incoming measurements.
+        noise_function (function): The function that adds Poisson noise to the
+        incoming measurements. It is `lambda x: torch.poisson(x * self.alpha)`.
+    """
+
+    def __init__(self, alpha: float):
+        super().__init__()
+        self.alpha = alpha
+
+        def noise_function(x: torch.tensor) -> torch.tensor:
+            return torch.poisson(x * self.alpha)
+
+        self.noise_function = noise_function
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        """Adds Poisson noise to incoming measurements.
+
+        The Poisson noise is calculated as :math:`\mathcal{P}(\alpha x)`,
+        where :math:`\alpha` is the intensity of the incoming measurements and
+        is defined in the constructor.
+
+        Args:
+            x (torch.tensor): Any measurement tensor, with any shape.
+
+        Returns:
+            torch.tensor: The same measurement tensor with Poisson noise.
+        """
+        return super().forward(x)
+
+
+# =============================================================================
+class PoissonApproxGauss2(Poisson2):
+    """Adds Gaussian-approximated Poisson noise to incoming measurements.
+
+    The Gaussian-approximated Poisson noise is parameterized by its intensity
+    :math:`\alpha`. The incoming measurements are multiplied by :math:`\alpha`
+    and then corrupted by Gaussian noise as follows:
+    :math:`x \cdot \alpha + \sqrt{x \cdot \alpha} \cdot \mathcal{N}(0, 1)`.
+    The noise intensity is defined in the constructor.
+
+    Args:
+        alpha (float): The intensity of the incoming measurements.
+
+    Attributes:
+        alpha (float): The intensity of the incoming measurements.
+        noise_function (function): The function that adds Gaussian-approximated
+        Poisson noise to the incoming measurements.
+
+    Raises:
+        RuntimeError: If there are negative values in the input tensor.
+    """
+
+    def __init__(self, alpha: float):
+        super().__init__(alpha)
+
+        def noise_function(x: torch.tensor) -> torch.tensor:
+            x = x * self.alpha
+            return x + torch.sqrt(x) * torch.randn_like(x)
+
+        self.noise_function = noise_function
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        """Adds Gaussian-approximated Poisson noise to incoming measurements.
+
+        The Gaussian-approximated Poisson noise is calculated as :math:`x +
+        \sqrt{x} \cdot \mathcal{N}(0, 1)`, where :math:`x` is the intensity of
+        the incoming measurements and is defined in the constructor.
+
+        Args:
+            x (torch.tensor): Any measurement tensor, with any shape.
+
+        Returns:
+            torch.tensor: The same measurement tensor with Gaussian-approximated
+            Poisson noise.
+        """
+        if torch.any(x < 0):
+            raise RuntimeError("Input tensor contains negative values.")
+        return super().forward(x)
+
+
+# =============================================================================
+class PoissonApproxGaussSameNoise2(Poisson2):
+    """Adds identical Gaussian-approximated Poisson noise to incoming measurements.
+
+    The Gaussian-approximated Poisson noise is parameterized by its intensity
+    :math:`\alpha`. The incoming measurements are multiplied by :math:`\alpha`
+    and then corrupted by Gaussian noise as follows:
+    :math:`x \cdot \alpha + \sqrt{x \cdot \alpha} \cdot \mathcal{N}(0, 1)`.
+    The noise intensity is defined in the constructor.
+
+    .. important::
+        Contrary to :class:`~spyrit.core.noise.PoissonApproxGauss2`, all dimensions
+        of the incoming measurements except the last one are corrupted with the same
+        noise sample.
+
+    Args:
+        alpha (float): The intensity of the incoming measurements.
+
+    Attributes:
+        alpha (float): The intensity of the incoming measurements.
+        noise_function (function): The function that adds Gaussian-approximated
+        Poisson noise to the incoming measurements.
+
+    Raises:
+        RuntimeError: If there are negative values in the input tensor.
+    """
+
+    def __init__(self, alpha: float):
+        super().__init__(alpha)
+
+        def noise_function(x: torch.tensor) -> torch.tensor:
+            x = x * self.alpha
+            return x + torch.sqrt(x) * torch.randn((*[1] * (x.ndim - 1), x.shape[-1]))
+
+        self.noise_function = noise_function
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        """Adds identical Gaussian-approximated Poisson noise to incoming measurements.
+
+        The Gaussian-approximated Poisson noise is calculated as
+        :math:`x \cdot \alpha + \sqrt{x \cdot \alpha} \cdot \mathcal{N}(0, 1)`,
+        where :math:`x` is the measurement tensor and :math:`\alpha` is the
+        intensity of the incoming measurements defined in the constructor. The
+        gaussian noise is identical for all dimensions of :math:`x` except the
+        last one.
+
+        .. important::
+            Contrary to :class:`~spyrit.core.noise.PoissonApproxGauss2`, all dimensions
+            of the incoming measurements except the last one are corrupted with the same
+            noise sample.
+
+        Args:
+            x (torch.tensor): Any measurement tensor, with any shape.
+
+        Returns:
+            torch.tensor: The same measurement tensor with Gaussian-approximated
+            Poisson noise, identical for all dimensions except the last one.
+        """
+        if torch.any(x < 0):
+            raise RuntimeError("Input tensor contains negative values.")
+        return super().forward(x)
