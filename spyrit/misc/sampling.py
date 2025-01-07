@@ -64,7 +64,7 @@ def meas2img(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
 
 
 def meas2img2(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
-    """Return multiple measurement images from multiple measurement vectors.
+    r"""Return multiple measurement images from multiple measurement vectors.
     It is essentially the same as `meas2img`, but the `meas` argument is
     two-dimensional.
 

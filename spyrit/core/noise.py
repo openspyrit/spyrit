@@ -145,6 +145,106 @@ class NoNoise(nn.Module):
 
 
 # =============================================================================
+class Gaussian(NoNoise):
+    # =========================================================================
+    r"""
+    Simulates measurements with additive Gaussian noise
+
+    .. math::
+
+        y \sim \mathcal{N}(\mu = \frac{1}{2} H(1+x), \sigma^2),
+
+    where :math:`H` is the measurement operator and
+    :math:`\mathcal{N}(\mu, \sigma^2)` is a Gaussian distribution with mean :math:`\mu` and
+    variance :math:`\sigma^2`.
+
+    We assume that the images :math:`x` are in the range [-1;1]. They are fist scaled in the range [0; 1]. Then, the measurement are simulated and finally Gaussian
+    noise is added.
+
+    .. note::
+        Assumes that the incoming images :math:`x` are in the range [-1;1]
+
+    The class is constructed from a measurement operator and the noise variance
+    :math:`\sigma^2`.
+
+    Args:
+        :attr:`meas_op`: Measurement operator :math:`H` (see the :mod:`~spyrit.core.meas` submodule)
+
+        :attr:`sigma` (float): Noise variance
+
+    Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator
+        >>> H = torch.rand([400,32*32])
+        >>> linear_op = Linear(H)
+        >>> linear_acq = Gaussian(linear_op, 10.0)
+
+    Example 2: Using a :class:`~spyrit.core.meas.HadamSplit` measurement operator
+        >>> H = torch.rand([400,32*32])
+        >>> Perm = torch.rand([32*32,32*32])
+        >>> split_op = HadamSplit(H, Perm, 32, 32)
+        >>> split_acq = Gaussian(split_op, 200.0)
+
+    Example 3: Using a :class:`~spyrit.core.meas.LinearSplit` measurement operator
+        >>> H = torch.rand(24,64)
+        >>> split_row_op = LinearSplit(H)
+        >>> split_acq = Poisson(split_row_op, 50.0)
+    """
+
+    def __init__(
+        self,
+        meas_op: Union[Linear, LinearSplit, HadamSplit],
+        sigma=1.0,
+    ):
+        super().__init__(meas_op)
+        self.sigma = sigma
+
+    def forward(self, x):
+        r"""Simulates measurements corrupted by additive Gaussian noise
+
+        Args:
+            :attr:`x`: Batch of images with shape :math:`(*, h, w)` if :attr:`self.meas_op` is a static
+            measurement operator, or :math:`(*, t, c, h, w)` if :attr:`self.meas_op` is a dynamic
+            measurement operator.
+
+        Output:
+            Batch of measurements with shape :math:`(*, M)` if :attr:`self.meas_op` is a static
+            measurement operator or `(*, c, M)` if :attr:`self.meas_op` is a dynamic
+            measurement operator.
+
+        Example 1: Two noisy measurement vectors from a :class:`~spyrit.core.meas.Linear` measurement operator
+            >>> H = torch.rand([400,32*32])
+            >>> meas_op = Linear(H)
+            >>> noise_op = Gaussian(meas_op, 10.0)
+            >>> x = torch.FloatTensor(10, 32, 32).uniform_(-1, 1)
+            >>> y = noise_op(x)
+            >>> print(y.shape)
+            torch.Size([10, 400])
+            >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            Measurements in (220.18 , 296.80)
+            >>> y = noise_op(x)
+            >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            Measurements in (213.74 , 300.25)
+
+        Example 2: (NOT WORKING: UPDATE) Two noisy measurement vectors from a :class:`~spyrit.core.meas.HadamSplit` operator
+            >>> Perm = torch.rand([32*32,32*32])
+            >>> Ord = torch.randn(h, h)
+            >>> meas_op = HadamSplit(400, h, Ord)
+            >>> noise_op = Gaussian(meas_op, 200.0)
+            >>> x = torch.FloatTensor(10, 32, 32).uniform_(-1, 1)
+            >>> y = noise_op(x)
+            >>> print(y.shape)
+            torch.Size([10, 800])
+            >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            Measurements in (0.00 , 55338.00)
+            >>> y = noise_op(x)
+            >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            Measurements in (0.00 , 55077.00)
+        """
+        x = super().forward(x)  # NoNoise forward (scaling to [0, 1])
+        x = x + self.sigma * torch.randn(x.shape)
+        return x
+
+
+# =============================================================================
 class Poisson(NoNoise):
     # =========================================================================
     r"""

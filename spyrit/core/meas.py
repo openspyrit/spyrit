@@ -694,8 +694,8 @@ class LinearSplit(Linear):
 
     The matrix :math:`P` contains only positive values and is obtained by
     splitting a measurement matrix :math:`H` such that
-    :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
-    `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
+    :math:`P` has a shape of :math:`(2M, N)` and :math:`P[0::2, :] = H_{+}` and
+    :math:`P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
     :math:`H_{-} = \max(0,-H)`.
 
     The class is constructed from the :math:`M` by :math:`N` matrix :math:`H`,
