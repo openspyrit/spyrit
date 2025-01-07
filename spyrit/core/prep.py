@@ -462,7 +462,7 @@ class SplitPoisson(DirectPoisson):
         return x
 
 
-# ==============================================================================
+# =============================================================================
 class SplitPoissonRaw(SplitPoisson):
     # ==============================================================================
     r"""
@@ -612,3 +612,41 @@ class SplitPoissonRaw(SplitPoisson):
     ) -> torch.tensor:
 
         return (x + 1) / 2 * beta
+
+
+# =============================================================================
+class SimPoisson2(nn.Module):
+    """ """
+
+    def __init__(self, alpha: float):
+        super().__init__()
+        self.alpha = alpha
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        """ """
+        return x / self.alpha
+
+    def sigma(self, x: torch.tensor) -> torch.tensor:
+        """ """
+        return 4 * x / (self.alpha**2)
+
+
+# =============================================================================
+class ExpePoisson(nn.Module):
+    """ """
+
+    def __init__(self, gain: float, mudark: float, sigdark: float, nbin: float):
+        super().__init__()
+        self.gain = gain
+        self.mudark = mudark
+        self.sigdark = sigdark
+        self.nbin = nbin
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        """ """
+        return x / self.alpha
+
+    def sigma(self, x: torch.tensor) -> torch.tensor:
+        """ """
+        x = self.gain * (x - self.nbin * self.mudark) + self.nbin * self.sigdark**2
+        return x
