@@ -713,25 +713,32 @@ class Linear2(nn.Module):
         self.noise_model = noise_model
 
         # additional attributes
-        self.num_meas = matrix.shape[0]
+        self.n_meas = matrix.shape[0]
         self.meas_ndim = len(meas_dims)
-        self.meas_numel = meas_shape.numel()
+        self.n_pixels = meas_shape.numel()
         self.last_dims = tuple(range(-self.meas_ndim, 0))
 
         if len(meas_shape) != len(meas_dims):
             raise ValueError("meas_shape and meas_dims must have the same length")
         if matrix.ndim != 2:
             raise ValueError("matrix must have 2 dimensions")
-        if matrix.shape[1] != self.meas_numel:
+        if matrix.shape[1] != self.n_pixels:
             raise ValueError(
                 f"The number of columns in the matrix ({matrix.shape[1]}) does "
-                + f"not match the number of measured items ({self.meas_numel}) "
+                + f"not match the number of measured items ({self.n_pixels}) "
                 + f"in the measurement shape {self.meas_shape}."
             )
+
+        self._split = False  # indicates if the split operator is used when inversing
+        self.matrix_to_inverse = matrix
 
     @property
     def device(self) -> torch.device:
         return self.matrix.device
+
+    @property
+    def split(self) -> bool:
+        return self._split
 
     def measure(self, x: torch.tensor) -> torch.tensor:
         """Apply the measurement patterns (no noise) to the incoming tensor.
@@ -746,7 +753,7 @@ class Linear2(nn.Module):
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.num_meas) where * denotes
+            torch.tensor: A tensor of shape (*, self.n_meas) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example with a RGB 15x4 pixel image:
@@ -773,7 +780,7 @@ class Linear2(nn.Module):
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.num_meas) where * denotes
+            torch.tensor: A tensor of shape (*, self.n_meas) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example:
@@ -793,8 +800,8 @@ class Linear2(nn.Module):
         their original positions as defined by `self.meas_dims`.
 
         Input:
-            input (torch.tensor): A tensor of shape (*, self.meas_numel) where
-            * denotes any batch size and `self.meas_numel` is the number of
+            input (torch.tensor): A tensor of shape (*, self.n_pixels) where
+            * denotes any batch size and `self.n_pixels` is the number of
             measured items (pixels for instance).
 
         Output:
@@ -825,7 +832,7 @@ class Linear2(nn.Module):
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Output:
-            torch.tensor: A tensor of shape (*, self.meas_numel) where * denotes
+            torch.tensor: A tensor of shape (*, self.n_pixels) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example:
@@ -838,7 +845,7 @@ class Linear2(nn.Module):
         # move all measured dimensions to the end
         input = torch.movedim(input, self.meas_dims, self.last_dims)
         # flatten the measured dimensions
-        return input.reshape(*input.shape[: -self.meas_ndim], self.meas_numel)
+        return input.reshape(*input.shape[: -self.meas_ndim], self.n_pixels)
 
     # def _extract_patterns(self, matrix: torch.tensor) -> torch.tensor:
     #     matrix_pos, matrix_neg = self.split_tensor(matrix)
@@ -892,10 +899,10 @@ class FreeformLinear2(Linear2):
                 raise ValueError(
                     "The first dimension of index_mask must match the number of dimensions in meas_shape."
                 )
-            if index_mask.shape[1] != self.meas_numel:
+            if index_mask.shape[1] != self.n_pixels:
                 raise ValueError(
                     f"The second dimension of index_mask ({index_mask.shape[1]}) must "
-                    + f"match the number of measured items ({self.meas_numel})."
+                    + f"match the number of measured items ({self.n_pixels})."
                 )
         # check in the case of bool mask
         elif self.mask_type == "bool":
@@ -922,7 +929,7 @@ class FreeformLinear2(Linear2):
             `self.meas_shape`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.meas_numel) where * denotes
+            torch.tensor: A tensor of shape (*, self.n_pixels) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
@@ -942,7 +949,7 @@ class FreeformLinear2(Linear2):
 
         elif self.mask_type == "bool":
             # flatten along the masked dimensions
-            x = x.reshape(*x.shape[: -self.meas_ndim], self.meas_numel)
+            x = x.reshape(*x.shape[: -self.meas_ndim], self.n_pixels)
             return x[..., self.bool_mask.reshape(-1)]
 
         else:
@@ -964,7 +971,7 @@ class FreeformLinear2(Linear2):
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.num_meas) where * denotes
+            torch.tensor: A tensor of shape (*, self.n_meas) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
         """
         x = self.mask_vectorize(x)
@@ -983,7 +990,7 @@ class FreeformLinear2(Linear2):
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.num_meas) where * denotes
+            torch.tensor: A tensor of shape (*, self.n_meas) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Measure the upper half of 32x32 images
@@ -1009,7 +1016,7 @@ class FreeformLinear2(Linear2):
 
         Args:
             x (torch.tensor): tensor to be expanded. Its last dimension must
-            contain `self.meas_numel` elements.
+            contain `self.n_pixels` elements.
 
             fill_value (Any, optional): Fill value for all the indices not
             covered by the mask. Defaults to 0.
@@ -1032,7 +1039,7 @@ class FreeformLinear2(Linear2):
         elif self.mask_type == "bool":
             # create a new tensor with an intermediate shape
             output = torch.full(
-                (*x.shape[:-1], self.meas_numel),
+                (*x.shape[:-1], self.n_pixels),
                 fill_value,
                 dtype=x.dtype,
                 device=x.device,
@@ -1064,7 +1071,7 @@ class FreeformLinear2(Linear2):
             This function is an alias for the method :meth:`apply_mask`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.meas_numel) where * denotes
+            torch.tensor: A tensor of shape (*, self.n_pixels) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
