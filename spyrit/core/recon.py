@@ -342,7 +342,7 @@ class Tikhonov(nn.Module):
         self.noise_scale = 1
 
     def divide(self, y: torch.tensor, gamma: torch.tensor) -> torch.tensor:
-        """Computes the division :math:`y \cdot (\sigma_\alpha \times noisescale + (A \Sigma A^T))^{-1}`.
+        r"""Computes the division :math:`y \cdot (\sigma_\alpha \times noisescale + (A \Sigma A^T))^{-1}`.
 
         Measurements `y` are divided by the sum of the measurement covariance.
 
@@ -1650,7 +1650,7 @@ class LearnedPGD(nn.Module):
                 (*x.shape[:-1], *self.acqu.meas_op.meas_shape), device=x.device
             )
 
-        print("x shape:", x.shape)
+        # print("x shape:", x.shape)
 
         if self.log_fidelity:
             self.cost = []
