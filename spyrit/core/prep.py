@@ -14,6 +14,7 @@ import torch.nn as nn
 
 from spyrit.core.meas import LinearSplit, HadamSplit  # , Linear
 
+
 # =============================================================================
 class Split(nn.Module):
     r"""
@@ -46,7 +47,6 @@ class Split(nn.Module):
     def __init__(self):
         super().__init__()
 
-
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
         Preprocess to compensates for image normalization and splitting of the
@@ -68,7 +68,8 @@ class Split(nn.Module):
         Example:
         """
         return x[..., 0::2] - x[..., 1::2]
-    
+
+
 # =============================================================================
 class DirectPoisson(nn.Module):
     r"""
@@ -666,6 +667,7 @@ class SplitPoissonRaw(SplitPoisson):
     ) -> torch.tensor:
 
         return (x + 1) / 2 * beta
+
 
 # =============================================================================
 class DirectGaussian(nn.Module):

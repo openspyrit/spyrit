@@ -270,12 +270,12 @@ class Tikhonov(nn.Module):
           Its measurement operator has shape :math:`(M, N)`, with :math:`M` the
           number of measurements and :math:`N` the number of pixels in the
           image.
-        
+
         - :attr:`sigma` (torch.tensor): Signal covariance prior, of shape :math:`(N, N)`.
 
         - :attr:`diagonal_approximation` : A boolean indicating whether to set
-          the non-diagonal elements of :math:`A \Sigma A^T` to zero. Default 
-          is False. If True, this speeds up the computation of the inverse 
+          the non-diagonal elements of :math:`A \Sigma A^T` to zero. Default
+          is False. If True, this speeds up the computation of the inverse
           :math:`(A \Sigma A^T + \Sigma_\alpha)^{-1}`.
 
     Attributes:
@@ -286,16 +286,16 @@ class Tikhonov(nn.Module):
 
         - :attr:`img_shape` : Shape of the image, initialized as :attr:`meas_op.img_shape`.
 
-        - :attr:`sigma_meas` (torch.tensor): Measurement covariance prior 
+        - :attr:`sigma_meas` (torch.tensor): Measurement covariance prior
           initialized as :math:`A \Sigma A^T`. If :attr:`diagonal_approximation`
           is True, the non-diagonal elements are set to zero.
 
-        - :attr:`sigma_A_T` (torch.tensor): Covariance of the missing 
+        - :attr:`sigma_A_T` (torch.tensor): Covariance of the missing
           measurements initialized as :math:`\Sigma A^T`.
 
         - :attr:`noise_scale` : Hidden parameter to use to scale the noise
           regularization. It is used in the computation of the inverse:
-          :math:`(A \Sigma A^T  + noisescale \times \Sigma_\alpha)^{-1}`. 
+          :math:`(A \Sigma A^T  + noisescale \times \Sigma_\alpha)^{-1}`.
           Default is 1.0.
 
     Example:
