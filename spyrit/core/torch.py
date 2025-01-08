@@ -54,6 +54,7 @@ def assert_power_of_2(n, raise_error=True):
         raise ValueError("n must be a power of 2.")
     return False
 
+
 def sequency_perm_torch(X, ind=None):
     r"""Permute the last dimension of a tensor to get sequency order
 
@@ -180,8 +181,8 @@ def fwht(x, order=True, dim=-1):
     Args:
         x (np.ndarray): -by-n input signal, where n is a power of two.
 
-        order (bool or list, optional): True for sequency order (default), False 
-        for natural order. When order is a list, it defines the permutation 
+        order (bool or list, optional): True for sequency order (default), False
+        for natural order. When order is a list, it defines the permutation
         indices to use. Default is True.
 
         dim (int, optional): The dimension along which to apply the transform.
