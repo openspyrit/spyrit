@@ -217,7 +217,7 @@ class PseudoInverse(nn.Module):
 
 
 # =============================================================================
-class RegularizedPinv(PseudoInverse):
+class Tikhonov(PseudoInverse):
     """ """
 
     def __init__(self, meas_op, store_pinv=False, *args, **kwargs):
