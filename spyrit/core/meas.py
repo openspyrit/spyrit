@@ -685,24 +685,24 @@ class Linear(_Base):
 # =============================================================================
 class LinearSplit(Linear):
 
-    #`y = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}x`
+    # `y = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}x`
     r"""
     Simulates split measurements.
-    
-    Given a measurement operator :math:`H\in\mathbb{R}^{M\times N}` containing (possibly) negative values, it computes 
-    
-    .. math:: y = Ax, 
-    
-    where :math:`x` is the signal/image and  :math:`A\in\mathbb{R}_+^{2M\times N}` is the split measurement operator (associated to :math:`H`) which contains only positive values. 
-    
+
+    Given a measurement operator :math:`H\in\mathbb{R}^{M\times N}` containing (possibly) negative values, it computes
+
+    .. math:: y = Ax,
+
+    where :math:`x` is the signal/image and  :math:`A\in\mathbb{R}_+^{2M\times N}` is the split measurement operator (associated to :math:`H`) which contains only positive values.
+
     We define the split measurement operator from the positive and negative components of :math:`H`. In practice, the even rows of :math:`A` contain the positive components of :math:`H`, while odd rows of :math:`A` contain the negative components of :math:`H`. Mathematically,
-    
+
     .. math::
         \begin{cases}
             A[0::2, :] = H_{+}, \text{ with } H_{+} = \max(0,H),\\
             A[1::2, :] = H_{-}, \text{ with } H_{-} = \max(0,-H).
         \end{cases}
-    
+
     .. note::
         :math:`H_{+}` and :math:`H_{-}` are such that :math:`H_{+} - H_{-} = H`.
 
@@ -718,11 +718,11 @@ class LinearSplit(Linear):
         measurement matrix :math:`H`. If `True`, the pseudo inverse is
         initialized as :math:`H^\dagger` and stored in the attribute
         :attr:`H_pinv`. It is always possible to compute and store the pseudo
-        inverse later using the method :meth:`build_H_pinv`. Defaults to 
+        inverse later using the method :meth:`build_H_pinv`. Defaults to
         :attr:`False`.
 
         :attr:`rtol` (float, optional): Cutoff for small singular values (see
-        :mod:`torch.linalg.pinv`). Only relevant when :attr:`pinv` is 
+        :mod:`torch.linalg.pinv`). Only relevant when :attr:`pinv` is
         :attr:`True`.
 
         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
@@ -766,8 +766,8 @@ class LinearSplit(Linear):
         is used by :func:`~spyrit.core.torch.sort_by_significance()`.
 
     .. note::
-        If you know the pseudo inverse of :math:`H` and want to store it, 
-        instantiate the class with :attr:`pinv` set to `False` and call 
+        If you know the pseudo inverse of :math:`H` and want to store it,
+        instantiate the class with :attr:`pinv` set to `False` and call
         :meth:`build_H_pinv` to store the pseudo inverse.
 
     Example:

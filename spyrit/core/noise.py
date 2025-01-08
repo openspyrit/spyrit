@@ -144,7 +144,7 @@ class NoNoise(nn.Module):
         return self.meas_op.reindex(x, axis, inverse_permutation)
 
 
-#==============================================================================
+# ==============================================================================
 class Gaussian(nn.Module):
     r"""
     Simulates measurements corrupted by additive Gaussian noise
@@ -156,7 +156,7 @@ class Gaussian(nn.Module):
     where :math:`\mathcal{N}(\mu, \sigma^2)` is a Gaussian distribution with mean :math:`\mu` and
     variance :math:`\sigma^2`, :math:`H` is the measurement operator and :math:`x` is the input signal/image.
 
-    The class is constructed from a measurement operator :math:`H` and the 
+    The class is constructed from a measurement operator :math:`H` and the
     standard deviation of the noise :math:`\sigma`.
 
     Args:
@@ -187,19 +187,19 @@ class Gaussian(nn.Module):
 
             y \sim \mathcal{N}\left(\mu = Hx, \sigma^2\right),
 
-        where :math:`\mathcal{N}(\mu, \sigma^2)` is a Gaussian distribution 
-        with mean :math:`\mu` and variance :math:`\sigma^2`, :math:`H` is the 
+        where :math:`\mathcal{N}(\mu, \sigma^2)` is a Gaussian distribution
+        with mean :math:`\mu` and variance :math:`\sigma^2`, :math:`H` is the
         measurement operator and :math:`x` is the input signal/image.
 
         Args:
-            :attr:`x`: Batch of images :math:`x` with shape :math:`(*, h, w)` 
-            if :attr:`self.meas_op` is a static measurement operator, or 
-            :math:`(*, t, c, h, w)` if :attr:`self.meas_op` is a dynamic 
+            :attr:`x`: Batch of images :math:`x` with shape :math:`(*, h, w)`
+            if :attr:`self.meas_op` is a static measurement operator, or
+            :math:`(*, t, c, h, w)` if :attr:`self.meas_op` is a dynamic
             measurement operator.
 
         Output:
-            Batch of measurements :math:`y` with shape :math:`(*, M)` if 
-            :attr:`self.meas_op` is a static measurement operator or 
+            Batch of measurements :math:`y` with shape :math:`(*, M)` if
+            :attr:`self.meas_op` is a static measurement operator or
             :math:`(*, c, M)` if :attr:`self.meas_op` is a dynamic
             measurement operator.
 
