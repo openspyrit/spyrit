@@ -180,8 +180,9 @@ def fwht(x, order=True, dim=-1):
     Args:
         x (np.ndarray): -by-n input signal, where n is a power of two.
 
-        order (bool, optional): True for sequency (default), False for natural.
-        If a list, it defines the permutation indices to use. Default is True.
+        order (bool or list, optional): True for sequency order (default), False 
+        for natural order. When order is a list, it defines the permutation 
+        indices to use. Default is True.
 
         dim (int, optional): The dimension along which to apply the transform.
         Default is -1.
