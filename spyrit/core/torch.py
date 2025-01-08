@@ -14,6 +14,8 @@ import torch
 import torch.nn as nn
 import torchvision
 
+from spyrit.misc.walsh_hadamard import sequency_perm_ind
+
 
 # =============================================================================
 # Walsh / Hadamard -related functions
@@ -51,6 +53,30 @@ def assert_power_of_2(n, raise_error=True):
     if raise_error:
         raise ValueError("n must be a power of 2.")
     return False
+
+def sequency_perm_torch(X, ind=None):
+    r"""Permute the last dimension of a tensor to get sequency order
+
+    Args:
+        :attr:`X` (torch.tensor): -by-n input matrix
+
+        :attr:`ind` : index list of length n
+
+    Returns:
+        torch.tensor: -by-n input matrix
+
+    Example :
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
+        >>> x = x[None, None, :]
+        >>> x = wh.sequency_perm_torch(x)
+        >>> print(x)
+    """
+    if ind is None:
+        ind = sequency_perm_ind(X.shape[-1])
+
+    Y = X[..., ind]
+    return Y
 
 
 def walsh_matrix(n):
@@ -167,88 +193,102 @@ def fwht(x, order=True, dim=-1):
         Fast sequency-ordered (i.e., Walsh) Hadamard transform
 
         >>> import torch
-        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import spyrit.core.torch as st
         >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
         >>> x = x[None,:]
-        >>> y = wh.fwht_torch(x)
+        >>> y = st.fwht(x)
         >>> print(y)
+        tensor([[14, -8, -8, 18, -4, -2, -6,  4]])
 
     Example 2:
         Fast Hadamard transform
 
         >>> import torch
-        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import spyrit.core.torch as st
         >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
         >>> x = x[None,:]
-        >>> y = wh.fwht_torch(x, False)
+        >>> y = st.fwht(x, False)
         >>> print(y)
+        tensor([[14,  4, 18, -4, -8, -6, -8, -2]])
 
     Example 3:
         Permuted fast Hadamard transform
 
         >>> import numpy as np
         >>> import torch
-        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import spyrit.core.torch as st
         >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
         >>> ind = [1, 0, 3, 2, 7, 4, 5, 6]
-        >>> y = wh.fwht_torch(x, ind)
+        >>> y = st.fwht(x, ind)
         >>> print(y)
+        tensor([ 4, 14, -4, 18, -2, -8, -6, -8])
 
     Example 4:
         Comparison with the numpy transform
 
         >>> import numpy as np
-        >>> import torch
         >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import torch
+        >>> import spyrit.core.torch as st
         >>> x = np.array([1, 3, 0, -1, 7, 5, 1, -2])
         >>> y_np = wh.fwht(x)
         >>> x_torch = torch.from_numpy(x).to(torch.device('cuda:0'))
-        >>> y_torch = wh.fwht_torch(x_torch)
+        >>> y_torch = st.fwht(x_torch)
         >>> print(y_np)
         >>> print(y_torch)
+        [14 -8 -8 18 -4 -2 -6  4]
+        tensor([14, -8, -8, 18, -4, -2, -6,  4], device='cuda:0')
 
     Example 5:
         Computation times for a signal of length 2**12
 
         >>> import timeit
-        >>> import torch
         >>> import numpy as np
         >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import torch
+        >>> import spyrit.core.torch as st
         >>> x = np.random.rand(2**12,1)
-        >>> t = timeit.timeit(lambda: wh.fwht(x,False), number=200)
-        >>> print(f"Fast Hadamard transform numpy CPU (200x): {t:.4f} seconds")
+        >>> t = timeit.timeit(lambda: wh.fwht(x,False), number=2000)
+        >>> print(f"Fast Hadamard transform numpy CPU (2000x): {t:.4f} seconds")
         >>> x_torch = torch.from_numpy(x)
-        >>> t = timeit.timeit(lambda: wh.fwht_torch(x_torch,False), number=200)
-        >>> print(f"Fast Hadamard transform pytorch CPU (200x): {t:.4f} seconds")
+        >>> t = timeit.timeit(lambda: st.fwht(x_torch,False), number=2000)
+        >>> print(f"Fast Hadamard transform pytorch CPU (2000x): {t:.4f} seconds")
         >>> x_torch = torch.from_numpy(x).to(torch.device('cuda:0'))
-        >>> t = timeit.timeit(lambda: wh.fwht_torch(x_torch,False), number=200)
-        >>> print(f"Fast Hadamard transform pytorch GPU (200x): {t:.4f} seconds")
+        >>> t = timeit.timeit(lambda: st.fwht(x_torch,False), number=2000)
+        >>> print(f"Fast Hadamard transform pytorch GPU (2000x): {t:.4f} seconds")
+        Fast Hadamard transform numpy CPU (2000x): 0.0031 seconds
+        Fast Hadamard transform pytorch CPU (2000x): 0.0441 seconds
+        Fast Hadamard transform pytorch GPU (2000x): 0.0277 seconds
 
     Example 6:
         CPU vs GPU: Computation times for 512 signals of length 2**12
 
         >>> import timeit
         >>> import torch
-        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import spyrit.core.torch as st
         >>> x_cpu = torch.rand(512,2**12)
-        >>> t = timeit.timeit(lambda: wh.fwht_torch(x_cpu,False), number=10)
+        >>> t = timeit.timeit(lambda: st.fwht(x_cpu,False), number=50)
         >>> print(f"Fast Hadamard transform pytorch CPU (10x): {t:.4f} seconds")
         >>> x_gpu = x_cpu.to(torch.device('cuda:0'))
-        >>> t = timeit.timeit(lambda: wh.fwht_torch(x_gpu,False), number=10)
+        >>> t = timeit.timeit(lambda: st.fwht(x_gpu,False), number=50)
         >>> print(f"Fast Hadamard transform pytorch GPU (10x): {t:.4f} seconds")
+        Fast Hadamard transform pytorch CPU (50x): 2.2351 seconds
+        Fast Hadamard transform pytorch GPU (50x): 0.0680 seconds
 
     Example 7:
         Repeating the Walsh-ordered transform using input indices is faster
 
         >>> import timeit
         >>> import torch
-        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import spyrit.core.torch as st
         >>> x = torch.rand(256,2**12).to(torch.device('cuda:0'))
-        >>> t = timeit.timeit(lambda: wh.fwht_torch(x), number=100)
+        >>> t = timeit.timeit(lambda: st.fwht(x), number=100)
         >>> print(f"No indices as inputs (100x): {t:.3f} seconds")
-        >>> ind = wh.sequency_perm_ind(x.shape[-1])
-        >>> t = timeit.timeit(lambda: wh.fwht_torch(x,ind), number=100)
+        >>> ind = st.sequency_perm_ind(x.shape[-1])
+        >>> t = timeit.timeit(lambda: st.fwht(x,ind), number=100)
         >>> print(f"With indices as inputs (100x): {t:.3f} seconds")
+        No indices as inputs (100x): 0.461 seconds
+        With indices as inputs (100x): 0.731 seconds
     """
 
     x = torch.moveaxis(x, dim, -1)

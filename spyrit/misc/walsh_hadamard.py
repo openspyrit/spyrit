@@ -139,31 +139,6 @@ def sequency_perm(X, ind=None):
     return Y
 
 
-def sequency_perm_torch(X, ind=None):
-    r"""Permute the last dimension of a tensor to get sequency order
-
-    Args:
-        :attr:`X` (torch.tensor): -by-n input matrix
-
-        :attr:`ind` : index list of length n
-
-    Returns:
-        torch.tensor: -by-n input matrix
-
-    Example :
-        >>> import spyrit.misc.walsh_hadamard as wh
-        >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
-        >>> x = x[None, None, :]
-        >>> x = wh.sequency_perm_torch(x)
-        >>> print(x)
-    """
-    if ind is None:
-        ind = sequency_perm_ind(X.shape[-1])
-
-    Y = X[..., ind]
-    return Y
-
-
 def sequency_perm_matrix(n):
     r"""Return permutation matrix to get sequency from the natural order
 
