@@ -697,7 +697,7 @@ class Linear2(nn.Module):
         matrix: torch.tensor,
         meas_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_dims: Union[int, torch.Size, Iterable[int]] = None,
-        noise_model: bool = None,
+        noise_model: nn.Module = nn.Identity(),
         # mask=None,  # must have shape (len(meas_shape), matrix.shape[-1])
     ):
         super().__init__()
