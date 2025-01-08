@@ -1044,8 +1044,10 @@ class HadamSplit(LinearSplit):
         # memory overconsumption
         self.H_pinv = self.H.T
 
-    def pinv(self, x, reg="rcond", eta=0.001, diff=False):
-        return super().pinv(x, reg, eta, diff)
+    def pinv(self, y, *args, **kwargs):
+        y_padded = torch.zeros(y.shape[:-1] + (self.N,), device=y.device, dtype=y.dtype)
+        y_padded[..., : self.M] = y
+        return self.inverse(y_padded)
 
     def inverse(self, y: torch.tensor) -> torch.tensor:
         r"""Inverse transform of Hadamard-domain images.
