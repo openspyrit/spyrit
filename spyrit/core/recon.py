@@ -1639,8 +1639,6 @@ class LearnedPGD(nn.Module):
                 (*x.shape[:-1], *self.acqu.meas_op.meas_shape), device=x.device
             )
 
-        print("x shape:", x.shape)
-
         if self.log_fidelity:
             self.cost = []
             with torch.no_grad():
