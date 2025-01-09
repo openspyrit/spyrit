@@ -1234,8 +1234,11 @@ class DynamicLinear(_Base):
         Ord: torch.tensor = None,
         meas_shape: tuple = None,  # (height, width)
         img_shape: tuple = None,  # (height, width)
+        white_acq: torch.tensor = None,
     ):
         super().__init__(H, Ord, meas_shape)
+
+        self.white_acq = white_acq
 
         if img_shape is not None:
             self._img_shape = img_shape
@@ -1461,6 +1464,10 @@ class DynamicLinear(_Base):
             meas_pattern = self.P
         else:
             meas_pattern = self.H_static
+
+        if self.white_acq is not None:
+            meas_pattern *= self.white_acq.ravel().unsqueeze(0)  # for eventual spatial gain
+
         meas_dxy = (
             meas_pattern.reshape(n_frames, 1, self.h * self.w).to(dxy.dtype) * dxy
         )
@@ -1757,9 +1764,10 @@ class DynamicLinearSplit(DynamicLinear):
         Ord: torch.tensor = None,
         meas_shape: tuple = None,  # (height, width)
         img_shape: tuple = None,  # (height, width)
+        white_acq: torch.tensor = None,
     ):
         # call constructor of DynamicLinear
-        super().__init__(H, Ord, meas_shape, img_shape)
+        super().__init__(H, Ord, meas_shape, img_shape, white_acq)
         self._set_P(self.H_static)
 
     @property  # override _Base definition
@@ -1981,13 +1989,14 @@ class DynamicHadamSplit(DynamicLinearSplit):
         h: int,
         Ord: torch.tensor = None,
         img_shape: tuple = None,  # (height, width)
+        white_acq: torch.tensor = None,
     ):
 
         F = spytorch.walsh2_matrix(h)
         # empty = torch.empty(h**2, h**2)  # just to get the shape
 
         # we pass the whole F matrix to the constructor
-        super().__init__(F, Ord, (h, h), img_shape)
+        super().__init__(F, Ord, (h, h), img_shape, white_acq)
         self._M = M
 
     def _set_Ord(self, Ord: torch.tensor) -> None:
