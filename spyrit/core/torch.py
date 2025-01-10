@@ -55,7 +55,7 @@ def assert_power_of_2(n, raise_error=True):
     return False
 
 
-def sequency_perm_torch(X, ind=None):
+def sequency_perm(X, ind=None):
     r"""Permute the last dimension of a tensor to get sequency order
 
     Args:
@@ -138,41 +138,8 @@ def walsh2_matrix(n):
 
 
 def walsh2_torch(img, H=None):
-    r"""Returns a 2D Walsh-ordered Hadamard transform of an image.
-
-    Args:
-        img (torch.tensor): Image to transform. Must have a shape of
-        :math:`(*, h, w)` where :math:`h` and :math:`w` are the image height
-        and width. The image must be square, i.e. :math:`h = w`. The image
-        height and width must be a power of two.
-
-        H (torch.tensor, optional): 1D Walsh-ordered Hadamard transformation
-        matrix. Specify this if you have already calculated the transformation
-        matrix, or leave this field to `None` to use the Walsh-ordered fast
-        Walsh-Hadamard transform. Defaults to `None`.
-
-    Returns:
-        torch.tensor: Hadamard-transformed image. Has same shape as input
-        image.
-
-    ..warning::
-        This function is deprecated and has been moved to spyrit.core.torch. It
-        is recommended to use :func:`spyrit.core.torch.fwht_2d` instead for
-        natural- or walsh-ordered Hadamard transforms.
-
-    Example:
-        >>> img = torch.rand(1, 3, 64, 64) # (batch, channels, height, width)
-        >>> img_transformed = walsh2_torch(img)
-        >>> img_transformed.shape
-        torch.Size([1, 3, 64, 64])
-    """
-    warnings.warn(
-        "This function is deprecated and will be removed in a future "
-        + "version. Please use either spyrit.core.torch.fwht_2d for natural- "
-        + "or walsh-ordered Hadamard transforms.",
-        DeprecationWarning,
-    )
-    return fwht_2d(img, True)
+    r"""Deprecated function. Use `fwht_2d` instead."""
+    raise NotImplementedError("This function is deprecated. Use `fwht_2d` instead.")
 
 
 def fwht(x, order=True, dim=-1):
