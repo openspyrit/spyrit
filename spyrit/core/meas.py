@@ -694,7 +694,7 @@ class Linear2(nn.Module):
 
     def __init__(
         self,
-        matrix: torch.tensor,
+        H: torch.tensor,
         meas_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_dims: Union[int, torch.Size, Iterable[int]] = None,
         noise_model: nn.Module = nn.Identity(),
@@ -707,38 +707,42 @@ class Linear2(nn.Module):
         if type(meas_dims) is int:
             meas_dims = [meas_dims]
 
-        self.matrix = nn.Parameter(matrix)
+        self.H = nn.Parameter(H)
         self.meas_shape = torch.Size(meas_shape)
         self.meas_dims = torch.Size(meas_dims)
         self.noise_model = noise_model
 
         # additional attributes
-        self.n_meas = matrix.shape[0]
+        self.n_meas = H.shape[0]
         self.meas_ndim = len(meas_dims)
         self.n_pixels = meas_shape.numel()
         self.last_dims = tuple(range(-self.meas_ndim, 0))
 
         if len(meas_shape) != len(meas_dims):
             raise ValueError("meas_shape and meas_dims must have the same length")
-        if matrix.ndim != 2:
+        if H.ndim != 2:
             raise ValueError("matrix must have 2 dimensions")
-        if matrix.shape[1] != self.n_pixels:
+        if H.shape[1] != self.n_pixels:
             raise ValueError(
-                f"The number of columns in the matrix ({matrix.shape[1]}) does "
+                f"The number of columns in the matrix ({H.shape[1]}) does "
                 + f"not match the number of measured items ({self.n_pixels}) "
                 + f"in the measurement shape {self.meas_shape}."
             )
 
         self._split = False  # indicates if the split operator is used when inversing
-        self.matrix_to_inverse = matrix
-
-    @property
-    def device(self) -> torch.device:
-        return self.matrix.device
+        self._matrix_to_inverse = H
 
     @property
     def split(self) -> bool:
         return self._split
+
+    @property
+    def matrix_to_inverse(self) -> torch.tensor:
+        return self._matrix_to_inverse
+
+    @property
+    def device(self) -> torch.device:
+        return self.H.device
 
     def measure(self, x: torch.tensor) -> torch.tensor:
         """Apply the measurement patterns (no noise) to the incoming tensor.
@@ -765,7 +769,7 @@ class Linear2(nn.Module):
             torch.Size([3, 10])
         """
         x = self.vectorize(x)
-        x = torch.einsum("mn,...n->...m", self.matrix, x)
+        x = torch.einsum("mn,...n->...m", self.H, x)
         return x
 
     def forward(self, x):
@@ -975,7 +979,7 @@ class FreeformLinear2(Linear2):
             all the dimensions of the input tensor not included in `self.meas_dims`.
         """
         x = self.mask_vectorize(x)
-        return torch.einsum("mn,...n->...m", self.matrix, x)
+        return torch.einsum("mn,...n->...m", self.H, x)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         """Forward pass (measurement + noise) of the measurement operator.
