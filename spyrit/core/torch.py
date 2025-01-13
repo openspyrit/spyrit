@@ -14,7 +14,7 @@ import torch
 import torch.nn as nn
 import torchvision
 
-from spyrit.misc.walsh_hadamard import sequency_perm_ind
+import spyrit.misc.walsh_hadamard as wh
 
 
 # =============================================================================
@@ -74,7 +74,7 @@ def sequency_perm(X, ind=None):
         >>> print(x)
     """
     if ind is None:
-        ind = sequency_perm_ind(X.shape[-1])
+        ind = wh.sequency_perm_ind(X.shape[-1])
 
     Y = X[..., ind]
     return Y
@@ -294,7 +294,7 @@ def fwht(x, order=True, dim=-1):
 
     # Arbitrary order
     if type(order) == list:
-        x = sequency_perm_torch(x, order)
+        x = sequency_perm(x, order)
 
     x = torch.moveaxis(x, -1, dim)
 
