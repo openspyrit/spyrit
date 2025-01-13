@@ -779,3 +779,89 @@ def center_pad(
     if reshape:
         img_padded = img_padded.reshape(*img_shape[:-1], -1)
     return img_padded
+
+
+# =============================================================================
+# Linear Algebra
+# =============================================================================
+
+
+def regularized_pinv(
+    tensor: torch.tensor, regularization: str, *args, **kwargs
+) -> torch.tensor:
+    """Returns a regularized pseudo-inverse of a tensor.
+
+    The regularizations supported are:
+
+        - "rcond": Uses the function :func:`torch.linalg.pinv`. Additional
+            arguments can be passed to this function through the `args` and
+            `kwargs` parameters, such as the `rcond` parameter.
+
+        - "L2": Uses the L2 regularization method. The regularization parameter
+            `eta` must be passed as a keyword argument. It controls the amount
+            of regularization applied to the pseudo-inverse.
+
+        - "H1": Uses the H1 regularization method. The regularization parameters
+            `eta` and `img_shape` must be passed as keyword arguments. The
+            `eta` parameter controls the amount of regularization applied to the
+            pseudo-inverse, and the `img_shape` parameter is the shape of the
+            image to which the pseudo-inverse will be applied. This is used to
+            compute the finite difference operator.
+
+    .. note::
+        The H1 regularization method is only implemented for application to 2D
+        images (i.e., `image_shape` must be 2D).
+
+    Args:
+        tensor (torch.tensor): input tensor to compute the pseudo-inverse. Must
+        be 2D.
+
+        regularization (str): Regularization method to use. Supported methods
+        are "rcond", "L2", and "H1".
+
+        *args: Additional arguments to pass to the regularization method.
+
+        **kwargs: Additional keyword arguments to pass to the regularization
+        method. Must include the regularization parameter `eta` when using the
+        "L2" and "H1" regularization methods, and the image shape `img_shape`
+        when using the "H1" regularization method.
+
+    Raises:
+        NotImplementedError: If the regularization method is not supported.
+
+    Returns:
+        torch.tensor: The regularized pseudo-inverse of the input tensor.
+    """
+
+    if regularization == "rcond":
+        pinv = torch.linalg.pinv(tensor, *args, **kwargs)
+
+    elif regularization == "L2":
+        eta = kwargs.get("eta")
+        if tensor.shape[0] >= tensor.shape[1]:
+            pinv = (
+                torch.linalg.inv(
+                    tensor.T @ tensor
+                    + eta * torch.eye(tensor.shape[1], device=tensor.device)
+                )
+                @ tensor.T
+            )
+        else:
+            pinv = tensor.T @ torch.linalg.inv(
+                tensor @ tensor.T
+                + eta * torch.eye(tensor.shape[0], device=tensor.device)
+            )
+
+    elif regularization == "H1":
+        eta = kwargs.get("eta")
+        img_shape = kwargs.get("img_shape")
+        Dx, Dy = neumann_boundary(img_shape)
+        D2 = (Dx.T @ Dx + Dy.T @ Dy).to(tensor.device)
+        pinv = torch.linalg.inv(tensor.T @ tensor + eta * D2) @ tensor.T
+
+    else:
+        raise NotImplementedError(
+            f"Regularization method {regularization} not implemented. Currently supported methods are 'rcond', 'L2', and 'H1'."
+        )
+
+    return pinv
