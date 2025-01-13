@@ -2,97 +2,13 @@
 Inverse methods for inverse problems.
 """
 
-from typing import Union, OrderedDict
+from typing import Union
 
 import torch
 import torch.nn as nn
 
 import spyrit.core.meas as meas
 import spyrit.core.torch as spytorch
-
-
-# =============================================================================
-
-
-def regularized_pinv(
-    tensor: torch.tensor, regularization: str, *args, **kwargs
-) -> torch.tensor:
-    """Returns a regularized pseudo-inverse of a tensor.
-
-    The regularizations supported are:
-
-        - "rcond": Uses the function :func:`torch.linalg.pinv`. Additional
-            arguments can be passed to this function through the `args` and
-            `kwargs` parameters, such as the `rcond` parameter.
-
-        - "L2": Uses the L2 regularization method. The regularization parameter
-            `eta` must be passed as a keyword argument. It controls the amount
-            of regularization applied to the pseudo-inverse.
-
-        - "H1": Uses the H1 regularization method. The regularization parameters
-            `eta` and `img_shape` must be passed as keyword arguments. The
-            `eta` parameter controls the amount of regularization applied to the
-            pseudo-inverse, and the `img_shape` parameter is the shape of the
-            image to which the pseudo-inverse will be applied. This is used to
-            compute the finite difference operator.
-
-    .. note::
-        The H1 regularization method is only implemented for application to 2D
-        images (i.e., `image_shape` must be 2D).
-
-    Args:
-        tensor (torch.tensor): input tensor to compute the pseudo-inverse. Must
-        be 2D.
-
-        regularization (str): Regularization method to use. Supported methods
-        are "rcond", "L2", and "H1".
-
-        *args: Additional arguments to pass to the regularization method.
-
-        **kwargs: Additional keyword arguments to pass to the regularization
-        method. Must include the regularization parameter `eta` when using the
-        "L2" and "H1" regularization methods, and the image shape `img_shape`
-        when using the "H1" regularization method.
-
-    Raises:
-        NotImplementedError: If the regularization method is not supported.
-
-    Returns:
-        torch.tensor: The regularized pseudo-inverse of the input tensor.
-    """
-
-    if regularization == "rcond":
-        pinv = torch.linalg.pinv(tensor, *args, **kwargs)
-
-    elif regularization == "L2":
-        eta = kwargs.get("eta")
-        if tensor.shape[0] >= tensor.shape[1]:
-            pinv = (
-                torch.linalg.inv(
-                    tensor.T @ tensor
-                    + eta * torch.eye(tensor.shape[1], device=tensor.device)
-                )
-                @ tensor.T
-            )
-        else:
-            pinv = tensor.T @ torch.linalg.inv(
-                tensor @ tensor.T
-                + eta * torch.eye(tensor.shape[0], device=tensor.device)
-            )
-
-    elif regularization == "H1":
-        eta = kwargs.get("eta")
-        img_shape = kwargs.get("img_shape")
-        Dx, Dy = spytorch.neumann_boundary(img_shape)
-        D2 = (Dx.T @ Dx + Dy.T @ Dy).to(tensor.device)
-        pinv = torch.linalg.inv(tensor.T @ tensor + eta * D2) @ tensor.T
-
-    else:
-        raise NotImplementedError(
-            f"Regularization method {regularization} not implemented. Currently supported methods are 'rcond', 'L2', and 'H1'."
-        )
-
-    return pinv
 
 
 # =============================================================================
@@ -157,7 +73,7 @@ class PseudoInverse(nn.Module):
         self.store_pinv = store_pinv
 
         if self.store_pinv:
-            self.pinv = regularized_pinv(
+            self.pinv = spytorch.regularized_pinv(
                 self.meas_op.matrix_to_inverse, regularization, *args, **kwargs
             )
 
@@ -217,8 +133,154 @@ class PseudoInverse(nn.Module):
 
 
 # =============================================================================
-class Tikhonov(PseudoInverse):
-    """ """
+class Tikhonov(nn.Module):
+    r"""Tikhonov regularization (aka as ridge regression).
 
-    def __init__(self, meas_op, store_pinv=False, *args, **kwargs):
-        super().__init__(meas_op, store_pinv, *args, **kwargs)
+    It estimates the signal :math:`x\in\mathbb{R}^{N}` the from linear
+    measurements :math:`y = Ax\in\mathbb{R}^{M}` corrupted by noise by solving
+
+    .. math::
+        \| y - Ax \|^2_{\Gamma{-1}} + \|x\|^2_{\Sigma^{-1}},
+
+    where :math:`\Gamma` is covariance of the noise, and :math:`\Sigma` is the
+    signal covariance. In the case :math:`M\le N`, the solution can be computed
+    as
+
+    .. math::
+        \hat{x} = \Sigma A^\top (A \Sigma A^\top + \Gamma)^{-1} y,
+
+    where we assume that both covariance matrices are positive definite. The
+    class is constructed from :math:`A` and :math:`\Sigma`, while
+    :math:`\Gamma` is passed as an argument to :meth:`forward()`. Passing
+    :math:`\Gamma` to :meth:`forward()` is useful in the presence of signal-
+    dependent noise.
+
+    .. note::
+        * :math:`x` can be a 1d signal or a vectorized image/volume. This can
+          be specified by setting the :attr:`meas_shape` attribute of the
+          measurement operator.
+
+        * The above formulation assumes that the signal :math:`x` has zero mean.
+
+    Args:
+        - :attr:`meas_op` : Measurement operator (see :class:`~spyrit.core.meas`).
+        Its measurement operator has shape :math:`(M, N)`, with :math:`M` the
+        number of measurements and :math:`N` the number of pixels in the image.
+
+        - :attr:`sigma` : Signal covariance prior, of shape :math:`(N, N)`.
+
+        - :attr:`diagonal_approximation` : A boolean indicating whether to set
+        the non-diagonal elements of :math:`A \Sigma A^T` to zero. Default is
+        False. If True, this speeds up the computation of the inverse
+        :math:`(A \Sigma A^T + \Sigma_\alpha)^{-1}`.
+
+    Attributes:
+        - :attr:`meas_op` : Measurement operator initialized as :attr:`meas_op`.
+
+        - :attr:`diagonal_approximation` : Indicates if the diagonal approximation
+        is used.
+
+        - :attr:`img_shape` : Shape of the image, initialized as :attr:`meas_op.img_shape`.
+
+        - :attr:`sigma_meas` : Measurement covariance prior initialized as
+        :math:`A \Sigma A^T`. If :attr:`diagonal_approximation` is True, the
+        non-diagonal elements are set to zero.
+
+        - :attr:`sigma_A_T` : Covariance of the missing measurements initialized
+        as :math:`\Sigma A^T`.
+
+    Example:
+        >>> B, H, M, N = 85, 17, 32, 64
+        >>> sigma = torch.rand(N, N)
+        >>> gamma = torch.rand(M, M)
+        >>> A = torch.rand([M,N])
+        >>> meas  = Linear(A, meas_shape=(1,N))
+        >>> recon = Tikhonov(meas, sigma)
+        >>> y = torch.rand(B,H,M)
+        >>> x = recon(y, gamma)
+        >>> print(y.shape)
+        >>> print(x.shape)
+        torch.Size([85, 17, 32])
+        torch.Size([85, 17, 64])
+    """
+
+    def __init__(self, meas_op, sigma: torch.tensor, approx=False):
+        super().__init__()
+
+        self.meas_op = meas_op
+        self.sigma = sigma
+        self.approx = approx
+        self.img_shape = meas_op.img_shape
+
+        A = meas_op.matrix_to_inverse  # get H or A
+
+        # *measurement* covariance
+        if approx:
+            # store onle the diagonal
+            sigma_meas = torch.einsum("ij,jk,ik->i", A, sigma, A)
+        else:
+            sigma_meas = A @ sigma @ A.T
+        self.register_buffer("sigma_meas", sigma_meas)
+
+        # estimation of the missing measurements
+        sigma_A_T = torch.mm(sigma, A.mT)
+        self.register_buffer("sigma_A_T", sigma_A_T)
+
+    def divide(self, y: torch.tensor, gamma: torch.tensor) -> torch.tensor:
+        r"""Computes the division :math:`y \cdot (\Sigma \alpha + (A \Sigma A^T))^{-1}`.
+
+        Measurements `y` are divided by the sum of the measurement covariance.
+
+        If :attr:`self.approx` is True, the inverse is approximated as
+        a diagonal matrix, speeding up the computation. Otherwise, the
+        inverse is computed with the whole matrix.
+
+        Args:
+            y (torch.tensor): Input measurement tensor. Shape :math:`(*, M)`.
+
+            gamma (torch.tensor): Noise covariance tensor. Shape :math:`(*, M, M)`.
+
+        Returns:
+            torch.tensor: The divided tensor. Shape :math:`(*, M)`.
+        """
+        if self.approx:
+            return y / (self.sigma_meas + torch.diagonal(gamma, dim1=-2, dim2=-1))
+        else:
+            # we need to expand the matrices for the solve
+            batch_shape = y.shape[:-1]
+            expand_shape = batch_shape + (self.sigma_meas.shape)
+            y = y.unsqueeze(-1)  # add a dimension to y for batch matrix multiplications
+            y = torch.linalg.solve((self.sigma_meas + gamma).expand(expand_shape), y)
+            return y.squeeze(-1)
+
+    def forward(
+        self, y: torch.tensor, gamma: torch.tensor  # x_0: torch.tensor,
+    ) -> torch.tensor:
+        r"""Reconstructs the signal from measurements and noise covariance.
+
+        The Tikhonov solution is computed as
+
+        .. math::
+            \hat{x} = B^\top (C + \Gamma)^{-1} y
+
+        with :math:`B = \Sigma A^\top` and :math:`C = A \Sigma A^\top`. When
+        :attr:`self.approx` is True, it is approximated as
+
+        .. math::
+            \hat{x} = B^\top  \frac{y}{\text{diag}(C + \Gamma)}
+
+        Args:
+            :attr:`y` (torch.tensor):  A batch of measurement vectors :math:`y`
+
+            :attr:`gamma` (torch.tensor): A batch of noise covariance :math:`\Gamma`
+
+        Shape:
+            :attr:`y` (torch.tensor): :math:`(*, M)`
+
+            :attr:`gamma` (torch.tensor): :math:`(*, M, M)`
+
+            Output (torch.tensor): :math:`(*, N)`
+        """
+        y = self.divide(y, gamma)
+        y = torch.matmul(self.sigma_A_T, y.unsqueeze(-1)).squeeze(-1)
+        return y
