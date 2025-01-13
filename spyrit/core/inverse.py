@@ -3,6 +3,7 @@ Inverse methods for inverse problems.
 """
 
 from typing import Union
+from typing import Union
 
 import torch
 import torch.nn as nn
