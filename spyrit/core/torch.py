@@ -216,7 +216,7 @@ def fwht(x, order=True, dim=-1):
         >>> import spyrit.misc.walsh_hadamard as wh
         >>> import torch
         >>> import spyrit.core.torch as st
-        >>> x = np.random.rand(2**12,1)
+        >>> x = np.random.rand(2**12)
         >>> t = timeit.timeit(lambda: wh.fwht(x,False), number=2000)
         >>> print(f"Fast Hadamard transform numpy CPU (2000x): {t:.4f} seconds")
         >>> x_torch = torch.from_numpy(x)
@@ -225,9 +225,9 @@ def fwht(x, order=True, dim=-1):
         >>> x_torch = torch.from_numpy(x).to(torch.device('cuda:0'))
         >>> t = timeit.timeit(lambda: st.fwht(x_torch,False), number=2000)
         >>> print(f"Fast Hadamard transform pytorch GPU (2000x): {t:.4f} seconds")
-        Fast Hadamard transform numpy CPU (2000x): 0.0031 seconds
-        Fast Hadamard transform pytorch CPU (2000x): 0.0441 seconds
-        Fast Hadamard transform pytorch GPU (2000x): 0.0277 seconds
+        Fast Hadamard transform numpy CPU (2000x): 1.0778 seconds
+        Fast Hadamard transform pytorch CPU (2000x): 1.1554 seconds
+        Fast Hadamard transform pytorch GPU (2000x): 1.8277 seconds
 
     Example 6:
         CPU vs GPU: Computation times for 512 signals of length 2**12
@@ -260,7 +260,8 @@ def fwht(x, order=True, dim=-1):
         With indices as inputs (100x): 0.731 seconds
     """
 
-    x = torch.moveaxis(x, dim, -1)
+    if dim != -1:
+        x = torch.moveaxis(x, dim, -1)
 
     original_shape = x.shape
 
@@ -296,7 +297,8 @@ def fwht(x, order=True, dim=-1):
     if type(order) == list:
         x = sequency_perm(x, order)
 
-    x = torch.moveaxis(x, -1, dim)
+    if dim != -1:
+        x = torch.moveaxis(x, -1, dim)
 
     return x
 
