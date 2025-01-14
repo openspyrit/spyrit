@@ -1,15 +1,16 @@
 """
-Reconstruction methods and networks.
+Reconstruction networks.
 """
 
 import warnings
-from typing import Union
+from typing import Union, OrderedDict
 
 import math
 import torch
 import torch.nn as nn
 
 import spyrit.core.meas as meas
+import spyrit.core.inverse as inverse
 from spyrit.core.noise import NoNoise
 from spyrit.core.prep import DirectPoisson, SplitPoisson
 
