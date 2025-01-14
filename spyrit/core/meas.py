@@ -225,17 +225,19 @@ class _Base(nn.Module):
             H_to_inv = H_to_inv.to(x.dtype)
             # devices are supposed to be the same, don't bother checking
 
-            driver = "gelsd"
-            if H_to_inv.device != torch.device("cpu"):
-                H_to_inv = H_to_inv.cpu()
-                x = x.cpu()
-                # driver = 'gels'
-
             if reg == "rcond":
+                original_device = x.device
+                # to use lstsq with rank deficient matrices is not supported on GPU
+                # github.com/pytorch/pytorch/issues/117122
+                if x.device != torch.device("cpu"):
+                    H_to_inv = H_to_inv.cpu()
+                    x = x.cpu()
+
                 A = H_to_inv.expand(*x.shape[:-1], *H_to_inv.shape)  # shape (*, M, N)
                 B = x.unsqueeze(-1).to(A.dtype)  # shape (*, M, 1)
-                ans = torch.linalg.lstsq(A, B, rcond=eta, driver=driver)
+                ans = torch.linalg.lstsq(A, B, rcond=eta, driver="gelsd")
                 ans = ans.solution.to(x.dtype).squeeze(-1)  # shape (*, N)
+                ans = ans.to(original_device)
 
             elif reg == "L2":
                 A = torch.matmul(H_to_inv.mT, H_to_inv) + eta * torch.eye(
@@ -1048,8 +1050,10 @@ class HadamSplit(LinearSplit):
         # memory overconsumption
         self.H_pinv = self.H.T
 
-    def pinv(self, x, reg="rcond", eta=0.001, diff=False):
-        return super().pinv(x, reg, eta, diff)
+    def pinv(self, y, *args, **kwargs):
+        y_padded = torch.zeros(y.shape[:-1] + (self.N,), device=y.device, dtype=y.dtype)
+        y_padded[..., : self.M] = y
+        return self.inverse(y_padded)
 
     def inverse(self, y: torch.tensor) -> torch.tensor:
         r"""Inverse transform of Hadamard-domain images.

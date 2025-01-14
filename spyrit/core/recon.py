@@ -804,22 +804,17 @@ class PinvNet(nn.Module):
 
             :attr:`output`: :math:`(BC,1,H,W)`
         """
-        # x of shape [b*c, 2M]
-        bc, _ = x.shape
+        *batches, n_measurements = x.shape
 
         # Preprocessing
-        x, N0_est = self.prep.forward_expe(x, self.acqu.meas_op)  # shape x = [b*c, M]
-        # print(N0_est)
+        x, N0_est = self.prep.forward_expe(x, self.acqu.meas_op)
 
         # measurements to image domain processing
-        x = self.pinv(x, self.acqu.meas_op)  # shape x = [b*c,N]
+        x = self.pinv(x, self.acqu.meas_op)
 
         # Image domain denoising
-        x = x.reshape(
-            bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
-        )  # shape x = [b*c,1,h,w]
-        x = self.denoi(x)  # shape x = [b*c,1,h,w]
-        # print(x.max())
+        x = x.reshape(*batches, self.acqu.meas_op.h, self.acqu.meas_op.w)
+        x = self.denoi(x)
 
         # Denormalization
         x = self.prep.denormalize_expe(
@@ -1174,8 +1169,7 @@ class DCNet(nn.Module):
             :attr:`output`: :math:`(BC,1,H,W)`
 
         """
-        # x of shape [b*c, 2M]
-        bc, _ = x.shape
+        *batches, n_measurements = x.shape
 
         # Preprocessing expe
         var_noi = self.prep.sigma_expe(x)
@@ -1185,18 +1179,15 @@ class DCNet(nn.Module):
 
         # variance of preprocessed measurements
         var_noi = torch.div(
-            var_noi, (norm.reshape(-1, 1).expand(bc, self.Acq.meas_op.M)) ** 2
+            var_noi, (norm.reshape(-1, 1).expand(*batches, self.Acq.meas_op.M)) ** 2
         )
 
         # measurements to image domain processing
-        x_0 = torch.zeros((bc, self.Acq.meas_op.N), device=x.device)
+        x_0 = torch.zeros((*batches, *self.Acq.meas_op.img_shape), device=x.device)
         x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
-        x = x.reshape(
-            bc, 1, self.Acq.meas_op.h, self.Acq.meas_op.w
-        )  # shape x = [b*c,1,h,w]
 
         # Image domain denoising
-        x = self.denoi(x)  # shape x = [b*c,1,h,w]
+        x = self.denoi(x)
 
         # Denormalization
         x = self.prep.denormalize_expe(x, norm, self.Acq.meas_op.h, self.Acq.meas_op.w)
@@ -1652,7 +1643,7 @@ class LearnedPGD(nn.Module):
                 (*x.shape[:-1], *self.acqu.meas_op.meas_shape), device=x.device
             )
 
-        print("x shape:", x.shape)
+        # print("x shape:", x.shape)
 
         if self.log_fidelity:
             self.cost = []
