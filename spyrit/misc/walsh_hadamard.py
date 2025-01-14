@@ -139,31 +139,6 @@ def sequency_perm(X, ind=None):
     return Y
 
 
-def sequency_perm_torch(X, ind=None):
-    r"""Permute the last dimension of a tensor to get sequency order
-
-    Args:
-        :attr:`X` (torch.tensor): -by-n input matrix
-
-        :attr:`ind` : index list of length n
-
-    Returns:
-        torch.tensor: -by-n input matrix
-
-    Example :
-        >>> import spyrit.misc.walsh_hadamard as wh
-        >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
-        >>> x = x[None, None, :]
-        >>> x = wh.sequency_perm_torch(x)
-        >>> print(x)
-    """
-    if ind is None:
-        ind = sequency_perm_ind(X.shape[-1])
-
-    Y = X[..., ind]
-    return Y
-
-
 def sequency_perm_matrix(n):
     r"""Return permutation matrix to get sequency from the natural order
 
@@ -941,116 +916,10 @@ def walsh2_S_unfold(X):
 # -- PyTorch functions ---------------------------------------------------------
 # ------------------------------------------------------------------------------
 def fwht_torch(x, order=True):
-    """Fast Walsh-Hadamard transform of x
-
-    Args:
-        x (np.ndarray): -by-n input signal, where n is a power of two.
-        order (bool, optional): True for sequency (default), False for natural.
-        order (list, optional): permutation indices.
-
-    Returns:
-        np.ndarray: n-by-1 transformed signal
-
-    ..warning::
-        This function is deprecated and has been moved to spyrit.core.torch. It
-        will be removed in a future version. Please call
-        :func:`spyrit.core.torch.fwht` instead.
-
-    Example 1:
-        Fast sequency-ordered (i.e., Walsh) Hadamard transform
-
-        >>> import torch
-        >>> import spyrit.misc.walsh_hadamard as wh
-        >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
-        >>> x = x[None,:]
-        >>> y = wh.fwht_torch(x)
-        >>> print(y)
-
-    Example 2:
-        Fast Hadamard transform
-
-        >>> import torch
-        >>> import spyrit.misc.walsh_hadamard as wh
-        >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
-        >>> x = x[None,:]
-        >>> y = wh.fwht_torch(x, False)
-        >>> print(y)
-
-    Example 3:
-        Permuted fast Hadamard transform
-
-        >>> import numpy as np
-        >>> import torch
-        >>> import spyrit.misc.walsh_hadamard as wh
-        >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
-        >>> ind = [1, 0, 3, 2, 7, 4, 5, 6]
-        >>> y = wh.fwht_torch(x, ind)
-        >>> print(y)
-
-    Example 4:
-        Comparison with the numpy transform
-
-        >>> import numpy as np
-        >>> import torch
-        >>> import spyrit.misc.walsh_hadamard as wh
-        >>> x = np.array([1, 3, 0, -1, 7, 5, 1, -2])
-        >>> y_np = wh.fwht(x)
-        >>> x_torch = torch.from_numpy(x).to(torch.device('cuda:0'))
-        >>> y_torch = wh.fwht_torch(x_torch)
-        >>> print(y_np)
-        >>> print(y_torch)
-
-
-    Example 5:
-        Computation times for a signal of length 2**12
-
-        >>> import timeit
-        >>> import torch
-        >>> import numpy as np
-        >>> import spyrit.misc.walsh_hadamard as wh
-        >>> x = np.random.rand(2**12,1)
-        >>> t = timeit.timeit(lambda: wh.fwht(x,False), number=200)
-        >>> print(f"Fast Hadamard transform numpy CPU (200x): {t:.4f} seconds")
-        >>> x_torch = torch.from_numpy(x)
-        >>> t = timeit.timeit(lambda: wh.fwht_torch(x_torch,False), number=200)
-        >>> print(f"Fast Hadamard transform pytorch CPU (200x): {t:.4f} seconds")
-        >>> x_torch = torch.from_numpy(x).to(torch.device('cuda:0'))
-        >>> t = timeit.timeit(lambda: wh.fwht_torch(x_torch,False), number=200)
-        >>> print(f"Fast Hadamard transform pytorch GPU (200x): {t:.4f} seconds")
-
-    Example 6:
-        CPU vs GPU: Computation times for 512 signals of length 2**12
-
-        >>> import timeit
-        >>> import torch
-        >>> import spyrit.misc.walsh_hadamard as wh
-        >>> x_cpu = torch.rand(512,2**12)
-        >>> t = timeit.timeit(lambda: wh.fwht_torch(x_cpu,False), number=10)
-        >>> print(f"Fast Hadamard transform pytorch CPU (10x): {t:.4f} seconds")
-        >>> x_gpu = x_cpu.to(torch.device('cuda:0'))
-        >>> t = timeit.timeit(lambda: wh.fwht_torch(x_gpu,False), number=10)
-        >>> print(f"Fast Hadamard transform pytorch GPU (10x): {t:.4f} seconds")
-
-    Example 7:
-        Repeating the Walsh-ordered transform using input indices is faster
-
-        >>> import timeit
-        >>> import torch
-        >>> import spyrit.misc.walsh_hadamard as wh
-        >>> x = torch.rand(256,2**12).to(torch.device('cuda:0'))
-        >>> t = timeit.timeit(lambda: wh.fwht_torch(x), number=100)
-        >>> print(f"No indices as inputs (100x): {t:.3f} seconds")
-        >>> ind = wh.sequency_perm_ind(x.shape[-1])
-        >>> t = timeit.timeit(lambda: wh.fwht_torch(x,ind), number=100)
-        >>> print(f"With indices as inputs (100x): {t:.3f} seconds")
-    """
-
-    warnings.warn(
-        "This function is deprecated and has been moved. It will be removed "
-        + "in a future version. Please call spyrit.core.torch.fwht instead.",
-        DeprecationWarning,
+    """Deprecated function. Please use spyrit.core.torch.fwht instead."""
+    raise NotImplementedError(
+        "This function is deprecated. Please call spyrit.core.torch.fwht instead."
     )
-    return spytorch.fwht(x, order)
 
 
 def fwalsh_G_torch(x, ind=True):
@@ -1275,104 +1144,14 @@ def walsh2_S_unfold_torch(X):
 
 
 def walsh_torch(x, H=None):
-    """Return 1D Walsh-ordered Hadamard transform of a signal.
-
-    Args:
-        :attr:`x` (:obj:`torch.tensor`): Input signals with shape `(*, n)`.
-
-        :attr:`H` (:obj:`torch.tensor`, optional): 1D Walsh-ordered Hadamard
-        matrix with shape `(*, m)`.
-
-    Returns:
-        :obj:`torch.tensor`: Hadamard transformed signals with shape `(*, m)`.
-
-    ..warning::
-        This function is deprecated and will be removed in a future version.
-        Consider using :func:`spyrit.core.torch.fwht` instead.
-
-    Note:
-        Providing the input argument :attr:`H` leads to much faster
-        computation when multiple Hadamard transforms are repeated
-        (see Example 2).
-
-    Example 1:
-        Sequency-ordered (i.e., Walsh) Hadamard transform
-
-        >>> import torch
-        >>> import spyrit.misc.walsh_hadamard as wh
-        >>> x = torch.tensor([1.0, 3.0, 0.0, -1.0, 7.0, 5.0, 1.0, -2.0])
-        >>> y = wh.fwht_torch(x)
-        >>> print(y)
-        >>> y = wh.walsh_torch(x)
-        >>> print(y)
-
-
-    Example 2:
-        Fast vs regular: Computation times for 5 batches of 512 signals of
-        length 2**10
-
-        >>> import timeit
-        >>> import torch
-        >>> import numpy as np
-        >>> import spyrit.misc.walsh_hadamard as wh
-        >>> x = torch.rand(5, 1, 512, 2**10)
-        >>> t = timeit.timeit(lambda: wh.fwht_torch(x), number=200)
-        >>> print(f"Fast Hadamard transform (200x): {t:.4f} seconds")
-        >>> t = timeit.timeit(lambda: torch.from_numpy(walsh_matrix(x.shape[-1]).astype('float32')), number=200)
-        >>> print(f"Construction of Hadamard matrix (200x): {t:.4f} seconds")
-        >>> H = torch.from_numpy(walsh_matrix(x.shape[-1]).astype('float32'))
-        >>> t = timeit.timeit(lambda: wh.walsh_torch(x, H), number=200)
-        >>> print(f"Matrix-vector products (200x): {t:.4f} seconds")
-
-    Example 3:
-        CPU vs GPU: Computation times for 5 batches of 512 signals of
-        length 2**10
-
-        >>> import timeit
-        >>> import torch
-        >>> import spyrit.misc.walsh_hadamard as wh
-        >>> x = torch.rand(5, 1, 512, 2**10)
-        >>> H = torch.tensor(walsh_matrix(x.shape[-1]), dtype=torch.float32)
-        >>> t = timeit.timeit(lambda: wh.walsh_torch(x, H), number=200)
-        >>> print(f"Fast Hadamard transform pytorch CPU (200x): {t:.4f} seconds")
-        >>> x = x.to(torch.device('cuda:0'))
-        >>> H = H.to(torch.device('cuda:0'))
-        >>> t = timeit.timeit(lambda: wh.walsh_torch(x, H), number=200)
-        >>> print(f"Fast Hadamard transform pytorch GPU (200x): {t:.4f} seconds")
-    """
-    warnings.warn(
-        "This function is deprecated and will be removed in a future "
-        + "version. Please use spyrit.core.torch.fwht for natural- "
-        + "or walsh-ordered Hadamard transforms.",
-        DeprecationWarning,
+    """Deprecated function. Please use spyrit.core.torch.fwht instead."""
+    raise NotImplementedError(
+        "This function is deprecated. Please call spyrit.core.torch.fwht instead."
     )
-    return spytorch.fwht(x, True, -1)
 
 
 def walsh2_torch(im, H=None):
-    """Return 2D Walsh-ordered Hadamard transform of an image
-
-    Args:
-        im (torch.tensor): Image, typically a B-by-C-by-W-by-H Tensor
-        H (torch.tensor, optional): 1D Walsh-ordered Hadamard transformation
-        matrix. A 2-D tensor of size W-by-H.
-
-    Returns:
-        torch.tensor: Hadamard transformed image. Same size as im
-
-    ..warning::
-        This function is deprecated and has been moved to spyrit.core.torch. It
-        is recommended to use :func:`spyrit.core.torch.fwht_2d` instead for
-        natural- or walsh-ordered Hadamard transforms.
-
-    Examples:
-        >>> im = torch.randn(256, 1, 64, 64)
-        >>> had = walsh2_torch(im)
-    """
-    warnings.warn(
-        "This function is deprecated and will be removed in a future "
-        + "version. Please use either spyrit.core.torch.fwht_2d for natural- "
-        + "or walsh-ordered Hadamard transforms.",
-        DeprecationWarning,
+    """Deprecated function. Please use spyrit.core.torch.fwht_2d instead."""
+    raise NotImplementedError(
+        "This function is deprecated. Please call spyrit.core.torch.fwht_2d instead."
     )
-    return spytorch.fwht_2d(im, True)

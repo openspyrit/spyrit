@@ -266,35 +266,37 @@ class Tikhonov(nn.Module):
         * The above formulation assumes that the signal :math:`x` has zero mean.
 
     Args:
-        - :attr:`meas_op` : Measurement operator (see :class:`~spyrit.core.meas`).
-        Its measurement operator has shape :math:`(M, N)`, with :math:`M` the
-        number of measurements and :math:`N` the number of pixels in the image.
+        - :attr:`meas_op` (:class:`spyrit.core.meas`): Measurement operator.
+          Its measurement operator has shape :math:`(M, N)`, with :math:`M` the
+          number of measurements and :math:`N` the number of pixels in the
+          image.
 
-        - :attr:`sigma` : Signal covariance prior, of shape :math:`(N, N)`.
+        - :attr:`sigma` (torch.tensor): Signal covariance prior, of shape :math:`(N, N)`.
 
         - :attr:`diagonal_approximation` : A boolean indicating whether to set
-        the non-diagonal elements of :math:`A \Sigma A^T` to zero. Default is
-        False. If True, this speeds up the computation of the inverse
-        :math:`(A \Sigma A^T + \Sigma_\alpha)^{-1}`.
+          the non-diagonal elements of :math:`A \Sigma A^T` to zero. Default
+          is False. If True, this speeds up the computation of the inverse
+          :math:`(A \Sigma A^T + \Sigma_\alpha)^{-1}`.
 
     Attributes:
-        - :attr:`meas_op` : Measurement operator initialized as :attr:`meas_op`.
+        - :attr:`meas_op` (:class:`spyrit.core.meas`): Measurement operator initialized as :attr:`meas_op`.
 
         - :attr:`diagonal_approximation` : Indicates if the diagonal approximation
-        is used.
+          is used.
 
         - :attr:`img_shape` : Shape of the image, initialized as :attr:`meas_op.img_shape`.
 
-        - :attr:`sigma_meas` : Measurement covariance prior initialized as
-        :math:`A \Sigma A^T`. If :attr:`diagonal_approximation` is True, the
-        non-diagonal elements are set to zero.
+        - :attr:`sigma_meas` (torch.tensor): Measurement covariance prior
+          initialized as :math:`A \Sigma A^T`. If :attr:`diagonal_approximation`
+          is True, the non-diagonal elements are set to zero.
 
-        - :attr:`sigma_A_T` : Covariance of the missing measurements initialized
-        as :math:`\Sigma A^T`.
+        - :attr:`sigma_A_T` (torch.tensor): Covariance of the missing
+          measurements initialized as :math:`\Sigma A^T`.
 
         - :attr:`noise_scale` : Hidden parameter to use to scale the noise
-        regularization. It is used in the computation of the inverse:
-        :math:`(A \Sigma A^T  + noisescale \times \Sigma_\alpha)^{-1}`. Default is 1.
+          regularization. It is used in the computation of the inverse:
+          :math:`(A \Sigma A^T  + noisescale \times \Sigma_\alpha)^{-1}`.
+          Default is 1.0.
 
     Example:
         >>> B, H, M, N = 85, 17, 32, 64
@@ -342,7 +344,7 @@ class Tikhonov(nn.Module):
         self.noise_scale = 1
 
     def divide(self, y: torch.tensor, gamma: torch.tensor) -> torch.tensor:
-        """Computes the division :math:`y \cdot (\sigma_\alpha \times noisescale + (A \Sigma A^T))^{-1}`.
+        r"""Computes the division :math:`y \cdot (\sigma_\alpha \times noisescale + (A \Sigma A^T))^{-1}`.
 
         Measurements `y` are divided by the sum of the measurement covariance.
 
