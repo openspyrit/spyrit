@@ -819,8 +819,6 @@ def regularized_pinv(
         regularization (str): Regularization method to use. Supported methods
         are "rcond", "L2", and "H1".
 
-        *args: Additional arguments to pass to the regularization method.
-
         **kwargs: Additional keyword arguments to pass to the regularization
         method. Must include the regularization parameter `eta` when using the
         "L2" and "H1" regularization methods, and the image shape `img_shape`
@@ -834,7 +832,7 @@ def regularized_pinv(
     """
 
     if regularization == "rcond":
-        pinv = torch.linalg.pinv(tensor, *args, **kwargs)
+        pinv = torch.linalg.pinv(tensor, **kwargs)
 
     elif regularization == "L2":
         eta = kwargs.get("eta")
