@@ -507,7 +507,7 @@ class NoNoise2(nn.Module):
 
 # =============================================================================
 class Poisson2(NoNoise2):
-    """Adds Poisson noise to incoming measurements.
+    r"""Adds Poisson noise to incoming measurements.
 
     The Poisson noise is parameterized by its intensity :math:`\alpha`. The
     incoming measurements are multiplied by :math:`\alpha` and then corrupted
@@ -533,7 +533,7 @@ class Poisson2(NoNoise2):
         self.noise_function = noise_function
 
     def forward(self, x: torch.tensor) -> torch.tensor:
-        """Adds Poisson noise to incoming measurements.
+        r"""Adds Poisson noise to incoming measurements.
 
         The Poisson noise is calculated as :math:`\mathcal{P}(\alpha x)`,
         where :math:`\alpha` is the intensity of the incoming measurements and
@@ -550,7 +550,7 @@ class Poisson2(NoNoise2):
 
 # =============================================================================
 class PoissonApproxGauss2(Poisson2):
-    """Adds Gaussian-approximated Poisson noise to incoming measurements.
+    r"""Adds Gaussian-approximated Poisson noise to incoming measurements.
 
     The Gaussian-approximated Poisson noise is parameterized by its intensity
     :math:`\alpha`. The incoming measurements are multiplied by :math:`\alpha`
@@ -580,7 +580,7 @@ class PoissonApproxGauss2(Poisson2):
         self.noise_function = noise_function
 
     def forward(self, x: torch.tensor) -> torch.tensor:
-        """Adds Gaussian-approximated Poisson noise to incoming measurements.
+        r"""Adds Gaussian-approximated Poisson noise to incoming measurements.
 
         The Gaussian-approximated Poisson noise is calculated as :math:`x +
         \sqrt{x} \cdot \mathcal{N}(0, 1)`, where :math:`x` is the intensity of
@@ -600,7 +600,7 @@ class PoissonApproxGauss2(Poisson2):
 
 # =============================================================================
 class PoissonApproxGaussSameNoise2(Poisson2):
-    """Adds identical Gaussian-approximated Poisson noise to incoming measurements.
+    r"""Adds identical Gaussian-approximated Poisson noise to incoming measurements.
 
     The Gaussian-approximated Poisson noise is parameterized by its intensity
     :math:`\alpha`. The incoming measurements are multiplied by :math:`\alpha`
@@ -635,7 +635,7 @@ class PoissonApproxGaussSameNoise2(Poisson2):
         self.noise_function = noise_function
 
     def forward(self, x: torch.tensor) -> torch.tensor:
-        """Adds identical Gaussian-approximated Poisson noise to incoming measurements.
+        r"""Adds identical Gaussian-approximated Poisson noise to incoming measurements.
 
         The Gaussian-approximated Poisson noise is calculated as
         :math:`x \cdot \alpha + \sqrt{x \cdot \alpha} \cdot \mathcal{N}(0, 1)`,
