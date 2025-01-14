@@ -64,20 +64,21 @@ class PseudoInverse(nn.Module):
         meas_op: Union[meas.Linear, meas.DynamicLinear],
         regularization: str = "rcond",
         store_pinv: bool = False,
-        *args,
+        reshape_output: bool = False,
         **kwargs,
     ) -> None:
 
         super().__init__()
         self.meas_op = meas_op
         self.store_pinv = store_pinv
+        self.reshape_output = reshape_output
 
         if self.store_pinv:
             self.pinv = spytorch.regularized_pinv(
-                self.meas_op.matrix_to_inverse, regularization, *args, **kwargs
+                self.meas_op.matrix_to_inverse, regularization, **kwargs
             )
 
-    def forward(self, y: torch.tensor, *args, **kwargs) -> torch.tensor:
+    def forward(self, y: torch.tensor, **kwargs) -> torch.tensor:
         r"""Computes pseudo-inverse of measurements.
 
         If :attr:`self.store_pinv` is True, computes the product of the
@@ -129,7 +130,12 @@ class PseudoInverse(nn.Module):
             )
             y = torch.linalg.lstsq(matrix_to_inverse, y).solution
 
-        return y.squeeze(-1)
+        y = y.squeeze(-1)
+
+        if self.reshape_output:
+            y = self.meas_op.unvectorize(y)
+
+        return y
 
 
 # =============================================================================
@@ -204,12 +210,15 @@ class Tikhonov(nn.Module):
         torch.Size([85, 17, 64])
     """
 
-    def __init__(self, meas_op, sigma: torch.tensor, approx=False):
+    def __init__(
+        self, meas_op, sigma: torch.tensor, approx=False, reshape_output: bool = False
+    ):
         super().__init__()
 
         self.meas_op = meas_op
         self.sigma = sigma
         self.approx = approx
+        self.reshape_output = reshape_output
         self.img_shape = meas_op.img_shape
 
         A = meas_op.matrix_to_inverse  # get H or A
@@ -283,4 +292,12 @@ class Tikhonov(nn.Module):
         """
         y = self.divide(y, gamma)
         y = torch.matmul(self.sigma_A_T, y.unsqueeze(-1)).squeeze(-1)
+
+        if self.reshape_output:
+            y = self.meas_op.unvectorize(y)
+
         return y
+
+
+# =============================================================================
+# class TikhonovMeasurementPriorDiag
