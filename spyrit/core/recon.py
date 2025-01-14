@@ -18,6 +18,112 @@ warnings.filterwarnings("ignore", ".*Sparse CSR tensor support is in beta state.
 
 
 # =============================================================================
+class FullNet(nn.Sequential):
+    r"""Defines an arbitrary full (measurement + reconstruction) network.
+
+    The forward pass of this network simulates measurements of a signal (or image)
+    and reconstructs it from the measurements. To this end, it sequentially
+    applies the measurement and reconstruction modules stored in the network
+    under the keys `meas_modules` and `recon_modules`, respectively.
+
+    The modules contained within the measurement and reconstruction modules can
+    be arbitrary.
+
+    Args:
+        meas_modules (Union[OrderedDict, nn.Sequential]): Measurement modules.
+
+        recon_modules (Union[OrderedDict, nn.Sequential]): Reconstruction modules.
+
+    Raises:
+        TypeError: If `meas_modules` or `recon_modules` are not of type
+        :class:`OrderedDict` or :class:`nn.Sequential`.
+
+    Attributes:
+        meas_modules (nn.Sequential): Measurement modules.
+
+        recon_modules (nn.Sequential): Reconstruction modules.
+    """
+
+    def __init__(
+        self,
+        meas_modules: Union[OrderedDict, nn.Sequential],
+        recon_modules: Union[OrderedDict, nn.Sequential],
+    ):
+        if isinstance(meas_modules, OrderedDict):
+            meas_modules = nn.Sequential(meas_modules)
+        if not isinstance(meas_modules, nn.Sequential):
+            raise TypeError(
+                "meas_modules must be an OrderedDict or torch.nn.Sequential"
+            )
+
+        if isinstance(recon_modules, OrderedDict):
+            recon_modules = nn.Sequential(recon_modules)
+        if not isinstance(recon_modules, nn.Sequential):
+            raise TypeError(
+                "recon_modules must be an OrderedDict or torch.nn.Sequential"
+            )
+
+        all_modules = OrderedDict(
+            {"meas_modules": meas_modules, "recon_modules": recon_modules}
+        )
+        super().__init__(all_modules)
+
+    def forward(self, x):
+        r"""Simulates measurements and reconstructs the signal.
+
+        This is done by first simulating measurements of the input signal from
+        the stored measurement modules `self.meas_modules`. The measurements are
+        then passed to the reconstruction modules `self.recon_modules` to
+        reconstruct the signal.
+
+        Args:
+            x (torch.tensor): input tensor. For images, it is usually shaped
+            `(b, c, h, w)` where `b` is the batch size, `c` is the number of
+            channels, and `h` and `w` are the height and width of the images.
+
+        Returns:
+            torch.tensor: output tensor. Its shape depends on the output of the
+            reconstruction modules.
+        """
+        x = self.acquire(x)  # use custom measurement operator
+        x = self.reconstruct(x)  # use custom reconstruction operator
+        return x
+
+    def acquire(self, x):
+        r"""Simulates measurements of the input signal.
+
+        The measurements are simulated using the measurement modules stored in
+        the network under the key `meas_modules`.
+
+        Args:
+            x (torch.tensor): Input tensor. For images, it is usually shaped
+            `(b, c, h, w)` where `b` is the batch size, `c` is the number of
+            channels, and `h` and `w` are the height and width of the images.
+
+        Returns:
+            torch.tensor: Output tensor. Its shape depends on the output of the
+            measurement modules.
+        """
+        return self.meas_modules(x)
+
+    def reconstruct(self, y):
+        r"""Reconstructs the signal from measurements.
+
+        The signal is reconstructed using the reconstruction modules stored in
+        the network under the key `recon_modules`.
+
+        Args:
+            y (torch.tensor): Input measurement tensor. It usually has measurements
+            in the last dimension.
+
+        Returns:
+            torch.tensor: Output tensor. Its shape depends on the output of the
+            reconstruction modules.
+        """
+        return self.recon_modules(y)
+
+
+# =============================================================================
 class PositiveParameters(nn.Module):
     def __init__(self, params, requires_grad=True):
         super(PositiveParameters, self).__init__()
