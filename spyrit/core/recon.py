@@ -27,69 +27,6 @@ class PositiveParameters(nn.Module):
 
 
 # =============================================================================
-class PseudoInverse(nn.Module):
-    r"""Moore-Penrose pseudoinverse.
-
-    Considering linear measurements :math:`y = Hx`, where :math:`H` is the
-    measurement matrix and :math:`x` is a vectorized image, it estimates
-    :math:`x` from :math:`y` by computing :math:`\hat{x} = H^\dagger y`, where
-    :math:`H` is the Moore-Penrose pseudo inverse of :math:`H`.
-
-    Example:
-        >>> H = torch.rand([400,32*32])
-        >>> Perm = torch.rand([32*32,32*32])
-        >>> meas_op =  HadamSplit(H, Perm, 32, 32)
-        >>> y = torch.rand([85,400], dtype=torch.float)
-        >>> pinv_op = PseudoInverse()
-        >>> x = pinv_op(y, meas_op)
-        >>> print(x.shape)
-        torch.Size([85, 1024])
-    """
-
-    def __init__(self):
-        super().__init__()
-
-    def forward(
-        self,
-        x: torch.tensor,
-        meas_op: Union[meas.Linear, meas.DynamicLinear],
-        **kwargs,
-    ) -> torch.tensor:
-        r"""Computes pseudo-inverse of measurements.
-
-        Args:
-            :attr:`x`: Batch of measurement vectors.
-
-            :attr:`meas_op`: Measurement operator. Any class that
-            implements a :meth:`pinv` method can be used, e.g.,
-            :class:`~spyrit.core.meas.HadamSplit`.
-
-            :attr:`kwargs`: Additional keyword arguments that are passed to
-            the :meth:`pinv` method of the measurement operator. Can be used
-            to specify a regularization parameter.
-
-        Shape:
-
-            :attr:`x`: :math:`(*, M)`
-
-            :attr:`meas_op`: not applicable
-
-            :attr:`output`: :math:`(*, N)`
-
-        Example:
-            >>> H = torch.rand([400,32*32])
-            >>> Perm = torch.rand([32*32,32*32])
-            >>> meas_op =  HadamSplit(H, Perm, 32, 32)
-            >>> y = torch.rand([85,400], dtype=torch.float)
-            >>> pinv_op = PseudoInverse()
-            >>> x = pinv_op(y, meas_op)
-            >>> print(x.shape)
-            torch.Size([85, 1024])
-        """
-        return meas_op.pinv(x, **kwargs)
-
-
-# =============================================================================
 class TikhonovMeasurementPriorDiag(nn.Module):
     r"""
     Tikhonov regularisation with prior in the measurement domain.
