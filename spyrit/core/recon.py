@@ -456,241 +456,192 @@ class Denoise_layer(nn.Module):
 
 
 # =============================================================================
-class PinvNet(nn.Module):
-    r"""Pseudo inverse reconstruction network.
+class PinvNet(FullNet):
+    r"""Pre-built :class:`FullNet` that uses a pseudo inverse.
 
-    Args:
-        :attr:`noise`: Acquisition operator (see :class:`~spyrit.core.noise`)
+    As a :class:`FullNet`, this network has two modules: one for measurements
+    and one for reconstruction.
 
-        :attr:`prep`: Preprocessing operator (see :class:`~spyrit.core.prep`)
+    The measurement module only contains the acquisition operator. The
+    reconstruction module contains a preprocessing operator, a pseudo inverse
+    operator, and a denoising operator.
 
-        :attr:`denoi` (optional): Image denoising operator
-        (see :class:`~spyrit.core.nnet`).
-        Default :class:`~spyrit.core.nnet.Identity`
+    The optional keyword arguments passed at initialization are fed in the
+    pseudo inverse operator. This way, the regularization can be controlled
+    directly from the :class:`PinvNet` constructor.
 
-    Input / Output:
-        :attr:`input`: Ground-truth images with shape :math:`(B,C,H,W)`
-        corresponding to the batch size, number of channels, height, and width.
-
-        :attr:`output`: Reconstructed images with shape :math:`(B,C,H,W)`
-        corresponding to the batch size, number of channels, height, and width.
-
-    Attributes:
-        :attr:`Acq`: Acquisition operator initialized as :attr:`noise`
-
-        :attr:`prep`: Preprocessing operator initialized as :attr:`prep`
-
-        :attr:`pinv`: Analytical reconstruction operator initialized as
-        :class:`~spyrit.core.recon.PseudoInverse()`
-
-        :attr:`Denoi`: Image denoising operator initialized as :attr:`denoi`
+    .. important::
+        If using a non-Identity denoiser, consider setting the optional keyword
+        parameter `reshape_output` to `True` in the :class:`PinvNet` constructor.
+        This will reshape the output of the pseudo inverse operator to match the
+        acquisition operator input shape.
 
 
-    Example:
-        >>> B, C, H, M = 10, 1, 64, 64**2
-        >>> Ord = torch.ones((H,H))
-        >>> meas = HadamSplit(M, H, Ord)
-        >>> noise = NoNoise(meas)
-        >>> prep = SplitPoisson(1.0, M, H*H)
-        >>> recnet = PinvNet(noise, prep)
-        >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
-        >>> z = recnet(x)
-        >>> print(z.shape)
-        >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
-        torch.Size([10, 1, 64, 64])
-        tensor(5.8912e-06)
+
     """
 
-    def __init__(self, noise, prep, denoi=nn.Identity()):
-        super().__init__()
-        self.acqu = noise
-        self.prep = prep
-        self.pinv = PseudoInverse()
-        self.denoi = denoi
+    def __init__(self, acqu, prep, denoi=nn.Identity(), **kwargs):
+
+        meas_modules = OrderedDict({"acqu": acqu})
+        recon_modules = OrderedDict(
+            {
+                "prep": prep,
+                "pinv": inverse.PseudoInverse(acqu, **kwargs),
+                "denoi": denoi,
+            }
+        )
+
+        super().__init__(meas_modules, recon_modules)
+        self.kwargs = kwargs
+
+        if denoi != nn.Identity() and kwargs.get("reshape_output", False):
+            warnings.warn(
+                "The output of the pseudo inverse operator will *NOT* be reshaped (de-vectorized) before the denoising step.",
+                UserWarning,
+            )
 
     @property
-    def device(self):
-        return self.acqu.device
+    def acqu(self):
+        return self.meas_modules["acqu"]
 
-    def forward(self, x):
-        r"""Full pipeline of reconstrcution network
+    @acqu.setter
+    def acqu(self, value):
+        self.meas_modules["acqu"] = value
 
-        Args:
-            :attr:`x`: ground-truth images
+    @acqu.deleter
+    def acqu(self):
+        del self.meas_modules["acqu"]
 
-        Shape:
-            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
+    @property
+    def prep(self):
+        return self.recon_modules["prep"]
 
-            :attr:`output`: reconstructed images with shape :math:`(B,C,H,W)`
+    @prep.setter
+    def prep(self, value):
+        self.recon_modules["prep"] = value
 
-        Example:
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = torch.ones((H,H))
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> recnet = PinvNet(noise, prep)
-            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
-            >>> z = recnet(x)
-            >>> print(z.shape)
-            >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
-            torch.Size([10, 1, 64, 64])
-            tensor(5.8912e-06)
-        """
-        x = self.acquire(x)
-        x = self.reconstruct(x)
-        return x
+    @prep.deleter
+    def prep(self):
+        del self.recon_modules["prep"]
 
-    def acquire(self, x):
-        r"""Simulates data acquisition
+    @property
+    def pinv(self):
+        return self.recon_modules["pinv"]
 
-        Args:
-            :attr:`x`: ground-truth images
+    @pinv.setter
+    def pinv(self, value):
+        self.recon_modules["pinv"] = value
 
-        Shape:
-            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
+    @pinv.deleter
+    def pinv(self):
+        del self.recon_modules["pinv"]
 
-            :attr:`output`: measurement vectors with shape :math:`(BC,2M)`
+    @property
+    def denoi(self):
+        return self.recon_modules["denoi"]
 
-        Example:
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = torch.ones((H,H))
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> recnet = PinvNet(noise, prep)
-            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
-            >>> z = recnet.acquire(x)
-            >>> print(z.shape)
-            torch.Size([10, 8192])
-        """
-        # b, c, _, _ = x.shape
-        # Acquisition
-        # x = x.reshape(b * c, self.acqu.meas_op.N)  # shape x = [b*c,h*w] = [b*c,N]
-        return self.acqu(x)  # shape x = [b*c, 2*M]
+    @denoi.setter
+    def denoi(self, value):
+        self.recon_modules["denoi"] = value
 
-    def meas2img(self, y):
-        """Returns images from raw measurement vectors
+    @denoi.deleter
+    def denoi(self):
+        del self.recon_modules["denoi"]
 
-        Args:
-            :attr:`x`: raw measurement vectors
+    # def meas2img(self, y):
+    #     """Returns images from raw measurement vectors
 
-        Shape:
-            :attr:`x`: :math:`(*,2M)`
+    #     Args:
+    #         :attr:`x`: raw measurement vectors
 
-            :attr:`output`: :math:`(*,H,W)`
+    #     Shape:
+    #         :attr:`x`: :math:`(*,2M)`
 
-        Example:
-            >>> B, C, H, M = 10, 3, 64, 64**2
-            >>> Ord = torch.ones(H,H)
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H**2)
-            >>> recnet = PinvNet(noise, prep)
-            >>> x = torch.rand((B,C,2*M), dtype=torch.float32)
-            >>> z = recnet.reconstruct(x)
-            >>> print(z.shape)
-            torch.Size([10, 3, 64, 64])
-        """
-        m = self.prep(y)
-        m = torch.nn.functional.pad(m, (0, self.acqu.meas_op.N - self.acqu.meas_op.M))
+    #         :attr:`output`: :math:`(*,H,W)`
 
-        # reindex the measurements
-        z = self.acqu.meas_op.reindex(m, "cols", False)
-        return z.reshape(*z.shape[:-1], self.acqu.meas_op.h, self.acqu.meas_op.w)
+    #     Example:
+    #         >>> B, C, H, M = 10, 3, 64, 64**2
+    #         >>> Ord = torch.ones(H,H)
+    #         >>> meas = HadamSplit(M, H, Ord)
+    #         >>> noise = NoNoise(meas)
+    #         >>> prep = SplitPoisson(1.0, M, H**2)
+    #         >>> recnet = PinvNet(noise, prep)
+    #         >>> x = torch.rand((B,C,2*M), dtype=torch.float32)
+    #         >>> z = recnet.reconstruct(x)
+    #         >>> print(z.shape)
+    #         torch.Size([10, 3, 64, 64])
+    #     """
+    #     m = self.prep(y)
+    #     m = torch.nn.functional.pad(m, (0, self.acqu.meas_op.N - self.acqu.meas_op.M))
 
-    def reconstruct(self, x):
-        r"""Preprocesses, reconstructs, and denoises raw measurement vectors.
+    #     # reindex the measurements
+    #     z = self.acqu.meas_op.reindex(m, "cols", False)
+    #     return z.reshape(*z.shape[:-1], self.acqu.meas_op.h, self.acqu.meas_op.w)
+
+    def reconstruct(self, y):
+        r"""Reconstructs measurement vectors and denoise them.
+
+        This method is used to reconstruct the measurement vectors. It is
+        equivalent to using the :attr:`prep`, :attr:`pinv`, and :attr:`denoi`
+        modules of the network. The optional keyword arguments passed at
+        initialization are fed in the :attr:`pinv` module.
 
         Args:
-            :attr:`x`: raw measurement vectors
+            y (torch.tensor): Input measurement tensor.
 
-        Shape:
-            :attr:`x`: :math:`(BC,2M)`
-
-            :attr:`output`: :math:`(BC,1,H,W)`
-
-        Example:
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = torch.ones((H,H))
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H**2)
-            >>> recnet = PinvNet(noise, prep)
-            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
-            >>> z = recnet.reconstruct(x)
-            >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
+        Returns:
+            torch.tensor: Output tensor. Its shape depends on the output of the
+            reconstruction modules.
         """
-        return self.denoi(self.reconstruct_pinv(x))
+        y = self.reconstruct_pinv(y)
+        y = self.denoi(y)
+        return y
 
-    def reconstruct_pinv(self, x):
-        r"""Preprocesses and reconstructs raw measurement vectors.
+    def reconstruct_pinv(self, y):
+        r"""Reconstructs measurement vectors without denoising.
+
+        This method is used to reconstruct the measurement vectors without
+        denoising. It is equivalent to using the :attr:`prep` and :attr:`pinv`
+        modules of the network. The optional keyword arguments passed at
+        initialization are fed in the :attr:`pinv` module.
 
         Args:
-            :attr:`x`: raw measurement vectors
+            y (torch.tensor): Input measurement tensor.
 
-        Shape:
-            :attr:`x`: :math:`(BC,2M)`
-
-            :attr:`output`: :math:`(BC,1,H,W)`
-
-        Example:
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = torch.ones((H,H))
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H**2)
-            >>> recnet = PinvNet(noise, prep)
-            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
-            >>> z = recnet.reconstruct_pinv(x)
-            >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
+        Returns:
+            torch.tensor: Output tensor. Its shape depends on the output of the
+            reconstruction modules.
         """
-        x = self.prep(x)
-        x = self.pinv(x, self.acqu.meas_op)
-        return x
+        y = self.prep(y)
+        y = self.pinv(y, **self.kwargs)
+        return y
 
-    def reconstruct_expe(self, x):
-        r"""Reconstruction step of a reconstruction network
+    def reconstruct_expe(self, y):
+        r"""Reconstructs signal from experimental data.
 
-        Same as :meth:`reconstruct` reconstruct except that:
+        This is the same as :meth:`reconstruct` except that:
 
-        1. The preprocessing step estimates the image intensity for normalization
+        1. Before the denoising step, the output is normalized to [0, 1] (i.e.
+        it is divided by its maximum value).
 
-        2. The output images are "denormalized", i.e., have units of photon counts
+        2. The output is de-normalized after the denoising step (i.e. it is
+        multiplied its original maximum value found in 1.).
 
         Args:
-            :attr:`x`: raw measurement vectors
+            :attr:`y`: Raw measurement vectors.
 
-        Shape:
-            :attr:`x`: :math:`(BC,2M)`
-
-            :attr:`output`: :math:`(BC,1,H,W)`
+        Returns:
+            torch.tensor: Reconstructed experimental signal.
         """
-        # x of shape [b*c, 2M]
-        bc, _ = x.shape
+        y = self.prep(y)
+        y = self.pinv(y, **self.kwargs)
+        max_val = y.max()
 
-        # Preprocessing
-        x, N0_est = self.prep.forward_expe(x, self.acqu.meas_op)  # shape x = [b*c, M]
-        # print(N0_est)
+        y = y / max_val
+        y = self.denoi(y)
+        y = y * max_val
 
-        # measurements to image domain processing
-        x = self.pinv(x, self.acqu.meas_op)  # shape x = [b*c,N]
-
-        # Image domain denoising
-        x = x.reshape(
-            bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
-        )  # shape x = [b*c,1,h,w]
-        x = self.denoi(x)  # shape x = [b*c,1,h,w]
-        # print(x.max())
-
-        # Denormalization
-        x = self.prep.denormalize_expe(
-            x, N0_est, self.acqu.meas_op.h, self.acqu.meas_op.w
-        )
-        # return x
-        return x, N0_est
+        return y, max_val
 
 
 # =============================================================================
