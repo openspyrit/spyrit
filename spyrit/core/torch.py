@@ -852,3 +852,75 @@ def regularized_pinv(A: torch.tensor, regularization: str, **kwargs) -> torch.te
         )
 
     return pinv
+
+
+def regularized_lstsq(A: torch.tensor, y: torch.tensor, regularization: str, **kwargs):
+    """Batched regularized least squares solution of a system of equations.
+
+    It solves the linear system of equations :math:`Ax = y` using a regularized
+    least squares method. The regularizations supported are:
+
+        - "rcond": Uses the function :func:`torch.linalg.lstsq`. Additional
+            arguments can be passed to this function through the `kwargs`
+            parameters, such as `rcond` or `driver`. They are given to the
+            function :func:`torch.linalg.lstsq`.
+
+        - "L2": Uses the L2 regularization method. The regularization parameter
+            `eta` must be passed as a keyword argument. It controls the amount
+            of regularization applied to the least squares solution.
+
+        - "H1": Uses the H1 regularization method. The regularization parameter
+            `eta` must be passed as a keyword argument. It controls the amount
+            of regularization applied to the least squares solution. This method
+            is only implemented for 2D images.
+
+    Args:
+        A (torch.tensor): Left-hand side tensor of shape :math:`(m, n)`, where
+        * is any number of batch dimensions.
+
+        y (torch.tensor): Right-hand side tensor of shape :math:`(*, m)`, where
+        * is any number of batch dimensions.
+
+        regularization (str): Regularization method to use. Supported methods
+        are "rcond", "L2", and "H1".
+
+        **kwargs: Additional keyword arguments to pass to the regularization
+        method. Must include the regularization parameter `eta` when using
+        the "L2" and "H1" regularization methods. Other keyword arguments
+        include `rcond` and `driver` for the "rcond" method.
+
+    Returns:
+        torch.tensor: The regularized least squares solution of shape
+        :math:`(*, n)`.
+    """
+    m, n = A.shape
+    batches = y.shape[:-1]
+
+    if regularization == "rcond":
+        lhs = A.expand(*batches, m, n)
+        rhs = y.unsqueeze(-1)
+        x, _ = torch.linalg.lstsq(lhs, rhs, **kwargs)
+        x = x.squeeze(-1)
+
+    elif regularization == "L2":
+        eta = kwargs.get("eta")
+        D2 = eta * torch.eye(A.shape[1], device=A.device)
+        lhs = (A.T @ A + eta * D2).expand(*batches, m, n)
+        rhs = torch.matmul(y, A)
+        x = torch.linalg.solve(lhs, rhs)
+
+    elif regularization == "H1":
+        eta = kwargs.get("eta")
+        img_shape = kwargs.get("img_shape")
+        Dx, Dy = neumann_boundary(img_shape)
+        D2 = (Dx.T @ Dx + Dy.T @ Dy).to(A.device)
+        lhs = (A.T @ A + eta * D2).expand(*batches, m, n)
+        rhs = torch.matmul(y, A)
+        x = torch.linalg.solve(lhs, rhs)
+
+    else:
+        raise NotImplementedError(
+            f"Regularization method {regularization} not implemented. Currently supported methods are 'rcond', 'L2', and 'H1'."
+        )
+
+    return x
