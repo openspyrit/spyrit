@@ -93,7 +93,8 @@ class FullNet(nn.Sequential):
         r"""Simulates measurements of the input signal.
 
         The measurements are simulated using the measurement modules stored in
-        the network under the key `meas_modules`.
+        the network under the key `meas_modules`.  They are all successively
+        applied to the input tensor `x`.
 
         Args:
             x (torch.tensor): Input tensor. For images, it is usually shaped
@@ -110,7 +111,8 @@ class FullNet(nn.Sequential):
         r"""Reconstructs the signal from measurements.
 
         The signal is reconstructed using the reconstruction modules stored in
-        the network under the key `recon_modules`.
+        the network under the key `recon_modules`. They are all successively
+        applied to the input tensor `y`.
 
         Args:
             y (torch.tensor): Input measurement tensor. It usually has measurements
@@ -476,25 +478,26 @@ class PinvNet(FullNet):
         This will reshape the output of the pseudo inverse operator to match the
         acquisition operator input shape.
 
+    Args:
 
 
     """
 
-    def __init__(self, acqu, prep, denoi=nn.Identity(), **kwargs):
+    def __init__(self, acqu, prep, denoi=nn.Identity(), **pinv_kwargs):
 
         meas_modules = OrderedDict({"acqu": acqu})
         recon_modules = OrderedDict(
             {
                 "prep": prep,
-                "pinv": inverse.PseudoInverse(acqu, **kwargs),
+                "pinv": inverse.PseudoInverse(acqu, **pinv_kwargs),
                 "denoi": denoi,
             }
         )
 
         super().__init__(meas_modules, recon_modules)
-        self.kwargs = kwargs
+        self.pinv_kwargs = pinv_kwargs
 
-        if denoi != nn.Identity() and kwargs.get("reshape_output", False):
+        if denoi != nn.Identity() and pinv_kwargs.get("reshape_output", False):
             warnings.warn(
                 "The output of the pseudo inverse operator will *NOT* be reshaped (de-vectorized) before the denoising step.",
                 UserWarning,
@@ -578,32 +581,18 @@ class PinvNet(FullNet):
     #     z = self.acqu.meas_op.reindex(m, "cols", False)
     #     return z.reshape(*z.shape[:-1], self.acqu.meas_op.h, self.acqu.meas_op.w)
 
-    def reconstruct(self, y):
-        r"""Reconstructs measurement vectors and denoise them.
-
-        This method is used to reconstruct the measurement vectors. It is
-        equivalent to using the :attr:`prep`, :attr:`pinv`, and :attr:`denoi`
-        modules of the network. The optional keyword arguments passed at
-        initialization are fed in the :attr:`pinv` module.
-
-        Args:
-            y (torch.tensor): Input measurement tensor.
-
-        Returns:
-            torch.tensor: Output tensor. Its shape depends on the output of the
-            reconstruction modules.
-        """
-        y = self.reconstruct_pinv(y)
-        y = self.denoi(y)
-        return y
-
     def reconstruct_pinv(self, y):
         r"""Reconstructs measurement vectors without denoising.
 
-        This method is used to reconstruct the measurement vectors without
-        denoising. It is equivalent to using the :attr:`prep` and :attr:`pinv`
-        modules of the network. The optional keyword arguments passed at
-        initialization are fed in the :attr:`pinv` module.
+        This method applies the :attr:`prep` and :attr:`pinv` modules of the
+        reconstruction network to the input measurement vectors. It is
+        somewhat equivalent to the :meth:`reconstruct` method, but without the
+        denoising step (it is strictly equivalent if no additional reconstruction
+        modules have been user-added to the network).
+
+        .. note::
+            This method may differ significantly from the :meth:`reconstruct`
+            if more reconstruction modules have been user-added to the network.
 
         Args:
             y (torch.tensor): Input measurement tensor.
@@ -613,7 +602,7 @@ class PinvNet(FullNet):
             reconstruction modules.
         """
         y = self.prep(y)
-        y = self.pinv(y, **self.kwargs)
+        y = self.pinv(y)
         return y
 
     def reconstruct_expe(self, y):
@@ -646,7 +635,18 @@ class PinvNet(FullNet):
 
 # =============================================================================
 class DCNet(nn.Module):
-    r"""Denoised completion reconstruction network.
+    r"""Pre-built :class:`FullNet` that uses a :class:`TikhonovMeasurementPriorDiag` reconstruction operator.
+
+    As a :class:`FullNet`, this network has two modules: one for measurements
+    and one for reconstruction.
+
+    The measurement module only contains the acquisition operator. The
+    reconstruction module contains a preprocessing operator, a Tikhonov
+    regularization :class:`TikhonovMeasurementPriorDiag` reconstruction
+    operator, and a denoising operator.
+
+
+    Denoised completion reconstruction network.
 
     This is a four step reconstruction method:
 
