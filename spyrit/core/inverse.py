@@ -66,27 +66,42 @@ class PseudoInverse(nn.Module):
         regularization: str = "rcond",
         store_pinv: bool = False,
         reshape_output: bool = False,
-        **kwargs,
+        **reg_kwargs,
     ) -> None:
 
         super().__init__()
         self.meas_op = meas_op
+        self.regularization = regularization
         self.store_pinv = store_pinv
         self.reshape_output = reshape_output
+        self.reg_kwargs = reg_kwargs
 
         if self.store_pinv:
             self.pinv = spytorch.regularized_pinv(
-                self.meas_op.matrix_to_inverse, regularization, **kwargs
+                self.meas_op.matrix_to_inverse, regularization, **reg_kwargs
             )
 
-    def forward(self, y: torch.tensor, **kwargs) -> torch.tensor:
+    def forward(self, y: torch.tensor) -> torch.tensor:
         r"""Computes pseudo-inverse of measurements.
 
         If :attr:`self.store_pinv` is True, computes the product of the
-        stored pseudo-inverse and the measurements. If False, computes the
-        least squares solution of the measurements. In this case, additional
-        keyword arguments can be passed to the forward method to specify
-        regularization parameters to the :func:`torch.linalg.lstsq` function.
+        stored pseudo-inverse and the measurements.
+
+        If :attr:`self.store_pinv` is False, computes the least squares solution
+        of the measurements. In this case, any additional keyword arguments
+        passed to the :class:`PseudoInverse` constructor (and store in
+        :attr:`self.reg_kwargs` are used here. These can include:
+            - :attr:`rcond` (float): Cutoff for small singular values. It is
+            used only when :attr:`regularization` is 'rcond'. This parameter
+            is fed directly to :func:`torch.linalg.pinv`.
+            - Any other keyword arguments that are passed to :func:`torch.linalg.lstsq`.
+            Used only when :attr:`regularization` is 'rcond'.
+            - :attr:`eta` (float): Regularization parameter. It is used only
+            when :attr:`regularization` is 'L2' or 'H1'. This parameter determines
+            the amount of regularization applied to the pseudo-inverse.
+
+
+
 
         Args:
             :attr:`y`: Batch of measurement vectors.
@@ -117,21 +132,21 @@ class PseudoInverse(nn.Module):
             >>> print(x.shape)
             torch.Size([85, 1024])
         """
-        # Expand y to the number of columns of the pseudo-inverse
-        y = y.unsqueeze(-1)
-
         if self.store_pinv:
             # Expand the pseudo-inverse to the batch size of y
             pinv = self.pinv.expand(*y.shape[:-1], *self.pinv.shape)
+            y = y.unsqueeze(-1)
             y = torch.matmul(pinv, y)
+            y = y.squeeze(-1)
 
         else:
-            matrix_to_inverse = self.meas_op.matrix_to_inverse.expand(
-                y.shape[:-1], *self.meas_op.matrix_to_inverse.shape
+            # make matrix_to_inverse a batched 2D matrix
+            y = spytorch.regularized_lstsq(
+                self.meas_op.matrix_to_inverse,
+                y,
+                self.regularization,
+                **self.reg_kwargs,
             )
-            y = torch.linalg.lstsq(matrix_to_inverse, y).solution
-
-        y = y.squeeze(-1)
 
         if self.reshape_output:
             y = self.meas_op.unvectorize(y)
