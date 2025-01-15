@@ -1466,7 +1466,9 @@ class DynamicLinear(_Base):
             meas_pattern = self.H_static
 
         if self.white_acq is not None:
-            meas_pattern *= self.white_acq.ravel().unsqueeze(0)  # for eventual spatial gain
+            meas_pattern *= self.white_acq.ravel().unsqueeze(
+                0
+            )  # for eventual spatial gain
 
         meas_dxy = (
             meas_pattern.reshape(n_frames, 1, self.h * self.w).to(dxy.dtype) * dxy
