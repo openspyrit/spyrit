@@ -786,9 +786,7 @@ def center_pad(
 # =============================================================================
 
 
-def regularized_pinv(
-    tensor: torch.tensor, regularization: str, *args, **kwargs
-) -> torch.tensor:
+def regularized_pinv(A: torch.tensor, regularization: str, **kwargs) -> torch.tensor:
     """Returns a regularized pseudo-inverse of a tensor.
 
     The regularizations supported are:
@@ -813,7 +811,7 @@ def regularized_pinv(
         images (i.e., `image_shape` must be 2D).
 
     Args:
-        tensor (torch.tensor): input tensor to compute the pseudo-inverse. Must
+        A (torch.tensor): input 2D matrix to compute the pseudo-inverse. Must
         be 2D.
 
         regularization (str): Regularization method to use. Supported methods
@@ -832,30 +830,21 @@ def regularized_pinv(
     """
 
     if regularization == "rcond":
-        pinv = torch.linalg.pinv(tensor, **kwargs)
+        pinv = torch.linalg.pinv(A, **kwargs)
 
     elif regularization == "L2":
         eta = kwargs.get("eta")
-        if tensor.shape[0] >= tensor.shape[1]:
-            pinv = (
-                torch.linalg.inv(
-                    tensor.T @ tensor
-                    + eta * torch.eye(tensor.shape[1], device=tensor.device)
-                )
-                @ tensor.T
-            )
-        else:
-            pinv = tensor.T @ torch.linalg.inv(
-                tensor @ tensor.T
-                + eta * torch.eye(tensor.shape[0], device=tensor.device)
-            )
+        pinv = (
+            torch.linalg.inv(A.T @ A + eta * torch.eye(A.shape[1], device=A.device))
+            @ A.T
+        )
 
     elif regularization == "H1":
         eta = kwargs.get("eta")
         img_shape = kwargs.get("img_shape")
         Dx, Dy = neumann_boundary(img_shape)
-        D2 = (Dx.T @ Dx + Dy.T @ Dy).to(tensor.device)
-        pinv = torch.linalg.inv(tensor.T @ tensor + eta * D2) @ tensor.T
+        D2 = (Dx.T @ Dx + Dy.T @ Dy).to(A.device)
+        pinv = torch.linalg.inv(A.T @ A + eta * D2) @ A.T
 
     else:
         raise NotImplementedError(
