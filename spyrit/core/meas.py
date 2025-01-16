@@ -1126,6 +1126,7 @@ class LinearSplit2(Linear2):
         pos, neg = nn.functional.relu(H), nn.functional.relu(-H)
         A = torch.cat([pos, neg], 1).reshape(2 * self.M, self.N)
         self.A = nn.Parameter(A, requires_grad=False)
+        self.matrix_to_inverse = H
 
     def measure(self, x: torch.tensor):
         r""" """
@@ -1177,6 +1178,8 @@ class HadamSplit2D(LinearSplit2):
         meas_dims = (-2, -1)
         meas_shape = (h, h)
 
+        self.H1 = ...
+
         H = spytorch.walsh2_matrix(h).to(torch.int8)
         H, indices = spytorch.sort_by_significance(
             H, order, "rows", False, get_indices=True
@@ -1184,6 +1187,10 @@ class HadamSplit2D(LinearSplit2):
         super().__init__(H[:M, :], meas_shape, meas_dims, noise_model)
         self.indices = indices
         self.fast = fast
+
+    @property
+    def H(self):
+        return torch.kron(self.H1, self.H1)
 
     def reindex(
         self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
