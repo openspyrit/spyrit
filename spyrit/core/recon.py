@@ -24,36 +24,42 @@ class FullNet(nn.Sequential):
     The forward pass of this network simulates measurements of a signal (or image)
     and reconstructs it from the measurements. To this end, it sequentially
     applies the measurement and reconstruction modules stored in the network
-    under the keys `meas_modules` and `recon_modules`, respectively.
+    under the keys `acqu_modules` and `recon_modules`, respectively.
 
     The modules contained within the measurement and reconstruction modules can
     be arbitrary.
 
     Args:
-        meas_modules (Union[OrderedDict, nn.Sequential]): Measurement modules.
+        acqu_modules (Union[OrderedDict, nn.Sequential]): Measurement modules.
 
         recon_modules (Union[OrderedDict, nn.Sequential]): Reconstruction modules.
 
     Raises:
-        TypeError: If `meas_modules` or `recon_modules` are not of type
+        TypeError: If `acqu_modules` or `recon_modules` are not of type
         :class:`OrderedDict` or :class:`nn.Sequential`.
 
     Attributes:
-        meas_modules (nn.Sequential): Measurement modules.
+        acqu_modules (nn.Sequential): Measurement modules.
 
         recon_modules (nn.Sequential): Reconstruction modules.
+
+        Any (key, value) pair in `acqu_modules` and `recon_modules` is also stored
+        as an attribute of the network. For example, if `acqu_modules` contains
+        the key `acqu` for the acquisition operator, then it can be accessed as
+        `self.acqu`. If two different modules in `acqu_modules` and `recon_modules`
+        have the same key, the one in `acqu_modules` will be accessed first.
     """
 
     def __init__(
         self,
-        meas_modules: Union[OrderedDict, nn.Sequential],
+        acqu_modules: Union[OrderedDict, nn.Sequential],
         recon_modules: Union[OrderedDict, nn.Sequential],
     ):
-        if isinstance(meas_modules, OrderedDict):
-            meas_modules = nn.Sequential(meas_modules)
-        if not isinstance(meas_modules, nn.Sequential):
+        if isinstance(acqu_modules, OrderedDict):
+            acqu_modules = nn.Sequential(acqu_modules)
+        if not isinstance(acqu_modules, nn.Sequential):
             raise TypeError(
-                "meas_modules must be an OrderedDict or torch.nn.Sequential"
+                "acqu_modules must be an OrderedDict or torch.nn.Sequential"
             )
 
         if isinstance(recon_modules, OrderedDict):
@@ -64,15 +70,16 @@ class FullNet(nn.Sequential):
             )
 
         all_modules = OrderedDict(
-            {"meas_modules": meas_modules, "recon_modules": recon_modules}
+            {"acqu_modules": acqu_modules, "recon_modules": recon_modules}
         )
         super().__init__(all_modules)
+        print(2)
 
     def forward(self, x):
         r"""Simulates measurements and reconstructs the signal.
 
         This is done by first simulating measurements of the input signal from
-        the stored measurement modules `self.meas_modules`. The measurements are
+        the stored measurement modules `self.acqu_modules`. The measurements are
         then passed to the reconstruction modules `self.recon_modules` to
         reconstruct the signal.
 
@@ -93,7 +100,7 @@ class FullNet(nn.Sequential):
         r"""Simulates measurements of the input signal.
 
         The measurements are simulated using the measurement modules stored in
-        the network under the key `meas_modules`.  They are all successively
+        the network under the key `acqu_modules`.  They are all successively
         applied to the input tensor `x`.
 
         Args:
@@ -105,7 +112,7 @@ class FullNet(nn.Sequential):
             torch.tensor: Output tensor. Its shape depends on the output of the
             measurement modules.
         """
-        return self.meas_modules(x)
+        return self.acqu_modules(x)
 
     def reconstruct(self, y):
         r"""Reconstructs the signal from measurements.
@@ -123,6 +130,59 @@ class FullNet(nn.Sequential):
             reconstruction modules.
         """
         return self.recon_modules(y)
+
+
+class _PrebuiltFullNet(FullNet):
+    r"""Pre-built full (measurement + reconstruction) network. Designed so that
+    other prebuilt networks inherit from this class. It adds the following
+    attributes:
+        - `acqu` (spyrit.core.meas): Acquisition operator.
+        - `prep` (spyrit.core.prep): Preprocessing operator.
+        - `denoi` (torch.nn.Module): Image denoising operator.
+
+    The inverse operator is not added as an attribute because its name
+    changes depending on the network. It is added as an attribute in the
+    child classes.
+    """
+
+    def __init__(self, acqu_modules, recon_modules):
+        super().__init__(acqu_modules, recon_modules)
+
+    @property
+    def acqu(self):
+        return self.acqu_modules["acqu"]
+
+    @acqu.setter
+    def acqu(self, value):
+        self.acqu_modules["acqu"] = value
+
+    @acqu.deleter
+    def acqu(self):
+        del self.acqu_modules["acqu"]
+
+    @property
+    def prep(self):
+        return self.recon_modules["prep"]
+
+    @prep.setter
+    def prep(self, value):
+        self.recon_modules["prep"] = value
+
+    @prep.deleter
+    def prep(self):
+        del self.recon_modules["prep"]
+
+    @property
+    def denoi(self):
+        return self.recon_modules["denoi"]
+
+    @denoi.setter
+    def denoi(self, value):
+        self.recon_modules["denoi"] = value
+
+    @denoi.deleter
+    def denoi(self):
+        del self.recon_modules["denoi"]
 
 
 # =============================================================================
@@ -312,7 +372,7 @@ class Denoise_layer(nn.Module):
 
 
 # =============================================================================
-class PinvNet(FullNet):
+class PinvNet(_PrebuiltFullNet):
     r"""Pre-built :class:`FullNet` that uses a pseudo inverse.
 
     As a :class:`FullNet`, this network has two modules: one for measurements
@@ -333,22 +393,43 @@ class PinvNet(FullNet):
         acquisition operator input shape.
 
     Args:
+        acqu (spyrit.core.meas): Acquisition operator (see :mod:`~spyrit.core.meas`)
 
+        prep (spyrit.core.prep): Preprocessing operator (see :mod:`~spyrit.core.prep`)
 
+        denoi (torch.nn.Module, optional): Image denoising operator. Default
+        is :class:`~torch.nn.Identity`.
+
+        **pinv_kwargs: Optional keyword arguments passed to the pseudo inverse
+        operator (see :class:`~spyrit.core.inverse.PseudoInverse`).
+
+    Attributes:
+        :attr:`acqu_modules` (nn.Sequential): Measurement modules. Only contains
+        the acquisition operator.
+
+        :attr:`recon_modules` (nn.Sequential): Reconstruction modules. Contains
+        the preprocessing operator, the pseudo inverse operator, and the denoising
+        operator.
+
+        :attr:`acqu` (spyrit.core.meas): Acquisition operator.
+
+        :attr:`prep` (spyrit.core.prep): Preprocessing operator.
+
+        :attr:`inv` (spyrit.core.inverse.PseudoInverse): Pseudo inverse operator.
+
+        :attr:`denoi` (torch.nn.Module): Image denoising operator.
+
+        :attr:`pinv_kwargs` (dict): Optional keyword arguments passed to the
+        pseudo inverse operator.
     """
 
     def __init__(self, acqu, prep, denoi=nn.Identity(), **pinv_kwargs):
 
-        meas_modules = OrderedDict({"acqu": acqu})
-        recon_modules = OrderedDict(
-            {
-                "prep": prep,
-                "pinv": inverse.PseudoInverse(acqu, **pinv_kwargs),
-                "denoi": denoi,
-            }
-        )
+        pinv = inverse.PseudoInverse(acqu, **pinv_kwargs)
+        acqu_modules = OrderedDict({"acqu": acqu})
+        recon_modules = OrderedDict({"prep": prep, "pinv": pinv, "denoi": denoi})
 
-        super().__init__(meas_modules, recon_modules)
+        super().init(acqu_modules, recon_modules)
         self.pinv_kwargs = pinv_kwargs
 
         if denoi != nn.Identity() and pinv_kwargs.get("reshape_output", False):
@@ -358,52 +439,16 @@ class PinvNet(FullNet):
             )
 
     @property
-    def acqu(self):
-        return self.meas_modules["acqu"]
-
-    @acqu.setter
-    def acqu(self, value):
-        self.meas_modules["acqu"] = value
-
-    @acqu.deleter
-    def acqu(self):
-        del self.meas_modules["acqu"]
-
-    @property
-    def prep(self):
-        return self.recon_modules["prep"]
-
-    @prep.setter
-    def prep(self, value):
-        self.recon_modules["prep"] = value
-
-    @prep.deleter
-    def prep(self):
-        del self.recon_modules["prep"]
-
-    @property
     def pinv(self):
-        return self.recon_modules["pinv"]
+        return self.recon_modules.pinv
 
     @pinv.setter
     def pinv(self, value):
-        self.recon_modules["pinv"] = value
+        self.recon_modules.pinv = value
 
     @pinv.deleter
     def pinv(self):
-        del self.recon_modules["pinv"]
-
-    @property
-    def denoi(self):
-        return self.recon_modules["denoi"]
-
-    @denoi.setter
-    def denoi(self, value):
-        self.recon_modules["denoi"] = value
-
-    @denoi.deleter
-    def denoi(self):
-        del self.recon_modules["denoi"]
+        del self.recon_modules.pinv
 
     # def meas2img(self, y):
     #     """Returns images from raw measurement vectors
@@ -488,7 +533,7 @@ class PinvNet(FullNet):
 
 
 # =============================================================================
-class DCNet(nn.Module):
+class DCNet(_PrebuiltFullNet):
     r"""Pre-built :class:`FullNet` that uses a :class:`TikhonovMeasurementPriorDiag` reconstruction operator.
 
     As a :class:`FullNet`, this network has two modules: one for measurements
@@ -498,18 +543,6 @@ class DCNet(nn.Module):
     reconstruction module contains a preprocessing operator, a Tikhonov
     regularization :class:`TikhonovMeasurementPriorDiag` reconstruction
     operator, and a denoising operator.
-
-
-    Denoised completion reconstruction network.
-
-    This is a four step reconstruction method:
-
-    #. Denoising in the measurement domain.
-    #. Estimation of the missing measurements from the denoised ones.
-    #. Image-domain mapping.
-    #. (Learned) Denoising in the image domain.
-
-    The first three steps corresponds to Tikhonov regularisation. Typically, only the last step involves learnable parameters.
 
     Args:
         :attr:`noise`: Acquisition operator (see :class:`~spyrit.core.noise`)
@@ -524,149 +557,125 @@ class DCNet(nn.Module):
         Default :class:`~spyrit.core.nnet.Identity`
 
     Input / Output:
-        :attr:`input`: Ground-truth images with shape :math:`(*,H,W)`, with
-        :math:`*` being any batch size.
+        :attr:`input`: Ground-truth images with shape :math:`(b,c,h,w)`, with
+        :math:`b` being the batch size, :math:`c` the number of channels, and
+        :math:`h` and :math:`w` the height and width of the images.
 
-        :attr:`output`: Reconstructed images with shape :math:`(*,H,W)`, with
-        :math:`*` being any batch size.
+        :attr:`output`: Reconstructed images with shape :math:`(b,c,h,w)`.
 
     Attributes:
-        :attr:`Acq`: Acquisition operator initialized as :attr:`noise`
+        :attr:`acqu`: Acquisition operator initialized as :attr:`acqu`
 
-        :attr:`PreP`: Preprocessing operator initialized as :attr:`prep`
+        :attr:`prep`: Preprocessing operator initialized as :attr:`prep`
 
-        :attr:`DC_Layer`: Data consistency layer initialized as :attr:`tikho`
+        :attr:`tikho`: Data consistency layer initialized as :attr:`tikho`
 
-        :attr:`Denoi`: Image denoising operator initialized as :attr:`denoi`
-
-
-    Example:
-        >>> B, C, H, M = 10, 1, 64, 64**2
-        >>> Ord = torch.ones((H,H))
-        >>> meas = HadamSplit(M, H, Ord)
-        >>> noise = NoNoise(meas)
-        >>> prep = SplitPoisson(1.0, M, H*H)
-        >>> sigma = torch.rand([H**2, H**2])
-        >>> recnet = DCNet(noise,prep,sigma)
-        >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
-        >>> z = recnet(x)
-        >>> print(z.shape)
-        torch.Size([10, 1, 64, 64])
+        :attr:`denoi`: Image denoising operator initialized as :attr:`denoi`
     """
 
     def __init__(
         self,
-        noise: NoNoise,
+        acqu,
         prep: Union[DirectPoisson, SplitPoisson],
         sigma: torch.tensor,
         denoi=nn.Identity(),
     ):
-        super().__init__()
-        self.Acq = noise
-        self.prep = prep
-        self.denoi = denoi
-        sigma = sigma.to(torch.float32)
-
-        sigma = noise.reindex(sigma, "rows", False)
-        sigma = noise.reindex(sigma, "cols", True)
+        sigma = acqu.reindex(sigma, "rows", False)
+        sigma = acqu.reindex(sigma, "cols", True)
         sigma_perm = sigma
+        self.tikho = inverse.TikhonovMeasurementPriorDiag(sigma_perm, acqu.M)
 
-        # save in tikho
-        self.tikho = TikhonovMeasurementPriorDiag(sigma_perm, noise.meas_op.M)
+        acqu_modules = OrderedDict({"acqu": acqu})
+        recon_modules = OrderedDict({"prep": prep, "tikho": self.tikho, "denoi": denoi})
+        super().__init__(acqu_modules, recon_modules)
 
     @property
-    def device(self):
-        return self.Acq.device
+    def tikho(self):
+        return self.recon_modules["tikho"]
 
-    def forward(self, x):
-        r"""Full pipeline of the reconstruction network
+    @tikho.setter
+    def tikho(self, value):
+        self.recon_modules["tikho"] = value
+
+    @tikho.deleter
+    def tikho(self):
+        del self.recon_modules["tikho"]
+
+    # def forward(self, x):
+    #     r"""Full pipeline of the reconstruction network
+
+    #     Args:
+    #         :attr:`x`: ground-truth images
+
+    #     Shape:
+    #         :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
+
+    #         :attr:`output`: reconstructed images with shape :math:`(B,C,H,W)`
+
+    #     Example:
+    #         >>> B, C, H, M = 10, 1, 64, 64**2
+    #         >>> Ord = torch.ones((H,H))
+    #         >>> meas = HadamSplit(M, H, Ord)
+    #         >>> noise = NoNoise(meas)
+    #         >>> prep = SplitPoisson(1.0, M, H*H)
+    #         >>> sigma = torch.rand([H**2, H**2])
+    #         >>> recnet = DCNet(noise,prep,sigma)
+    #         >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+    #         >>> z = recnet(x)
+    #         >>> print(z.shape)
+    #         torch.Size([10, 1, 64, 64])
+    #     """
+    #     x = self.acquire(x)
+    #     x = self.reconstruct(x)
+    #     return x
+
+    # def acquire(self, x):
+    #     r"""Simulate data acquisition
+
+    #     Args:
+    #         :attr:`x`: ground-truth images
+
+    #     Shape:
+    #         :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
+
+    #         :attr:`output`: measurement vectors with shape :math:`(BC,2M)`
+
+    #     Example:
+    #         >>> B, C, H, M = 10, 1, 64, 64**2
+    #         >>> Ord = torch.ones((H,H))
+    #         >>> meas = HadamSplit(M, H, Ord)
+    #         >>> noise = NoNoise(meas)
+    #         >>> prep = SplitPoisson(1.0, M, H*H)
+    #         >>> sigma = torch.rand([H**2, H**2])
+    #         >>> recnet = DCNet(noise,prep,sigma)
+    #         >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+    #         >>> z = recnet.acquire(x)
+    #         >>> print(z.shape)
+    #         torch.Size([10, 8192])
+    #     """
+    #     return self.acqu(x)
+
+    def reconstruct(self, y):
+        r"""Reconstruct an image from measurements.
+
+        This method sucessively applies the preprocessing operator :attr:`prep`,
+        the Tikhonov regularization operator :attr:`tikho`, and the denoising
+        operator :attr:`denoi` to the input measurement vectors :attr:`x`.
 
         Args:
-            :attr:`x`: ground-truth images
+            :attr:`y`: raw measurement vectors. Has shape :math:`(b, c, m)`
 
         Shape:
-            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
+            :attr:`y`: raw measurement vectors with shape :math:`(b, c, m)`
 
-            :attr:`output`: reconstructed images with shape :math:`(B,C,H,W)`
-
-        Example:
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = torch.ones((H,H))
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = torch.rand([H**2, H**2])
-            >>> recnet = DCNet(noise,prep,sigma)
-            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
-            >>> z = recnet(x)
-            >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
+            :attr:`output`: reconstructed images with shape :math:`(b,c,h,w)`
         """
-        x = self.acquire(x)
-        x = self.reconstruct(x)
-        return x
-
-    def acquire(self, x):
-        r"""Simulate data acquisition
-
-        Args:
-            :attr:`x`: ground-truth images
-
-        Shape:
-            :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
-
-            :attr:`output`: measurement vectors with shape :math:`(BC,2M)`
-
-        Example:
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = torch.ones((H,H))
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = torch.rand([H**2, H**2])
-            >>> recnet = DCNet(noise,prep,sigma)
-            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
-            >>> z = recnet.acquire(x)
-            >>> print(z.shape)
-            torch.Size([10, 8192])
-        """
-        return self.Acq(x)
-
-    def reconstruct(self, x):
-        r"""Reconstruction step of a reconstruction network
-
-        Args:
-            :attr:`x`: raw measurement vectors
-
-        Shape:
-            :attr:`x`: raw measurement vectors with shape :math:`(BC,2M)`
-
-            :attr:`output`: reconstructed images with shape :math:`(BC,1,H,W)`
-
-        Example:
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = torch.ones((H,H))
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> sigma = torch.rand([H**2, H**2])
-            >>> recnet = DCNet(noise,prep,sigma)
-            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
-            >>> z = recnet.reconstruct(x)
-            >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
-        """
-        var_noi = self.prep.sigma(x)
-        x = self.prep(x)
-
-        # x.shape = (*, M), make x_0 (*, h, w)
-        x_0 = torch.zeros(
-            (*x.shape[:-1], *self.Acq.meas_op.meas_shape), device=x.device
-        )
-        x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
-
-        # Image domain denoising
-        return self.denoi(x)
+        # estimate the variance of the measurements
+        var_noi = self.prep.sigma(y)
+        y = self.prep(y)
+        y = self.tikho.forward_no_prior(y, var_noi, self.acqu)
+        y = self.denoi(y)
+        return y
 
     def reconstruct_expe(self, x):
         r"""Reconstruction step of a reconstruction network
@@ -687,50 +696,53 @@ class DCNet(nn.Module):
             :attr:`x`: :math:`(BC,2M)`
 
             :attr:`output`: :math:`(BC,1,H,W)`
-
         """
         # x of shape [b*c, 2M]
         bc, _ = x.shape
 
         # Preprocessing expe
         var_noi = self.prep.sigma_expe(x)
-        x, N0_est = self.prep.forward_expe(x, self.Acq.meas_op)  # x <- x/N0_est
+        x, N0_est = self.prep.forward_expe(x, self.acqu.meas_op)  # x <- x/N0_est
         x = x / self.prep.gain
         norm = self.prep.gain * N0_est
 
         # variance of preprocessed measurements
         var_noi = torch.div(
-            var_noi, (norm.reshape(-1, 1).expand(bc, self.Acq.meas_op.M)) ** 2
+            var_noi, (norm.reshape(-1, 1).expand(bc, self.acqu.meas_op.M)) ** 2
         )
 
         # measurements to image domain processing
-        x_0 = torch.zeros((bc, self.Acq.meas_op.N), device=x.device)
-        x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
+        x_0 = torch.zeros((bc, self.acqu.meas_op.N), device=x.device)
+        x = self.tikho(x, x_0, var_noi, self.acqu.meas_op)
         x = x.reshape(
-            bc, 1, self.Acq.meas_op.h, self.Acq.meas_op.w
+            bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
         )  # shape x = [b*c,1,h,w]
 
         # Image domain denoising
         x = self.denoi(x)  # shape x = [b*c,1,h,w]
 
         # Denormalization
-        x = self.prep.denormalize_expe(x, norm, self.Acq.meas_op.h, self.Acq.meas_op.w)
+        x = self.prep.denormalize_expe(
+            x, norm, self.acqu.meas_op.h, self.acqu.meas_op.w
+        )
 
         return x
 
 
 # =============================================================================
-class TikhoNet(nn.Module):
-    r"""Tikhonov reconstruction network.
+class TikhoNet(_PrebuiltFullNet):
+    r"""Pre-built :class:`FullNet` that uses a :class:`Tikhonov` reconstruction operator.
 
-    This is a two-step reconstruction method. Typically, only the last step involves learnable parameters.
+    As a :class:`FullNet`, this network has two modules: one for measurements
+    and one for reconstruction.
 
-    #. Tikhonov regularisation.
-    #. (Learned) Denoising in the image domain.
+    The measurement module only contains the acquisition operator. The
+    reconstruction module contains a preprocessing operator, a Tikhonov inverse
+    operator, and a denoising operator.
 
 
     Args:
-        :attr:`noise` (spyrit.core.noise): Acquisition operator (see :mod:`~spyrit.core.noise`)
+        :attr:`noise` (spyrit.core.noise): Acquisition operator (see :mod:`~spyrit.core.meas`)
 
         :attr:`prep` (spyrit.core.prep): Preprocessing operator (see :mod:`~spyrit.core.prep`)
 
@@ -738,13 +750,25 @@ class TikhoNet(nn.Module):
         :class:`~spyrit.core.recon.Tikhonov()` class)
 
         :attr:`denoi` (torch.nn.Module, optional): Image denoising operator
-        (see :class:`~spyrit.core.nnet`).
-        Default :class:`~spyrit.core.nnet.Identity`
+        (see :class:`~spyrit.core.nnet`). Default :class:`~spyrit.core.nnet.Identity`
+
+        :attr:`kwargs` (dict): Optional keyword arguments passed to the
+        :class:`~spyrit.core.recon.Tikhonov()` constructor. May contain
+        the following keys:
+            - `approx` (bool): If True, the Tikhonov inversion step is approximated
+            using a diagonal matrix. Default is False.
+            - `reshape_output` (bool): If True, the output of the Tikhonov
+            inversion step is reshaped to match the acquisition operator input
+            shape. Default is False.
+
+    .. important::
+        If using a non-Identity denoiser, consider setting the optional keyword
+        parameter `reshape_output` to `True` in the :class:`TikhoNet` constructor.
 
     Input / Output:
-        :attr:`input` (torch.tensor): Ground-truth images with shape :math:`(B,C,H,W)`.
+        :attr:`input` (torch.tensor): Ground-truth images with shape :math:`(b,c,h,w)`.
 
-        :attr:`output` (torch.tensor): Reconstructed images with shape :math:`(B,C,H,W)`.
+        :attr:`output` (torch.tensor): Reconstructed images with shape :math:`(b,c,h,w)`.
 
     Attributes:
         :attr:`acqu`: Acquisition operator initialized as :attr:`noise`
@@ -754,50 +778,32 @@ class TikhoNet(nn.Module):
         :attr:`tikho`: Data consistency layer initialized as :attr:`Tikhonov(noise.meas_op, sigma)`
 
         :attr:`denoi`: Image denoising operator initialized as :attr:`denoi`
-
-
-    Example:
-        >>> B, H, M, N = 85, 17, 32, 64
-        >>> sigma = torch.rand(N, N)
-        >>> gamma = torch.rand(M, M)
-        >>> A = torch.rand([M,N])
-        >>> meas = Linear(A, meas_shape=(1,N))
-        >>> noise = NoNoise(meas)
-        >>> prep = DirectPoisson(1, meas)
-        >>> recon = TikhoNet(noise, prep, sigma)
-        >>> y = torch.rand(B,H,M)
-        >>> x = recon(y, gamma)
-        >>> print(y.shape)
-        >>> print(x.shape)
-        torch.Size([85, 17, 32])
-        torch.Size([85, 17, 1, 64])
     """
 
-    def __init__(self, noise, prep, sigma: torch.tensor, denoi=nn.Identity()):
+    def __init__(self, acqu, prep, sigma: torch.tensor, denoi=nn.Identity(), **kwargs):
 
-        super().__init__()
-        self.acqu = noise
-        self.prep = prep
-        # device = noise.meas_op.H.device        # spyrit 2.3.
-        # sigma = torch.as_tensor(sigma, dtype=torch.float32, device=device)
-        self.tikho = Tikhonov(noise.meas_op, sigma)
-        self.denoi = denoi
+        tikho = inverse.Tikhonov(acqu, sigma, **kwargs)
+        acqu_modules = OrderedDict({"acqu": acqu})
+        recon_modules = OrderedDict({"prep": prep, "tikho": tikho, "denoi": denoi})
+        super().__init__(acqu_modules, recon_modules)
 
-    def forward(self, x):
-        """Full pipeline (image-to-image mapping)
+        if denoi != nn.Identity() and kwargs.get("reshape_output", False):
+            warnings.warn(
+                "The output of the Tikhonov operator will *NOT* be reshaped (de-vectorized) before the denoising step.",
+                UserWarning,
+            )
 
-        Args:
-            x (torch.tensor): Ground-truth images with shape :math:`(B,C,H,W)`.
+    @property
+    def tikho(self):
+        return self.recon_modules["tikho"]
 
-        Returns:
-            torch.tensor: Reconstruction images with shape :math:`(B,C,H,W)`.
-        """
-        # Acquisition
-        x = self.acqu(x)  # shape x = [b*c, 2*M]
-        # Reconstruction
-        x = self.reconstruct(x)  # shape x = [bc, 1, h,w]
+    @tikho.setter
+    def tikho(self, value):
+        self.recon_modules["tikho"] = value
 
-        return x
+    @tikho.deleter
+    def tikho(self):
+        del self.recon_modules["tikho"]
 
     def reconstruct(self, x):
         r"""Reconstruction (measurement-to-image mapping)
@@ -808,22 +814,16 @@ class TikhoNet(nn.Module):
         Output:
             torch.tensor: Reconstructed images with shape :math:`(B,C,H,W)`
         """
-        # Preprocessing
-        cov_meas = self.prep.sigma(x)
-        x = self.prep(x)
-
         # covariance of measurements
+        cov_meas = self.prep.sigma(x)
         cov_meas = torch.diag_embed(cov_meas)  #
-
-        # print(cov_meas)
-
+        # Preprocessing
+        x = self.prep(x)
         # measurements to image domain processing
         x = self.tikho(x, cov_meas)
-        x = x.reshape(*x.shape[:-1], self.acqu.meas_op.h, self.acqu.meas_op.w)
-
+        # x = x.reshape(*x.shape[:-1], self.acqu.meas_op.h, self.acqu.meas_op.w)
         # Image domain denoising
         x = self.denoi(x)
-
         return x
 
     def reconstruct_expe(self, x):
