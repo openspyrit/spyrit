@@ -292,6 +292,28 @@ def fwht(x, order=True, dim=-1):
     return x
 
 
+def ifwht(x, order=True, dim=-1):
+    r"""Inverse fast Walsh-Hadamard transform of x
+
+    Args:
+        x (torch.tensor): *-by-n input signal, where n is a power of two.
+
+        order (bool, optional): True for sequency (default), False for natural.
+        If a list, it defines the permutation indices to use. Default is True.
+
+        dim (int, optional): The dimension along which to apply the transform.
+        Default is -1.
+
+    Returns:
+        torch.tensor: *-by-n transformed signal
+    """
+    if type(order) == list:
+        raise NotImplementedError(
+            "Inverse transform not implemented yet for arbitrary order"
+        )
+    return fwht(x, order, dim) / x.shape[dim]
+
+
 def fwht_2d(x, order=True):
     """Returns the fast Walsh-Hadamard transform of a 2D tensor.
 
@@ -318,6 +340,37 @@ def fwht_2d(x, order=True):
         torch.tensor: 2D Walsh-Hadamard transformed tensor.
     """
     return fwht(fwht(x, order, dim=-1), order, dim=-2)
+
+
+def ifwht_2d(x, order=True):
+    r"""Returns the inverse fast Walsh-Hadamard transform of a 2D tensor.
+
+    This function uses the inverse fast Walsh-Hadamard transform for 1D signals.
+    It is optimized for the natural order (with `order = False`) and the sequency
+    order (with `order = True`). In case a list is provided in :attr:`order`,
+    it performs a permutation using the indices provided in the list. The inverse
+    fast Walsh-Hadamard transform is applied along the last two dimensions of the
+    input tensor.
+
+    Args:
+        x (torch.tensor): input tensor to transform. Must have shape
+        :math:`(*, h, w)` where :math:`h` and :math:`w` are the height and width
+        of the image and should be powers of two. :math:`*` represents zero or
+        more batch dimensions.
+
+        order (bool or list, optional): Whether to use the sequency/Walsh ordering
+        (True) or the natural ordering (False). If a list, it defines the permutation
+        indices to use. Default is True.
+
+    Raises:
+        ValueError: If either of the last two dimensions of the input tensor is
+        not a power of two.
+
+    Returns:
+        torch.tensor: 2D inverse Walsh-Hadamard transformed tensor. Has the same
+        shape as the input tensor.
+    """
+    return ifwht(ifwht(x, order, dim=-1), order, dim=-2)
 
 
 def meas2img(meas: torch.tensor, Ord: torch.tensor) -> torch.tensor:
