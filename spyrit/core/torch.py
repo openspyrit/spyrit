@@ -149,10 +149,10 @@ def walsh2_torch(img, H=None):
 
 
 def fwht(x, order=True, dim=-1):
-    """Fast Walsh-Hadamard transform of x
+    r"""Fast Walsh-Hadamard transform of x
 
     Args:
-        x (np.ndarray): -by-n input signal, where n is a power of two.
+        x (torch.tensor): *-by-n input signal, where n is a power of two.
 
         order (bool, optional): True for sequency (default), False for natural.
         If a list, it defines the permutation indices to use. Default is True.
@@ -161,7 +161,7 @@ def fwht(x, order=True, dim=-1):
         Default is -1.
 
     Returns:
-        np.ndarray: n-by-1 transformed signal
+        torch.tensor: *-by-n transformed signal
 
     Example 1:
         Fast sequency-ordered (i.e., Walsh) Hadamard transform
@@ -250,9 +250,8 @@ def fwht(x, order=True, dim=-1):
         >>> t = timeit.timeit(lambda: wh.fwht_torch(x,ind), number=100)
         >>> print(f"With indices as inputs (100x): {t:.3f} seconds")
     """
-
-    x = torch.moveaxis(x, dim, -1)
-
+    if dim != -1 and dim != x.ndim - 1:
+        x = torch.moveaxis(x, dim, -1)
     original_shape = x.shape
 
     # create batch if x is 1D
@@ -263,21 +262,21 @@ def fwht(x, order=True, dim=-1):
     assert_power_of_2(d, raise_error=True)
 
     h = 2
-
-    while h <= d:
-
-        x = x.reshape(*batch, d // h, h)
-        half1, half2 = torch.split(x, h // 2, dim=-1)
-
-        # do we want sequency-ordered transform ?
-        # two lines below not from Amit Portnoy
-        if order == True:
+    # put the "if" statement here to avoid repeating "if"s in the loop
+    if order == True:
+        while h <= d:
+            x = x.reshape(*batch, d // h, h)
+            half1, half2 = torch.split(x, h // 2, dim=-1)
             half2[..., 1::2] *= -1  # not from Amit Portnoy
             x = torch.stack((half1 + half2, half1 - half2), dim=-1)  # not from AP
-        else:
-            x = torch.cat((half1 + half2, half1 - half2), axis=-1)
+            h *= 2
 
-        h *= 2
+    else:
+        while h <= d:
+            x = x.reshape(*batch, d // h, h)
+            half1, half2 = torch.split(x, h // 2, dim=-1)
+            x = torch.cat((half1 + half2, half1 - half2), axis=-1)
+            h *= 2
 
     x = x.reshape(original_shape)
     # ---------------------------------------
@@ -287,7 +286,8 @@ def fwht(x, order=True, dim=-1):
     if type(order) == list:
         x = sequency_perm_torch(x, order)
 
-    x = torch.moveaxis(x, -1, dim)
+    if dim != -1 and dim != x.ndim - 1:
+        x = torch.moveaxis(x, -1, dim)
 
     return x
 
@@ -315,7 +315,7 @@ def ifwht(x, order=True, dim=-1):
 
 
 def fwht_2d(x, order=True):
-    """Returns the fast Walsh-Hadamard transform of a 2D tensor.
+    r"""Returns the fast Walsh-Hadamard transform of a 2D tensor.
 
     This function uses the fast Walsh-Hadamard transform for 1D signals. It is
     optimized for the natural order (with `order = False`) and the sequency
