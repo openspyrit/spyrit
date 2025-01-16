@@ -397,6 +397,14 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         weights_squared = self.denoise_weights**2
         return torch.mul((weights_squared / (weights_squared + var)), x)
 
+    def forward_no_prior(self, x, var, meas_op):
+        y1 = self.wiener_denoise(x, var)
+        y2 = y1 @ self.comp.T
+
+        y = torch.cat((y1, y2), -1)
+        y = meas_op.inverse(y)
+        return y
+
     def forward(
         self,
         x: torch.tensor,
@@ -453,9 +461,6 @@ class TikhonovMeasurementPriorDiag(nn.Module):
             torch.Size([85, 1024])
         """
         x = x - meas_op.forward_H(x_0)
-        y1 = self.wiener_denoise(x, var)
-        y2 = y1 @ self.comp.T
-
-        y = torch.cat((y1, y2), -1)
-        x = x_0 + meas_op.inverse(y)
+        x = self.forward_no_prior(x, var, meas_op)
+        x += x_0
         return x
