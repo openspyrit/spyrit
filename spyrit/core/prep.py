@@ -16,6 +16,61 @@ from spyrit.core.meas import LinearSplit, HadamSplit  # , Linear
 
 
 # =============================================================================
+class Split(nn.Module):
+    r"""
+    Preprocess the raw data acquired with a split measurement operator.
+
+    It computes
+
+    .. math:: m = y_{+}-y_{-},
+
+    where :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using a
+    split measurement operator (see :mod:`spyrit.core.LinearSplit`).
+
+    Args:
+
+        :attr:`meas_op`: measurement operator (see :mod:`~spyrit.core.meas`)
+
+
+    Example:
+        >>> H = torch.rand([400,32*32])
+        >>> meas_op =  LinearSplit(H)
+        >>> split_op = SplitPoisson(10, meas_op)
+
+    Example 2:
+        >>> Perm = torch.rand([32,32])
+        >>> meas_op = HadamSplit(400, 32,  Perm)
+        >>> split_op = SplitPoisson(10, meas_op)
+
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r"""
+        Preprocess to compensates for image normalization and splitting of the
+        measurement operator.
+
+        It computes :math:`\frac{x[0::2]-x[1::2]}{\alpha} - H1`
+
+        Args:
+            :attr:`x`: batch of measurement vectors
+
+        Shape:
+            x: :math:`(*, 2M)` where :math:`*` indicates one or more dimensions
+
+            meas_op: the number of measurements :attr:`meas_op.M` should match
+            :math:`M`.
+
+            Output: :math:`(*, M)`
+
+        Example:
+        """
+        return x[..., 0::2] - x[..., 1::2]
+
+
+# =============================================================================
 class DirectPoisson(nn.Module):
     r"""
     Preprocess the raw data acquired with a direct measurement operator assuming
@@ -612,41 +667,3 @@ class SplitPoissonRaw(SplitPoisson):
     ) -> torch.tensor:
 
         return (x + 1) / 2 * beta
-
-
-# =============================================================================
-class SimPoisson2(nn.Module):
-    """ """
-
-    def __init__(self, alpha: float):
-        super().__init__()
-        self.alpha = alpha
-
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        """ """
-        return x / self.alpha
-
-    def sigma(self, x: torch.tensor) -> torch.tensor:
-        """ """
-        return 4 * x / (self.alpha**2)
-
-
-# =============================================================================
-class ExpePoisson(nn.Module):
-    """ """
-
-    def __init__(self, gain: float, mudark: float, sigdark: float, nbin: float):
-        super().__init__()
-        self.gain = gain
-        self.mudark = mudark
-        self.sigdark = sigdark
-        self.nbin = nbin
-
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        """ """
-        return x / self.alpha
-
-    def sigma(self, x: torch.tensor) -> torch.tensor:
-        """ """
-        x = self.gain * (x - self.nbin * self.mudark) + self.nbin * self.sigdark**2
-        return x

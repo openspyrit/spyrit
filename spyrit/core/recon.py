@@ -697,8 +697,7 @@ class DCNet(_PrebuiltFullNet):
 
             :attr:`output`: :math:`(BC,1,H,W)`
         """
-        # x of shape [b*c, 2M]
-        bc, _ = x.shape
+        *batches, n_measurements = x.shape
 
         # Preprocessing expe
         var_noi = self.prep.sigma_expe(x)
@@ -708,18 +707,15 @@ class DCNet(_PrebuiltFullNet):
 
         # variance of preprocessed measurements
         var_noi = torch.div(
-            var_noi, (norm.reshape(-1, 1).expand(bc, self.acqu.meas_op.M)) ** 2
+            var_noi, (norm.reshape(-1, 1).expand(*batches, self.acqu.M)) ** 2
         )
 
         # measurements to image domain processing
-        x_0 = torch.zeros((bc, self.acqu.meas_op.N), device=x.device)
-        x = self.tikho(x, x_0, var_noi, self.acqu.meas_op)
-        x = x.reshape(
-            bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
-        )  # shape x = [b*c,1,h,w]
+        x_0 = torch.zeros((*batches, *self.Acq.meas_op.img_shape), device=x.device)
+        x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
 
         # Image domain denoising
-        x = self.denoi(x)  # shape x = [b*c,1,h,w]
+        x = self.denoi(x)
 
         # Denormalization
         x = self.prep.denormalize_expe(

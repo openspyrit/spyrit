@@ -144,6 +144,84 @@ class NoNoise(nn.Module):
         return self.meas_op.reindex(x, axis, inverse_permutation)
 
 
+# ==============================================================================
+class Gaussian(nn.Module):
+    r"""
+    Simulates measurements corrupted by additive Gaussian noise
+
+    .. math::
+
+        y \sim \mathcal{N}\left(\mu = Hx, \sigma^2\right),
+
+    where :math:`\mathcal{N}(\mu, \sigma^2)` is a Gaussian distribution with mean :math:`\mu` and
+    variance :math:`\sigma^2`, :math:`H` is the measurement operator and :math:`x` is the input signal/image.
+
+    The class is constructed from a measurement operator :math:`H` and the
+    standard deviation of the noise :math:`\sigma`.
+
+    Args:
+        - :attr:`meas_op` (:mod:`~spyrit.core.meas`): Measurement operator :math:`H`
+
+        - :attr:`sigma` (float): Standard deviation of the noise :math:`\sigma`
+
+    Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator
+        >>> H = torch.rand([400,32*32])
+        >>> linear_op = Linear(H)
+        >>> linear_acq = Gaussian(linear_op, 10.0)
+
+    """
+
+    def __init__(
+        self,
+        meas_op: Union[Linear, LinearSplit, HadamSplit],
+        sigma=1.0,
+    ):
+        super().__init__()
+        self.meas_op = meas_op
+        self.sigma = sigma
+
+    def forward(self, x):
+        r"""Simulates measurements corrupted by additive Gaussian noise
+
+        .. math::
+
+            y \sim \mathcal{N}\left(\mu = Hx, \sigma^2\right),
+
+        where :math:`\mathcal{N}(\mu, \sigma^2)` is a Gaussian distribution
+        with mean :math:`\mu` and variance :math:`\sigma^2`, :math:`H` is the
+        measurement operator and :math:`x` is the input signal/image.
+
+        Args:
+            :attr:`x`: Batch of images :math:`x` with shape :math:`(*, h, w)`
+            if :attr:`self.meas_op` is a static measurement operator, or
+            :math:`(*, t, c, h, w)` if :attr:`self.meas_op` is a dynamic
+            measurement operator.
+
+        Output:
+            Batch of measurements :math:`y` with shape :math:`(*, M)` if
+            :attr:`self.meas_op` is a static measurement operator or
+            :math:`(*, c, M)` if :attr:`self.meas_op` is a dynamic
+            measurement operator.
+
+        Example 1: Two different noisy measurement vectors from a :class:`~spyrit.core.meas.Linear` measurement operator
+            >>> H = torch.rand([400,32*32])
+            >>> meas_op = Linear(H)
+            >>> noise_op = Gaussian(meas_op, 10.0)
+            >>> x = torch.FloatTensor(10, 32, 32).uniform_(-1, 1)
+            >>> y = noise_op(x)
+            >>> print(y.shape)
+            torch.Size([10, 400])
+            >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            Measurements in (-42.06 , 61.63)
+            >>> y = noise_op(x)
+            >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            Measurements in (-43.89 , 47.60)
+        """
+        x = self.meas_op(x)
+        x = x + self.sigma * torch.randn(x.shape)
+        return x
+
+
 # =============================================================================
 class Poisson(NoNoise):
     # =========================================================================
