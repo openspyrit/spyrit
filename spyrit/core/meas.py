@@ -1094,6 +1094,139 @@ class FreeformLinear2(Linear2):
 
 
 # =============================================================================
+class LinearSplit2(Linear2):
+    r""" """
+
+    def __init__(self, H, meas_shape=None, meas_dims=None, noise_model=nn.Identity()):
+        super().__init__(H, meas_shape, meas_dims, noise_model)
+
+        # split positive and negative components
+        pos, neg = nn.functional.relu(H), nn.functional.relu(-H)
+        A = torch.cat([pos, neg], 1).reshape(2 * self.M, self.N)
+        self.A = nn.Parameter(A, requires_grad=False)
+
+    def measure(self, x: torch.tensor):
+        r""" """
+        x = self.vectorize(x)
+        x = torch.einsum("mn,...n->...m", self.A, x)
+        return x
+
+    def measure_H(self, x: torch.tensor):
+        r""" """
+        x = self.vectorize(x)
+        x = torch.einsum("mn,...n->...m", self.H, x)
+        return x
+
+    def adjoint(self, y: torch.tensor):
+        r""" """
+        y = torch.einsum("mn,...m->...n", self.A, y)
+        return y
+
+    def adjoint_H(self, y: torch.tensor):
+        r""" """
+        y = torch.einsum("mn,...m->...n", self.H, y)
+        return y
+
+    def forward(self, x: torch.tensor):
+        r""" """
+        x = self.measure(x)
+        x = self.noise_model(x)
+        return x
+
+    def forward_H(self, x: torch.tensor):
+        r""" """
+        x = self.measure_H(x)
+        x = self.noise_model(x)
+        return x
+
+
+# =============================================================================
+class HadamSplit2D(LinearSplit2):
+    r""" """
+
+    def __init__(
+        self,
+        h: int,
+        M: int,
+        order: torch.tensor = None,
+        noise_model=nn.Identity(),
+        fast=True,
+    ):
+        meas_dims = (-2, -1)
+        meas_shape = (h, h)
+
+        H = spytorch.walsh2_matrix(h).to(torch.int8)
+        H, indices = spytorch.sort_by_significance(
+            H, order, "rows", False, get_indices=True
+        )
+        super().__init__(H[:M, :], meas_shape, meas_dims, noise_model)
+        self.indices = indices
+        self.fast = fast
+
+    def reindex(
+        self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
+    ) -> torch.tensor:
+        """Sorts a tensor along a specified axis using the indices tensor. The
+        indices tensor is contained in the attribute :attr:`self.indices`.
+
+        The indices tensor contains the new indices of the elements in the values
+        tensor. `values[0]` will be placed at the index `indices[0]`, `values[1]`
+        at `indices[1]`, and so on.
+
+        Using the inverse permutation allows to revert the permutation: in this
+        case, it is the element at index `indices[0]` that will be placed at the
+        index `0`, the element at index `indices[1]` that will be placed at the
+        index `1`, and so on.
+
+        .. note::
+            See :func:`~spyrit.core.torch.reindex()` for more details.
+
+        Args:
+            values (torch.tensor): The tensor to sort. Can be 1D, 2D, or any
+            multi-dimensional batch of 2D tensors.
+
+            axis (str, optional): The axis to sort along. Must be either 'rows' or
+            'cols'. If `values` is 1D, `axis` is not used. Default is 'rows'.
+
+            inverse_permutation (bool, optional): Whether to apply the permutation
+            inverse. Default is False.
+
+        Raises:
+            ValueError: If `axis` is not 'rows' or 'cols'.
+
+        Returns:
+            torch.tensor: The sorted tensor by the given indices along the
+            specified axis.
+        """
+        return spytorch.reindex(x, self.indices.to(x.device), axis, inverse_permutation)
+
+    def measure_H(self, x: torch.tensor):
+        r""""""
+        if self.fast:
+            x = spytorch.fwht_2d(x)
+            x = self.vectorize(x)
+            x = self.reindex(x, "cols", True)[..., : self.M]
+            return x
+        else:
+            return super().measure_H(x)
+
+    def fast_inverse(self, y: torch.tensor):
+        r""" """
+        if self.fast:
+            if self.N != self.M:
+                y = torch.cat(
+                    (y, torch.zeros(*y.shape[:-1], self.N - self.M, device=y.device)),
+                    -1,
+                )
+            y = self.reindex(y, "cols", False)
+            y = self.unvectorize(y)
+            y = spytorch.ifwht_2d(y)
+        else:
+            y = super().adjoint_H(y) / self.N
+        return y
+
+
+# =============================================================================
 class LinearSplit(Linear):
     # =========================================================================
     r"""
