@@ -20,8 +20,6 @@ to simulate measurements of moving objects, represented as a sequence of images.
 import warnings
 from typing import Any, Union
 from collections.abc import Iterable
-from typing import Any, Union
-from collections.abc import Iterable
 
 # import memory_profiler as mprof
 
@@ -688,7 +686,7 @@ class Linear(_Base):
 
 # =============================================================================
 class Linear2(nn.Module):
-    """_summary_
+    r"""_summary_
 
     Args:
         nn (_type_): _description_
@@ -700,7 +698,6 @@ class Linear2(nn.Module):
         meas_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_dims: Union[int, torch.Size, Iterable[int]] = None,
         noise_model: nn.Module = nn.Identity(),
-        # mask=None,  # must have shape (len(meas_shape), matrix.shape[-1])
     ):
         super().__init__()
 
@@ -709,25 +706,25 @@ class Linear2(nn.Module):
         if type(meas_dims) is int:
             meas_dims = [meas_dims]
 
-        self.H = nn.Parameter(H)
+        self.H = nn.Parameter(H, requires_grad=False)
         self.meas_shape = torch.Size(meas_shape)
         self.meas_dims = torch.Size(meas_dims)
         self.noise_model = noise_model
 
         # additional attributes
-        self.n_meas = H.shape[0]
-        self.meas_ndim = len(meas_dims)
-        self.n_pixels = meas_shape.numel()
-        self.last_dims = tuple(range(-self.meas_ndim, 0))
+        self.M = H.shape[0]
+        self.meas_ndim = len(self.meas_dims)
+        self.N = self.meas_shape.numel()
+        self.last_dims = tuple(range(-self.meas_ndim, 0))  # for permutations
 
-        if len(meas_shape) != len(meas_dims):
+        if len(self.meas_shape) != len(self.meas_dims):
             raise ValueError("meas_shape and meas_dims must have the same length")
         if H.ndim != 2:
             raise ValueError("matrix must have 2 dimensions")
-        if H.shape[1] != self.n_pixels:
+        if H.shape[1] != self.N:
             raise ValueError(
                 f"The number of columns in the matrix ({H.shape[1]}) does "
-                + f"not match the number of measured items ({self.n_pixels}) "
+                + f"not match the number of measured items ({self.N}) "
                 + f"in the measurement shape {self.meas_shape}."
             )
 
@@ -747,7 +744,7 @@ class Linear2(nn.Module):
         return self.H.device
 
     def measure(self, x: torch.tensor) -> torch.tensor:
-        """Apply the measurement patterns (no noise) to the incoming tensor.
+        r"""Apply the measurement patterns (no noise) to the incoming tensor.
 
         The input tensor is multiplied by the measurement patterns.
 
@@ -759,7 +756,7 @@ class Linear2(nn.Module):
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.n_meas) where * denotes
+            torch.tensor: A tensor of shape (*, self.M) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example with a RGB 15x4 pixel image:
@@ -774,8 +771,8 @@ class Linear2(nn.Module):
         x = torch.einsum("mn,...n->...m", self.H, x)
         return x
 
-    def forward(self, x):
-        """Forward pass (measurement + noise) of the measurement operator.
+    def forward(self, x: torch.tensor):
+        r"""Forward pass (measurement + noise) of the measurement operator.
 
         The forward pass includes both the measurement and the noise model. It
         is equivalent to the method `measure()` followed by the noise model
@@ -786,7 +783,7 @@ class Linear2(nn.Module):
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.n_meas) where * denotes
+            torch.tensor: A tensor of shape (*, self.M) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example:
@@ -797,8 +794,27 @@ class Linear2(nn.Module):
         x = self.noise_model(x)
         return x
 
+    def adjoint(self, y: torch.tensor, unvectorize=False):
+        r"""Applies the adjoint (transpose) of the measurement matrix.
+
+        Args:
+            y (torch.tensor): A tensor of shape (*, self.M) where * denotes
+            0 or more batch dimensions.
+
+            unvectorize (bool, optional): Whether to call :meth:`unvectorize`
+            after the operation. Defaults to False.
+
+        Returns:
+            torch.tensor: A tensor of shape (*, self.N) if `reshape_output` is
+            False, or the :meth:`unvectorize`d version of that tensor.
+        """
+        y = torch.einsum("mn,...m->...n", self.H, y)
+        if unvectorize:
+            y = self.unvectorize(y)
+        return y
+
     def unvectorize(self, input: torch.tensor) -> torch.tensor:
-        """Unflatten the last dimension of a tensor to the measurement shape at
+        r"""Unflatten the last dimension of a tensor to the measurement shape at
         the measured dimensions.
 
         This method first expands the last dimension into the measurement
@@ -806,8 +822,8 @@ class Linear2(nn.Module):
         their original positions as defined by `self.meas_dims`.
 
         Input:
-            input (torch.tensor): A tensor of shape (*, self.n_pixels) where
-            * denotes any batch size and `self.n_pixels` is the number of
+            input (torch.tensor): A tensor of shape (*, self.N) where
+            * denotes any batch size and `self.N` is the number of
             measured items (pixels for instance).
 
         Output:
@@ -824,10 +840,12 @@ class Linear2(nn.Module):
         # unvectorize the last dimension
         input = input.reshape(*input.shape[:-1], *self.meas_shape)
         # move the measured dimensions to their original positions
-        return torch.movedim(input, self.last_dims, self.meas_dims)
+        if self.meas_dims != self.last_dims:
+            input = torch.movedim(input, self.last_dims, self.meas_dims)
+        return input
 
     def vectorize(self, input: torch.tensor) -> torch.tensor:
-        """Flatten a tensor along the measured dimensions `self.meas_dims`.
+        r"""Flatten a tensor along the measured dimensions `self.meas_dims`.
 
         The tensor is flattened at the indicated `self.meas_dims` dimensions. The
         flattened dimensions are then collapsed into one, which is the last
@@ -838,7 +856,7 @@ class Linear2(nn.Module):
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Output:
-            torch.tensor: A tensor of shape (*, self.n_pixels) where * denotes
+            torch.tensor: A tensor of shape (*, self.N) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example:
@@ -849,9 +867,11 @@ class Linear2(nn.Module):
             torch.Size([3, 7, 60])
         """
         # move all measured dimensions to the end
-        input = torch.movedim(input, self.meas_dims, self.last_dims)
+        if self.meas_dims != self.last_dims:
+            input = torch.movedim(input, self.meas_dims, self.last_dims)
         # flatten the measured dimensions
-        return input.reshape(*input.shape[: -self.meas_ndim], self.n_pixels)
+        input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
+        return input
 
     # def _extract_patterns(self, matrix: torch.tensor) -> torch.tensor:
     #     matrix_pos, matrix_neg = self.split_tensor(matrix)
@@ -869,7 +889,7 @@ class Linear2(nn.Module):
 
 
 class FreeformLinear2(Linear2):
-    """Performs linear measurements on a subset (mask) of pixels in the image."""
+    r"""Performs linear measurements on a subset (mask) of pixels in the image."""
 
     def __init__(
         self,
@@ -905,10 +925,10 @@ class FreeformLinear2(Linear2):
                 raise ValueError(
                     "The first dimension of index_mask must match the number of dimensions in meas_shape."
                 )
-            if index_mask.shape[1] != self.n_pixels:
+            if index_mask.shape[1] != self.N:
                 raise ValueError(
                     f"The second dimension of index_mask ({index_mask.shape[1]}) must "
-                    + f"match the number of measured items ({self.n_pixels})."
+                    + f"match the number of measured items ({self.N})."
                 )
         # check in the case of bool mask
         elif self.mask_type == "bool":
@@ -921,7 +941,7 @@ class FreeformLinear2(Linear2):
             )
 
     def apply_mask(self, x: torch.tensor) -> torch.tensor:
-        """Appplies the saved mask to the input tensor, where the masked
+        r"""Appplies the saved mask to the input tensor, where the masked
         dimensions are collapsed into one.
 
         This method first selects the elements from the input tensor at the
@@ -935,7 +955,7 @@ class FreeformLinear2(Linear2):
             `self.meas_shape`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.n_pixels) where * denotes
+            torch.tensor: A tensor of shape (*, self.N) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
@@ -955,7 +975,7 @@ class FreeformLinear2(Linear2):
 
         elif self.mask_type == "bool":
             # flatten along the masked dimensions
-            x = x.reshape(*x.shape[: -self.meas_ndim], self.n_pixels)
+            x = x.reshape(*x.shape[: -self.meas_ndim], self.N)
             return x[..., self.bool_mask.reshape(-1)]
 
         else:
@@ -964,7 +984,7 @@ class FreeformLinear2(Linear2):
             )
 
     def measure(self, x: torch.tensor) -> torch.tensor:
-        """Apply the measurement patterns (no noise) to the incoming tensor.
+        r"""Apply the measurement patterns (no noise) to the incoming tensor.
 
         The mask is first applied to the input tensor, then the input tensor
         is multiplied by the measurement patterns.
@@ -977,14 +997,14 @@ class FreeformLinear2(Linear2):
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.n_meas) where * denotes
+            torch.tensor: A tensor of shape (*, self.M) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
         """
         x = self.mask_vectorize(x)
         return torch.einsum("mn,...n->...m", self.H, x)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
-        """Forward pass (measurement + noise) of the measurement operator.
+        r"""Forward pass (measurement + noise) of the measurement operator.
 
         The mask is first applied to the input tensor, then the input tensor
         goes through the measurement model and the noise model. It
@@ -996,7 +1016,7 @@ class FreeformLinear2(Linear2):
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.n_meas) where * denotes
+            torch.tensor: A tensor of shape (*, self.M) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Measure the upper half of 32x32 images
@@ -1007,7 +1027,7 @@ class FreeformLinear2(Linear2):
         super().forward(x)
 
     def mask_unvectorize(self, x: torch.tensor, fill_value: Any = 0) -> torch.tensor:
-        """Unflatten the last dimension of a tensor to the measurement shape at
+        r"""Unflatten the last dimension of a tensor to the measurement shape at
         the measured dimensions based on the mask.
 
         This method expands the last dimension into the measurement shape
@@ -1022,7 +1042,7 @@ class FreeformLinear2(Linear2):
 
         Args:
             x (torch.tensor): tensor to be expanded. Its last dimension must
-            contain `self.n_pixels` elements.
+            contain `self.N` elements.
 
             fill_value (Any, optional): Fill value for all the indices not
             covered by the mask. Defaults to 0.
@@ -1045,7 +1065,7 @@ class FreeformLinear2(Linear2):
         elif self.mask_type == "bool":
             # create a new tensor with an intermediate shape
             output = torch.full(
-                (*x.shape[:-1], self.n_pixels),
+                (*x.shape[:-1], self.N),
                 fill_value,
                 dtype=x.dtype,
                 device=x.device,
@@ -1061,7 +1081,7 @@ class FreeformLinear2(Linear2):
         return torch.movedim(output, self.last_dims, self.meas_dims)
 
     def mask_vectorize(self, x: torch.tensor) -> torch.tensor:
-        """Flatten a tensor along the measured dimensions, which are collapsed into one.
+        r"""Flatten a tensor along the measured dimensions, which are collapsed into one.
 
         This method first selects the elements from the input tensor at the
         specified dimensions `self.meas_dims` and based on the mask. The selected
@@ -1077,7 +1097,7 @@ class FreeformLinear2(Linear2):
             This function is an alias for the method :meth:`apply_mask`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.n_pixels) where * denotes
+            torch.tensor: A tensor of shape (*, self.N) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
