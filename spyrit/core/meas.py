@@ -1165,6 +1165,8 @@ class DynamicLinear(_Base):
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
 
+        :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from 
+        detector inhomogeneities. Must have the same shape as the measurement patterns. 
 
     Attributes:
         :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
@@ -1696,6 +1698,9 @@ class DynamicLinearSplit(DynamicLinear):
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
 
+        :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from 
+        detector inhomogeneities. Must have the same shape as the measurement patterns.
+
     Attributes:
         :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
         of shape :math:`(M,N)` initialized as :math:`H`.
@@ -1916,6 +1921,9 @@ class DynamicHadamSplit(DynamicLinearSplit):
         of two integers representing the height and width of the image. If not
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
+
+        :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from 
+        detector inhomogeneities. Must have the same shape as the measurement patterns.
 
 
     Attributes:
