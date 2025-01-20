@@ -266,35 +266,37 @@ class Tikhonov(nn.Module):
         * The above formulation assumes that the signal :math:`x` has zero mean.
 
     Args:
-        - :attr:`meas_op` : Measurement operator (see :class:`~spyrit.core.meas`).
-        Its measurement operator has shape :math:`(M, N)`, with :math:`M` the
-        number of measurements and :math:`N` the number of pixels in the image.
+        - :attr:`meas_op` (:class:`spyrit.core.meas`): Measurement operator.
+          Its measurement operator has shape :math:`(M, N)`, with :math:`M` the
+          number of measurements and :math:`N` the number of pixels in the
+          image.
 
-        - :attr:`sigma` : Signal covariance prior, of shape :math:`(N, N)`.
+        - :attr:`sigma` (torch.tensor): Signal covariance prior, of shape :math:`(N, N)`.
 
         - :attr:`diagonal_approximation` : A boolean indicating whether to set
-        the non-diagonal elements of :math:`A \Sigma A^T` to zero. Default is
-        False. If True, this speeds up the computation of the inverse
-        :math:`(A \Sigma A^T + \Sigma_\alpha)^{-1}`.
+          the non-diagonal elements of :math:`A \Sigma A^T` to zero. Default
+          is False. If True, this speeds up the computation of the inverse
+          :math:`(A \Sigma A^T + \Sigma_\alpha)^{-1}`.
 
     Attributes:
-        - :attr:`meas_op` : Measurement operator initialized as :attr:`meas_op`.
+        - :attr:`meas_op` (:class:`spyrit.core.meas`): Measurement operator initialized as :attr:`meas_op`.
 
         - :attr:`diagonal_approximation` : Indicates if the diagonal approximation
-        is used.
+          is used.
 
         - :attr:`img_shape` : Shape of the image, initialized as :attr:`meas_op.img_shape`.
 
-        - :attr:`sigma_meas` : Measurement covariance prior initialized as
-        :math:`A \Sigma A^T`. If :attr:`diagonal_approximation` is True, the
-        non-diagonal elements are set to zero.
+        - :attr:`sigma_meas` (torch.tensor): Measurement covariance prior
+          initialized as :math:`A \Sigma A^T`. If :attr:`diagonal_approximation`
+          is True, the non-diagonal elements are set to zero.
 
-        - :attr:`sigma_A_T` : Covariance of the missing measurements initialized
-        as :math:`\Sigma A^T`.
+        - :attr:`sigma_A_T` (torch.tensor): Covariance of the missing
+          measurements initialized as :math:`\Sigma A^T`.
 
         - :attr:`noise_scale` : Hidden parameter to use to scale the noise
-        regularization. It is used in the computation of the inverse:
-        :math:`(A \Sigma A^T  + noisescale \times \Sigma_\alpha)^{-1}`. Default is 1.
+          regularization. It is used in the computation of the inverse:
+          :math:`(A \Sigma A^T  + noisescale \times \Sigma_\alpha)^{-1}`.
+          Default is 1.0.
 
     Example:
         >>> B, H, M, N = 85, 17, 32, 64
@@ -342,7 +344,7 @@ class Tikhonov(nn.Module):
         self.noise_scale = 1
 
     def divide(self, y: torch.tensor, gamma: torch.tensor) -> torch.tensor:
-        """Computes the division :math:`y \cdot (\sigma_\alpha \times noisescale + (A \Sigma A^T))^{-1}`.
+        r"""Computes the division :math:`y \cdot (\sigma_\alpha \times noisescale + (A \Sigma A^T))^{-1}`.
 
         Measurements `y` are divided by the sum of the measurement covariance.
 
@@ -802,22 +804,17 @@ class PinvNet(nn.Module):
 
             :attr:`output`: :math:`(BC,1,H,W)`
         """
-        # x of shape [b*c, 2M]
-        bc, _ = x.shape
+        *batches, n_measurements = x.shape
 
         # Preprocessing
-        x, N0_est = self.prep.forward_expe(x, self.acqu.meas_op)  # shape x = [b*c, M]
-        # print(N0_est)
+        x, N0_est = self.prep.forward_expe(x, self.acqu.meas_op)
 
         # measurements to image domain processing
-        x = self.pinv(x, self.acqu.meas_op)  # shape x = [b*c,N]
+        x = self.pinv(x, self.acqu.meas_op)
 
         # Image domain denoising
-        x = x.reshape(
-            bc, 1, self.acqu.meas_op.h, self.acqu.meas_op.w
-        )  # shape x = [b*c,1,h,w]
-        x = self.denoi(x)  # shape x = [b*c,1,h,w]
-        # print(x.max())
+        x = x.reshape(*batches, self.acqu.meas_op.h, self.acqu.meas_op.w)
+        x = self.denoi(x)
 
         # Denormalization
         x = self.prep.denormalize_expe(
@@ -1172,8 +1169,7 @@ class DCNet(nn.Module):
             :attr:`output`: :math:`(BC,1,H,W)`
 
         """
-        # x of shape [b*c, 2M]
-        bc, _ = x.shape
+        *batches, n_measurements = x.shape
 
         # Preprocessing expe
         var_noi = self.prep.sigma_expe(x)
@@ -1183,18 +1179,15 @@ class DCNet(nn.Module):
 
         # variance of preprocessed measurements
         var_noi = torch.div(
-            var_noi, (norm.reshape(-1, 1).expand(bc, self.Acq.meas_op.M)) ** 2
+            var_noi, (norm.reshape(-1, 1).expand(*batches, self.Acq.meas_op.M)) ** 2
         )
 
         # measurements to image domain processing
-        x_0 = torch.zeros((bc, self.Acq.meas_op.N), device=x.device)
+        x_0 = torch.zeros((*batches, *self.Acq.meas_op.img_shape), device=x.device)
         x = self.tikho(x, x_0, var_noi, self.Acq.meas_op)
-        x = x.reshape(
-            bc, 1, self.Acq.meas_op.h, self.Acq.meas_op.w
-        )  # shape x = [b*c,1,h,w]
 
         # Image domain denoising
-        x = self.denoi(x)  # shape x = [b*c,1,h,w]
+        x = self.denoi(x)
 
         # Denormalization
         x = self.prep.denormalize_expe(x, norm, self.Acq.meas_op.h, self.Acq.meas_op.w)
@@ -1650,7 +1643,7 @@ class LearnedPGD(nn.Module):
                 (*x.shape[:-1], *self.acqu.meas_op.meas_shape), device=x.device
             )
 
-        print("x shape:", x.shape)
+        # print("x shape:", x.shape)
 
         if self.log_fidelity:
             self.cost = []

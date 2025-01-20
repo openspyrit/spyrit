@@ -551,33 +551,101 @@ class AffineDeformationField(DeformationField):
 
 # =============================================================================
 class ElasticDeformation(DeformationField):
-    """ """
+    r"""Defines and stores a moving elastic deformation producing a flag-like effect.
 
+    This class inherits from the random generation of TorchVision's
+    :class:`torchvision.transforms.v2.ElasticTransform`. It will generate several
+    frames of static elastic deformation using the torchvision class, and then
+    smooth out these frames in the time domain to create a continuous animation.
+    The deformation field is generated at instantiation and stored as a class
+    attribute.
+
+    The spatial magnitude of the displacements is controlled by the parameter
+    :attr:`alpha`, the spatial smoothness of the displacements is controlled by
+    the parameter :attr:`sigma`, and the time-domain smoothness is controlled by
+    the parameter :attr:`sigma_time`.
+
+    .. note::
+        The spatial smoothing and time-domain smoothing are done **after** the
+        displacements of magnitude :attr:`alpha` are generated. This means that
+        the actual spatial displacement magnitude might be significantly lower
+        than then one specified by :attr:`alpha`.
+
+    .. note::
+        The parameters :attr:`alpha`, :attr:`sigma`, and :attr:`n_interpolation`
+        are defined at initialization and cannot be changed after instantiation.
+    """
+    
     def __init__(self, alpha, sigma, img_shape, n_frames, n_interpolation, dtype=torch.float32):
-        """_summary_
+        """Args:
+            alpha (float): Magnitude of displacements. This argument is passed to
+            the constructor of :class:`torchvision.transforms.v2.ElasticTransform`.
 
-        Args:
-            alpha (float): Magnitude of displacements
-            sigma (float): Smoothness of displacements in the spatial domain
-            n_interpolation (int): Number of frames in the output animation
-            between two consecutive input frames. 1 results in no interpolation
-            sigma_time (float): Smoothness of displacements in the frequency domain
+            sigma (float): Smoothness of displacements in the spatial domain. This
+            argument is passed to the constructor of :class:`torchvision.transforms.v2.ElasticTransform`.
+
+            img_shape (tuple): Shape of the deformation field, i.e. :math:`(h,w)`,
+            where :math:`h` and :math:`w` are the height and width of the field
+            respectively.
+
+            n_frames (int): Number of frames in the animation.
+
+            n_interpolation (int): Period in frames of the time-domain interpolation.
+            Every :attr:`n_interpolation` frames, a 2D elastic transform is randomly
+            generated. Between these frames, the deformation field is equal to the
+            identity. A truncated gaussian smoothing of length equal to 3 times
+            :attr:`n_interpolation` (to capture a real-looking movement between 3
+            points in 2D space) and with a standard deviation of :math:`\frac{3}{4}`
+            :attr:`n_interpolation` is applied to the deformation field.
+
             dtype (torch.dtype): Data type of the tensors. Default is torch.float32. 
+
+        Attributes:
+            :attr:`field` (torch.tensor): The deformation field as a tensor of shape
+            :math:`(n\_frames,h,w,2)`.
+
+            :attr:`img_shape` (tuple): Shape of the deformation field, i.e. :math:`(h,w)`,
+            where :math:`h` and :math:`w` are the height and width of the field
+            respectively.
+
+            :attr:`n_frames` (int): Number of frames in the animation.
+
+            :attr:`alpha` (float): Magnitude of displacements.
+
+            :attr:`sigma` (float): Smoothness of displacements in the spatial domain.
+
+            :attr:`n_interpolation` (int): Period in frames of the time-domain interpolation.
+
+            :attr:`ElasticTransform` (torchvision.transforms.v2.ElasticTransform): The
+            random generator of static elastic deformation, with parameters :attr:`alpha`
+            and :attr:`sigma`.
         """
+        
         super().__init__(None)
 
         # self.sigma_time = sigma_time
-        self.alpha = alpha * 10
-        self._img_shape = img_shape
-        self._n_frames = n_frames
-        self.n_interpolation = n_interpolation
+        self._alpha = alpha
+        self._sigma = sigma
+        self._n_interpolation = n_interpolation
+        self.dtype = dtype
         self.ElasticTransform = v2.ElasticTransform(self.alpha, sigma)
 
-        self.dtype = dtype
-
         self._field = nn.Parameter(
-            self._generate_inv_grid_frames(), requires_grad=False
+            self._generate_inv_grid_frames(img_shape, n_frames, n_interpolation),
+            requires_grad=False,
         )
+
+    @property
+    def alpha(self):
+        return self._alpha
+
+    @property
+    def sigma(self):
+        return self._sigma
+
+    @property
+    def n_interpolation(self):
+        return self._n_interpolation
 
     @property
     def field(self):
@@ -590,45 +658,35 @@ class ElasticDeformation(DeformationField):
 
     @property
     def img_shape(self):
-        return self._img_shape
-
-    @img_shape.setter
-    def img_shape(self, img_shape):
-        self._img_shape = img_shape
+        return self.field.shape[1:3]
 
     @property
     def n_frames(self):
-        return self._n_frames
+        return self.field.shape[0]
 
-    @n_frames.setter
-    def n_frames(self, n_frames):
-        self._n_frames = n_frames
-
-    def _generate_inv_grid_frames(self):
-        """ """
+    def _generate_inv_grid_frames(self, img_shape, n_frames, n_interpolation):
+        """Generates the frames of the elastic deformation field of shape
+        (n_frames, h, w, 2)."""
         # create base frame between -1 and 1
         base_frame_i = torch.linspace(-1, 1, self.img_shape[0], dtype=self.dtype)
         base_frame_j = torch.linspace(-1, 1, self.img_shape[1], dtype=self.dtype)
+
         # shape (h, w, 2)
         base_frame = torch.stack(
             torch.meshgrid(base_frame_i, base_frame_j, indexing="xy"), dim=-1
         )
-        window_width = self.n_interpolation * 3
+        window_width = n_interpolation * 3
 
-        elastic_frames_to_generate = 1 + int(
-            math.ceil(self.n_frames / self.n_interpolation)
-        )
-        total_frames_after_conv = (
-            1 + (elastic_frames_to_generate - 1) * self.n_interpolation
-        )
+        elastic_frames_to_generate = 1 + int(math.ceil(n_frames / n_interpolation))
+        total_frames_after_conv = 1 + (elastic_frames_to_generate - 1) * n_interpolation
         # account for the window width
         total_frames_to_generate = total_frames_after_conv + window_width - 1
         grid = base_frame.repeat(total_frames_to_generate, 1, 1, 1)
 
-        for i in range(total_frames_to_generate // self.n_interpolation):
+        for i in range(total_frames_to_generate // n_interpolation):
             # generate a random field
-            grid[i * self.n_interpolation] += self.ElasticTransform._get_params(
-                torch.empty([1, *self.img_shape])
+            grid[i * n_interpolation] += self.ElasticTransform._get_params(
+                torch.empty([1, *img_shape])
             )["displacement"][0, :, :, :]
 
         # Define Gaussian convolution operator
@@ -647,4 +705,4 @@ class ElasticDeformation(DeformationField):
         grid = grid.permute(3, 0, 1, 2)  # (n_frames, h, w, 2)
 
         # truncate to the desired number of frames
-        return grid[: self.n_frames, ...]
+        return grid

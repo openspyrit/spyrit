@@ -225,17 +225,19 @@ class _Base(nn.Module):
             H_to_inv = H_to_inv.to(x.dtype)
             # devices are supposed to be the same, don't bother checking
 
-            driver = "gelsd"
-            if H_to_inv.device != torch.device("cpu"):
-                H_to_inv = H_to_inv.cpu()
-                x = x.cpu()
-                # driver = 'gels'
-
             if reg == "rcond":
+                original_device = x.device
+                # to use lstsq with rank deficient matrices is not supported on GPU
+                # github.com/pytorch/pytorch/issues/117122
+                if x.device != torch.device("cpu"):
+                    H_to_inv = H_to_inv.cpu()
+                    x = x.cpu()
+
                 A = H_to_inv.expand(*x.shape[:-1], *H_to_inv.shape)  # shape (*, M, N)
                 B = x.unsqueeze(-1).to(A.dtype)  # shape (*, M, 1)
-                ans = torch.linalg.lstsq(A, B, rcond=eta, driver=driver)
+                ans = torch.linalg.lstsq(A, B, rcond=eta, driver="gelsd")
                 ans = ans.solution.to(x.dtype).squeeze(-1)  # shape (*, N)
+                ans = ans.to(original_device)
 
             elif reg == "L2":
                 A = torch.matmul(H_to_inv.mT, H_to_inv) + eta * torch.eye(
@@ -684,24 +686,31 @@ class Linear(_Base):
 
 # =============================================================================
 class LinearSplit(Linear):
-    # =========================================================================
+
+    # `y = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}x`
     r"""
-    Simulates splitted measurements :math:`y = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}x`.
+    Simulates split measurements.
 
-    Computes linear measurements from incoming images: :math:`y = Px`,
-    where :math:`P` is a linear operator (matrix) and :math:`x` is a
-    vectorized image or batch of vectorized images.
+    Given a measurement operator :math:`H\in\mathbb{R}^{M\times N}` containing (possibly) negative values, it computes
 
-    The matrix :math:`P` contains only positive values and is obtained by
-    splitting a measurement matrix :math:`H` such that
-    :math:`P` has a shape of :math:`(2M, N)` and :math:`P[0::2, :] = H_{+}` and
-    :math:`P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
-    :math:`H_{-} = \max(0,-H)`.
+    .. math:: y = Ax,
+
+    where :math:`x` is the signal/image and  :math:`A\in\mathbb{R}_+^{2M\times N}` is the split measurement operator (associated to :math:`H`) which contains only positive values.
+
+    We define the split measurement operator from the positive and negative components of :math:`H`. In practice, the even rows of :math:`A` contain the positive components of :math:`H`, while odd rows of :math:`A` contain the negative components of :math:`H`. Mathematically,
+
+    .. math::
+        \begin{cases}
+            A[0::2, :] = H_{+}, \text{ with } H_{+} = \max(0,H),\\
+            A[1::2, :] = H_{-}, \text{ with } H_{-} = \max(0,-H).
+        \end{cases}
+
+    .. note::
+        :math:`H_{+}` and :math:`H_{-}` are such that :math:`H_{+} - H_{-} = H`.
 
     The class is constructed from the :math:`M` by :math:`N` matrix :math:`H`,
     where :math:`N` represents the number of pixels in the image and
-    :math:`M` the number of measurements. Therefore, the shape of :math:`P` is
-    :math:`(2M, N)`.
+    :math:`M` the number of measurements.
 
     Args:
         :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
@@ -710,22 +719,24 @@ class LinearSplit(Linear):
         :attr:`pinv` (bool): Whether to store the pseudo inverse of the
         measurement matrix :math:`H`. If `True`, the pseudo inverse is
         initialized as :math:`H^\dagger` and stored in the attribute
-        :attr:`H_pinv`. It is alwats possible to compute and store the pseudo
-        inverse later using the method :meth:`build_H_pinv`. Defaults to `False`.
+        :attr:`H_pinv`. It is always possible to compute and store the pseudo
+        inverse later using the method :meth:`build_H_pinv`. Defaults to
+        :attr:`False`.
 
         :attr:`rtol` (float, optional): Cutoff for small singular values (see
-        :mod:`torch.linalg.pinv`). Only relevant when :attr:`pinv` is `True`.
+        :mod:`torch.linalg.pinv`). Only relevant when :attr:`pinv` is
+        :attr:`True`.
 
         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
-        will correspond to the highest value in :math:`Ord`. Must contain
+        will correspond to the highest value in :attr:`Ord`. Must contain
         :math:`M` values. If some values repeat, the order is kept. Defaults to
-        None.
+        :attr:`None`.
 
         :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
         Must be a tuple of two integers representing the height and width of the
         patterns. If not specified, the shape is suppposed to be a square image.
-        If not, an error is raised. Defaults to None.
+        If not, an error is raised. Defaults to :attr:`None`.
 
     Attributes:
         :attr:`H` (torch.tensor): The learnable measurement matrix of shape
@@ -748,7 +759,7 @@ class LinearSplit(Linear):
         :attr:`w` (int): Measurement pattern width.
 
         :attr:`meas_shape` (tuple): Shape of the measurement patterns
-        (height, width). Is equal to `(self.h, self.w)`.
+        (height, width). Is equal to :attr:`(self.h, self.w)`.
 
         :attr:`indices` (torch.tensor): Indices used to sort the rows of H.	It
         is used by the method :meth:`reindex()`.
@@ -757,12 +768,9 @@ class LinearSplit(Linear):
         is used by :func:`~spyrit.core.torch.sort_by_significance()`.
 
     .. note::
-        If you know the pseudo inverse of :math:`H` and want to store it, it is
-        best to initialize the class with :attr:`pinv` set to `False` and then
-        call :meth:`build_H_pinv` to store the pseudo inverse.
-
-    .. note::
-        :math:`H = H_{+} - H_{-}`
+        If you know the pseudo inverse of :math:`H` and want to store it,
+        instantiate the class with :attr:`pinv` set to `False` and call
+        :meth:`build_H_pinv` to store the pseudo inverse.
 
     Example:
         >>> H = torch.randn(400, 1600)
@@ -1042,8 +1050,10 @@ class HadamSplit(LinearSplit):
         # memory overconsumption
         self.H_pinv = self.H.T
 
-    def pinv(self, x, reg="rcond", eta=0.001, diff=False):
-        return super().pinv(x, reg, eta, diff)
+    def pinv(self, y, *args, **kwargs):
+        y_padded = torch.zeros(y.shape[:-1] + (self.N,), device=y.device, dtype=y.dtype)
+        y_padded[..., : self.M] = y
+        return self.inverse(y_padded)
 
     def inverse(self, y: torch.tensor) -> torch.tensor:
         r"""Inverse transform of Hadamard-domain images.

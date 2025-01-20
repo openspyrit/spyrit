@@ -16,6 +16,61 @@ from spyrit.core.meas import LinearSplit, HadamSplit  # , Linear
 
 
 # =============================================================================
+class Split(nn.Module):
+    r"""
+    Preprocess the raw data acquired with a split measurement operator.
+
+    It computes
+
+    .. math:: m = y_{+}-y_{-},
+
+    where :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using a
+    split measurement operator (see :mod:`spyrit.core.LinearSplit`).
+
+    Args:
+
+        :attr:`meas_op`: measurement operator (see :mod:`~spyrit.core.meas`)
+
+
+    Example:
+        >>> H = torch.rand([400,32*32])
+        >>> meas_op =  LinearSplit(H)
+        >>> split_op = SplitPoisson(10, meas_op)
+
+    Example 2:
+        >>> Perm = torch.rand([32,32])
+        >>> meas_op = HadamSplit(400, 32,  Perm)
+        >>> split_op = SplitPoisson(10, meas_op)
+
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r"""
+        Preprocess to compensates for image normalization and splitting of the
+        measurement operator.
+
+        It computes :math:`\frac{x[0::2]-x[1::2]}{\alpha} - H1`
+
+        Args:
+            :attr:`x`: batch of measurement vectors
+
+        Shape:
+            x: :math:`(*, 2M)` where :math:`*` indicates one or more dimensions
+
+            meas_op: the number of measurements :attr:`meas_op.M` should match
+            :math:`M`.
+
+            Output: :math:`(*, M)`
+
+        Example:
+        """
+        return x[..., 0::2] - x[..., 1::2]
+
+
+# =============================================================================
 class DirectPoisson(nn.Module):
     r"""
     Preprocess the raw data acquired with a direct measurement operator assuming
@@ -612,3 +667,83 @@ class SplitPoissonRaw(SplitPoisson):
     ) -> torch.tensor:
 
         return (x + 1) / 2 * beta
+
+
+# =============================================================================
+class DirectGaussian(nn.Module):
+    r"""
+    Preprocess the raw data acquired with a direct measurement operator assuming
+    Gaussian noise. It also compensates for the affine transformation applied
+    to the images to get positive intensities.
+
+    It computes :math:`m = \frac{2}{\alpha}y - H1` and the variance
+    :math:`\sigma^2 = 4\frac{y}{\alpha^{2}}`, where :math:`y = Hx` are obtained
+    using a direct linear measurement operator (see :mod:`spyrit.core.Linear`),
+    :math:`\alpha` is the image intensity, and 1 is the all-ones vector.
+
+    Args:
+        :attr:`alpha`: maximun image intensity :math:`\alpha` (in counts)
+
+        :attr:`meas_op`: measurement operator (see :mod:`~spyrit.core.meas`)
+
+
+    Example:
+        >>> H = torch.rand([400,32*32])
+        >>> meas_op =  Linear(H)
+        >>> prep_op = DirectPoisson(1.0, meas_op)
+
+    """
+
+    def __init__(self, alpha: float, meas_op):
+        super().__init__()
+        self.alpha = alpha
+        self.meas_op = meas_op
+
+        self.M = meas_op.M
+        self.N = meas_op.N
+        self.h = meas_op.h
+        self.w = meas_op.w
+
+        self.max = nn.MaxPool2d((self.h, self.w))
+        # self.register_buffer("H_ones", meas_op(torch.ones((1, self.N))))
+
+    # generate H_ones on the fly as it is memory intensive and easy to compute
+    # ?? Why does it returns float64 ??
+    @property
+    def H_ones(self):
+        return self.meas_op.H.sum(dim=-1).to(self.device)
+
+    @property
+    def device(self):
+        return self.meas_op.device
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r"""
+        Preprocess measurements to compensate for the affine image normalization
+
+        It computes :math:`\frac{2}{\alpha}x - H1`, where H1 represents the
+        all-ones vector.
+
+        Args:
+            :attr:`x`: batch of measurement vectors
+
+        Shape:
+            x: :math:`(B, M)` where :math:`B` is the batch dimension
+
+            meas_op: the number of measurements :attr:`meas_op.M` should match
+            :math:`M`.
+
+            Output: :math:`(B, M)`
+
+        Example:
+            >>> x = torch.rand([10,400], dtype=torch.float)
+            >>> H = torch.rand([400,32*32])
+            >>> meas_op =  Linear(H)
+            >>> prep_op = DirectPoisson(1.0, meas_op)
+            >>> m = prep_op(x)
+            >>> print(m.shape)
+            torch.Size([10, 400])
+        """
+        # normalize
+        x = 2 * x - self.H_ones.to(x.dtype).expand(x.shape)
+        return x
