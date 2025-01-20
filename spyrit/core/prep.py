@@ -12,34 +12,32 @@ from typing import Union, Tuple
 import torch
 import torch.nn as nn
 
-from spyrit.core.meas import LinearSplit, HadamSplit  # , Linear
+import spyrit.core.meas as meas
+import spyrit.core.inverse as inverse
 
 
 # =============================================================================
-class Split(nn.Module):
-    r"""
-    Preprocess the raw data acquired with a split measurement operator.
+class Unsplit(nn.Module):
+    r"""Preprocess the data acquired with a split measurement operator.
 
-    It computes
+    This class handles split measurements by either adding or subtracting the
+    alternating odd- and even-indexed measurements. It is equivalent to either
+    of these lines:
 
-    .. math:: m = y_{+}-y_{-},
+    .. code-block:: python
 
-    where :math:`y_{+} = H_{+}x` and :math:`y_{-} = H_{-}x` are obtained using a
-    split measurement operator (see :mod:`spyrit.core.LinearSplit`).
+        measmts_preprocessed = measmts[..., 0::2] + measmts[..., 1::2]
+        measmts_preprocessed = measmts[..., 0::2] - measmts[..., 1::2]
 
     Args:
+        None
 
-        :attr:`meas_op`: measurement operator (see :mod:`~spyrit.core.meas`)
-
+    Attributes:
+        None
 
     Example:
         >>> H = torch.rand([400,32*32])
         >>> meas_op =  LinearSplit(H)
-        >>> split_op = SplitPoisson(10, meas_op)
-
-    Example 2:
-        >>> Perm = torch.rand([32,32])
-        >>> meas_op = HadamSplit(400, 32,  Perm)
         >>> split_op = SplitPoisson(10, meas_op)
 
     """
@@ -47,27 +45,212 @@ class Split(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        r"""
-        Preprocess to compensates for image normalization and splitting of the
-        measurement operator.
+    @staticmethod
+    def add(y: torch.tensor) -> torch.tensor:
+        r"""Add the even- and odd-indexed values of the input tensor's last dimension.
 
-        It computes :math:`\frac{x[0::2]-x[1::2]}{\alpha} - H1`
+        The input tensor's last dimension must have an even number of elements.
+        It returns `y[..., 0::2] + y[..., 1::2]`.
 
         Args:
-            :attr:`x`: batch of measurement vectors
+            y (torch.tensor): The input tensor. Has any shape :math:`(*, 2m)`
+            but its last dimension must have an even number of elements.
 
-        Shape:
-            x: :math:`(*, 2M)` where :math:`*` indicates one or more dimensions
-
-            meas_op: the number of measurements :attr:`meas_op.M` should match
-            :math:`M`.
-
-            Output: :math:`(*, M)`
-
-        Example:
+        Returns:
+            torch.tensor: The input tensor with the even and odd indices of the
+            last dimension combined by addition. It has shape :math:`(*, m)`.
         """
-        return x[..., 0::2] - x[..., 1::2]
+        return y[..., 0::2] + y[..., 1::2]
+
+    @staticmethod
+    def subtract(y: torch.tensor) -> torch.tensor:
+        r"""Subtract the even- and odd-indexed values of the input tensor's last dimension.
+
+        The input tensor's last dimension must have an even number of elements.
+        It returns `y[..., 0::2] - y[..., 1::2]`.
+
+        Args:
+            y (torch.tensor): The input tensor. Has any shape :math:`(*, 2m)`
+            but its last dimension must have an even number of elements.
+
+        Returns:
+            torch.tensor: The input tensor with the even and odd indices of the
+            last dimension combined by subtraction. It has shape :math:`(*, m)`.
+        """
+        return y[..., 0::2] - y[..., 1::2]
+
+    @staticmethod
+    def forward(y: torch.tensor, mode: str = "sub") -> torch.tensor:
+        r"""Preprocess to compensates for splitting of the measurement operator.
+
+        It computes `y[..., 0::2] - y[..., 1::2]` if `mode` is 'sub' or
+        `y[..., 0::2] + y[..., 1::2]` if `mode` is 'add'.
+
+        Args:
+            y (torch.tensor): batch of measurement vectors of shape :math:`(*, 2m)`
+
+            mode (str): 'sub' or 'add'. If 'sub', the difference between the
+            even and odd indices is computed. If 'add', the sum is computed.
+            Defaults to 'sub'.
+
+        Returns:
+            torch.tensor: The tensor of shape :math:`(*, m)` with the even- and
+            odd- indexed values of the input tensor subtracted or added.
+        """
+        if mode == "sub":
+            return Unsplit.subtract(y)
+        elif mode == "add":
+            return Unsplit.add(y)
+        else:
+            raise ValueError(f"mode should be either 'sub' or 'add' (found {mode})")
+
+
+# =============================================================================
+class Rescale(nn.Module):
+    r"""Rescale a tensor from :math:`[0,\alpha]` to :math:`[0,1]`.
+
+    This effectively divides the input tensor by :math:`\alpha`.
+
+    Args:
+        alpha (float): The value to divide the input tensor by.
+
+    Attributes:
+        alpha (float): The value to divide the input tensor by.
+    """
+
+    def __init__(self, alpha):
+        super().__init__()
+        self.alpha = alpha
+
+    def forward(self, y: torch.tensor) -> torch.tensor:
+        r"""Rescale the input tensor by dividing it by :attr:`alpha`.
+
+        Args:
+            y (torch.tensor): The input tensor to rescale.
+
+        Returns:
+            torch.tensor: The rescaled tensor with same shape.
+        """
+        return y / self.alpha
+
+
+# =============================================================================
+class UnsplitRescale(Rescale):
+    r"""Rescale a tensor from :math:`[0,\alpha]` to :math:`[0,1]` and unsplit it.
+
+    This is equivalent to appplying successively a :class:`Rescale` and an
+    :class:`Unsplit` operator.
+
+    Args:
+        alpha (float): The value to divide the input tensor by.
+
+    Attributes:
+        alpha (float): The value to divide the input tensor by.
+    """
+
+    def __init__(self, alpha):
+        super().__init__(alpha)
+
+    def forward(self, y: torch.tensor, mode: str = "sub") -> torch.tensor:
+        r"""Rescale the input tensor and unsplit it.
+
+        Depending on the value of `mode`, it returns `(y[..., 0::2] - y[..., 1::2])/alpha`
+        if `mode` is "sub" (default) or `(y[..., 0::2] + y[..., 1::2])/alpha`
+        if `mode` is "add.
+
+        Args:
+            y (torch.tensor): Input tensor of shape :math:`(*, 2m)`
+
+            mode (str): Whether the odd indices should be added to or subtracted
+            from the even indices. If "sub", the difference is computed. If "add",
+            the sum is computed. Defaults to "sub".
+
+        Returns:
+            torch.tensor: The rescaled and unsplit tensor of shape :math:`(*, m)`.
+        """
+        y = Unsplit.forward(y, mode=mode)
+        y /= self.alpha
+        return y
+
+
+# =============================================================================
+class RescaleEstim(nn.Module):
+    r"""_summary_
+
+    Args:
+        nn (_type_): _description_
+    """
+
+    def __init__(self, meas_op, estim_mode: str = "pinv", **pinv_kwargs):
+        super().__init__()
+        self.meas_op = meas_op
+        self.estim_mode = estim_mode
+        self.pinv_kwargs = pinv_kwargs
+        if estim_mode == "pinv":
+            self.pinv = inverse.PseudoInverse(self.meas_op, **pinv_kwargs)
+
+    def estim_alpha(self, y: torch.tensor) -> torch.tensor:
+        r"""_summary_
+
+        Args:
+            y (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        if self.estim_mode == "pinv":
+            y_pinv = self.pinv(y)
+            alpha = torch.max(y_pinv, -1, keepdim=True)
+            return alpha
+
+        elif self.estim_mode == "mean":
+            y = torch.sum(y, -1, keepdim=True)
+            divisor = self.meas_op.H.sum(dim=-1, keepdim=True).expand(y.shape)
+            alpha = torch.div(y, divisor)
+            return alpha
+
+        else:
+            raise ValueError(
+                f"self.estim_mode should be either 'pinv' or 'mean' (found {self.estim_mode})"
+            )
+
+    def forward(self, y: torch.tensor) -> torch.tensor:
+        r"""_summary_
+
+        Args:
+            y (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        alpha = self.estim_alpha(y)
+        y = y / alpha
+        return y
+
+
+# =============================================================================
+class UnsplitRescaleEstim(RescaleEstim):
+    r"""_summary_
+
+    Args:
+        nn (_type_): _description_
+    """
+
+    def __init__(self, meas_op, estim_mode: str = "pinv", **pinv_kwargs):
+        super().__init__(meas_op, estim_mode, **pinv_kwargs)
+
+    def forward(self, y: torch.tensor, mode: str = "sub") -> torch.tensor:
+        r"""_summary_
+
+        Args:
+            y (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        y = Unsplit.forward(y, mode=mode)
+        y = super().forward(y)
+        return y
 
 
 # =============================================================================
@@ -343,7 +526,7 @@ class SplitPoisson(DirectPoisson):
         return super().forward(self.unsplit(x, mode="diff"))
 
     def forward_expe(
-        self, x: torch.tensor, meas_op: Union[LinearSplit, HadamSplit]
+        self, x: torch.tensor, meas_op: Union[meas.LinearSplit, meas.HadamSplit]
     ) -> Tuple[torch.tensor, torch.tensor]:
         r"""Preprocess to compensate for image normalization and splitting of the
         measurement operator.
@@ -479,7 +662,7 @@ class SplitPoisson(DirectPoisson):
         return x
 
     def sigma_from_image(
-        self, x: torch.tensor, meas_op: Union[LinearSplit, HadamSplit]
+        self, x: torch.tensor, meas_op: Union[meas.LinearSplit, meas.HadamSplit]
     ) -> torch.tensor:
         r"""
         Estimates the variance of the preprocessed measurements corresponding
@@ -566,7 +749,7 @@ class SplitPoissonRaw(SplitPoisson):
         super().__init__(alpha, meas_op)
 
     def forward_expe(
-        self, x: torch.tensor, meas_op: Union[LinearSplit, HadamSplit], dim=-1
+        self, x: torch.tensor, meas_op: Union[meas.LinearSplit, meas.HadamSplit], dim=-1
     ) -> Tuple[torch.tensor, torch.tensor]:
         r"""Preprocess to compensate for image normalization and splitting of the
         measurement operator.
