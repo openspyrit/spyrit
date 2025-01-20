@@ -1381,6 +1381,16 @@ class DynamicLinear(_Base):
         scale_factor = (torch.tensor(self.img_shape) - 1).to(self.device)
         def_field = (motion.field + 1) / 2 * scale_factor
 
+        if isinstance(self, DynamicLinearSplit):
+            meas_pattern = self.P
+        else:
+            meas_pattern = self.H_static
+
+        if self.white_acq is not None:
+            meas_pattern *= self.white_acq.ravel().unsqueeze(
+                0
+            )  # for eventual spatial gain
+
 
         if method == 'no_warping':
             # drawings of the kernels for bilinear and bicubic 'interpolation'
@@ -1470,14 +1480,6 @@ class DynamicLinear(_Base):
             # PART 3: WARP H MATRIX WITH FLATTENED INDICES
             # _________________________________________________________________
             # Build 4 submatrices with 4 weights for bilinear interpolation
-            if isinstance(self, DynamicLinearSplit):
-                meas_pattern = self.P
-            else:
-                meas_pattern = self.H_static
-
-            if self.white_acq is not None:
-                meas_pattern *= self.white_acq.ravel().unsqueeze(0)  # for eventual spatial gain
-
             meas_dxy = (
                 meas_pattern.reshape(n_frames, 1, self.h * self.w).to(dxy.dtype) * dxy
             )
@@ -1516,11 +1518,6 @@ class DynamicLinear(_Base):
 
 
         elif method == 'warping':
-            if isinstance(self, DynamicLinearSplit):
-                meas_pattern = self.P
-            else:
-                meas_pattern = self.H_static
-
             det = self.calc_det(def_field)
 
             meas_pattern = meas_pattern.reshape(meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1])
