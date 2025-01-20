@@ -1175,8 +1175,8 @@ class DynamicLinear(_Base):
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
 
-        :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from 
-        detector inhomogeneities. Must have the same shape as the measurement patterns. 
+        :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
+        detector inhomogeneities. Must have the same shape as the measurement patterns.
 
     Attributes:
         :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
@@ -1328,7 +1328,12 @@ class DynamicLinear(_Base):
             pass
 
     # @mprof.profile
-    def build_H_dyn(self, motion: DeformationField, method: str = "no_warping", mode: str = "bilinear",) -> None:
+    def build_H_dyn(
+        self,
+        motion: DeformationField,
+        method: str = "no_warping",
+        mode: str = "bilinear",
+    ) -> None:
         """Build the dynamic measurement matrix `H_dyn`.
 
         Compute and store the dynamic measurement matrix `H_dyn` from the static
@@ -1401,8 +1406,7 @@ class DynamicLinear(_Base):
                 0
             )  # for eventual spatial gain
 
-
-        if method == 'no_warping':
+        if method == "no_warping":
             # drawings of the kernels for bilinear and bicubic 'interpolation'
             #   00    point      01
             #    +------+--------+
@@ -1471,7 +1475,8 @@ class DynamicLinear(_Base):
             # create a mask indicating if either of the 2 indices is out of bounds
             # (w,h) because the def_field is in (x,y) coordinates
             maxs = torch.tensor(
-                [self.img_w + kernel_width, self.img_h + kernel_width], device=self.device
+                [self.img_w + kernel_width, self.img_h + kernel_width],
+                device=self.device,
             )
             mask = torch.logical_or(
                 (def_field_00 < 0).any(dim=-1), (def_field_00 >= maxs).any(dim=-1)
@@ -1483,7 +1488,8 @@ class DynamicLinear(_Base):
             flattened_indices = torch.where(
                 mask,
                 trash,
-                def_field_00[..., 0] + def_field_00[..., 1] * (self.img_w + kernel_width),
+                def_field_00[..., 0]
+                + def_field_00[..., 1] * (self.img_w + kernel_width),
             ).reshape(n_frames, self.h * self.w)
             del def_field_00, mask
 
@@ -1526,47 +1532,69 @@ class DynamicLinear(_Base):
             # store in _param_H_dyn
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
 
-
-        elif method == 'warping':
+        elif method == "warping":
             det = self.calc_det(def_field)
 
-            meas_pattern = meas_pattern.reshape(meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1])
-            meas_pattern_ext = torch.zeros((meas_pattern.shape[0], 1, self.img_shape[0], self.img_shape[1]))
+            meas_pattern = meas_pattern.reshape(
+                meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1]
+            )
+            meas_pattern_ext = torch.zeros(
+                (meas_pattern.shape[0], 1, self.img_shape[0], self.img_shape[1])
+            )
             amp_max_h = (self.img_shape[0] - self.meas_shape[0]) // 2
             amp_max_w = (self.img_shape[1] - self.meas_shape[1]) // 2
-            meas_pattern_ext[:, :, amp_max_h:self.meas_shape[0]+amp_max_h, amp_max_w:self.meas_shape[1]+amp_max_w] = meas_pattern
+            meas_pattern_ext[
+                :,
+                :,
+                amp_max_h : self.meas_shape[0] + amp_max_h,
+                amp_max_w : self.meas_shape[1] + amp_max_w,
+            ] = meas_pattern
             meas_pattern_ext = meas_pattern_ext.to(dtype=motion.field.dtype)
 
-            H_dyn = nn.functional.grid_sample(meas_pattern_ext, motion.field, mode=mode, padding_mode='zeros', align_corners=True)
-            H_dyn = det.reshape((meas_pattern.shape[0], -1)) * H_dyn.reshape((meas_pattern.shape[0], -1))
+            H_dyn = nn.functional.grid_sample(
+                meas_pattern_ext,
+                motion.field,
+                mode=mode,
+                padding_mode="zeros",
+                align_corners=True,
+            )
+            H_dyn = det.reshape((meas_pattern.shape[0], -1)) * H_dyn.reshape(
+                (meas_pattern.shape[0], -1)
+            )
 
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
 
         else:
-            raise RuntimeError(
-                "The method must either be 'no_warping' or 'warping'."
-            )
-        
+            raise RuntimeError("The method must either be 'no_warping' or 'warping'.")
+
     def calc_det(self, def_field):
         # def_field of shape (n_frames, img_shape[0], img_shape[1], 2) in range [0, h-1] x [0, w-1]
         v1, v2 = def_field[:, :, :, 0], def_field[:, :, :, 1]
         n_frames = def_field.shape[0]
 
         # def opérateur gradient (differences finies non normalisées)
-        L = lambda u: torch.stack([
-            torch.cat([torch.diff(u, dim=1), torch.ones(n_frames, 1, u.shape[2])], dim=1),
-            torch.cat([torch.diff(u, dim=2), torch.ones(n_frames, u.shape[1], 1)], dim=2)
-        ], dim=3)
+        L = lambda u: torch.stack(
+            [
+                torch.cat(
+                    [torch.diff(u, dim=1), torch.ones(n_frames, 1, u.shape[2])], dim=1
+                ),
+                torch.cat(
+                    [torch.diff(u, dim=2), torch.ones(n_frames, u.shape[1], 1)], dim=2
+                ),
+            ],
+            dim=3,
+        )
 
         dx_v1 = L(v1)[..., 1]
         dx_v2 = L(v2)[..., 1]
         dy_v1 = L(v1)[..., 0]
         dy_v2 = L(v2)[..., 0]
 
-        det = dx_v1 * dy_v2 - dx_v2 * dy_v1  # shape is (n_frames, img_shape[0], img_shape[1])
+        det = (
+            dx_v1 * dy_v2 - dx_v2 * dy_v1
+        )  # shape is (n_frames, img_shape[0], img_shape[1])
 
         return det
-    
 
     def build_H_dyn_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
         """Computes the pseudo-inverse of the dynamic measurement matrix
@@ -1760,7 +1788,7 @@ class DynamicLinearSplit(DynamicLinear):
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
 
-        :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from 
+        :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
         detector inhomogeneities. Must have the same shape as the measurement patterns.
 
     Attributes:
@@ -1984,7 +2012,7 @@ class DynamicHadamSplit(DynamicLinearSplit):
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
 
-        :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from 
+        :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
         detector inhomogeneities. Must have the same shape as the measurement patterns.
 
 

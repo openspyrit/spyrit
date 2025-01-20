@@ -575,8 +575,10 @@ class ElasticDeformation(DeformationField):
         The parameters :attr:`alpha`, :attr:`sigma`, and :attr:`n_interpolation`
         are defined at initialization and cannot be changed after instantiation.
     """
-    
-    def __init__(self, alpha, sigma, img_shape, n_frames, n_interpolation, dtype=torch.float32):
+
+    def __init__(
+        self, alpha, sigma, img_shape, n_frames, n_interpolation, dtype=torch.float32
+    ):
         """Args:
             alpha (float): Magnitude of displacements. This argument is passed to
             the constructor of :class:`torchvision.transforms.v2.ElasticTransform`.
@@ -598,7 +600,7 @@ class ElasticDeformation(DeformationField):
             points in 2D space) and with a standard deviation of :math:`\frac{3}{4}`
             :attr:`n_interpolation` is applied to the deformation field.
 
-            dtype (torch.dtype): Data type of the tensors. Default is torch.float32. 
+            dtype (torch.dtype): Data type of the tensors. Default is torch.float32.
 
         Attributes:
             :attr:`field` (torch.tensor): The deformation field as a tensor of shape
@@ -620,7 +622,7 @@ class ElasticDeformation(DeformationField):
             random generator of static elastic deformation, with parameters :attr:`alpha`
             and :attr:`sigma`.
         """
-        
+
         super().__init__(None)
 
         # self.sigma_time = sigma_time
