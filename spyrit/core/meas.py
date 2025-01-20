@@ -730,16 +730,7 @@ class Linear2(nn.Module):
                 + f"in the measurement shape {self.meas_shape}."
             )
 
-        self._split = False  # indicates if the split operator is used when inversing
-        self._matrix_to_inverse = H
-
-    @property
-    def split(self) -> bool:
-        return self._split
-
-    @property
-    def matrix_to_inverse(self) -> torch.tensor:
-        return self._matrix_to_inverse
+        self.matrix_to_inverse = H
 
     @property
     def device(self) -> torch.device:
@@ -1126,7 +1117,6 @@ class LinearSplit2(Linear2):
         pos, neg = nn.functional.relu(H), nn.functional.relu(-H)
         A = torch.cat([pos, neg], 1).reshape(2 * self.M, self.N)
         self.A = nn.Parameter(A, requires_grad=False)
-        self.matrix_to_inverse = H
 
     def measure(self, x: torch.tensor):
         r""" """
