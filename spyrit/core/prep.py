@@ -16,6 +16,40 @@ import spyrit.core.meas as meas
 import spyrit.core.inverse as inverse
 
 
+def add(y: torch.tensor) -> torch.tensor:
+    r"""Add the even- and odd-indexed values of the input tensor's last dimension.
+
+    The input tensor's last dimension must have an even number of elements.
+    It returns `y[..., 0::2] + y[..., 1::2]`.
+
+    Args:
+        y (torch.tensor): The input tensor. Has any shape :math:`(*, 2m)`
+        but its last dimension must have an even number of elements.
+
+    Returns:
+        torch.tensor: The input tensor with the even and odd indices of the
+        last dimension combined by addition. It has shape :math:`(*, m)`.
+    """
+    return y[..., 0::2] + y[..., 1::2]
+
+
+def subtract(y: torch.tensor) -> torch.tensor:
+    r"""Subtract the even- and odd-indexed values of the input tensor's last dimension.
+
+    The input tensor's last dimension must have an even number of elements.
+    It returns `y[..., 0::2] - y[..., 1::2]`.
+
+    Args:
+        y (torch.tensor): The input tensor. Has any shape :math:`(*, 2m)`
+        but its last dimension must have an even number of elements.
+
+    Returns:
+        torch.tensor: The input tensor with the even and odd indices of the
+        last dimension combined by subtraction. It has shape :math:`(*, m)`.
+    """
+    return y[..., 0::2] - y[..., 1::2]
+
+
 # =============================================================================
 class Unsplit(nn.Module):
     r"""Preprocess the data acquired with a split measurement operator.
@@ -46,40 +80,6 @@ class Unsplit(nn.Module):
         super().__init__()
 
     @staticmethod
-    def add(y: torch.tensor) -> torch.tensor:
-        r"""Add the even- and odd-indexed values of the input tensor's last dimension.
-
-        The input tensor's last dimension must have an even number of elements.
-        It returns `y[..., 0::2] + y[..., 1::2]`.
-
-        Args:
-            y (torch.tensor): The input tensor. Has any shape :math:`(*, 2m)`
-            but its last dimension must have an even number of elements.
-
-        Returns:
-            torch.tensor: The input tensor with the even and odd indices of the
-            last dimension combined by addition. It has shape :math:`(*, m)`.
-        """
-        return y[..., 0::2] + y[..., 1::2]
-
-    @staticmethod
-    def subtract(y: torch.tensor) -> torch.tensor:
-        r"""Subtract the even- and odd-indexed values of the input tensor's last dimension.
-
-        The input tensor's last dimension must have an even number of elements.
-        It returns `y[..., 0::2] - y[..., 1::2]`.
-
-        Args:
-            y (torch.tensor): The input tensor. Has any shape :math:`(*, 2m)`
-            but its last dimension must have an even number of elements.
-
-        Returns:
-            torch.tensor: The input tensor with the even and odd indices of the
-            last dimension combined by subtraction. It has shape :math:`(*, m)`.
-        """
-        return y[..., 0::2] - y[..., 1::2]
-
-    @staticmethod
     def forward(y: torch.tensor, mode: str = "sub") -> torch.tensor:
         r"""Preprocess to compensates for splitting of the measurement operator.
 
@@ -98,9 +98,9 @@ class Unsplit(nn.Module):
             odd- indexed values of the input tensor subtracted or added.
         """
         if mode == "sub":
-            return Unsplit.subtract(y)
+            return subtract(y)
         elif mode == "add":
-            return Unsplit.add(y)
+            return add(y)
         else:
             raise ValueError(f"mode should be either 'sub' or 'add' (found {mode})")
 
@@ -168,8 +168,8 @@ class UnsplitRescale(Rescale):
         Returns:
             torch.tensor: The rescaled and unsplit tensor of shape :math:`(*, m)`.
         """
-        y = Unsplit.forward(y, mode=mode)
-        y /= self.alpha
+        y = Unsplit.forward(y, mode=mode)  # unsplit
+        y = super().forward(y)  # divide by alpha
         return y
 
 
@@ -248,8 +248,8 @@ class UnsplitRescaleEstim(RescaleEstim):
         Returns:
             _type_: _description_
         """
-        y = Unsplit.forward(y, mode=mode)
-        y = super().forward(y)
+        y = Unsplit.forward(y, mode=mode)  # unsplit
+        y = super().forward(y)  # estimate alpha and divide
         return y
 
 
