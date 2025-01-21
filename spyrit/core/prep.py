@@ -7,12 +7,9 @@ without splitting the measurement matrix in its positive and negative parts),
 while the second one is used for split measurements.
 """
 
-from typing import Union, Tuple
-
 import torch
 import torch.nn as nn
 
-import spyrit.core.meas as meas
 import spyrit.core.inverse as inverse
 
 

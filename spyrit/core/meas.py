@@ -687,7 +687,7 @@ import spyrit.core.torch as spytorch
 
 
 # =============================================================================
-class Linear2(nn.Module):
+class Linear(nn.Module):
     r"""_summary_
 
     Args:
@@ -758,7 +758,7 @@ class Linear2(nn.Module):
 
         Example with a RGB 15x4 pixel image:
             >>> matrix = torch.randn(10, 60)
-            >>> meas_op = Linear2(matrix, meas_shape=(15, 4))
+            >>> meas_op = Linear(matrix, meas_shape=(15, 4))
             >>> x = torch.randn(3, 15, 4)
             >>> y = meas_op.measure(x)
             >>> print(y.shape)
@@ -785,7 +785,7 @@ class Linear2(nn.Module):
 
         Example:
             >>> matrix = torch.randn(10, 60)
-            >>> meas_op = Linear2(matrix, meas_shape=(15, 4)
+            >>> meas_op = Linear(matrix, meas_shape=(15, 4)
         """
         x = self.measure(x)
         x = self.noise_model(x)
@@ -829,7 +829,7 @@ class Linear2(nn.Module):
 
         Example:
             >>> matrix = torch.randn(10, 60)
-            >>> meas_op = Linear2(matrix, meas_shape=(12, 5), dim=(-1,-3))
+            >>> meas_op = Linear(matrix, meas_shape=(12, 5), dim=(-1,-3))
             >>> x = torch.randn(3, 7, 60)
             >>> print(meas_op.unvectorize(x).shape)
             torch.Size([3, 5, 7, 12]
@@ -858,7 +858,7 @@ class Linear2(nn.Module):
 
         Example:
             >>> matrix = torch.randn(10, 60)
-            >>> meas_op = Linear2(matrix, meas_shape=(12, 5), dim=(-1,-3))
+            >>> meas_op = Linear(matrix, meas_shape=(12, 5), dim=(-1,-3))
             >>> x = torch.randn(3, 5, 7, 12)
             >>> print(meas_op.vectorize(x).shape)
             torch.Size([3, 7, 60])
@@ -885,7 +885,7 @@ class Linear2(nn.Module):
     #         self.patterns = nn.Parameter(matrix, requires_grad=False)
 
 
-class FreeformLinear2(Linear2):
+class FreeformLinear(Linear):
     r"""Performs linear measurements on a subset (mask) of pixels in the image."""
 
     def __init__(
@@ -1111,7 +1111,7 @@ class FreeformLinear2(Linear2):
 
 
 # =============================================================================
-class LinearSplit2(Linear2):
+class LinearSplit(Linear):
     r""" """
 
     def __init__(self, H, meas_shape=None, meas_dims=None, noise_model=nn.Identity()):
@@ -1174,7 +1174,7 @@ class LinearSplit2(Linear2):
 
 
 # =============================================================================
-class HadamSplit2D(LinearSplit2):
+class HadamSplit2D(LinearSplit):
     r""" """
 
     def __init__(
@@ -1190,9 +1190,7 @@ class HadamSplit2D(LinearSplit2):
         self.H1d = spytorch.walsh2_torch(h).to(torch.int8)  # 1D version of H
 
         # call Linear constructor (avoid setting A)
-        super(LinearSplit2, self).__init__(
-            torch.emp, meas_shape, meas_dims, noise_model
-        )
+        super(LinearSplit, self).__init__(torch.emp, meas_shape, meas_dims, noise_model)
         self.order = order
         self.fast = fast
 

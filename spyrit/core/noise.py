@@ -145,7 +145,7 @@ from spyrit.core.meas import Linear, LinearSplit, HadamSplit  # , LinearRowSplit
 
 
 # ==============================================================================
-class Gaussian(nn.Module):
+class Gaussian(NoNoise):
     r"""
     Simulates measurements corrupted by additive Gaussian noise
 
@@ -549,7 +549,7 @@ class Gaussian(nn.Module):
 
 
 # =============================================================================
-class NoNoise2(nn.Module):
+class NoNoise(nn.Module):
     """A placeholder that returns measurements without noise.
 
     This is the base class for the noise models. All noise models should inherit
@@ -584,7 +584,7 @@ class NoNoise2(nn.Module):
 
 
 # =============================================================================
-class Poisson2(NoNoise2):
+class Poisson(NoNoise):
     r"""Adds Poisson noise to incoming measurements.
 
     The Poisson noise is parameterized by its intensity :math:`\alpha`. The
@@ -627,7 +627,7 @@ class Poisson2(NoNoise2):
 
 
 # =============================================================================
-class PoissonApproxGauss2(Poisson2):
+class PoissonApproxGauss(Poisson):
     r"""Adds Gaussian-approximated Poisson noise to incoming measurements.
 
     The Gaussian-approximated Poisson noise is parameterized by its intensity
@@ -677,7 +677,7 @@ class PoissonApproxGauss2(Poisson2):
 
 
 # =============================================================================
-class PoissonApproxGaussSameNoise2(Poisson2):
+class PoissonApproxGaussSameNoise(Poisson):
     r"""Adds identical Gaussian-approximated Poisson noise to incoming measurements.
 
     The Gaussian-approximated Poisson noise is parameterized by its intensity
