@@ -169,40 +169,40 @@ def psnr_(img1, img2, r=2):
     return Psnr
 
 
-def psnr_torch(img_gt, img_rec, dim = (-2,-1), img_dyn=None):
+def psnr_torch(img_gt, img_rec, dim=(-2, -1), img_dyn=None):
     r"""
     Computes the Peak Signal-to-Noise Ratio (PSNR) between two images.
-    
+
     .. math::
-        
+
         \text{PSNR} = 20 \, \log_{10} \left( \frac{\text{d}}{\sqrt{\text{MSE}}} \right), \\
         \text{MSE} = \frac{1}{L}\sum_{\ell=1}^L \|I_\ell - \tilde{I}_\ell\|^2_2,
-        
-    where :math:`d` is the image dynamic and :math:`\{I_\ell\}` (resp. :math:`\{\tilde{I}_\ell\}`) is the set of ground truth (resp. reconstructed) images. 
-    
+
+    where :math:`d` is the image dynamic and :math:`\{I_\ell\}` (resp. :math:`\{\tilde{I}_\ell\}`) is the set of ground truth (resp. reconstructed) images.
+
     Args:
         :attr:`img_gt`: Tensor containing the *ground-truth* image.
-        
+
         :attr:`img_rec`: Tensor containing the reconstructed image.
-        
+
         :attr:`dim`: Dimensions where the squared error is computed. Defaults to the last two dimensions.
-        
+
         :attr:`img_dyn`: Image dynamic range (e.g., 1.0 for normalized images, 255 for 8-bit images). When :attr:`img_dyn` is `None`, the dynamic range is computed from the ground-truth image.
-    
+
     Returns:
         PSNR value.
-      
+
     .. note::
         :attr:`psnr_torch(img_gt, img_rec)` is different from  :attr:`psnr_torch(img_rec, img_gt)`. The first expression assumes :attr:`img_gt` is the ground truth while the second assumes that this is :attr:`img_rec`. This leads to different dynamic ranges.
-        
+
     Example 1: 10 images of size 64x64 with values in [0,1) corrupted with 5% noise
         >>> x = torch.rand(10,1,64,64)
         >>> n = x + 0.05*torch.randn(x.shape)
         >>> out = psnr_torch(x,n)
         >>> print(out.shape)
         torch.Size([10, 1])
-    
-    Example 2: 10 images of size 64x64 with values in [0,1) corrupted with 5% noise    
+
+    Example 2: 10 images of size 64x64 with values in [0,1) corrupted with 5% noise
         >>> psnr_torch(n,x)
         tensor([[7.6092],
                 [7.5620],
@@ -236,15 +236,15 @@ def psnr_torch(img_gt, img_rec, dim = (-2,-1), img_dyn=None):
                 [7.5090],
                 [7.6533],
                 [7.5998]])
-        
+
     """
-    mse = (img_gt - img_rec)**2
+    mse = (img_gt - img_rec) ** 2
     mse = torch.mean(mse, dim=dim)
-    
+
     if img_dyn is None:
         img_dyn = torch.amax(img_gt, dim=dim) - torch.amin(img_gt, dim=dim)
-    
-    return 10 * torch.log10(img_dyn ** 2 / mse)
+
+    return 10 * torch.log10(img_dyn**2 / mse)
 
 
 def ssim(I1, I2):
