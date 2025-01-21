@@ -142,6 +142,56 @@ def walsh2_torch(img, H=None):
     raise NotImplementedError("This function is deprecated. Use `fwht_2d` instead.")
 
 
+def mult_transform(H: torch.tensor, x: torch.tensor, dim: int = -1) -> torch.tensor:
+    r"""Applies the transform defined by H to the input tensor x.
+
+    This applies a transform defined by the matrix `H` to a batch of vectors `x`.
+
+    Args:
+        H (torch.tensor): Transform matrix, has to be 2D with shape :math:`(a,b)`.
+
+        x (torch.tensor): Input tensor to transform. Its :attr:`dim`-th dimension
+        must have :math:`b` elements.
+
+        dim (int, optional): The dimension along which to apply the transform.
+        Default is -1.
+
+    Returns:
+        torch.tensor: Transformed tensor. Has the same shape as the input tensor
+        except for the :attr:`dim`-th dimension which has :math:`a` elements.
+    """
+    if dim != -1 and dim != x.ndim - 1:
+        x = torch.moveaxis(x, dim, -1)
+    x = torch.einsum("ij,...j->...i", H, x)
+    if dim != -1 and dim != x.ndim - 1:
+        x = torch.moveaxis(x, -1, dim)
+    return x
+
+
+def mult_transform_2d(H: torch.tensor, x: torch.tensor) -> torch.tensor:
+    r"""Applies twice the 1D transform defined by H to the input tensor x.
+
+    This function applies a 1D transform defined by the matrix `H` twice (once
+    on the left, once on the right with the transposed matrix) to a batch of 2D
+    tensors `x`.
+
+    .. note:
+        This is equivalent to calling `H @ x @ H.T`
+
+    Args:
+        H (torch.tensor): 2D transform matrix with shape :math:`(a, b)`.
+
+        x (torch.tensor): Input tensor to transform. Must have shape
+        :math:`(*, b, b)` wheree * represents any number of batch dimensions.
+
+    Returns:
+        torch.tensor: Transformed tensor. Has shape :math:`(*, a, a)` where * is
+        the same number of batch dimensions as the input tensor.
+    """
+    x = H @ x @ H.T
+    return x
+
+
 def fwht(x, order=True, dim=-1):
     r"""Fast Walsh-Hadamard transform of x
 
