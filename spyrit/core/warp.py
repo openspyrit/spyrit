@@ -670,8 +670,8 @@ class ElasticDeformation(DeformationField):
         """Generates the frames of the elastic deformation field of shape
         (n_frames, h, w, 2)."""
         # create base frame between -1 and 1
-        base_frame_i = torch.linspace(-1, 1, self.img_shape[0], dtype=self.dtype)
-        base_frame_j = torch.linspace(-1, 1, self.img_shape[1], dtype=self.dtype)
+        base_frame_i = torch.linspace(-1, 1, img_shape[0], dtype=self.dtype)
+        base_frame_j = torch.linspace(-1, 1, img_shape[1], dtype=self.dtype)
 
         # shape (h, w, 2)
         base_frame = torch.stack(
@@ -703,8 +703,8 @@ class ElasticDeformation(DeformationField):
         grid = grid.permute(1, 2, 3, 0)  # put time in the last dimension
         grid = grid.reshape(-1, 1, total_frames_to_generate)  # (h*w*2, 1, n_frames)
         grid = Conv(grid)
-        grid = grid.reshape(*self.img_shape, 2, total_frames_after_conv)
+        grid = grid.reshape(*img_shape, 2, total_frames_after_conv)
         grid = grid.permute(3, 0, 1, 2)  # (n_frames, h, w, 2)
 
         # truncate to the desired number of frames
-        return grid
+        return grid[:n_frames, ...]
