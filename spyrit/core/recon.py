@@ -196,179 +196,179 @@ class PositiveParameters(nn.Module):
 
 
 # =============================================================================
-class Denoise_layer(nn.Module):
-    r"""Defines a learnable Wiener filter that assumes additive white Gaussian noise.
+# class Denoise_layer(nn.Module):
+#     r"""Defines a learnable Wiener filter that assumes additive white Gaussian noise.
 
-    The filter is pre-defined upon initialization with the standard deviation prior
-    (if known), or with an integer representing the size of the input vector.
-    In the second case, the standard deviation prior is initialized at random
-    from a uniform (0,2/size) distribution.
+#     The filter is pre-defined upon initialization with the standard deviation prior
+#     (if known), or with an integer representing the size of the input vector.
+#     In the second case, the standard deviation prior is initialized at random
+#     from a uniform (0,2/size) distribution.
 
-    Using the foward method (the implicit call method), the filter is fully
-    defined:
+#     Using the foward method (the implicit call method), the filter is fully
+#     defined:
 
-    .. math::
-        \sigma_\text{prior}^2/(\sigma^2_\text{prior} + \sigma^2_\text{meas})
+#     .. math::
+#         \sigma_\text{prior}^2/(\sigma^2_\text{prior} + \sigma^2_\text{meas})
 
-    where :math:`\sigma^2_\text{prior}` is the variance prior defined at
-    initialization and :math:`\sigma^2_\text{meas}` is the measurement variance
-    defined using the forward method. The value given by the equation above
-    can then be multiplied by the measurement vector to obtain the denoised
-    measurement vector.
+#     where :math:`\sigma^2_\text{prior}` is the variance prior defined at
+#     initialization and :math:`\sigma^2_\text{meas}` is the measurement variance
+#     defined using the forward method. The value given by the equation above
+#     can then be multiplied by the measurement vector to obtain the denoised
+#     measurement vector.
 
-    .. note::
-        The weight (defined at initialization or accessible through the
-        attribute :attr:`weight`) should not be squared (as it is squared when
-        the forward method is called).
+#     .. note::
+#         The weight (defined at initialization or accessible through the
+#         attribute :attr:`weight`) should not be squared (as it is squared when
+#         the forward method is called).
 
-    Args:
-        :attr:`std_dev_or_size` (torch.tensor or int): 1D tensor representing
-        the standard deviation prior or an integer defining the size of the
-        randomly-initialized standard deviation prior. If an array is passed
-        and it is not 1D, it is flattened. It is stored internally as a
-        :class:`nn.Parameter`, whose :attr:`data` attribute is accessed through
-        the :attr:`sigma` attribute, and whose :attr:`requires_grad` attribute
-        is accessed through the :attr:`requires_grad` attribute.
+#     Args:
+#         :attr:`std_dev_or_size` (torch.tensor or int): 1D tensor representing
+#         the standard deviation prior or an integer defining the size of the
+#         randomly-initialized standard deviation prior. If an array is passed
+#         and it is not 1D, it is flattened. It is stored internally as a
+#         :class:`nn.Parameter`, whose :attr:`data` attribute is accessed through
+#         the :attr:`sigma` attribute, and whose :attr:`requires_grad` attribute
+#         is accessed through the :attr:`requires_grad` attribute.
 
-    Shape for forward call:
-        - Input: :math:`(*, in\_features)` measurement variance.
-        - Output: :math:`(*, in\_features)` fully defined Wiener filter.
+#     Shape for forward call:
+#         - Input: :math:`(*, in\_features)` measurement variance.
+#         - Output: :math:`(*, in\_features)` fully defined Wiener filter.
 
-    Attributes:
-        :attr:`weight`:
-        The learnable standard deviation prior :math:`\sigma_\text{prior}` of
-        shape :math:`(in\_features, 1)`. The values are initialized from
-        :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`, where :math:`k = 1/in\_features`.
+#     Attributes:
+#         :attr:`weight`:
+#         The learnable standard deviation prior :math:`\sigma_\text{prior}` of
+#         shape :math:`(in\_features, 1)`. The values are initialized from
+#         :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`, where :math:`k = 1/in\_features`.
 
-        :attr:`sigma`:
-        The learnable standard deviation prior :math:`\sigma_\text{prior}` of shape
-        :math:`(, in\_features)`. If the input is an integer, the standard deviation prior
-        is initialized at random from  :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`,
-        where :math:`k = 1/in\_features`.
+#         :attr:`sigma`:
+#         The learnable standard deviation prior :math:`\sigma_\text{prior}` of shape
+#         :math:`(, in\_features)`. If the input is an integer, the standard deviation prior
+#         is initialized at random from  :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`,
+#         where :math:`k = 1/in\_features`.
 
-        :attr:`in_features`:
-        The number of input features.
+#         :attr:`in_features`:
+#         The number of input features.
 
-        :attr:`requires_grad`:
-        A boolean indicating whether the autograd should record operations on
-        the standard deviation tensor. Default is True.
+#         :attr:`requires_grad`:
+#         A boolean indicating whether the autograd should record operations on
+#         the standard deviation tensor. Default is True.
 
-    Example:
-        >>> m = Denoise_layer(30)
-        >>> input = torch.randn(128, 30)
-        >>> output = m(input)
-        >>> print(output.size())
-        torch.Size([128, 30])
-    """
+#     Example:
+#         >>> m = Denoise_layer(30)
+#         >>> input = torch.randn(128, 30)
+#         >>> output = m(input)
+#         >>> print(output.size())
+#         torch.Size([128, 30])
+#     """
 
-    def __init__(
-        self, std_dev_prior_or_size: Union[torch.tensor, int], requires_grad=True
-    ):
-        super(Denoise_layer, self).__init__()
+#     def __init__(
+#         self, std_dev_prior_or_size: Union[torch.tensor, int], requires_grad=True
+#     ):
+#         super(Denoise_layer, self).__init__()
 
-        warnings.warn(
-            "This class is deprecated and will be removed in a future release. "
-            "Please use the `TikhonovMeasurementPriorDiag` class instead.",
-            DeprecationWarning,
-        )
+#         warnings.warn(
+#             "This class is deprecated and will be removed in a future release. "
+#             "Please use the `TikhonovMeasurementPriorDiag` class instead.",
+#             DeprecationWarning,
+#         )
 
-        if isinstance(std_dev_prior_or_size, int):
-            self.weight = nn.Parameter(
-                torch.Tensor(std_dev_prior_or_size), requires_grad=requires_grad
-            )
-            self.reset_parameters()
+#         if isinstance(std_dev_prior_or_size, int):
+#             self.weight = nn.Parameter(
+#                 torch.Tensor(std_dev_prior_or_size), requires_grad=requires_grad
+#             )
+#             self.reset_parameters()
 
-        else:
-            if not isinstance(std_dev_prior_or_size, torch.Tensor):
-                raise TypeError(
-                    "std_dev_or_size should be an integer or a torch.Tensor"
-                )
-            self.weight = nn.Parameter(
-                std_dev_prior_or_size.reshape(-1), requires_grad=requires_grad
-            )
+#         else:
+#             if not isinstance(std_dev_prior_or_size, torch.Tensor):
+#                 raise TypeError(
+#                     "std_dev_or_size should be an integer or a torch.Tensor"
+#                 )
+#             self.weight = nn.Parameter(
+#                 std_dev_prior_or_size.reshape(-1), requires_grad=requires_grad
+#             )
 
-    @property
-    def in_features(self):
-        return self.weight.data.numel()
+#     @property
+#     def in_features(self):
+#         return self.weight.data.numel()
 
-    def reset_parameters(self):
-        r"""
-        Resets the standard deviation prior :math:`\sigma_\text{prior}`.
+#     def reset_parameters(self):
+#         r"""
+#         Resets the standard deviation prior :math:`\sigma_\text{prior}`.
 
-        The values are initialized from :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`,
-        where :math:`k = 1/in\_features`. They are stored in the :attr:`weight`
-        attribute.
-        """
-        nn.init.uniform_(self.weight, 0, 2 / math.sqrt(self.in_features))
+#         The values are initialized from :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`,
+#         where :math:`k = 1/in\_features`. They are stored in the :attr:`weight`
+#         attribute.
+#         """
+#         nn.init.uniform_(self.weight, 0, 2 / math.sqrt(self.in_features))
 
-    def forward(self, sigma_meas_squared: torch.tensor) -> torch.tensor:
-        r"""
-        Fully defines the Wiener filter with the measurement variance.
+#     def forward(self, sigma_meas_squared: torch.tensor) -> torch.tensor:
+#         r"""
+#         Fully defines the Wiener filter with the measurement variance.
 
-        This outputs :math:`\sigma_\text{prior}^2/(\sigma_\text{prior}^2 + \sigma^2_\text{meas})`,
-        where :math:`\sigma^2_\text{meas}` is the measurement variance (see :attr:`sigma_meas_squared`) and
-        :math:`\sigma_\text{prior}` is the standard deviation prior defined
-        upon construction of the class (see :attr:`self.weight`).
+#         This outputs :math:`\sigma_\text{prior}^2/(\sigma_\text{prior}^2 + \sigma^2_\text{meas})`,
+#         where :math:`\sigma^2_\text{meas}` is the measurement variance (see :attr:`sigma_meas_squared`) and
+#         :math:`\sigma_\text{prior}` is the standard deviation prior defined
+#         upon construction of the class (see :attr:`self.weight`).
 
-        .. note::
-            The measurement variance should be squared before being passed to
-            this method, unlike the standard deviation prior (defined at construction).
+#         .. note::
+#             The measurement variance should be squared before being passed to
+#             this method, unlike the standard deviation prior (defined at construction).
 
-        Args:
-            :attr:`sigma_meas_squared` (torch.tensor): input tensor :math:`\sigma^2_\text{meas}`
-            of shape :math:`(*, in\_features)`
+#         Args:
+#             :attr:`sigma_meas_squared` (torch.tensor): input tensor :math:`\sigma^2_\text{meas}`
+#             of shape :math:`(*, in\_features)`
 
-        Returns:
-            torch.tensor: The multiplicative filter of shape
-            :math:`(*, in\_features)`
+#         Returns:
+#             torch.tensor: The multiplicative filter of shape
+#             :math:`(*, in\_features)`
 
-        Shape:
-            - Input: :math:`(*, in\_features)`
-            - Output: :math:`(*, in\_features)`
-        """
-        if sigma_meas_squared.shape[-1] != self.in_features:
-            raise ValueError(
-                "The last dimension of the input tensor "
-                + f"({sigma_meas_squared.shape[-1]})should be equal to the number of "
-                + f"input features ({self.in_features})."
-            )
-        return self.tikho(sigma_meas_squared, self.weight)
+#         Shape:
+#             - Input: :math:`(*, in\_features)`
+#             - Output: :math:`(*, in\_features)`
+#         """
+#         if sigma_meas_squared.shape[-1] != self.in_features:
+#             raise ValueError(
+#                 "The last dimension of the input tensor "
+#                 + f"({sigma_meas_squared.shape[-1]})should be equal to the number of "
+#                 + f"input features ({self.in_features})."
+#             )
+#         return self.tikho(sigma_meas_squared, self.weight)
 
-    def extra_repr(self):
-        return "in_features={}".format(self.in_features)
+#     def extra_repr(self):
+#         return "in_features={}".format(self.in_features)
 
-    @staticmethod
-    def tikho(inputs: torch.tensor, weight: torch.tensor) -> torch.tensor:
-        # type: (torch.Tensor, torch.Tensor) -> torch.Tensor
-        r"""
-        Applies a transformation to the incoming data: :math:`y = \sigma_\text{prior}^2/(\sigma_\text{prior}^2+x)`.
+#     @staticmethod
+#     def tikho(inputs: torch.tensor, weight: torch.tensor) -> torch.tensor:
+#         # type: (torch.Tensor, torch.Tensor) -> torch.Tensor
+#         r"""
+#         Applies a transformation to the incoming data: :math:`y = \sigma_\text{prior}^2/(\sigma_\text{prior}^2+x)`.
 
-        :math:`x` is the input tensor (see :attr:`inputs`) and :math:`\sigma_\text{prior}` is the
-        standard deviation prior (see :attr:`weight`).
+#         :math:`x` is the input tensor (see :attr:`inputs`) and :math:`\sigma_\text{prior}` is the
+#         standard deviation prior (see :attr:`weight`).
 
-        Args:
-            :attr:`inputs` (torch.tensor): input tensor :math:`x` of shape
-            :math:`(N, *, in\_features)`
+#         Args:
+#             :attr:`inputs` (torch.tensor): input tensor :math:`x` of shape
+#             :math:`(N, *, in\_features)`
 
-            :attr:`weight` (torch.tensor): standard deviation prior :math:`\sigma_\text{prior}` of
-            shape :math:`(in\_features)`
+#             :attr:`weight` (torch.tensor): standard deviation prior :math:`\sigma_\text{prior}` of
+#             shape :math:`(in\_features)`
 
-        Returns:
-            torch.tensor: The transformed data :math:`y` of shape
-            :math:`(N, in\_features)`
+#         Returns:
+#             torch.tensor: The transformed data :math:`y` of shape
+#             :math:`(N, in\_features)`
 
-        Shape:
-            - :attr:`inputs`: :math:`(N, *, in\_features)` where `*` means any number of
-              additional dimensions - Variance of measurements
-            - :attr:`weight`: :math:`(in\_features)` - corresponds to the standard deviation
-              of our prior.
-            - :attr:`output`: :math:`(N, in\_features)`
-        """
-        a = weight**2  # prefer to square it, because when learnt, it can go to the
-        # negative, which we do not want to happen.
-        # TO BE Potentially done : square inputs.
-        b = a + inputs
-        return a / b
+#         Shape:
+#             - :attr:`inputs`: :math:`(N, *, in\_features)` where `*` means any number of
+#               additional dimensions - Variance of measurements
+#             - :attr:`weight`: :math:`(in\_features)` - corresponds to the standard deviation
+#               of our prior.
+#             - :attr:`output`: :math:`(N, in\_features)`
+#         """
+#         a = weight**2  # prefer to square it, because when learnt, it can go to the
+#         # negative, which we do not want to happen.
+#         # TO BE Potentially done : square inputs.
+#         b = a + inputs
+#         return a / b
 
 
 # =============================================================================
