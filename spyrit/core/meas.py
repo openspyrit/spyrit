@@ -1193,6 +1193,7 @@ class HadamSplit2d(LinearSplit):
         super(LinearSplit, self).__init__(
             torch.empty(h**2, h**2), meas_shape, meas_dims, noise_model
         )
+        self.M = M
         self.order = order
         self.indices = torch.argsort(-order.flatten(), stable=True).to(torch.int32)
         self.fast = fast
