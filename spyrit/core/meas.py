@@ -1175,6 +1175,8 @@ class DynamicLinear(_Base):
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
 
+        :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
+        detector inhomogeneities. Must have the same shape as the measurement patterns.
 
     Attributes:
         :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
@@ -1244,8 +1246,11 @@ class DynamicLinear(_Base):
         Ord: torch.tensor = None,
         meas_shape: tuple = None,  # (height, width)
         img_shape: tuple = None,  # (height, width)
+        white_acq: torch.tensor = None,
     ):
         super().__init__(H, Ord, meas_shape)
+
+        self.white_acq = white_acq
 
         if img_shape is not None:
             self._img_shape = img_shape
@@ -1323,7 +1328,12 @@ class DynamicLinear(_Base):
             pass
 
     # @mprof.profile
-    def build_H_dyn(self, motion: DeformationField, mode: str = "bilinear") -> None:
+    def build_H_dyn(
+        self,
+        motion: DeformationField,
+        mode: str = "bilinear",
+        warping: bool = False,
+    ) -> None:
         """Build the dynamic measurement matrix `H_dyn`.
 
         Compute and store the dynamic measurement matrix `H_dyn` from the static
@@ -1335,11 +1345,17 @@ class DynamicLinear(_Base):
         Args:
 
             :attr:`motion` (DeformationField): Deformation field representing the
-            motion of the image.
+            motion of the image. Need to pass the inverse deformation field when
+            :attr:`warping` is set to False, and the direct deformation field when
+            :attr:`warping` is set to True.
 
-            :attr:`mode` (str): Interpolation mode. Can only be 'bilinear' for
-            now. Bicubic interpolation will be available in a future release.
-            Defaults to 'bilinear'.
+            :attr:`mode` (str): Mode according to which the dynamic matrix is constructed. When warping the patterns,
+            it refers to the interpolation method. When the patterns are not warped, it refers to the regularity of
+            the solution that is sought after. Defaults to 'bilinear'.
+
+            :attr:`warping` (bool): Whether to warp the patterns when building
+            the dynamic measurement matrix. It's been shown [MaBP24] that warping
+            the patterns induces a bias in the model. Defaults to 'False'.
 
         Returns:
 
@@ -1358,8 +1374,9 @@ class DynamicLinear(_Base):
                 "The device of the motion and the measurement operator must be the same."
             )
 
-        # store the mode in attribute
+        # store the method and mode in attribute
         self._recon_mode = mode
+        self._recon_warping = warping
 
         try:
             del self._param_H_dyn
@@ -1380,132 +1397,202 @@ class DynamicLinear(_Base):
         scale_factor = (torch.tensor(self.img_shape) - 1).to(self.device)
         def_field = (motion.field + 1) / 2 * scale_factor
 
-        # drawings of the kernels for bilinear and bicubic 'interpolation'
-        #   00    point      01
-        #    +------+--------+
-        #    |      |        |
-        #    |      |        |
-        #    +------+--------+ point
-        #    |      |        |
-        #    +------+--------+
-        #   10               11
-
-        #      00          01   point   02          03
-        #       +-----------+-----+-----+-----------+
-        #       |           |           |           |
-        #       |           |     |     |           |
-        #       |        11 |           | 12        |
-        #    10 +-----------+-----+-----+-----------+ 13
-        #       |           |     |     |           |
-        #       + - - - - - + - - + - - + - - - - - + point
-        #       |           |     |     |           |
-        #    20 +-----------+-----+-----+-----------+ 23
-        #       |        21 |     |     | 22        |
-        #       |           |           |           |
-        #       |           |     |     |           |
-        #       +-----------+-----+-----+-----------+
-        #      30          31           32          33
-
-        kernel_size = self._spline(torch.tensor([0]), mode).shape[1]
-        kernel_width = kernel_size - 1
-        kernel_n_pts = kernel_size**2
-
-        # PART 1: SEPARATE THE INTEGER AND DECIMAL PARTS OF THE FIELD
-        # _________________________________________________________________
-        # crop def_field to keep only measured area
-        # moveaxis because crop expects (h,w) as last dimensions
-        def_field = spytorch.center_crop(
-            def_field.moveaxis(-1, 0), self.meas_shape
-        ).moveaxis(
-            0, -1
-        )  # shape (n_frames, meas_h, meas_w, 2)
-
-        # coordinate of top-left closest corner
-        def_field_floor = def_field.floor().to(torch.int64)
-        # shape (n_frames, meas_h, meas_w, 2)
-        # compute decimal part in x y direction
-        dx, dy = torch.split((def_field - def_field_floor), [1, 1], dim=-1)
-        del def_field
-        dx, dy = dx.squeeze(-1), dy.squeeze(-1)
-        # dx.shape = dy.shape = (n_frames, meas_h, meas_w)
-        # evaluate the spline at the decimal part
-        dxy = torch.einsum(
-            "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
-        ).reshape(n_frames, kernel_n_pts, self.h * self.w)
-        # shape (n_frames, kernel_n_pts, meas_h*meas_w)
-        del dx, dy
-
-        # PART 2: FLATTEN THE INDICES
-        # _________________________________________________________________
-        # we consider an expanded grid (img_h+k)x(img_w+k), where k is
-        # (kernel_width). This allows each part of the (kernel_size^2)-
-        # point grid to contribute to the interpolation.
-        # get coordinate of point _00
-        def_field_00 = def_field_floor - (kernel_size // 2 - 1)
-        del def_field_floor
-        # shift the grid for phantom rows/columns
-        def_field_00 += kernel_width
-        # create a mask indicating if either of the 2 indices is out of bounds
-        # (w,h) because the def_field is in (x,y) coordinates
-        maxs = torch.tensor(
-            [self.img_w + kernel_width, self.img_h + kernel_width], device=self.device
-        )
-        mask = torch.logical_or(
-            (def_field_00 < 0).any(dim=-1), (def_field_00 >= maxs).any(dim=-1)
-        )  # shape (n_frames, meas_h, meas_w)
-        # trash index receives all the out-of-bounds indices
-        trash = (maxs[0] * maxs[1]).to(torch.int64).to(self.device)
-        # if the indices are out of bounds, we put the trash index
-        # otherwise we put the flattened index (y*w + x)
-        flattened_indices = torch.where(
-            mask,
-            trash,
-            def_field_00[..., 0] + def_field_00[..., 1] * (self.img_w + kernel_width),
-        ).reshape(n_frames, self.h * self.w)
-        del def_field_00, mask
-
-        # PART 3: WARP H MATRIX WITH FLATTENED INDICES
-        # _________________________________________________________________
-        # Build 4 submatrices with 4 weights for bilinear interpolation
         if isinstance(self, DynamicLinearSplit):
             meas_pattern = self.P
         else:
             meas_pattern = self.H_static
-        meas_dxy = (
-            meas_pattern.reshape(n_frames, 1, self.h * self.w).to(dxy.dtype) * dxy
+
+        if self.white_acq is not None:
+            meas_pattern *= self.white_acq.ravel().unsqueeze(
+                0
+            )  # for eventual spatial gain
+
+        if not warping:
+            # drawings of the kernels for bilinear and bicubic 'interpolation'
+            #   00    point      01
+            #    +------+--------+
+            #    |      |        |
+            #    |      |        |
+            #    +------+--------+ point
+            #    |      |        |
+            #    +------+--------+
+            #   10               11
+
+            #      00          01   point   02          03
+            #       +-----------+-----+-----+-----------+
+            #       |           |           |           |
+            #       |           |     |     |           |
+            #       |        11 |           | 12        |
+            #    10 +-----------+-----+-----+-----------+ 13
+            #       |           |     |     |           |
+            #       + - - - - - + - - + - - + - - - - - + point
+            #       |           |     |     |           |
+            #    20 +-----------+-----+-----+-----------+ 23
+            #       |        21 |     |     | 22        |
+            #       |           |           |           |
+            #       |           |     |     |           |
+            #       +-----------+-----+-----+-----------+
+            #      30          31           32          33
+
+            kernel_size = self._spline(torch.tensor([0]), mode).shape[1]
+            kernel_width = kernel_size - 1
+            kernel_n_pts = kernel_size**2
+
+            # PART 1: SEPARATE THE INTEGER AND DECIMAL PARTS OF THE FIELD
+            # _________________________________________________________________
+            # crop def_field to keep only measured area
+            # moveaxis because crop expects (h,w) as last dimensions
+            def_field = spytorch.center_crop(
+                def_field.moveaxis(-1, 0), self.meas_shape
+            ).moveaxis(
+                0, -1
+            )  # shape (n_frames, meas_h, meas_w, 2)
+
+            # coordinate of top-left closest corner
+            def_field_floor = def_field.floor().to(torch.int64)
+            # shape (n_frames, meas_h, meas_w, 2)
+            # compute decimal part in x y direction
+            dx, dy = torch.split((def_field - def_field_floor), [1, 1], dim=-1)
+            del def_field
+            dx, dy = dx.squeeze(-1), dy.squeeze(-1)
+            # dx.shape = dy.shape = (n_frames, meas_h, meas_w)
+            # evaluate the spline at the decimal part
+            dxy = torch.einsum(
+                "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
+            ).reshape(n_frames, kernel_n_pts, self.h * self.w)
+            # shape (n_frames, kernel_n_pts, meas_h*meas_w)
+            del dx, dy
+
+            # PART 2: FLATTEN THE INDICES
+            # _________________________________________________________________
+            # we consider an expanded grid (img_h+k)x(img_w+k), where k is
+            # (kernel_width). This allows each part of the (kernel_size^2)-
+            # point grid to contribute to the interpolation.
+            # get coordinate of point _00
+            def_field_00 = def_field_floor - (kernel_size // 2 - 1)
+            del def_field_floor
+            # shift the grid for phantom rows/columns
+            def_field_00 += kernel_width
+            # create a mask indicating if either of the 2 indices is out of bounds
+            # (w,h) because the def_field is in (x,y) coordinates
+            maxs = torch.tensor(
+                [self.img_w + kernel_width, self.img_h + kernel_width],
+                device=self.device,
+            )
+            mask = torch.logical_or(
+                (def_field_00 < 0).any(dim=-1), (def_field_00 >= maxs).any(dim=-1)
+            )  # shape (n_frames, meas_h, meas_w)
+            # trash index receives all the out-of-bounds indices
+            trash = (maxs[0] * maxs[1]).to(torch.int64).to(self.device)
+            # if the indices are out of bounds, we put the trash index
+            # otherwise we put the flattened index (y*w + x)
+            flattened_indices = torch.where(
+                mask,
+                trash,
+                def_field_00[..., 0]
+                + def_field_00[..., 1] * (self.img_w + kernel_width),
+            ).reshape(n_frames, self.h * self.w)
+            del def_field_00, mask
+
+            # PART 3: WARP H MATRIX WITH FLATTENED INDICES
+            # _________________________________________________________________
+            # Build 4 submatrices with 4 weights for bilinear interpolation
+            meas_dxy = (
+                meas_pattern.reshape(n_frames, 1, self.h * self.w).to(dxy.dtype) * dxy
+            )
+            del dxy, meas_pattern
+            # shape (n_frames, kernel_size^2, meas_h*meas_w)
+            # Create a larger H_dyn that will be folded
+            meas_dxy_sorted = torch.zeros(
+                (
+                    n_frames,
+                    kernel_n_pts,
+                    (self.img_h + kernel_width) * (self.img_w + kernel_width)
+                    + 1,  # +1 for trash
+                ),
+                dtype=meas_dxy.dtype,
+                device=self.device,
+            )
+            # add at flattened_indices the values of meas_dxy (~warping)
+            meas_dxy_sorted.scatter_add_(
+                2, flattened_indices.unsqueeze(1).expand_as(meas_dxy), meas_dxy
+            )
+            del flattened_indices, meas_dxy
+            # drop last column (trash)
+            meas_dxy_sorted = meas_dxy_sorted[:, :, :-1]
+            self.meas_dxy_sorted = meas_dxy_sorted
+            # PART 4: FOLD THE MATRIX
+            # _________________________________________________________________
+            # define operator
+            fold = nn.Fold(
+                output_size=(self.img_h, self.img_w),
+                kernel_size=(kernel_size, kernel_size),
+                padding=kernel_width,
+            )
+            H_dyn = fold(meas_dxy_sorted).reshape(n_frames, self.img_h * self.img_w)
+            # store in _param_H_dyn
+            self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
+
+        else:
+            det = self.calc_det(def_field)
+
+            meas_pattern = meas_pattern.reshape(
+                meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1]
+            )
+            meas_pattern_ext = torch.zeros(
+                (meas_pattern.shape[0], 1, self.img_shape[0], self.img_shape[1])
+            )
+            amp_max_h = (self.img_shape[0] - self.meas_shape[0]) // 2
+            amp_max_w = (self.img_shape[1] - self.meas_shape[1]) // 2
+            meas_pattern_ext[
+                :,
+                :,
+                amp_max_h : self.meas_shape[0] + amp_max_h,
+                amp_max_w : self.meas_shape[1] + amp_max_w,
+            ] = meas_pattern
+            meas_pattern_ext = meas_pattern_ext.to(dtype=motion.field.dtype)
+
+            H_dyn = nn.functional.grid_sample(
+                meas_pattern_ext,
+                motion.field,
+                mode=mode,
+                padding_mode="zeros",
+                align_corners=True,
+            )
+            H_dyn = det.reshape((meas_pattern.shape[0], -1)) * H_dyn.reshape(
+                (meas_pattern.shape[0], -1)
+            )
+
+            self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
+
+    def calc_det(self, def_field):
+        # def_field of shape (n_frames, img_shape[0], img_shape[1], 2) in range [0, h-1] x [0, w-1]
+        v1, v2 = def_field[:, :, :, 0], def_field[:, :, :, 1]
+        n_frames = def_field.shape[0]
+
+        # def opérateur gradient (differences finies non normalisées)
+        L = lambda u: torch.stack(
+            [
+                torch.cat(
+                    [torch.diff(u, dim=1), torch.ones(n_frames, 1, u.shape[2])], dim=1
+                ),
+                torch.cat(
+                    [torch.diff(u, dim=2), torch.ones(n_frames, u.shape[1], 1)], dim=2
+                ),
+            ],
+            dim=3,
         )
-        del dxy, meas_pattern
-        # shape (n_frames, kernel_size^2, meas_h*meas_w)
-        # Create a larger H_dyn that will be folded
-        meas_dxy_sorted = torch.zeros(
-            (
-                n_frames,
-                kernel_n_pts,
-                (self.img_h + kernel_width) * (self.img_w + kernel_width)
-                + 1,  # +1 for trash
-            ),
-            dtype=meas_dxy.dtype,
-            device=self.device,
-        )
-        # add at flattened_indices the values of meas_dxy (~warping)
-        meas_dxy_sorted.scatter_add_(
-            2, flattened_indices.unsqueeze(1).expand_as(meas_dxy), meas_dxy
-        )
-        del flattened_indices, meas_dxy
-        # drop last column (trash)
-        meas_dxy_sorted = meas_dxy_sorted[:, :, :-1]
-        self.meas_dxy_sorted = meas_dxy_sorted
-        # PART 4: FOLD THE MATRIX
-        # _________________________________________________________________
-        # define operator
-        fold = nn.Fold(
-            output_size=(self.img_h, self.img_w),
-            kernel_size=(kernel_size, kernel_size),
-            padding=kernel_width,
-        )
-        H_dyn = fold(meas_dxy_sorted).reshape(n_frames, self.img_h * self.img_w)
-        # store in _param_H_dyn
-        self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
+
+        dx_v1 = L(v1)[..., 1]
+        dx_v2 = L(v2)[..., 1]
+        dy_v1 = L(v1)[..., 0]
+        dy_v2 = L(v2)[..., 0]
+
+        det = (
+            dx_v1 * dy_v2 - dx_v2 * dy_v1
+        )  # shape is (n_frames, img_shape[0], img_shape[1])
+
+        return det
 
     def build_H_dyn_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
         """Computes the pseudo-inverse of the dynamic measurement matrix
@@ -1699,6 +1786,9 @@ class DynamicLinearSplit(DynamicLinear):
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
 
+        :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
+        detector inhomogeneities. Must have the same shape as the measurement patterns.
+
     Attributes:
         :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
         of shape :math:`(M,N)` initialized as :math:`H`.
@@ -1767,9 +1857,10 @@ class DynamicLinearSplit(DynamicLinear):
         Ord: torch.tensor = None,
         meas_shape: tuple = None,  # (height, width)
         img_shape: tuple = None,  # (height, width)
+        white_acq: torch.tensor = None,
     ):
         # call constructor of DynamicLinear
-        super().__init__(H, Ord, meas_shape, img_shape)
+        super().__init__(H, Ord, meas_shape, img_shape, white_acq)
         self._set_P(self.H_static)
 
     @property  # override _Base definition
@@ -1919,6 +2010,9 @@ class DynamicHadamSplit(DynamicLinearSplit):
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
 
+        :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
+        detector inhomogeneities. Must have the same shape as the measurement patterns.
+
 
     Attributes:
         :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
@@ -1991,13 +2085,14 @@ class DynamicHadamSplit(DynamicLinearSplit):
         h: int,
         Ord: torch.tensor = None,
         img_shape: tuple = None,  # (height, width)
+        white_acq: torch.tensor = None,
     ):
 
         F = spytorch.walsh2_matrix(h)
         # empty = torch.empty(h**2, h**2)  # just to get the shape
 
         # we pass the whole F matrix to the constructor
-        super().__init__(F, Ord, (h, h), img_shape)
+        super().__init__(F, Ord, (h, h), img_shape, white_acq)
         self._M = M
 
     def _set_Ord(self, Ord: torch.tensor) -> None:
