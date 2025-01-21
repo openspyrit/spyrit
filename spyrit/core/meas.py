@@ -708,7 +708,9 @@ class Linear2(nn.Module):
         if type(meas_dims) is int:
             meas_dims = [meas_dims]
 
-        self.H = nn.Parameter(H, requires_grad=False)
+        # don't store H if we use a HadamSplit
+        if not isinstance(self, HadamSplit2D):
+            self.H = nn.Parameter(H, requires_grad=False)
         self.meas_shape = torch.Size(meas_shape)
         self.meas_dims = torch.Size(meas_dims)
         self.noise_model = noise_model
@@ -730,11 +732,13 @@ class Linear2(nn.Module):
                 + f"in the measurement shape {self.meas_shape}."
             )
 
-        self.matrix_to_inverse = H
-
     @property
     def device(self) -> torch.device:
         return self.H.device
+
+    @property
+    def matrix_to_inverse(self) -> torch.tensor:
+        return self.H
 
     def measure(self, x: torch.tensor) -> torch.tensor:
         r"""Apply the measurement patterns (no noise) to the incoming tensor.
@@ -1117,6 +1121,22 @@ class LinearSplit2(Linear2):
         pos, neg = nn.functional.relu(H), nn.functional.relu(-H)
         A = torch.cat([pos, neg], 1).reshape(2 * self.M, self.N)
         self.A = nn.Parameter(A, requires_grad=False)
+        self._matrix_to_inverse = "H"  # should be "A" or "H"
+
+    @property
+    def matrix_to_inverse(self):
+        if self._matrix_to_inverse == "H":
+            return self.H
+        elif self._matrix_to_inverse == "A":
+            return self.A
+        else:
+            raise AttributeError(
+                f"matrix_to_inverse must be either 'H' or 'A', found {self._matrix_to_inverse}."
+            )
+
+    @matrix_to_inverse.setter
+    def matrix_to_inverse(self, matrix: str):
+        self._matrix_to_inverse = matrix
 
     def measure(self, x: torch.tensor):
         r""" """
@@ -1167,20 +1187,28 @@ class HadamSplit2D(LinearSplit2):
     ):
         meas_dims = (-2, -1)
         meas_shape = (h, h)
+        self.H1d = spytorch.walsh2_torch(h).to(torch.int8)  # 1D version of H
 
-        self.H1 = ...
-
-        H = spytorch.walsh2_matrix(h).to(torch.int8)
-        H, indices = spytorch.sort_by_significance(
-            H, order, "rows", False, get_indices=True
+        # call Linear constructor (avoid setting A)
+        super(LinearSplit2, self).__init__(
+            torch.emp, meas_shape, meas_dims, noise_model
         )
-        super().__init__(H[:M, :], meas_shape, meas_dims, noise_model)
-        self.indices = indices
+        self.order = order
         self.fast = fast
 
     @property
     def H(self):
-        return torch.kron(self.H1, self.H1)
+        return torch.kron(self.H1d, self.H1d)
+
+    @property
+    def A(self):
+        H = self.H
+        pos, neg = nn.functional.relu(H), nn.functional.relu(-H)
+        return torch.cat([pos, neg], 1).reshape(2 * self.M, self.N)
+
+    @property
+    def matrix_to_inverse(self):
+        return self.H
 
     def reindex(
         self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
