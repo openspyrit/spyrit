@@ -1190,13 +1190,18 @@ class HadamSplit2D(LinearSplit):
         self.H1d = spytorch.walsh2_torch(h).to(torch.int8)  # 1D version of H
 
         # call Linear constructor (avoid setting A)
-        super(LinearSplit, self).__init__(torch.emp, meas_shape, meas_dims, noise_model)
+        super(LinearSplit, self).__init__(
+            torch.empty(h**2, h**2), meas_shape, meas_dims, noise_model
+        )
         self.order = order
+        self.indices = torch.argsort(-order.flatten(), stable=True).to(torch.int32)
         self.fast = fast
 
     @property
     def H(self):
-        return torch.kron(self.H1d, self.H1d)
+        H = torch.kron(self.H1d, self.H1d)
+        H = self.reindex(H, "rows", False)
+        return H[: self.M, :]
 
     @property
     def A(self):
@@ -1245,18 +1250,29 @@ class HadamSplit2D(LinearSplit):
         """
         return spytorch.reindex(x, self.indices.to(x.device), axis, inverse_permutation)
 
-    def measure_H(self, x: torch.tensor):
+    def measure(self, x: torch.tensor) -> torch.tensor:
         r""""""
         if self.fast:
-            x = spytorch.fwht_2d(x)
+            onex = torch.sum(x, dim=-1, keepdim=True)
+            Hx = self.measure_H(x)
+            y_pos, y_neg = (onex + Hx) / 2, (onex - Hx) / 2
+            y = torch.cat([y_pos, y_neg], -1).reshape(2 * self.M, self.N)
+            return y
+        else:
+            return super().measure(x)
+
+    def measure_H(self, x: torch.tensor):
+        r""" """
+        if self.fast:
+            x = spytorch.mult_transform_2d(self.H1d, x)
+            x = self.reindex(x, "rows", False)
             x = self.vectorize(x)
-            x = self.reindex(x, "cols", True)[..., : self.M]
-            return x
+            return x[..., : self.M]
         else:
             return super().measure_H(x)
 
-    def fast_inverse(self, y: torch.tensor):
-        r""" """
+    def adjoint_H(self, y: torch.tensor) -> torch.tensor:
+        r""""""
         if self.fast:
             if self.N != self.M:
                 y = torch.cat(
@@ -1265,10 +1281,14 @@ class HadamSplit2D(LinearSplit):
                 )
             y = self.reindex(y, "cols", False)
             y = self.unvectorize(y)
-            y = spytorch.ifwht_2d(y)
+            y = spytorch.mult_transform_2d(self.H1d, y)
+            return y
         else:
-            y = super().adjoint_H(y) / self.N
-        return y
+            return super().adjoint_H(y)
+
+    def fast_inverse(self, y: torch.tensor):
+        r""" """
+        return self.adjoint_H(y) / self.N
 
 
 # =============================================================================
