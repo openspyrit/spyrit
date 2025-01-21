@@ -709,7 +709,7 @@ class Linear(nn.Module):
             meas_dims = [meas_dims]
 
         # don't store H if we use a HadamSplit
-        if not isinstance(self, HadamSplit2D):
+        if not isinstance(self, HadamSplit2d):
             self.H = nn.Parameter(H, requires_grad=False)
         self.meas_shape = torch.Size(meas_shape)
         self.meas_dims = torch.Size(meas_dims)
@@ -1174,7 +1174,7 @@ class LinearSplit(Linear):
 
 
 # =============================================================================
-class HadamSplit2D(LinearSplit):
+class HadamSplit2d(LinearSplit):
     r""" """
 
     def __init__(
