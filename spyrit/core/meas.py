@@ -1331,8 +1331,8 @@ class DynamicLinear(_Base):
     def build_H_dyn(
         self,
         motion: DeformationField,
-        method: str = "no_warping",
         mode: str = "bilinear",
+        warping: bool = False,
     ) -> None:
         """Build the dynamic measurement matrix `H_dyn`.
 
@@ -1345,16 +1345,17 @@ class DynamicLinear(_Base):
         Args:
 
             :attr:`motion` (DeformationField): Deformation field representing the
-            motion of the image. Need to pass the direct deformation field when using method = 'no_warping'
-            and the inverse deformation field when using methd = 'warping'.
-
-            :attr:`method` (str): Choose between 'no_warping' and 'warping' to build the dynamic matrix
-            without and with warping the patterns. It's been shown [MaBP24] that warping the patterns induces
-            a bias in the model. Defaults to 'no_warping'.
+            motion of the image. Need to pass the inverse deformation field when
+            :attr:`warping` is set to False, and the direct deformation field when
+            :attr:`warping` is set to True.
 
             :attr:`mode` (str): Mode according to which the dynamic matrix is constructed. When warping the patterns,
             it refers to the interpolation method. When the patterns are not warped, it refers to the regularity of
             the solution that is sought after. Defaults to 'bilinear'.
+
+            :attr:`warping` (bool): Whether to warp the patterns when building
+            the dynamic measurement matrix. It's been shown [MaBP24] that warping
+            the patterns induces a bias in the model. Defaults to 'False'.
 
         Returns:
 
@@ -1375,7 +1376,7 @@ class DynamicLinear(_Base):
 
         # store the method and mode in attribute
         self._recon_mode = mode
-        self._recon_method = method
+        self._recon_warping = warping
 
         try:
             del self._param_H_dyn
@@ -1406,7 +1407,7 @@ class DynamicLinear(_Base):
                 0
             )  # for eventual spatial gain
 
-        if method == "no_warping":
+        if not warping:
             # drawings of the kernels for bilinear and bicubic 'interpolation'
             #   00    point      01
             #    +------+--------+
@@ -1532,7 +1533,7 @@ class DynamicLinear(_Base):
             # store in _param_H_dyn
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
 
-        elif method == "warping":
+        else:
             det = self.calc_det(def_field)
 
             meas_pattern = meas_pattern.reshape(
@@ -1563,9 +1564,6 @@ class DynamicLinear(_Base):
             )
 
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
-
-        else:
-            raise RuntimeError("The method must either be 'no_warping' or 'warping'.")
 
     def calc_det(self, def_field):
         # def_field of shape (n_frames, img_shape[0], img_shape[1], 2) in range [0, h-1] x [0, w-1]
