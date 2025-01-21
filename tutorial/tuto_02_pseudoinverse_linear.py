@@ -70,7 +70,7 @@ if False:
     # First, we compute a full Hadamard matrix that computes the 2D transform of an
     # image of size :attr:`h` and takes its positive part.
 
-    F = spytorch.walsh2_matrix(h)
+    F = spytorch.walsh_matrix_2d(h)
     F = torch.max(F, torch.zeros_like(F))
 
     ###############################################################################

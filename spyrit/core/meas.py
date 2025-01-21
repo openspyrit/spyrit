@@ -1590,7 +1590,7 @@ class HadamSplit2d(LinearSplit):
 #         Ord: torch.tensor = None,
 #     ):
 
-#         F = spytorch.walsh2_matrix(h)
+#         F = spytorch.walsh_matrix_2d(h)
 
 #         # we pass the whole F matrix to the constructor, but override the
 #         # calls self.H etc to only return the first M rows
@@ -2600,7 +2600,7 @@ class HadamSplit2d(LinearSplit):
 #         img_shape: tuple = None,  # (height, width)
 #     ):
 
-#         F = spytorch.walsh2_matrix(h)
+#         F = spytorch.walsh_matrix_2d(h)
 #         # empty = torch.empty(h**2, h**2)  # just to get the shape
 
 #         # we pass the whole F matrix to the constructor

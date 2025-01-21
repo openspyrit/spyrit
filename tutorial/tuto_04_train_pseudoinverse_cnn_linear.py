@@ -109,7 +109,7 @@ if False:
     und = 4  # undersampling factor
     M = h**2 // und  # number of measurements (undersampling factor = 4)
 
-    F = spytorch.walsh2_matrix(h)
+    F = spytorch.walsh_matrix_2d(h)
     F = torch.max(F, torch.zeros_like(F))
 
     Sampling_map = torch.zeros(h, h)

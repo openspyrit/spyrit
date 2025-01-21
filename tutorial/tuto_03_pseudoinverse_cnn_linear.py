@@ -76,7 +76,7 @@ if False:
 
     import math
 
-    F = spytorch.walsh2_matrix(h)
+    F = spytorch.walsh_matrix_2d(h)
     F = torch.max(F, torch.zeros_like(F))
 
     und = 4  # undersampling factor

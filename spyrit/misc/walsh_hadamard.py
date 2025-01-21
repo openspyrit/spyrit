@@ -692,7 +692,7 @@ def ifwalsh_S(s, ind=True):
 # ------------------------------------------------------------------------------
 # -- 2D transforms -------------------------------------------------------------
 # ------------------------------------------------------------------------------
-def walsh2_matrix(n):
+def walsh_matrix_2d(n):
     """Return Walsh-ordered Hadamard matrix in 2D
 
     Args:
@@ -857,7 +857,7 @@ def walsh2_S_matrix(n):
         >>> S = walsh2_S_matrix(4)
     """
 
-    H = walsh2_matrix(n)
+    H = walsh_matrix_2d(n)
     S = walsh_S_matrix(n**2 - 1, H)
     return S
 

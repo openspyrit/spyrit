@@ -120,7 +120,7 @@ def walsh_matrix(n):
     return recursive_walsh(n)
 
 
-def walsh2_matrix(n):
+def walsh_matrix_2d(n):
     r"""Returns Walsh-ordered Hadamard matrix in 2D.
 
     Args:
