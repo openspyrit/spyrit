@@ -1534,7 +1534,11 @@ class DynamicLinear(_Base):
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
 
         else:
-            det = self.calc_det(def_field)
+            motion_inverse_approx = self.approx_inv_deform(motion)
+
+            scale_factor = (torch.tensor(self.img_shape) - 1).to(self.device)
+            def_field_inv_approx = (motion_inverse_approx.field + 1) / 2 * scale_factor
+            det = self.calc_det(def_field_inv_approx)
 
             meas_pattern = meas_pattern.reshape(
                 meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1]
@@ -1554,7 +1558,7 @@ class DynamicLinear(_Base):
 
             H_dyn = nn.functional.grid_sample(
                 meas_pattern_ext,
-                motion.field,
+                motion_inverse_approx.field,
                 mode=mode,
                 padding_mode="zeros",
                 align_corners=True,
@@ -1593,6 +1597,23 @@ class DynamicLinear(_Base):
         )  # shape is (n_frames, img_shape[0], img_shape[1])
 
         return det
+
+    def approx_inv_deform(self, def_field):
+        _, height, width, _ = def_field.field.shape
+        dtype = def_field.field.dtype
+
+        interval_1, interval_2 = (
+            torch.linspace(0, width - 1, width, dtype=dtype) / width * 2 - 1,
+            torch.linspace(0, height - 1, height, dtype=dtype) / height * 2 - 1,
+        )
+        x1, x2 = torch.meshgrid(interval_1, interval_2, indexing="xy")
+        identity = torch.stack((x1, x2), axis=2).unsqueeze(0)
+
+        elem_def_field = def_field.field - identity
+
+        def_field_inverse = DeformationField(identity - elem_def_field)
+
+        return def_field_inverse
 
     def build_H_dyn_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
         """Computes the pseudo-inverse of the dynamic measurement matrix
