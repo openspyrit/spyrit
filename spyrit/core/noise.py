@@ -42,7 +42,7 @@ class Gaussian(nn.Module):
         >>> print(y)
     """
 
-    def __init__(self, sigma=1.0):
+    def __init__(self, sigma:float=0.1):
         super().__init__()
         self.sigma = sigma
 
@@ -305,7 +305,7 @@ class Poisson(nn.Module):
     The class is constructed from the intensity :math:`\alpha`.
 
     Args:
-        :attr:`alpha` (:class:`float`): The intensity of the measurements.
+        :attr:`alpha` (:class:`float`): The intensity of the measurements. Defaults to 10.
 
     Attributes:
         :attr:`alpha` (:class:`float`): Intensity of the measurements.
@@ -318,7 +318,7 @@ class Poisson(nn.Module):
         tensor([11., 32., 57.])
     """
 
-    def __init__(self, alpha: float):
+    def __init__(self, alpha: float = 10):
         super().__init__()
         self.alpha = alpha
 
@@ -370,14 +370,14 @@ class PoissonApproxGauss(Poisson):
     This is an approximation of :math:`y \sim \mathcal{P}\left(\alpha z\right)`, where :math:`\mathcal{P}` is the Poisson distribution. Computing the Gaussian approximation is faster than the original Poisson model. 
 
     Args:
-        :attr:`alpha` (:class:`float`): The intensity of the measurements.
+        :attr:`alpha` (:class:`float`): The intensity of the measurements. Defaults to 10.
 
     Attributes:
         :attr:`alpha` (:class:`float`): Intensity of the measurements.
 
     """
 
-    def __init__(self, alpha: float):
+    def __init__(self, alpha: float = 10):
         super().__init__(alpha)
 
     def forward(self, z: torch.tensor) -> torch.tensor:
@@ -442,13 +442,13 @@ class PoissonApproxGaussSameNoise(Poisson):
         first dimensions of the input tensor.
 
     Args:
-        :attr:`alpha` (:class:`float`): The intensity of the measurements.
+        :attr:`alpha` (:class:`float`): The intensity of the measurements. Defaults to 10.
 
     Attributes:
         :attr:`alpha` (:class:`float`): Intensity of the measurements.
     """
 
-    def __init__(self, alpha: float):
+    def __init__(self, alpha: float = 10):
         super().__init__(alpha)
 
     def forward(self, z: torch.tensor) -> torch.tensor:
