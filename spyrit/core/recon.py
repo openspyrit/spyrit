@@ -959,7 +959,7 @@ class LearnedPGD(nn.Module):
         self.prep = prep
         self.denoi = denoi
 
-        self.pinv = PseudoInverse()
+        self.pinv = inverse.PseudoInverse()
 
         # LPGD algo
         self.x0 = x0

@@ -416,7 +416,7 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         x: torch.tensor,
         x_0: torch.tensor,
         var: torch.tensor,
-        meas_op: meas.HadamSplit,
+        meas_op: meas.HadamSplit2d,
     ) -> torch.tensor:
         r"""
         Computes the Tikhonov regularization with prior in the measurement domain.
