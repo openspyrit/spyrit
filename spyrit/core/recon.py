@@ -5,14 +5,12 @@ Reconstruction networks.
 import warnings
 from typing import Union, OrderedDict
 
-import math
 import torch
 import torch.nn as nn
 
 import spyrit.core.meas as meas
 import spyrit.core.inverse as inverse
-from spyrit.core.noise import NoNoise
-from spyrit.core.prep import DirectPoisson, SplitPoisson
+import spyrit.core.prep as prep
 
 warnings.filterwarnings("ignore", ".*Sparse CSR tensor support is in beta state.*")
 
@@ -575,8 +573,8 @@ class DCNet(_PrebuiltFullNet):
 
     def __init__(
         self,
-        acqu,
-        prep: Union[DirectPoisson, SplitPoisson],
+        acqu: meas.Linear,
+        prep,
         sigma: torch.tensor,
         denoi=nn.Identity(),
     ):
@@ -959,7 +957,7 @@ class LearnedPGD(nn.Module):
         self.prep = prep
         self.denoi = denoi
 
-        self.pinv = PseudoInverse()
+        self.pinv = inverse.PseudoInverse()
 
         # LPGD algo
         self.x0 = x0

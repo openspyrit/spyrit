@@ -77,9 +77,14 @@ class PseudoInverse(nn.Module):
         self.reg_kwargs = reg_kwargs
 
         if self.store_pinv:
-            self.pinv = spytorch.regularized_pinv(
-                self.meas_op.matrix_to_inverse, regularization, **reg_kwargs
-            )
+            # do we have a fast pseudo-inverse computation available?
+            fast_H_pinv = meas_op.fast_H_pinv()
+            if fast_H_pinv is not None:
+                self.pinv = fast_H_pinv
+            else:
+                self.pinv = spytorch.regularized_pinv(
+                    self.meas_op.matrix_to_inverse, regularization, **reg_kwargs
+                )
 
     def forward(self, y: torch.tensor) -> torch.tensor:
         r"""Computes pseudo-inverse of measurements.
@@ -99,9 +104,6 @@ class PseudoInverse(nn.Module):
             - :attr:`eta` (float): Regularization parameter. It is used only
             when :attr:`regularization` is 'L2' or 'H1'. This parameter determines
             the amount of regularization applied to the pseudo-inverse.
-
-
-
 
         Args:
             :attr:`y`: Batch of measurement vectors.
@@ -140,13 +142,17 @@ class PseudoInverse(nn.Module):
             y = y.squeeze(-1)
 
         else:
-            # make matrix_to_inverse a batched 2D matrix
-            y = spytorch.regularized_lstsq(
-                self.meas_op.matrix_to_inverse,
-                y,
-                self.regularization,
-                **self.reg_kwargs,
-            )
+            fast_pinv = self.meas_op.fast_pinv(y)
+            if fast_pinv is not None:
+                y = fast_pinv
+            else:
+                # make matrix_to_inverse a batched 2D matrix
+                y = spytorch.regularized_lstsq(
+                    self.meas_op.matrix_to_inverse,
+                    y,
+                    self.regularization,
+                    **self.reg_kwargs,
+                )
 
         if self.reshape_output:
             y = self.meas_op.unvectorize(y)
@@ -410,7 +416,7 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         x: torch.tensor,
         x_0: torch.tensor,
         var: torch.tensor,
-        meas_op: meas.HadamSplit,
+        meas_op: meas.HadamSplit2d,
     ) -> torch.tensor:
         r"""
         Computes the Tikhonov regularization with prior in the measurement domain.

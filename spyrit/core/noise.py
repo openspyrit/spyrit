@@ -21,9 +21,45 @@ from typing import Union
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-from spyrit.core.meas import Linear, LinearSplit, HadamSplit  # , LinearRowSplit
+# import torch.nn.functional as F
+
+import spyrit.core.meas as meas
+
+
+# =============================================================================
+class NoNoise(nn.Module):
+    """A placeholder that returns measurements without noise.
+
+    This is the base class for the noise models. All noise models should inherit
+    from this class. It returns any given measurement tensor without any noise.
+
+    Args:
+        None
+
+    Attributes:
+        noise_function (function): The function that adds noise to the incoming
+        measurements. It is `lambda x: x`.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+        def noise_function(x: torch.tensor) -> torch.tensor:
+            return x
+
+        self.noise_function = noise_function
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        """Returns measurements as they are.
+
+        Args:
+            x (torch.tensor): Any measurement tensor.
+
+        Returns:
+            torch.tensor: The same measurement tensor.
+        """
+        return self.noise_function(x)
 
 
 # =============================================================================
@@ -173,7 +209,7 @@ class Gaussian(NoNoise):
 
     def __init__(
         self,
-        meas_op: Union[Linear, LinearSplit, HadamSplit],
+        meas_op: meas.Linear,
         sigma=1.0,
     ):
         super().__init__()
@@ -546,41 +582,6 @@ class Gaussian(NoNoise):
 #         x = F.relu(x)  # remove small negative values
 #         x = x + torch.sqrt(x) * torch.randn((*[1] * (x.ndim - 1), x.shape[-1]))
 #         return x
-
-
-# =============================================================================
-class NoNoise(nn.Module):
-    """A placeholder that returns measurements without noise.
-
-    This is the base class for the noise models. All noise models should inherit
-    from this class. It returns any given measurement tensor without any noise.
-
-    Args:
-        None
-
-    Attributes:
-        noise_function (function): The function that adds noise to the incoming
-        measurements. It is `lambda x: x`.
-    """
-
-    def __init__(self):
-        super().__init__()
-
-        def noise_function(x: torch.tensor) -> torch.tensor:
-            return x
-
-        self.noise_function = noise_function
-
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        """Returns measurements as they are.
-
-        Args:
-            x (torch.tensor): Any measurement tensor.
-
-        Returns:
-            torch.tensor: The same measurement tensor.
-        """
-        return self.noise_function(x)
 
 
 # =============================================================================
