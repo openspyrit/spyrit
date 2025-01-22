@@ -1036,6 +1036,11 @@ def regularized_lstsq(A: torch.tensor, y: torch.tensor, regularization: str, **k
             of regularization applied to the least squares solution. This method
             is only implemented for 2D images.
 
+    .. note:
+        To speed up computation, you may provide the value of the finite
+        difference matrices `D2` as a keyword argument. If not provided, the
+        function will compute them using the keyword-provided image shape.
+
     Args:
         A (torch.tensor): Left-hand side tensor of shape :math:`(m, n)`, where
         * is any number of batch dimensions.
@@ -1049,7 +1054,8 @@ def regularized_lstsq(A: torch.tensor, y: torch.tensor, regularization: str, **k
         **kwargs: Additional keyword arguments to pass to the regularization
         method. Must include the regularization parameter `eta` when using
         the "L2" and "H1" regularization methods. Other keyword arguments
-        include `rcond` and `driver` for the "rcond" method.
+        include `rcond` and `driver` for the "rcond" method, as well as 'D2'
+        (the finite difference matrices) for the "H1" and "L2" methods.
 
     Returns:
         torch.tensor: The regularized least squares solution of shape
@@ -1066,7 +1072,7 @@ def regularized_lstsq(A: torch.tensor, y: torch.tensor, regularization: str, **k
 
     elif regularization == "L2":
         eta = kwargs.get("eta")
-        D2 = eta * torch.eye(A.shape[1], device=A.device)
+        D2 = kwargs.get("D2", eta * torch.eye(A.shape[1], device=A.device))
         lhs = (A.T @ A + eta * D2).expand(*batches, m, n)
         rhs = torch.matmul(y, A)
         x = torch.linalg.solve(lhs, rhs)
@@ -1074,8 +1080,10 @@ def regularized_lstsq(A: torch.tensor, y: torch.tensor, regularization: str, **k
     elif regularization == "H1":
         eta = kwargs.get("eta")
         img_shape = kwargs.get("img_shape")
-        Dx, Dy = neumann_boundary(img_shape)
-        D2 = (Dx.T @ Dx + Dy.T @ Dy).to(A.device)
+        D2 = kwargs.get("D2", None)
+        if D2 is None:
+            Dx, Dy = neumann_boundary(img_shape)
+            D2 = (Dx.T @ Dx + Dy.T @ Dy).to(A.device)
         lhs = (A.T @ A + eta * D2).expand(*batches, m, n)
         rhs = torch.matmul(y, A)
         x = torch.linalg.solve(lhs, rhs)
