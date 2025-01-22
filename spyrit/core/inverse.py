@@ -37,9 +37,8 @@ class PseudoInverse(nn.Module):
         forward method of this class.
 
     Args:
-        :attr:`meas_op`: Measurement operator. Any class that implements a
-        :meth:`matrix_to_inverse` method can be used, e.g.,
-        :class:`~spyrit.core.meas.Linear`.
+        :attr:`meas_op`: Measurement operator. The measurements operator are
+        defined in :mod:`spyrit.core.meas`.
 
         :attr:`store_pinv` (bool): If False, the pseudo-inverse is not computed
         explicitly but instead the least squares solution is computed at each
@@ -83,7 +82,7 @@ class PseudoInverse(nn.Module):
                 self.pinv = fast_H_pinv
             else:
                 self.pinv = spytorch.regularized_pinv(
-                    self.meas_op.matrix_to_inverse, regularization, **reg_kwargs
+                    self.meas_op.get_matrix_to_inverse(), regularization, **reg_kwargs
                 )
 
     def forward(self, y: torch.tensor) -> torch.tensor:
@@ -146,9 +145,9 @@ class PseudoInverse(nn.Module):
             if fast_pinv is not None:
                 y = fast_pinv
             else:
-                # make matrix_to_inverse a batched 2D matrix
+                # make get_matrix_to_inverse() a batched 2D matrix
                 y = spytorch.regularized_lstsq(
-                    self.meas_op.matrix_to_inverse,
+                    self.meas_op.get_matrix_to_inverse(),
                     y,
                     self.regularization,
                     **self.reg_kwargs,
@@ -233,7 +232,11 @@ class Tikhonov(nn.Module):
     """
 
     def __init__(
-        self, meas_op, sigma: torch.tensor, approx=False, reshape_output: bool = False
+        self,
+        meas_op: meas.Linear,
+        sigma: torch.tensor,
+        approx=False,
+        reshape_output: bool = False,
     ):
         super().__init__()
 
@@ -243,7 +246,7 @@ class Tikhonov(nn.Module):
         self.reshape_output = reshape_output
         self.img_shape = meas_op.img_shape
 
-        A = meas_op.matrix_to_inverse  # get H or A
+        A = meas_op.get_matrix_to_inverse()  # get H or A
 
         # *measurement* covariance
         if approx:
