@@ -116,26 +116,31 @@ def bit_reversed_list(n):
     br = get_bit_reversed_list([k for k in range(n)])
     return br
 
-
 def sequency_perm(X, ind=None):
-    r"""Permute the rows of a matrix to get sequency order
+    r"""Permute the last dimension of an array. By defaults gets sequency order from natural order
 
     Args:
-        :attr:`X` (np.ndarray): n-by-m input matrix
+        :attr:`X` (np.ndarray): input of shape (*,n)
 
-        :attr:`ind` : index list of length n
+        :attr:`ind` : list of index length n. Defaults to indices to get sequency order.
 
     Returns:
-        np.ndarray: n-by-m input matrix
+        np.ndarray: output of shape (*,n)
 
+    Example :
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
+        >>> x = x[None, None, :]
+        >>> x = wh.sequency_perm(x)
+        >>> print(x)
+        >>> print(x.shape)
+        tensor([[[ 1,  7,  1,  0, -1, -2,  5,  3]]])
+        torch.Size([1, 1, 8])
     """
     if ind is None:
-        ind = sequency_perm_ind(len(X))
+        ind = sequency_perm_ind(X.shape[-1])
 
-    Y = np.zeros(X.shape)
-    # Y = X[ind,] # returns dtype = object ?!
-    for i in range(X.shape[0]):
-        Y[i,] = X[ind[i],]
+    Y = X[..., ind]
     return Y
 
 
@@ -231,7 +236,7 @@ def walsh_matrix(n):
 def fwht(x, order=True):
     """Fast Walsh-Hadamard transform of x.
 
-    Due to the inhrerent numerical instability of the Hadamard transform
+    Due to the inherent numerical instability of the Hadamard transform
     (lots of additions and subtractions), it is recommended to use float64
     whenever possible.
 
@@ -239,86 +244,86 @@ def fwht(x, order=True):
     `hadamard-transform` at https://github.com/amitport/hadamard-transform.
 
     Args:
-        x (np.ndarray): batched input signal of shape :math:`(... , n)`, where
-        n is a power of two. The transform is applied along the last dimension.
+        x (np.ndarray): batched input signal of shape :math:`(* , n)`, where
+        :math:`n` is a power of two. The transform applies to the last dimension.
 
         order (bool | list, optional): True for sequency (default), False for
         natural. It is also possible to provide a list of permutation indices.
 
     Returns:
-        np.ndarray: transformed signal of shape :math:`(... , n)`
+        np.ndarray: transformed signal of shape :math:`(* , n)`
 
-    Example 1:
-
-        Fast sequency-ordered (i.e., Walsh) Hadamard transform
-
+    Example:
+        Example 1: Fast sequency-ordered (i.e., Walsh) Hadamard transform
+        
         >>> import numpy as np
         >>> import spyrit.misc.walsh_hadamard as wh
         >>> x = np.array([1, 3, 0, -1, 7, 5, 1, -2])
         >>> y = wh.fwht(x)
         >>> print(y)
+        [14 -8 -8 18 -4 -2 -6  4]
 
-    Example 2:
-
-        Fast Hadamard transform
-
+        Example 2: Fast Hadamard transform
+        
         >>> import numpy as np
         >>> import spyrit.misc.walsh_hadamard as wh
         >>> x = np.array([1, 3, 0, -1, 7, 5, 1, -2])
         >>> y = wh.fwht(x, False)
         >>> print(y)
+        [14  4 18 -4 -8 -6 -8 -2]
 
-    Example 3:
-
-        Permuted fast Hadamard transform
-
+        Example 3: Permuted fast Hadamard transform
+        
         >>> import numpy as np
         >>> import spyrit.misc.walsh_hadamard as wh
         >>> x = np.array([1, 3, 0, -1, 7, 5, 1, -2])
         >>> ind = [1, 0, 3, 2, 7, 4, 5, 6]
         >>> y = wh.fwht(x, ind)
         >>> print(y)
+        [ 4. 14. -4. 18. -2. -8. -6. -8.]
 
-    Example 4:
-
-        Comparison with Walsh-Hadamard transform via matrix-vector product
-
+        Example 4: Comparison with Walsh-Hadamard transform via matrix-vector product
+        
         >>> from spyrit.misc.walsh_hadamard import fwht, walsh_matrix
         >>> x = np.array([1, 3, 0, -1, 7, 5, 1, -2])
         >>> y1 = fwht(x)
         >>> H = walsh_matrix(8)
         >>> y2 = H @ x
         >>> print(f"Diff = {np.linalg.norm(y1-y2)}")
+        Diff = 0.0
 
-    Example 5:
-
-        Comparison with the fast Walsh-Hadamard transform from sympy
+        Example 5: Comparison with the fast Walsh-Hadamard transform from sympy
+        
         >>> import spyrit.misc.walsh_hadamard as wh
         >>> import sympy as sp
         >>> x = np.array([1, 3, 0, -1, 7, 5, 1, -2])
         >>> y1 = wh.fwht(x)
         >>> y2 = sp.fwht(x)
-        >>> y3 = wh.sequency_perm(np.array(y2))
+        >>> y3 = wh.sequency_perm(np.array(y2,dtype=x.dtype))
+        >>> print(y1)
         >>> print(f"Diff = {np.linalg.norm(y1-y3)}")
+        [14 -8 -8 18 -4 -2 -6  4]
+        Diff = 0.0
 
-    Example 6:
-
-        Computation times for a signal of length 2**12
-
+        Example 6: Computation times for 100 signals of length 2**12
+        
         >>> import timeit
         >>> import numpy as np
         >>> import spyrit.misc.walsh_hadamard as wh
-        >>> x = np.random.rand(2**12,1)
-        >>> t = timeit.timeit(lambda: wh.fwht(x), number=10)
-        >>> print(f"Fast Walsh transform, no ind (10x): {t:.3f} seconds")
-        >>> ind = wh.sequency_perm_ind(len(x))
-        >>> t = timeit.timeit(lambda: wh.fwht(x,ind), number=10)
-        >>> print(f"Fast Walsh transform, with ind (10x): {t:.3f} seconds")
-        >>> t = timeit.timeit(lambda: wh.fwht(x,False), number=10)
-        >>> print(f"Fast Hadamard transform (10x): {t:.3f} seconds")
+        >>> x = np.random.rand(100, 2**12)
+        >>> t = timeit.timeit(lambda: wh.fwht(x), number=100)
+        >>> print(f"Fast Walsh transform, no ind (100x): {t:.3f} seconds")
+        
+        >>> t = timeit.timeit(lambda: wh.fwht(x,False), number=100)
+        >>> print(f"Fast Hadamard transform (100x): {t:.3f} seconds")
+        
+        >>> ind = wh.sequency_perm_ind(x.shape[-1])
+        >>> t = timeit.timeit(lambda: wh.fwht(x,ind), number=100)
+        >>> print(f"Fast Walsh transform, with ind (100x): {t:.3f} seconds")
+        
         >>> import sympy as sp
-        >>> t = timeit.timeit(lambda: sp.fwht(x), number=10)
-        >>> print(f"Fast Hadamard transform from sympy (10x): {t:.3f} seconds")
+        >>> t = timeit.timeit(lambda: sp.fwht(x[0,:]), number=10)
+        >>> print(f"Fast Hadamard transform from sympy (only 1 signal, 10x): {t:.3f} seconds")
     """
 
     ###########################################################################
@@ -388,19 +393,27 @@ def fwht(x, order=True):
 # -- G-matrix and G-transforms -------------------------------------------------
 # ------------------------------------------------------------------------------
 def walsh_G_matrix(n, H=None):
-    """Return Walsh-ordered Hadamard S-matrix of order n
+    """Return Walsh-ordered Hadamard G-matrix of order n
 
     Args:
         n (int): Matrix order. n+1 should be a power of two.
-        H (np.ndarray, optional):
+        H (np.ndarray, optional): Hadamard matrix of order n+1.
 
     Returns:
-        np.ndarray: n-by-n array
+        np.ndarray: G-matrix of shape `(n,n)`
 
     Examples:
         Walsh-ordered Hadamard G-matrix of order 7
 
-        >>> print(walsh_G_matrix(7))
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> print(wh.walsh_G_matrix(7))
+        [[ 1  1  1 -1 -1 -1 -1]
+         [ 1 -1 -1 -1 -1  1  1]
+         [ 1 -1 -1  1  1 -1 -1]
+         [-1 -1  1  1 -1 -1  1]
+         [-1 -1  1 -1  1  1 -1]
+         [-1  1 -1 -1  1 -1  1]
+         [-1  1 -1  1 -1  1 -1]]
     """
     assert math.log2(n + 1) % 1 == 0, f"{n}+1 must be a power of two"
 
@@ -410,52 +423,63 @@ def walsh_G_matrix(n, H=None):
 
 
 def walsh_G(x, G=None):
-    """Return the Walsh S-transform of x
+    """Return the Walsh G-transform of the signal x
 
     Args:
-        x (np.ndarray): n-by-1 signal. n+1 should be a power of two.
+        :attr:`x` (np.ndarray): signals of shape `(*,n)`, where `n+1` must be a power of two.
 
     Returns:
-        np.ndarray: n-by-1 S-transformed signal
+        np.ndarray: G-transformed signal of shape `(*,n)`.
 
     Examples:
-        Walsh-ordered S-transform of a 15-by-1 signal
+        Example 1: Walsh-ordered G-transform of a signal of length 7
 
-        >>> x = np.random.rand(15,1)
-        >>> s = walsh_S(x)
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = np.array([1, 3, 0, -1, 7, 5, 1])
+        >>> s = wh.walsh_G(x)
+        >>> print(s)
+        array([ -8,  -2,  -2, -16,   8,   6,  -2])
+        
+        Example 2: Walsh-ordered G-transform of two signals of length 7
+        
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = np.array([[1, 3, 0, -1, 7, 5, 1],[2, 1, -1, 0, 4, 5, 3]])
+        >>> s = wh.walsh_G(x)
+        >>> print(s)
+        [[ -8  -2  -2 -16   8   6  -2]
+         [-10   6  -2 -10   2   2  -2]]
     """
     if G is None:
-        G = walsh_G_matrix(len(x))
+        G = walsh_G_matrix(x.shape[-1])
 
-    return G @ x
+    return x @ G    # Matris G is symmetric
 
 
 def fwalsh_G(x, ind=True):
-    r"""Fast Walsh G-transform of x
+    r"""Fast Walsh G-transform of the signal x
 
-    Args:
-        :attr:`x` (np.ndarray): n-by-1 signal. n+1 should be a power of two.
-
-        :attr:`ind` (bool, optional): True for sequency (default)
-
-        :attr:`ind` (list, optional): permutation indices. This is faster than True
-                            when repeating the sequency-ordered transform
-                            multilple times.
+    Args:   
+        :attr:`x` (np.ndarray): signals of shape `(*,n)`, where `n+1` must be a power of two.
+        
+        :attr:`ind` (bool, optional): `True` for sequency (default).
+        
+        :attr:`ind` (list, optional): permutation indices. This is faster than 
+        `True` when repeating the sequency-ordered transform multilple times.
 
     Returns:
-        np.ndarray: n-by-1 S-transformed signal
+        np.ndarray: G-transformed signal of shape `(*,n)`.
 
-    Example 1:
-        Walsh-ordered G-transform of a signal of length 7
+    Example:
+        Example 1: Walsh-ordered G-transform of a signal of length 7
 
         >>> import spyrit.misc.walsh_hadamard as wh
         >>> import numpy as np
         >>> x = np.array([1, 3, 0, -1, 7, 5, 1])
         >>> s = wh.fwalsh_G(x)
         >>> print(s)
+        [ -8  -2  -2 -16   8   6  -2]
 
-    Example 2:
-        Permuted fast G-transform
+        Example 2: Permuted fast G-transform
 
         >>> import numpy as np
         >>> import spyrit.misc.walsh_hadamard as wh
@@ -463,20 +487,19 @@ def fwalsh_G(x, ind=True):
         >>> ind = [1, 0, 3, 2, 7, 4, 5, 6]
         >>> y = wh.fwalsh_G(x, ind)
         >>> print(y)
+        [ 16 -16  -2   8  -8   6  -2]
 
-    Example 3:
-        Repeating the Walsh-ordered G-transform using input indices is faster
+        Example 3: Repeating the Walsh-ordered G-transform using input indices is faster
 
         >>> import timeit
-        >>> x = np.random.rand(2**12-1,1)
-        >>> t = timeit.timeit(lambda: wh.fwalsh_G(x), number=10)
+        >>> x = np.random.rand(100,2**12-1)
+        >>> t = timeit.timeit(lambda: wh.fwalsh_G(x), number=100)
         >>> print(f"No indices as inputs (10x): {t:.3f} seconds")
-        >>> ind = wh.sequency_perm_ind(len(x)+1)
-        >>> t = timeit.timeit(lambda: wh.fwalsh_G(x,ind), number=10)
+        >>> ind = wh.sequency_perm_ind(x.shape[-1]+1)
+        >>> t = timeit.timeit(lambda: wh.fwalsh_G(x,ind), number=100)
         >>> print(f"With indices as inputs (10x): {t:.3f} seconds")
 
-    Example 4:
-        Comparison with G-transform via matrix-vector product
+        Example 4: Comparison with G-transform via matrix-vector product
 
         >>> import numpy as np
         >>> import spyrit.misc.walsh_hadamard as wh
@@ -484,10 +507,12 @@ def fwalsh_G(x, ind=True):
         >>> y1 = wh.fwalsh_G(x)
         >>> y2 = wh.walsh_G(x)
         >>> print(f"Diff = {np.linalg.norm(y1-y2)}")
+        Diff = 0.0
     """
-    x = np.insert(x, 0, 0)
+    zeros_arr = np.zeros((*x.shape[:-1],1), dtype=x.dtype)
+    x = np.concatenate((zeros_arr,x), axis=-1)
     y = fwht(x, ind)
-    y = y[1:]
+    y = y[...,1:]
     return y
 
 
@@ -495,88 +520,148 @@ def fwalsh_G(x, ind=True):
 # -- S-matrix and S-transforms -------------------------------------------------
 # ------------------------------------------------------------------------------
 def walsh_S_matrix(n, H=None):
-    """Return Walsh S-matrix of order n
+    """Return Walsh-ordered Hadamard S-matrix of order n
 
     Args:
         n (int): Matrix order. n+1 should be a power of two.
+        H (np.ndarray, optional): Hadamard matrix of order n+1.
 
     Returns:
-        np.ndarray: n-by-n array
+        np.ndarray: S-matrix of shape `(n,n)`
 
     Examples:
         Walsh-ordered Hadamard S-matrix of order 7
 
-        >>> print(walsh_S_matrix(7))
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> print(wh.walsh_S_matrix(7))
+        [[0. 0. 0. 1. 1. 1. 1.]
+         [0. 1. 1. 1. 1. 0. 0.]
+         [0. 1. 1. 0. 0. 1. 1.]
+         [1. 1. 0. 0. 1. 1. 0.]
+         [1. 1. 0. 1. 0. 0. 1.]
+         [1. 0. 1. 1. 0. 1. 0.]
+         [1. 0. 1. 0. 1. 0. 1.]]
     """
     return (1 - walsh_G_matrix(n, H)) / 2
 
 
 def iwalsh_S_matrix(n, H=None):
-    """Return inverse Walsh S-matrix of order n
+    """Return the inverse Walsh S-matrix of order n.
 
     Args:
-        n (int): Matrix order. n+1 should be a power of two.
+        :attr:`x` (np.ndarray): signals of shape `(*,n)`, where `n+1` must be a power of two.
+        
+        :attr:`H` (np.ndarray, optional): Hadamard matrix of order n+1.
 
     Returns:
-        np.ndarray: n-by-n array
+        np.ndarray: Inverse S-matrix of shape `(n,n)`.
 
-    Example 1:
-        Inverse of the Walsh S-matrix of order 7
+    Examples:
+        Example 1: Inverse Walsh S-matrix of order 7
 
-        >>> print(iwalsh_S_matrix(7))
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> print(wh.iwalsh_S_matrix(7))
+        [[-0.25 -0.25 -0.25  0.25  0.25  0.25  0.25]
+         [-0.25  0.25  0.25  0.25  0.25 -0.25 -0.25]
+         [-0.25  0.25  0.25 -0.25 -0.25  0.25  0.25]
+         [ 0.25  0.25 -0.25 -0.25  0.25  0.25 -0.25]
+         [ 0.25  0.25 -0.25  0.25 -0.25 -0.25  0.25]
+         [ 0.25 -0.25  0.25  0.25 -0.25  0.25 -0.25]
+         [ 0.25 -0.25  0.25 -0.25  0.25 -0.25  0.25]]
 
-    Example 2:
-        Check the inverse of the Walsh S-matrix of order 7
-        >>> print(iwalsh_S_matrix(7) @ walsh_S_matrix(7))
+        Example 2: Check the inverse of the Walsh S-matrix of order 7
+        
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> print(wh.iwalsh_S_matrix(7) @ wh.walsh_S_matrix(7))
+        [[1. 0. 0. 0. 0. 0. 0.]
+         [0. 1. 0. 0. 0. 0. 0.]
+         [0. 0. 1. 0. 0. 0. 0.]
+         [0. 0. 0. 1. 0. 0. 0.]
+         [0. 0. 0. 0. 1. 0. 0.]
+         [0. 0. 0. 0. 0. 1. 0.]
+         [0. 0. 0. 0. 0. 0. 1.]]
     """
     return -2 * walsh_G_matrix(n, H) / (n + 1)
 
 
 def walsh_S(x, S=None):
-    """Return the Walsh S-transform of x
+    """Return the Walsh S-transform of the signal x
 
     Args:
-        x (np.ndarray): n-by-1 signal. n+1 should be a power of two.
+        :attr:`x` (np.ndarray): signals of shape `(*,n)`, where `n+1` must be a power of two.
+        
+        :attr:`H` (np.ndarray, optional): S-matrix of order n.
 
     Returns:
-        np.ndarray: n-by-1 S-transformed signal
+        np.ndarray: S-transformed signal of shape `(*,n)`.
 
     Examples:
-        Walsh-ordered S-transform of a 15-by-1 signal
+        Example 1: Walsh-ordered S-transform of a signal of length 7
 
-        >>> x = np.random.rand(15,1)
-        >>> s = walsh_S(x)
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = np.array([1, 3, 0, -1, 7, 5, 1])
+        >>> s = wh.walsh_S(x)
+        >>> print(s)
+        [12.  9.  9. 16.  4.  5.  9.]
+        
+        Example 2: Walsh-ordered S-transform of two signals of length 7
+        
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> x = np.array([[1, 3, 0, -1, 7, 5, 1],[2, 1, -1, 0, 4, 5, 3]])
+        >>> s = wh.walsh_S(x)
+        >>> print(s)
+        [[12.  9.  9. 16.  4.  5.  9.]
+         [12.  4.  8. 12.  6.  6.  8.]]
     """
     if S is None:
-        S = walsh_S_matrix(len(x))
+        S = walsh_S_matrix(x.shape[-1])
 
-    return S @ x
+    return x @ S        # Matris S is symmetric
 
 
 def iwalsh_S(s, T=None):
-    """Return the inverse Walsh S-transform of s
+    """Return the inverse Walsh S-transform of the signal x
 
     Args:
-        x (np.ndarray): n-by-1 signal. n+1 should be a power of two.
+        :attr:`x` (np.ndarray): signals of shape `(*,n)`, where `n+1` must be a power of two.
+        
+        :attr:`H` (np.ndarray, optional): Inverse S-matrix of order n.
 
     Returns:
-        np.ndarray: n-by-1 inverse transformed signal
+        np.ndarray: S-transformed signal of shape `(*,n)`.
 
     Examples:
-        Inverse S-transform of a 4095-by-1 signal
+        Example 1: Inverse Walsh-ordered S-transform of a signal of length 7
+
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> s = np.array([12, 9, 9, 16, 4, 5, 9])
+        >>> x = wh.iwalsh_S(s)
+        >>> print(x)
+        [ 1.  3.  0. -1.  7.  5.  1.]
+        
+        Example 2: Walsh-ordered S-transform of two signals of length 7
+        
+        >>> s = np.array([[12, 9, 9, 16, 4, 5, 9],[12, 4, 8, 12, 6, 6, 8]])
+        >>> x = wh.iwalsh_S(s)
+        >>> print(x)
+        [[ 1.  3.  0. -1.  7.  5.  1.]
+         [ 2.  1. -1.  0.  4.  5.  3.]]
+        
+        Example 3: Foroward and inverse S-transform of two signals of length 4095
 
         >>> import spyrit.misc.walsh_hadamard as wh
         >>> import numpy as np
-        >>> x = np.random.rand(4095,1)
+        >>> x = np.random.rand(2,4095)
         >>> s = wh.walsh_S(x)
         >>> y = wh.iwalsh_S(s)
         >>> err = np.linalg.norm(1-y/x)
         >>> print(f'Error: {err}')
+        Error: 7.035531418111691e-11
     """
     if T is None:
-        T = iwalsh_S_matrix(len(s))
+        T = iwalsh_S_matrix(s.shape[-1])
 
-    return T @ s
+    return s @ T    # T is symmetric 
 
 
 def fwalsh_S(x, ind=True):
