@@ -1597,13 +1597,16 @@ class DynamicLinear(_Base):
         )  # shape is (n_frames, img_shape[0], img_shape[1])
 
         return det
-    
+
     def approx_inv_deform(self, def_field):
         _, height, width, _ = def_field.field.shape
         dtype = def_field.field.dtype
 
-        interval_1, interval_2 = torch.linspace(0, width - 1, width, dtype=dtype) / width * 2 - 1, torch.linspace(0, height - 1, height, dtype=dtype) / height * 2 - 1
-        x1, x2 = torch.meshgrid(interval_1, interval_2, indexing='xy')
+        interval_1, interval_2 = (
+            torch.linspace(0, width - 1, width, dtype=dtype) / width * 2 - 1,
+            torch.linspace(0, height - 1, height, dtype=dtype) / height * 2 - 1,
+        )
+        x1, x2 = torch.meshgrid(interval_1, interval_2, indexing="xy")
         identity = torch.stack((x1, x2), axis=2).unsqueeze(0)
 
         elem_def_field = def_field.field - identity
@@ -1611,7 +1614,6 @@ class DynamicLinear(_Base):
         def_field_inverse = DeformationField(identity - elem_def_field)
 
         return def_field_inverse
-
 
     def build_H_dyn_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
         """Computes the pseudo-inverse of the dynamic measurement matrix
