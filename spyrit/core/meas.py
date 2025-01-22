@@ -907,18 +907,18 @@ class FreeformLinear(Linear):
 
     def __init__(
         self,
-        matrix: torch.tensor,
-        index_mask: torch.tensor = None,  # must have shape (len(meas_shape), matrix.shape[-1])
-        bool_mask: torch.tensor = None,
+        H: torch.tensor,
         meas_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_dims: Union[int, torch.Size, Iterable[int]] = None,
+        index_mask: torch.tensor = None,  # must have shape (len(meas_shape), H.shape[-1])
+        bool_mask: torch.tensor = None,
         noise_model: bool = None,
         *,
         dtype: torch.dtype = torch.float32,
         device: torch.device = torch.device("cpu"),
     ):
         super().__init__(
-            matrix, meas_shape, meas_dims, noise_model, dtype=dtype, device=device
+            H, meas_shape, meas_dims, noise_model, dtype=dtype, device=device
         )
 
         # select mask type
@@ -950,14 +950,9 @@ class FreeformLinear(Linear):
                     + f"match the number of measured items ({self.N})."
                 )
         # check in the case of bool mask
-        elif self.mask_type == "bool":
+        else:
             if bool_mask.shape != meas_shape:
                 raise ValueError("bool_mask must have the same shape as meas_shape.")
-        # no other case
-        else:
-            raise ValueError(
-                f"mask_type must be either 'index' or 'bool', found {self.mask_type}."
-            )
 
     def apply_mask(self, x: torch.tensor) -> torch.tensor:
         r"""Appplies the saved mask to the input tensor, where the masked
@@ -981,8 +976,8 @@ class FreeformLinear(Linear):
             >>> images = torch.rand(17, 3, 40, 40)  # b, c, h, w
             >>> # create a (2,20) mask
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
-            >>> matrix = torch.randn(13, 20)
-            >>> meas_op = FreeformLinear(matrix, mask, meas_shape=(40,40), dim=(-1,-2))
+            >>> H = torch.randn(13, 20)
+            >>> meas_op = FreeformLinear(H, mask, meas_shape=(40,40), dim=(-1,-2))
             >>> y = meas_op.apply_mask(images)
             >>> print(y.shape)
             torch.Size([17, 3, 20])
@@ -1039,7 +1034,7 @@ class FreeformLinear(Linear):
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Measure the upper half of 32x32 images
-            >>> matrix = torch.randn(10, 16*32)
+            >>> H = torch.randn(10, 16*32)
             >>>
 
         """
@@ -1123,8 +1118,8 @@ class FreeformLinear(Linear):
             >>> images = torch.rand(17, 3, 40, 40)  # b, c, h, w
             >>> # create a (2,20) mask
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
-            >>> matrix = torch.randn(13, 20)
-            >>> meas_op = FreeformLinear(matrix, mask, meas_shape=(40,40), dim=(-1,-2))
+            >>> H = torch.randn(13, 20)
+            >>> meas_op = FreeformLinear(H, mask, meas_shape=(40,40), dim=(-1,-2))
             >>> y = meas_op.mask_vectorize(images)
             >>> print(y.shape)
             torch.Size([17, 3, 20])
@@ -1816,524 +1811,521 @@ class HadamSplit2d(LinearSplit):
 #         self._param_Ord.data = Ord.to(self.device)
 
 
-# # =============================================================================
-# class DynamicLinear(_Base):
-#     # =========================================================================
-#     r"""
-#     Simulates the measurement of a moving object :math:`y = H \cdot x(t)`.
-
-#     Computes linear measurements :math:`y` from incoming images: :math:`y = Hx`,
-#     where :math:`H` is a linear operator (matrix) and :math:`x` is a
-#     batch of vectorized images representing a motion picture.
-
-#     The class is constructed from a matrix :math:`H` of shape :math:`(M, N)`,
-#     where :math:`N` represents the number of pixels in the image and
-#     :math:`M` the number of measurements and the number of frames in the
-#     animated object.
-
-#     .. warning::
-#         For each call, there must be **exactly** as many images in :math:`x` as
-#         there are measurements in the linear operator used to initialize the class.
-
-#     Args:
-#         :attr:`H` (torch.tensor): measurement matrix (linear operator) with
-#         shape :math:`(M, N)`.
-
-#         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
-#         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
-#         will correspond to the highest value in :math:`Ord`. Must contain
-#         :math:`M` values. If some values repeat, the order is kept. Defaults to
-#         None.
-
-#         :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
-#         Must be a tuple of two integers representing the height and width of the
-#         patterns. If not specified, the shape is suppposed to be a square image.
-#         If not, an error is raised. Defaults to None.
-
-#         :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
-#         of two integers representing the height and width of the image. If not
-#         specified, the shape is taken as equal to `meas_shape`. Setting this
-#         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
-
-
-#     Attributes:
-#         :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
-#         of shape :math:`(M,N)` initialized as :math:`H`.  Only real values are supported.
-
-#         :attr:`M` (int): Number of measurements performed by the linear operator.
-
-#         :attr:`N` (int): Number of pixels in the image.
-
-#         :attr:`h` (int): Measurement pattern height.
-
-#         :attr:`w` (int): Measurement pattern width.
-
-#         :attr:`meas_shape` (tuple): Shape of the measurement patterns
-#         (height, width). Is equal to `(self.h, self.w)`.
-
-#         :attr:`img_h` (int): Image height.
-
-#         :attr:`img_w` (int): Image width.
-
-#         :attr:`img_shape` (tuple): Shape of the image (height, width). Is equal
-#         to `(self.img_h, self.img_w)`.
-
-#         :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H`.
-#         Must be set using the method :meth:`build_H_dyn` before being accessed.
-
-#         :attr:`H` (torch.tensor): Alias for :attr:`H_dyn`.
-
-#         :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
-#         matrix :math:`H_{dyn}^\dagger`. Must be set using the method
-#         :meth:`build_H_dyn_pinv` before being accessed.
-
-#         :attr:`H_pinv` (torch.tensor): Alias for :attr:`H_dyn_pinv`.
-
-#     .. warning::
-#         The attributes :attr:`H` and :attr:`H_pinv` are used as aliases for
-#         :attr:`H_dyn` and :attr:`H_dyn_pinv`. If you want to access the static
-#         versions of the attributes, be sure to include the suffix `_static`.
-
-#     Example:
-#         >>> H_static = torch.rand([400, 1600])
-#         >>> meas_op = DynamicLinear(H_static)
-#         >>> print(meas_op)
-#         DynamicLinear(
-#           (M): 400
-#           (N): 1600
-#           (H.shape): torch.Size([400, 1600])
-#           (meas_shape): (40, 40)
-#           (H_dyn): False
-#           (img_shape): (40, 40)
-#           (H_pinv): False
-#         )
-
-#     Reference:
-#     .. _MICCAI24:
-#         [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
-#         Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
-#         without Warping the Patterns. 2024. hal-04533981
-#     """
-
-#     # Class variable
-#     _measurement_mode = "static"
-
-#     def __init__(
-#         self,
-#         H: torch.tensor,
-#         Ord: torch.tensor = None,
-#         meas_shape: tuple = None,  # (height, width)
-#         img_shape: tuple = None,  # (height, width)
-#     ):
-#         super().__init__(H, Ord, meas_shape)
-
-#         if img_shape is not None:
-#             self._img_shape = img_shape
-#             if img_shape[0] < self.meas_shape[0] or img_shape[1] < self.meas_shape[1]:
-#                 raise ValueError(
-#                     "The image shape must be at least as large as the measurement "
-#                     + f"shape. Got image shape {img_shape} and measurement shape "
-#                     + f"{self.meas_shape}."
-#                 )
-#         # else, it is done in the _Base class __init__ (set to meas_shape)
-
-#     @property
-#     def H(self) -> torch.tensor:
-#         """Dynamic measurement matrix H. Equal to self.H_dyn."""
-#         return self.H_dyn
-
-#     @property
-#     def H_dyn(self) -> torch.tensor:
-#         """Dynamic measurement matrix H."""
-#         try:
-#             return self._param_H_dyn.data
-#         except AttributeError as e:
-#             raise AttributeError(
-#                 "The dynamic measurement matrix H has not been set yet. "
-#                 + "Please call build_H_dyn() before accessing the attribute "
-#                 + "H_dyn (or H)."
-#             ) from e
-
-#     @H_dyn.setter
-#     def H_dyn(self, value: torch.tensor) -> None:
-#         self._param_H_dyn = nn.Parameter(value.to(torch.float64), requires_grad=False)
-#         try:
-#             del H_pinv
-#         except UnboundLocalError as e:
-#             if "H_pinv" in str(e):
-#                 pass
-
-#     @property
-#     def recon_mode(self) -> str:
-#         """Interpolation mode used for reconstruction."""
-#         return self._recon_mode
-
-#     @property
-#     def H_pinv(self) -> torch.tensor:
-#         """Dynamic pseudo-inverse H_pinv. Equal to self.H_dyn_pinv."""
-#         return self.H_dyn_pinv
-
-#     @H_pinv.deleter
-#     def H_pinv(self) -> None:
-#         del self.H_dyn_pinv
-
-#     @property
-#     def H_dyn_pinv(self) -> torch.tensor:
-#         """Dynamic pseudo-inverse H_pinv."""
-#         try:
-#             return self._param_H_dyn_pinv.data
-#         except AttributeError as e:
-#             raise AttributeError(
-#                 "The dynamic pseudo-inverse H_pinv has not been set yet. "
-#                 + "Please call build_H_dyn_pinv() before accessing the attribute "
-#                 + "H_dyn_pinv (or H_pinv)."
-#             ) from e
-
-#     @H_dyn_pinv.setter
-#     def H_dyn_pinv(self, value: torch.tensor) -> None:
-#         self._param_H_dyn_pinv = nn.Parameter(
-#             value.to(torch.float64), requires_grad=False
-#         )
-
-#     @H_dyn_pinv.deleter
-#     def H_dyn_pinv(self) -> None:
-#         try:
-#             del self._param_H_dyn_pinv
-#         except UnboundLocalError:
-#             pass
-
-#     # @mprof.profile
-#     def build_H_dyn(self, motion: DeformationField, mode: str = "bilinear") -> None:
-#         """Build the dynamic measurement matrix `H_dyn`.
-
-#         Compute and store the dynamic measurement matrix `H_dyn` from the static
-#         measurement matrix `H_static` and the deformation field `motion`. The
-#         output is stored in the attribute `self.H_dyn`.
-
-#         This is done using the physical version explained in [MaBP24]_.
-
-#         Args:
-
-#             :attr:`motion` (DeformationField): Deformation field representing the
-#             motion of the image.
-
-#             :attr:`mode` (str): Interpolation mode. Can only be 'bilinear' for
-#             now. Bicubic interpolation will be available in a future release.
-#             Defaults to 'bilinear'.
-
-#         Returns:
-
-#             None. The dynamic measurement matrix is stored in the attribute
-#             `self.H_dyn`.
-
-#         References:
-#         .. _MaBP24:
-#             [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
-#             Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
-#             without Warping the Patterns. 2024. hal-04533981
-#         """
-
-#         if self.device != motion.device:
-#             raise RuntimeError(
-#                 "The device of the motion and the measurement operator must be the same."
-#             )
-
-#         # store the mode in attribute
-#         self._recon_mode = mode
-
-#         try:
-#             del self._param_H_dyn
-#             del self._param_H_dyn_pinv
-#             warnings.warn(
-#                 "The dynamic measurement matrix pseudo-inverse H_pinv has "
-#                 + "been deleted. Please call self.build_H_dyn_pinv() to "
-#                 + "recompute it.",
-#                 UserWarning,
-#             )
-#         except AttributeError:
-#             pass
-
-#         n_frames = motion.n_frames
-
-#         # get deformation field from motion
-#         # scale from [-1;1] x [-1;1] to [0;width-1] x [0;height-1]
-#         scale_factor = (torch.tensor(self.img_shape) - 1).to(self.device)
-#         def_field = (motion.field + 1) / 2 * scale_factor
-
-#         # drawings of the kernels for bilinear and bicubic 'interpolation'
-#         #   00    point      01
-#         #    +------+--------+
-#         #    |      |        |
-#         #    |      |        |
-#         #    +------+--------+ point
-#         #    |      |        |
-#         #    +------+--------+
-#         #   10               11
-
-#         #      00          01   point   02          03
-#         #       +-----------+-----+-----+-----------+
-#         #       |           |           |           |
-#         #       |           |     |     |           |
-#         #       |        11 |           | 12        |
-#         #    10 +-----------+-----+-----+-----------+ 13
-#         #       |           |     |     |           |
-#         #       + - - - - - + - - + - - + - - - - - + point
-#         #       |           |     |     |           |
-#         #    20 +-----------+-----+-----+-----------+ 23
-#         #       |        21 |     |     | 22        |
-#         #       |           |           |           |
-#         #       |           |     |     |           |
-#         #       +-----------+-----+-----+-----------+
-#         #      30          31           32          33
-
-#         kernel_size = self._spline(torch.tensor([0]), mode).shape[1]
-#         kernel_width = kernel_size - 1
-#         kernel_n_pts = kernel_size**2
-
-#         # PART 1: SEPARATE THE INTEGER AND DECIMAL PARTS OF THE FIELD
-#         # _________________________________________________________________
-#         # crop def_field to keep only measured area
-#         # moveaxis because crop expects (h,w) as last dimensions
-#         def_field = spytorch.center_crop(
-#             def_field.moveaxis(-1, 0), self.meas_shape
-#         ).moveaxis(
-#             0, -1
-#         )  # shape (n_frames, meas_h, meas_w, 2)
-
-#         # coordinate of top-left closest corner
-#         def_field_floor = def_field.floor().to(torch.int64)
-#         # shape (n_frames, meas_h, meas_w, 2)
-#         # compute decimal part in x y direction
-#         dx, dy = torch.split((def_field - def_field_floor), [1, 1], dim=-1)
-#         del def_field
-#         dx, dy = dx.squeeze(-1), dy.squeeze(-1)
-#         # dx.shape = dy.shape = (n_frames, meas_h, meas_w)
-#         # evaluate the spline at the decimal part
-#         dxy = torch.einsum(
-#             "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
-#         ).reshape(n_frames, kernel_n_pts, self.h * self.w)
-#         # shape (n_frames, kernel_n_pts, meas_h*meas_w)
-#         del dx, dy
-
-#         # PART 2: FLATTEN THE INDICES
-#         # _________________________________________________________________
-#         # we consider an expanded grid (img_h+k)x(img_w+k), where k is
-#         # (kernel_width). This allows each part of the (kernel_size^2)-
-#         # point grid to contribute to the interpolation.
-#         # get coordinate of point _00
-#         def_field_00 = def_field_floor - (kernel_size // 2 - 1)
-#         del def_field_floor
-#         # shift the grid for phantom rows/columns
-#         def_field_00 += kernel_width
-#         # create a mask indicating if either of the 2 indices is out of bounds
-#         # (w,h) because the def_field is in (x,y) coordinates
-#         maxs = torch.tensor(
-#             [self.img_w + kernel_width, self.img_h + kernel_width], device=self.device
-#         )
-#         mask = torch.logical_or(
-#             (def_field_00 < 0).any(dim=-1), (def_field_00 >= maxs).any(dim=-1)
-#         )  # shape (n_frames, meas_h, meas_w)
-#         # trash index receives all the out-of-bounds indices
-#         trash = (maxs[0] * maxs[1]).to(torch.int64).to(self.device)
-#         # if the indices are out of bounds, we put the trash index
-#         # otherwise we put the flattened index (y*w + x)
-#         flattened_indices = torch.where(
-#             mask,
-#             trash,
-#             def_field_00[..., 0] + def_field_00[..., 1] * (self.img_w + kernel_width),
-#         ).reshape(n_frames, self.h * self.w)
-#         del def_field_00, mask
-
-#         # PART 3: WARP H MATRIX WITH FLATTENED INDICES
-#         # _________________________________________________________________
-#         # Build 4 submatrices with 4 weights for bilinear interpolation
-#         if isinstance(self, DynamicLinearSplit):
-#             meas_pattern = self.P
-#         else:
-#             meas_pattern = self.H_static
-#         meas_dxy = (
-#             meas_pattern.reshape(n_frames, 1, self.h * self.w).to(dxy.dtype) * dxy
-#         )
-#         del dxy, meas_pattern
-#         # shape (n_frames, kernel_size^2, meas_h*meas_w)
-#         # Create a larger H_dyn that will be folded
-#         meas_dxy_sorted = torch.zeros(
-#             (
-#                 n_frames,
-#                 kernel_n_pts,
-#                 (self.img_h + kernel_width) * (self.img_w + kernel_width)
-#                 + 1,  # +1 for trash
-#             ),
-#             dtype=meas_dxy.dtype,
-#             device=self.device,
-#         )
-#         # add at flattened_indices the values of meas_dxy (~warping)
-#         meas_dxy_sorted.scatter_add_(
-#             2, flattened_indices.unsqueeze(1).expand_as(meas_dxy), meas_dxy
-#         )
-#         del flattened_indices, meas_dxy
-#         # drop last column (trash)
-#         meas_dxy_sorted = meas_dxy_sorted[:, :, :-1]
-#         self.meas_dxy_sorted = meas_dxy_sorted
-#         # PART 4: FOLD THE MATRIX
-#         # _________________________________________________________________
-#         # define operator
-#         fold = nn.Fold(
-#             output_size=(self.img_h, self.img_w),
-#             kernel_size=(kernel_size, kernel_size),
-#             padding=kernel_width,
-#         )
-#         H_dyn = fold(meas_dxy_sorted).reshape(n_frames, self.img_h * self.img_w)
-#         # store in _param_H_dyn
-#         self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
-
-#     def build_H_dyn_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
-#         """Computes the pseudo-inverse of the dynamic measurement matrix
-#         `H_dyn` and stores it in the attribute `H_dyn_pinv`.
-
-#         This method supposes that the dynamic measurement matrix `H_dyn` has
-#         already been set using the method `build_H_dyn()`. An error will be
-#         raised if `H_dyn` has not been set yet.
-
-#         Args:
-#             :attr:`reg` (str): Regularization method. Can be either 'rcond',
-#             'L2' or 'H1'. Defaults to 'rcond'.
-
-#             :attr:`eta` (float): Regularization parameter. Defaults to 1e-6.
-
-#         Raises:
-#             AttributeError: If the dynamic measurement matrix `H_dyn` has not
-#             been set yet.
-#         """
-#         # later do with regularization parameter
-#         try:
-#             H_dyn = self.H_dyn.to(torch.float64)
-#         except AttributeError as e:
-#             raise AttributeError(
-#                 "The dynamic measurement matrix H has not been set yet. "
-#                 + "Please call build_H_dyn() before computing the pseudo-inverse."
-#             ) from e
-#         self.H_dyn_pinv = self._build_pinv(H_dyn, reg, eta)
-
-#     def forward(self, x: torch.tensor) -> torch.tensor:
-#         r"""
-#         Simulates the measurement of a motion picture :math:`y = H \cdot x(t)`.
-
-#         The output :math:`y` is computed as :math:`y = Hx`, where :math:`H` is
-#         the measurement matrix and :math:`x` is a batch of images.
-
-#         Args:
-#             :math:`x`: Batch of images of shape :math:`(*, t, c, h, w)`. `*`
-#             denotes any dimension (e.g. the batch size), `t` the number of frames,
-#             `c` the number of channels, and `h`, `w` the height and width of the
-#             images.
-
-#         Output:
-#             :math:`y`: Linear measurements of the input images. It has shape
-#             :math:`(*, c, M)` where * denotes any number of dimensions, `c` the
-#             number of channels, and `M` the number of measurements.
-
-#         .. warning::
-#             There must be **exactly** as many images as there are measurements
-#             in the linear operator used to initialize the class, i.e.
-#             `t = M`.
-
-#         Shape:
-#             :math:`x`: :math:`(*, t, c, h, w)`, where * denotes the batch size,
-#             `t` the number of frames, `c` the number of channels, and `h`, `w`
-#             the height and width of the images.
-
-#             :math:`output`: :math:`(*, c, M)`, where * denotes the batch size,
-#             `c` the number of channels, and `M` the number of measurements.
-
-#         Example:
-#             >>> x = torch.rand([10, 400, 3, 40, 40])
-#             >>> H = torch.rand([400, 1600])
-#             >>> meas_op = DynamicLinear(H)
-#             >>> y = meas_op(x)
-#             >>> print(y.shape)
-#             torch.Size([10, 3, 400])
-#         """
-#         return self._dynamic_forward_with_op(x, self.H_static)
-
-#     def forward_H_dyn(self, x: torch.tensor) -> torch.tensor:
-#         """Simulates the acquisition of measurements using the dynamic measurement matrix H_dyn.
-
-#         This supposes the dynamic measurement matrix H_dyn has been set using the
-#         method build_H_dyn(). An error will be raised if H_dyn has not been set yet.
-
-#         Args:
-#             x (torch.tensor): still image of shape (*, h, w). * denotes any dimension.
-#             h and w are the height and width of the image. If h and w are larger
-#             than the measurement pattern, the image is center-cropped to the measurement
-#             pattern size.
-
-#         Returns:
-#             torch.tensor: Measurement of the input image. It has shape (*, M).
-#         """
-#         x = spytorch.center_crop(x, self.meas_shape)
-#         return self._static_forward_with_op(x, self.H_dyn)
-
-#     def _set_Ord(self, Ord: torch.tensor) -> None:
-#         """Set the order matrix used to sort the rows of H."""
-#         super()._set_Ord(Ord)
-#         # delete self.H (self._param_H_dyn)
-#         try:
-#             del self._param_H_dyn
-#             warnings.warn(
-#                 "The dynamic measurement matrix H has been deleted. "
-#                 + "Please call build_H_dyn() to recompute it."
-#             )
-#         except AttributeError:
-#             pass
-#         # delete self.H_pinv (self._param_H_dyn_pinv)
-#         try:
-#             del self._param_H_dyn_pinv
-#             warnings.warn(
-#                 "The dynamic pseudo-inverse H_pinv has been deleted. "
-#                 + "Please call build_H_dyn_pinv() to recompute it."
-#             )
-#         except AttributeError:
-#             pass
-
-#     def _spline(self, dx, mode):
-#         """
-#         Returns a 2D row-like tensor containing the values of dx evaluated at
-#         each B-spline (2 values for bilinear, 4 for bicubic).
-#         dx must be between 0 and 1.
-
-#         Shapes
-#             dx: (n_frames, self.h, self.w)
-#             out: (n_frames, {2,4}, self.h, self.w)
-#         """
-#         if mode == "bilinear":
-#             ans = torch.stack((1 - dx, dx), dim=1)
-#         elif mode == "bicubic":
-#             ans = torch.stack(
-#                 (
-#                     (1 - dx) ** 3 / 6,
-#                     2 / 3 - dx**2 * (2 - dx) / 2,
-#                     2 / 3 - (1 - dx) ** 2 * (1 + dx) / 2,
-#                     dx**3 / 6,
-#                 ),
-#                 dim=1,
-#             )
-#         elif mode == "schaum":
-#             ans = torch.stack(
-#                 (
-#                     dx / 6 * (dx - 1) * (2 - dx),
-#                     (1 - dx / 2) * (1 - dx**2),
-#                     (1 + (dx - 1) / 2) * (1 - (dx - 1) ** 2),
-#                     1 / 6 * (dx + 1) * dx * (dx - 1),
-#                 ),
-#                 dim=1,
-#             )
-#         else:
-#             raise NotImplementedError(
-#                 f"The mode {mode} is invalid, please choose bilinear, "
-#                 + "bicubic or schaum."
-#             )
-#         return ans.to(self.device)
+# =============================================================================
+class DynamicLinear(Linear):
+    # =========================================================================
+    r"""
+    Simulates the measurement of a moving object :math:`y = H \cdot x(t)`.
+
+    Computes linear measurements :math:`y` from incoming images: :math:`y = Hx`,
+    where :math:`H` is a linear operator (matrix) and :math:`x` is a
+    batch of vectorized images representing a motion picture.
+
+    The class is constructed from a matrix :math:`H` of shape :math:`(M, N)`,
+    where :math:`N` represents the number of pixels in the image and
+    :math:`M` the number of measurements and the number of frames in the
+    animated object.
+
+    .. warning::
+        For each call, there must be **exactly** as many images in :math:`x` as
+        there are measurements in the linear operator used to initialize the class.
+
+    Args:
+        :attr:`H` (torch.tensor): measurement matrix (linear operator) with
+        shape :math:`(M, N)`.
+
+        :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
+        rows of the measurement matrix :math:`H`. The first new row of :math:`H`
+        will correspond to the highest value in :math:`Ord`. Must contain
+        :math:`M` values. If some values repeat, the order is kept. Defaults to
+        None.
+
+        :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
+        Must be a tuple of two integers representing the height and width of the
+        patterns. If not specified, the shape is suppposed to be a square image.
+        If not, an error is raised. Defaults to None.
+
+        :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
+        of two integers representing the height and width of the image. If not
+        specified, the shape is taken as equal to `meas_shape`. Setting this
+        value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
+
+
+    Attributes:
+        :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
+        of shape :math:`(M,N)` initialized as :math:`H`.  Only real values are supported.
+
+        :attr:`M` (int): Number of measurements performed by the linear operator.
+
+        :attr:`N` (int): Number of pixels in the image.
+
+        :attr:`h` (int): Measurement pattern height.
+
+        :attr:`w` (int): Measurement pattern width.
+
+        :attr:`meas_shape` (tuple): Shape of the measurement patterns
+        (height, width). Is equal to `(self.h, self.w)`.
+
+        :attr:`img_h` (int): Image height.
+
+        :attr:`img_w` (int): Image width.
+
+        :attr:`img_shape` (tuple): Shape of the image (height, width). Is equal
+        to `(self.img_h, self.img_w)`.
+
+        :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H`.
+        Must be set using the method :meth:`build_H_dyn` before being accessed.
+
+        :attr:`H` (torch.tensor): Alias for :attr:`H_dyn`.
+
+        :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
+        matrix :math:`H_{dyn}^\dagger`. Must be set using the method
+        :meth:`build_H_dyn_pinv` before being accessed.
+
+        :attr:`H_pinv` (torch.tensor): Alias for :attr:`H_dyn_pinv`.
+
+    .. warning::
+        The attributes :attr:`H` and :attr:`H_pinv` are used as aliases for
+        :attr:`H_dyn` and :attr:`H_dyn_pinv`. If you want to access the static
+        versions of the attributes, be sure to include the suffix `_static`.
+
+    Example:
+        >>> H_static = torch.rand([400, 1600])
+        >>> meas_op = DynamicLinear(H_static)
+        >>> print(meas_op)
+        DynamicLinear(
+          (M): 400
+          (N): 1600
+          (H.shape): torch.Size([400, 1600])
+          (meas_shape): (40, 40)
+          (H_dyn): False
+          (img_shape): (40, 40)
+          (H_pinv): False
+        )
+
+    Reference:
+    .. _MICCAI24:
+        [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
+        Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
+        without Warping the Patterns. 2024. hal-04533981
+    """
+
+    def __init__(
+        self,
+        H: torch.tensor,
+        Ord: torch.tensor = None,
+        meas_shape: tuple = None,  # (height, width)
+        img_shape: tuple = None,  # (height, width)
+    ):
+        super().__init__(H, Ord, meas_shape)
+
+        if img_shape is not None:
+            self._img_shape = img_shape
+            if img_shape[0] < self.meas_shape[0] or img_shape[1] < self.meas_shape[1]:
+                raise ValueError(
+                    "The image shape must be at least as large as the measurement "
+                    + f"shape. Got image shape {img_shape} and measurement shape "
+                    + f"{self.meas_shape}."
+                )
+        # else, it is done in the _Base class __init__ (set to meas_shape)
+
+    @property
+    def H(self) -> torch.tensor:
+        """Dynamic measurement matrix H. Equal to self.H_dyn."""
+        return self.H_dyn
+
+    @property
+    def H_dyn(self) -> torch.tensor:
+        """Dynamic measurement matrix H."""
+        try:
+            return self._param_H_dyn.data
+        except AttributeError as e:
+            raise AttributeError(
+                "The dynamic measurement matrix H has not been set yet. "
+                + "Please call build_H_dyn() before accessing the attribute "
+                + "H_dyn (or H)."
+            ) from e
+
+    @H_dyn.setter
+    def H_dyn(self, value: torch.tensor) -> None:
+        self._param_H_dyn = nn.Parameter(value.to(torch.float64), requires_grad=False)
+        try:
+            del H_pinv
+        except UnboundLocalError as e:
+            if "H_pinv" in str(e):
+                pass
+
+    @property
+    def recon_mode(self) -> str:
+        """Interpolation mode used for reconstruction."""
+        return self._recon_mode
+
+    @property
+    def H_pinv(self) -> torch.tensor:
+        """Dynamic pseudo-inverse H_pinv. Equal to self.H_dyn_pinv."""
+        return self.H_dyn_pinv
+
+    @H_pinv.deleter
+    def H_pinv(self) -> None:
+        del self.H_dyn_pinv
+
+    @property
+    def H_dyn_pinv(self) -> torch.tensor:
+        """Dynamic pseudo-inverse H_pinv."""
+        try:
+            return self._param_H_dyn_pinv.data
+        except AttributeError as e:
+            raise AttributeError(
+                "The dynamic pseudo-inverse H_pinv has not been set yet. "
+                + "Please call build_H_dyn_pinv() before accessing the attribute "
+                + "H_dyn_pinv (or H_pinv)."
+            ) from e
+
+    @H_dyn_pinv.setter
+    def H_dyn_pinv(self, value: torch.tensor) -> None:
+        self._param_H_dyn_pinv = nn.Parameter(
+            value.to(torch.float64), requires_grad=False
+        )
+
+    @H_dyn_pinv.deleter
+    def H_dyn_pinv(self) -> None:
+        try:
+            del self._param_H_dyn_pinv
+        except UnboundLocalError:
+            pass
+
+    # @mprof.profile
+    def build_H_dyn(self, motion: DeformationField, mode: str = "bilinear") -> None:
+        """Build the dynamic measurement matrix `H_dyn`.
+
+        Compute and store the dynamic measurement matrix `H_dyn` from the static
+        measurement matrix `H_static` and the deformation field `motion`. The
+        output is stored in the attribute `self.H_dyn`.
+
+        This is done using the physical version explained in [MaBP24]_.
+
+        Args:
+
+            :attr:`motion` (DeformationField): Deformation field representing the
+            motion of the image.
+
+            :attr:`mode` (str): Interpolation mode. Can only be 'bilinear' for
+            now. Bicubic interpolation will be available in a future release.
+            Defaults to 'bilinear'.
+
+        Returns:
+
+            None. The dynamic measurement matrix is stored in the attribute
+            `self.H_dyn`.
+
+        References:
+        .. _MaBP24:
+            [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
+            Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
+            without Warping the Patterns. 2024. hal-04533981
+        """
+
+        if self.device != motion.device:
+            raise RuntimeError(
+                "The device of the motion and the measurement operator must be the same."
+            )
+
+        # store the mode in attribute
+        self._recon_mode = mode
+
+        try:
+            del self._param_H_dyn
+            del self._param_H_dyn_pinv
+            warnings.warn(
+                "The dynamic measurement matrix pseudo-inverse H_pinv has "
+                + "been deleted. Please call self.build_H_dyn_pinv() to "
+                + "recompute it.",
+                UserWarning,
+            )
+        except AttributeError:
+            pass
+
+        n_frames = motion.n_frames
+
+        # get deformation field from motion
+        # scale from [-1;1] x [-1;1] to [0;width-1] x [0;height-1]
+        scale_factor = (torch.tensor(self.img_shape) - 1).to(self.device)
+        def_field = (motion.field + 1) / 2 * scale_factor
+
+        # drawings of the kernels for bilinear and bicubic 'interpolation'
+        #   00    point      01
+        #    +------+--------+
+        #    |      |        |
+        #    |      |        |
+        #    +------+--------+ point
+        #    |      |        |
+        #    +------+--------+
+        #   10               11
+
+        #      00          01   point   02          03
+        #       +-----------+-----+-----+-----------+
+        #       |           |           |           |
+        #       |           |     |     |           |
+        #       |        11 |           | 12        |
+        #    10 +-----------+-----+-----+-----------+ 13
+        #       |           |     |     |           |
+        #       + - - - - - + - - + - - + - - - - - + point
+        #       |           |     |     |           |
+        #    20 +-----------+-----+-----+-----------+ 23
+        #       |        21 |     |     | 22        |
+        #       |           |           |           |
+        #       |           |     |     |           |
+        #       +-----------+-----+-----+-----------+
+        #      30          31           32          33
+
+        kernel_size = self._spline(torch.tensor([0]), mode).shape[1]
+        kernel_width = kernel_size - 1
+        kernel_n_pts = kernel_size**2
+
+        # PART 1: SEPARATE THE INTEGER AND DECIMAL PARTS OF THE FIELD
+        # _________________________________________________________________
+        # crop def_field to keep only measured area
+        # moveaxis because crop expects (h,w) as last dimensions
+        def_field = spytorch.center_crop(
+            def_field.moveaxis(-1, 0), self.meas_shape
+        ).moveaxis(
+            0, -1
+        )  # shape (n_frames, meas_h, meas_w, 2)
+
+        # coordinate of top-left closest corner
+        def_field_floor = def_field.floor().to(torch.int64)
+        # shape (n_frames, meas_h, meas_w, 2)
+        # compute decimal part in x y direction
+        dx, dy = torch.split((def_field - def_field_floor), [1, 1], dim=-1)
+        del def_field
+        dx, dy = dx.squeeze(-1), dy.squeeze(-1)
+        # dx.shape = dy.shape = (n_frames, meas_h, meas_w)
+        # evaluate the spline at the decimal part
+        dxy = torch.einsum(
+            "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
+        ).reshape(n_frames, kernel_n_pts, self.h * self.w)
+        # shape (n_frames, kernel_n_pts, meas_h*meas_w)
+        del dx, dy
+
+        # PART 2: FLATTEN THE INDICES
+        # _________________________________________________________________
+        # we consider an expanded grid (img_h+k)x(img_w+k), where k is
+        # (kernel_width). This allows each part of the (kernel_size^2)-
+        # point grid to contribute to the interpolation.
+        # get coordinate of point _00
+        def_field_00 = def_field_floor - (kernel_size // 2 - 1)
+        del def_field_floor
+        # shift the grid for phantom rows/columns
+        def_field_00 += kernel_width
+        # create a mask indicating if either of the 2 indices is out of bounds
+        # (w,h) because the def_field is in (x,y) coordinates
+        maxs = torch.tensor(
+            [self.img_w + kernel_width, self.img_h + kernel_width], device=self.device
+        )
+        mask = torch.logical_or(
+            (def_field_00 < 0).any(dim=-1), (def_field_00 >= maxs).any(dim=-1)
+        )  # shape (n_frames, meas_h, meas_w)
+        # trash index receives all the out-of-bounds indices
+        trash = (maxs[0] * maxs[1]).to(torch.int64).to(self.device)
+        # if the indices are out of bounds, we put the trash index
+        # otherwise we put the flattened index (y*w + x)
+        flattened_indices = torch.where(
+            mask,
+            trash,
+            def_field_00[..., 0] + def_field_00[..., 1] * (self.img_w + kernel_width),
+        ).reshape(n_frames, self.h * self.w)
+        del def_field_00, mask
+
+        # PART 3: WARP H MATRIX WITH FLATTENED INDICES
+        # _________________________________________________________________
+        # Build 4 submatrices with 4 weights for bilinear interpolation
+        if isinstance(self, DynamicLinearSplit):
+            meas_pattern = self.P
+        else:
+            meas_pattern = self.H_static
+        meas_dxy = (
+            meas_pattern.reshape(n_frames, 1, self.h * self.w).to(dxy.dtype) * dxy
+        )
+        del dxy, meas_pattern
+        # shape (n_frames, kernel_size^2, meas_h*meas_w)
+        # Create a larger H_dyn that will be folded
+        meas_dxy_sorted = torch.zeros(
+            (
+                n_frames,
+                kernel_n_pts,
+                (self.img_h + kernel_width) * (self.img_w + kernel_width)
+                + 1,  # +1 for trash
+            ),
+            dtype=meas_dxy.dtype,
+            device=self.device,
+        )
+        # add at flattened_indices the values of meas_dxy (~warping)
+        meas_dxy_sorted.scatter_add_(
+            2, flattened_indices.unsqueeze(1).expand_as(meas_dxy), meas_dxy
+        )
+        del flattened_indices, meas_dxy
+        # drop last column (trash)
+        meas_dxy_sorted = meas_dxy_sorted[:, :, :-1]
+        self.meas_dxy_sorted = meas_dxy_sorted
+        # PART 4: FOLD THE MATRIX
+        # _________________________________________________________________
+        # define operator
+        fold = nn.Fold(
+            output_size=(self.img_h, self.img_w),
+            kernel_size=(kernel_size, kernel_size),
+            padding=kernel_width,
+        )
+        H_dyn = fold(meas_dxy_sorted).reshape(n_frames, self.img_h * self.img_w)
+        # store in _param_H_dyn
+        self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
+
+    def build_H_dyn_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
+        """Computes the pseudo-inverse of the dynamic measurement matrix
+        `H_dyn` and stores it in the attribute `H_dyn_pinv`.
+
+        This method supposes that the dynamic measurement matrix `H_dyn` has
+        already been set using the method `build_H_dyn()`. An error will be
+        raised if `H_dyn` has not been set yet.
+
+        Args:
+            :attr:`reg` (str): Regularization method. Can be either 'rcond',
+            'L2' or 'H1'. Defaults to 'rcond'.
+
+            :attr:`eta` (float): Regularization parameter. Defaults to 1e-6.
+
+        Raises:
+            AttributeError: If the dynamic measurement matrix `H_dyn` has not
+            been set yet.
+        """
+        # later do with regularization parameter
+        try:
+            H_dyn = self.H_dyn.to(torch.float64)
+        except AttributeError as e:
+            raise AttributeError(
+                "The dynamic measurement matrix H has not been set yet. "
+                + "Please call build_H_dyn() before computing the pseudo-inverse."
+            ) from e
+        self.H_dyn_pinv = self._build_pinv(H_dyn, reg, eta)
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r"""
+        Simulates the measurement of a motion picture :math:`y = H \cdot x(t)`.
+
+        The output :math:`y` is computed as :math:`y = Hx`, where :math:`H` is
+        the measurement matrix and :math:`x` is a batch of images.
+
+        Args:
+            :math:`x`: Batch of images of shape :math:`(*, t, c, h, w)`. `*`
+            denotes any dimension (e.g. the batch size), `t` the number of frames,
+            `c` the number of channels, and `h`, `w` the height and width of the
+            images.
+
+        Output:
+            :math:`y`: Linear measurements of the input images. It has shape
+            :math:`(*, c, M)` where * denotes any number of dimensions, `c` the
+            number of channels, and `M` the number of measurements.
+
+        .. warning::
+            There must be **exactly** as many images as there are measurements
+            in the linear operator used to initialize the class, i.e.
+            `t = M`.
+
+        Shape:
+            :math:`x`: :math:`(*, t, c, h, w)`, where * denotes the batch size,
+            `t` the number of frames, `c` the number of channels, and `h`, `w`
+            the height and width of the images.
+
+            :math:`output`: :math:`(*, c, M)`, where * denotes the batch size,
+            `c` the number of channels, and `M` the number of measurements.
+
+        Example:
+            >>> x = torch.rand([10, 400, 3, 40, 40])
+            >>> H = torch.rand([400, 1600])
+            >>> meas_op = DynamicLinear(H)
+            >>> y = meas_op(x)
+            >>> print(y.shape)
+            torch.Size([10, 3, 400])
+        """
+        return self._dynamic_forward_with_op(x, self.H_static)
+
+    def forward_H_dyn(self, x: torch.tensor) -> torch.tensor:
+        """Simulates the acquisition of measurements using the dynamic measurement matrix H_dyn.
+
+        This supposes the dynamic measurement matrix H_dyn has been set using the
+        method build_H_dyn(). An error will be raised if H_dyn has not been set yet.
+
+        Args:
+            x (torch.tensor): still image of shape (*, h, w). * denotes any dimension.
+            h and w are the height and width of the image. If h and w are larger
+            than the measurement pattern, the image is center-cropped to the measurement
+            pattern size.
+
+        Returns:
+            torch.tensor: Measurement of the input image. It has shape (*, M).
+        """
+        x = spytorch.center_crop(x, self.meas_shape)
+        return self._static_forward_with_op(x, self.H_dyn)
+
+    def _set_Ord(self, Ord: torch.tensor) -> None:
+        """Set the order matrix used to sort the rows of H."""
+        super()._set_Ord(Ord)
+        # delete self.H (self._param_H_dyn)
+        try:
+            del self._param_H_dyn
+            warnings.warn(
+                "The dynamic measurement matrix H has been deleted. "
+                + "Please call build_H_dyn() to recompute it."
+            )
+        except AttributeError:
+            pass
+        # delete self.H_pinv (self._param_H_dyn_pinv)
+        try:
+            del self._param_H_dyn_pinv
+            warnings.warn(
+                "The dynamic pseudo-inverse H_pinv has been deleted. "
+                + "Please call build_H_dyn_pinv() to recompute it."
+            )
+        except AttributeError:
+            pass
+
+    def _spline(self, dx, mode):
+        """
+        Returns a 2D row-like tensor containing the values of dx evaluated at
+        each B-spline (2 values for bilinear, 4 for bicubic).
+        dx must be between 0 and 1.
+
+        Shapes
+            dx: (n_frames, self.h, self.w)
+            out: (n_frames, {2,4}, self.h, self.w)
+        """
+        if mode == "bilinear":
+            ans = torch.stack((1 - dx, dx), dim=1)
+        elif mode == "bicubic":
+            ans = torch.stack(
+                (
+                    (1 - dx) ** 3 / 6,
+                    2 / 3 - dx**2 * (2 - dx) / 2,
+                    2 / 3 - (1 - dx) ** 2 * (1 + dx) / 2,
+                    dx**3 / 6,
+                ),
+                dim=1,
+            )
+        elif mode == "schaum":
+            ans = torch.stack(
+                (
+                    dx / 6 * (dx - 1) * (2 - dx),
+                    (1 - dx / 2) * (1 - dx**2),
+                    (1 + (dx - 1) / 2) * (1 - (dx - 1) ** 2),
+                    1 / 6 * (dx + 1) * dx * (dx - 1),
+                ),
+                dim=1,
+            )
+        else:
+            raise NotImplementedError(
+                f"The mode {mode} is invalid, please choose bilinear, "
+                + "bicubic or schaum."
+            )
+        return ans.to(self.device)
 
 
 # # =============================================================================
