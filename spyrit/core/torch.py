@@ -119,8 +119,8 @@ def walsh_matrix(n):
 
 
 def walsh_matrix_2d(n):
-    r"""2D Walsh-ordered Hadamard matrix. 
-    
+    r"""2D Walsh-ordered Hadamard matrix.
+
     This is the matrix :math:`A\in\mathbb{R}^{n^2 \times n^2}` such that :math:`Ax` represents the 2D Hadamard transform of the vectorised image :math:`x`.
 
     Args:
@@ -137,50 +137,50 @@ def walsh_matrix_2d(n):
 
 
 def walsh2_torch(img, H=None):
-    #r"""Deprecated function. Use `fwht_2d` instead."""
-    #raise NotImplementedError("This function is deprecated. Use `fwht_2d` instead.")
+    # r"""Deprecated function. Use `fwht_2d` instead."""
+    # raise NotImplementedError("This function is deprecated. Use `fwht_2d` instead.")
     r"""Return 2D Walsh-ordered Hadamard transform of an image
-    
+
     This applies the 1D transform :math:`H \in \mathbb{R}^{n \times n}` to the rows and to the columns of batches of images :math:`X\in \mathbb{R}^{n \times n}`
-    
+
     .. math::
-        
+
         Y = H X H^T.
 
     Args:
         :attr:`img` (:class:`torch.tensor`): Batch of images :math:`X` with shape :math:`(*,n,n)`.
-        
+
         :attr:`H` (:class:`torch.tensor`, optional): 1D Walsh-ordered Hadamard matrix with shape :math:`(n,n)`.
 
     Returns:
         :class:`torch.tensor`: Transformed image :math:`Y` with shape :math:`(*, n, n)` where :math:`*` is the same number as for :attr:`img`.
-        
+
     See Also:
         :func:`~spyrit.core.torch.fwht_2d` implements the same transform with a different algorithm.
 
-    Example: 
+    Example:
         Example 1: Basic example
-        
+
         >>> img = torch.randn(256, 1, 64, 64)
         >>> had = walsh2_torch(img)
-        
+
         Example 2: Same on GPU
-    
+
         >>> img = torch.randn(256, 1, 64, 64)
         >>> img = img.to(device='cuda:0')
         >>> had = walsh2_torch(img)
         >>> print(had.device)
-       
+
         Example 3: This will be on CPU (sama as img)
-        
+
         >>> img = torch.randn(256, 1, 64, 64)
         >>> H = walsh_matrix(64)
         >>> H = H.to(device='cuda:0')
         >>> had = walsh2_torch(img, H)
         >>> print(had.device)
-        
+
         Example 4: On GPU using :class:`torch.float64`
-        
+
         >>> img = torch.randn(256, 1, 64, 64)
         >>> img = img.to(device='cuda:0', dtype=torch.float64)
         >>> had = walsh2_torch(img)
@@ -188,16 +188,16 @@ def walsh2_torch(img, H=None):
     """
     if H is None:
         H = walsh_matrix(img.shape[-1])
-        
-    H = H.to(device=img.device, dtype=img.dtype) # move in if?
-    
+
+    H = H.to(device=img.device, dtype=img.dtype)  # move in if?
+
     return mult_2d_separable(H, img)
 
 
-def mult_1D(H: torch.tensor, x: torch.tensor, dim: int = -1) -> torch.tensor:
+def mult_1d(H: torch.tensor, x: torch.tensor, dim: int = -1) -> torch.tensor:
     r"""Multiply a matrix to batches of (1D) vectors.
 
-    This computes matrix-vector products to a batch of vectors :math:`x`. 
+    This computes matrix-vector products to a batch of vectors :math:`x`.
 
     Args:
         H (torch.tensor): Matrix with shape :math:`(a,b)`. The matrix :math:`H` multiplies to one of the dimensions of the batch of vectors.
@@ -222,11 +222,11 @@ def mult_1D(H: torch.tensor, x: torch.tensor, dim: int = -1) -> torch.tensor:
 
 def mult_2d_separable(H: torch.tensor, x: torch.tensor) -> torch.tensor:
     r"""Applies separable transform to batches of (2D) images.
-    
+
     This applies the same transform :math:`H` to the rows and columns of a batch of images :math:`X`
-    
+
     .. math::
-        
+
         Y = H X H^T.
 
     Args:
