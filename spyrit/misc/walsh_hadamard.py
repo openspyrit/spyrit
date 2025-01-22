@@ -117,10 +117,10 @@ def bit_reversed_list(n):
     return br
 
 def sequency_perm(X, ind=None):
-    r"""Permute the last dimension of an array. By defaults gets sequency order from natural order
+    r"""Permute the last dimension of a tensor. By defaults this allows the sequency order to be obtained from the natural order.
 
     Args:
-        :attr:`X` (np.ndarray): input of shape (*,n)
+        :attr:`X` (np.ndarray): input of shape (*,n).
 
         :attr:`ind` : list of index length n. Defaults to indices to get sequency order.
 

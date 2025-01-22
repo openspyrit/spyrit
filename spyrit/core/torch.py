@@ -54,22 +54,29 @@ def assert_power_of_2(n, raise_error=True):
 
 
 def sequency_perm(X, ind=None):
-    r"""Permute the last dimension of a tensor to get sequency order
+    r"""Permute the last dimension of a tensor. By defaults this allows the sequency order to be obtained from the natural order.
 
     Args:
-        :attr:`X` (torch.tensor): -by-n input matrix
+        :attr:`X` (torch.tensor): input of shape (*,n)
 
-        :attr:`ind` : index list of length n
+        :attr:`ind` : list of index length n. Defaults to indices to get sequency order.
 
     Returns:
-        torch.tensor: -by-n input matrix
+        torch.tensor: output of shape (*,n).
+        
+    Note:
+        Same as :func:`spyrit.misc.walsh_hadamard.sequency_perm()` for torch tensors.
 
     Example :
-        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import torch
+        >>> import spyrit.core.torch as st
         >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
         >>> x = x[None, None, :]
-        >>> x = wh.sequency_perm_torch(x)
+        >>> x = st.sequency_perm(x)
         >>> print(x)
+        >>> print(x.shape)
+        tensor([[[ 1,  7,  1,  0, -1, -2,  5,  3]]])
+        torch.Size([1, 1, 8])
     """
     if ind is None:
         ind = wh.sequency_perm_ind(X.shape[-1])
@@ -79,18 +86,16 @@ def sequency_perm(X, ind=None):
 
 
 def walsh_matrix(n):
-    r"""Returns a 1D Walsh-ordered Hadamard transform matrix of size
-    :math:`n \times n`.
+    r"""Returns a 1D Walsh-ordered Hadamard.
 
     Args:
-        n (int): Order of the Hadamard matrix. Must be a power of two.
+        :attr:`n` (:obj:`int`): Order of the transform :math:`n`, which must be a power of two.
 
     Raises:
-        ValueError: If n is not a positive integer or if n is not a power of 2.
+        ValueError: If :attr:`n` is not a positive integer that is a power of 2.
 
     Returns:
-        torch.tensor: A n-by-n matrix representing the Walsh-ordered Hadamard
-        matrix.
+        torch.tensor:  Matrix :math:`H` with shape :math:`(n,n)`.
     """
     assert_power_of_2(n, raise_error=True)
 
@@ -258,8 +263,8 @@ def fwht(x, order=True, dim=-1):
     Returns:
         torch.tensor: *-by-n transformed signal
 
-    Example 1:
-        Fast sequency-ordered (i.e., Walsh) Hadamard transform
+    Example:
+        Example 1: Fast sequency-ordered (i.e., Walsh) Hadamard transform
 
         >>> import torch
         >>> import spyrit.core.torch as st
@@ -269,8 +274,7 @@ def fwht(x, order=True, dim=-1):
         >>> print(y)
         tensor([[14, -8, -8, 18, -4, -2, -6,  4]])
 
-    Example 2:
-        Fast Hadamard transform
+        Example 2: Fast Hadamard transform
 
         >>> import torch
         >>> import spyrit.core.torch as st
@@ -280,8 +284,7 @@ def fwht(x, order=True, dim=-1):
         >>> print(y)
         tensor([[14,  4, 18, -4, -8, -6, -8, -2]])
 
-    Example 3:
-        Permuted fast Hadamard transform
+        Example 3: Permuted fast Hadamard transform
 
         >>> import numpy as np
         >>> import torch
@@ -292,8 +295,7 @@ def fwht(x, order=True, dim=-1):
         >>> print(y)
         tensor([ 4, 14, -4, 18, -2, -8, -6, -8])
 
-    Example 4:
-        Comparison with the numpy transform
+        Example 4: Comparison with the numpy transform
 
         >>> import numpy as np
         >>> import spyrit.misc.walsh_hadamard as wh
@@ -308,8 +310,7 @@ def fwht(x, order=True, dim=-1):
         [14 -8 -8 18 -4 -2 -6  4]
         tensor([14, -8, -8, 18, -4, -2, -6,  4], device='cuda:0')
 
-    Example 5:
-        Computation times for a signal of length 2**12
+        Example 5: Computation times for a signal of length 2**12
 
         >>> import timeit
         >>> import numpy as np
@@ -319,9 +320,11 @@ def fwht(x, order=True, dim=-1):
         >>> x = np.random.rand(2**12)
         >>> t = timeit.timeit(lambda: wh.fwht(x,False), number=2000)
         >>> print(f"Fast Hadamard transform numpy CPU (2000x): {t:.4f} seconds")
+        
         >>> x_torch = torch.from_numpy(x)
         >>> t = timeit.timeit(lambda: st.fwht(x_torch,False), number=2000)
         >>> print(f"Fast Hadamard transform pytorch CPU (2000x): {t:.4f} seconds")
+        
         >>> x_torch = torch.from_numpy(x).to(torch.device('cuda:0'))
         >>> t = timeit.timeit(lambda: st.fwht(x_torch,False), number=2000)
         >>> print(f"Fast Hadamard transform pytorch GPU (2000x): {t:.4f} seconds")
@@ -329,8 +332,7 @@ def fwht(x, order=True, dim=-1):
         Fast Hadamard transform pytorch CPU (2000x): 1.1554 seconds
         Fast Hadamard transform pytorch GPU (2000x): 1.8277 seconds
 
-    Example 6:
-        CPU vs GPU: Computation times for 512 signals of length 2**12
+        Example 6: CPU vs GPU: Computation times for 512 signals of length 2**12
 
         >>> import timeit
         >>> import torch
@@ -344,8 +346,7 @@ def fwht(x, order=True, dim=-1):
         Fast Hadamard transform pytorch CPU (50x): 2.2351 seconds
         Fast Hadamard transform pytorch GPU (50x): 0.0680 seconds
 
-    Example 7:
-        Repeating the Walsh-ordered transform using input indices is faster
+        Example 7: Repeating the Walsh-ordered transform using input indices is faster
 
         >>> import timeit
         >>> import torch
