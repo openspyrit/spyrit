@@ -69,7 +69,7 @@ class Gaussian(nn.Module):
             >>> import spyrit.core.noise as sn
             >>> import torch
             >>> noise = sn.Gaussian(0.1)
-            >>> z = torch.FloatTensor(10, 4).uniform_(1, 2)
+            >>> z = torch.empty(10, 4).uniform_(1, 2)
             >>> y = noise(z)
             >>> print(y.shape)
             >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
@@ -298,10 +298,9 @@ class Poisson(nn.Module):
     r"""Simulate measurements corrupted by Poisson noise
 
     .. math::
-        y \sim \mathcal{P}\left(\alpha z\right),
+        y \sim \mathcal{P}\left(\alpha z\right), \quad \text{with }z\ge 0
         
-    where  :math:`\alpha` represents the intensity of the noiseless measurements
-    :math:`z`.
+    where :math:`\mathcal{P}` is the Poisson distribution and :math:`\alpha` represents the intensity of the noiseless measurements :math:`z`.
     
     The class is constructed from the intensity :math:`\alpha`.
 
@@ -327,13 +326,13 @@ class Poisson(nn.Module):
         r"""Corrupt measurement by Poisson noise
         
         .. math::
-            y \sim \mathcal{P}\left(\alpha z\right),
+            y \sim \mathcal{P}\left(\alpha z\right).
 
         Args:
             :attr:`z` (:class:`torch.tensor`): Measurements :math:`z` with arbitrary shape.
 
         Returns:
-            :class:`torch.tensor`: Noisy measurement with the same shape as :attr:`z`.
+            :class:`torch.tensor`: Noisy measurement :math:`y` with the same shape as :attr:`z`.
             
         Example: 
             Two different noisy measurement vectors
@@ -341,7 +340,7 @@ class Poisson(nn.Module):
             >>> import spyrit.core.noise as sn
             >>> import torch
             >>> noise = sn.Poisson(100)
-            >>> z = torch.FloatTensor(10, 4).uniform_(0, 1)
+            >>> z = torch.empty(10, 4).uniform_(0, 1)
             >>> y = noise(z)
             >>> print(y.shape)
             >>> print(f"Noiseless measurements in ({torch.min(z):.2f} , {torch.max(z):.2f})")
@@ -359,62 +358,85 @@ class Poisson(nn.Module):
 
 # =============================================================================
 class PoissonApproxGauss(Poisson):
-    r"""Adds Gaussian-approximated Poisson noise to incoming measurements.
+    r"""Gaussian approximation of Poisson noise
 
-    The Gaussian-approximated Poisson noise is parameterized by its intensity
-    :math:`\alpha`. The incoming measurements are multiplied by :math:`\alpha`
-    and then corrupted by Gaussian noise as follows:
-    :math:`x \cdot \alpha + \sqrt{x \cdot \alpha} \cdot \mathcal{N}(0, 1)`.
-    The noise intensity is defined in the constructor.
+    .. math::
+        y \sim  \alpha z  + \sqrt{\alpha z} \cdot \mathcal{N}(0, 1), \quad \text{with }z\ge 0
+
+    where  :math:`\alpha` represents the intensity of the noiseless     
+    measurements :math:`z`, and :math:`\mathcal{N}(0, 1)` is a Gaussian
+    distribution with zero mean and unit variance.
+    
+    This is an approximation of :math:`y \sim \mathcal{P}\left(\alpha z\right)`, where :math:`\mathcal{P}` is the Poisson distribution. Computing the Gaussian approximation is faster than the original Poisson model. 
 
     Args:
-        alpha (:class:`float`): The intensity of the incoming measurements.
+        :attr:`alpha` (:class:`float`): The intensity of the measurements.
 
     Attributes:
-        alpha (:class:`float`): The intensity of the incoming measurements.
-        noise_function (function): The function that adds Gaussian-approximated
-        Poisson noise to the incoming measurements.
+        :attr:`alpha` (:class:`float`): Intensity of the measurements.
 
-    Raises:
-        RuntimeError: If there are negative values in the input tensor.
     """
 
     def __init__(self, alpha: float):
         super().__init__(alpha)
 
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        r"""Adds Gaussian-approximated Poisson noise to incoming measurements.
+    def forward(self, z: torch.tensor) -> torch.tensor:
+        r"""Corrupt measurement by Gaussian approximation of Poisson noise
 
-        The Gaussian-approximated Poisson noise is calculated as :math:`x +
-        \sqrt{x} \cdot \mathcal{N}(0, 1)`, where :math:`x` is the intensity of
-        the incoming measurements and is defined in the constructor.
+        .. math::
+            y \sim  \alpha z  + \sqrt{\alpha z} \cdot \mathcal{N}(0, 1) \quad \text{with }z\ge 0
 
         Args:
-            x (:class:`torch.tensor`): Any measurement tensor, with any shape.
+            :attr:`z` (:class:`torch.tensor`): Measurements :math:`z` with 
+            arbitrary shape.
 
         Returns:
-            :class:`torch.tensor`: The same measurement tensor with Gaussian-approximated
-            Poisson noise.
+            :class:`torch.tensor`: Noisy measurement :math:`y` with the same 
+            shape as :attr:`z`.
+            
+        Raises:
+             RuntimeError: If there are negative values in the input tensor.
+             
+        Example: 
+            Two different noisy measurement vectors
+            
+            >>> import spyrit.core.noise as sn
+            >>> import torch
+            >>> noise = sn.PoissonApproxGauss(100)
+            >>> z = torch.empty(10, 4).uniform_(0, 1)
+            >>> y = noise(z)
+            >>> print(y.shape)
+            >>> print(f"Noiseless measurements in ({torch.min(z):.2f} , {torch.max(z):.2f})")
+            >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            torch.Size([10, 4])
+            Noiseless measurements in (0.06 , 0.96)
+            Noisy measurements in (3.63 , 116.96)
+            
+            >>> y = noise(z)
+            >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            Noisy measurements in (3.25 , 110.16)
         """
-        if torch.any(x < 0):
+        if torch.any(z < 0):
             raise RuntimeError("Input tensor contains negative values.")
-        x *= self.alpha
-        return x + torch.sqrt(x) * torch.randn_like(x)
+        
+        return self.alpha*z + torch.sqrt(self.alpha*z) * torch.randn_like(z)
 
 
 # =============================================================================
 class PoissonApproxGaussSameNoise(Poisson):
-    r"""Adds identical Gaussian-approximated Poisson noise to incoming measurements.
+    r"""Approximate measurements corrupted by Poisson noise
 
-    The Gaussian-approximated Poisson noise is parameterized by its intensity
-    :math:`\alpha`. The incoming measurements are multiplied by :math:`\alpha`
-    and then corrupted by Gaussian noise as follows:
-    :math:`x \cdot \alpha + \sqrt{x \cdot \alpha} \cdot \mathcal{N}(0, 1)`.
-    The noise intensity is defined in the constructor.
+    .. math::
+        y \sim  \alpha x  + \sqrt{\alpha x} \cdot \mathcal{N}(0, 1),
+
+    where  :math:`\alpha` represents the intensity of the noiseless measurements
+    :math:`z`, and :math:`\mathcal{N}(0, 1)` is a Gaussian distribution with zero mean and unit variance.
+    
+    This is an approximation of :math:`y \sim \mathcal{P}\left(\alpha z\right)`, where :math:`\mathcal{P}` is the Poisson distribution. Computing the Gaussian approximation is faster than the original Poisson model. 
 
     .. important::
-        Contrary to :class:`~spyrit.core.noise.PoissonApproxGauss2`, all dimensions
-        of the incoming measurements except the last one are corrupted with the same
+        Contrary to :class:`~spyrit.core.noise.PoissonApproxGauss`, all       
+        dimensions of the incoming measurements are corrupted with the same
         noise sample.
 
     Args:
