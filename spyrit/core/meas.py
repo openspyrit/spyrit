@@ -1824,7 +1824,6 @@ class HadamSplit2d(LinearSplit):
 
 # =============================================================================
 class DynamicLinear(Linear):
-    # =========================================================================
     r"""
     Simulates the measurement of a moving object :math:`y = H \cdot x(t)`.
 
@@ -1924,21 +1923,28 @@ class DynamicLinear(Linear):
     def __init__(
         self,
         H: torch.tensor,
-        Ord: torch.tensor = None,
-        meas_shape: tuple = None,  # (height, width)
-        img_shape: tuple = None,  # (height, width)
+        time_dim: int,
+        meas_shape: Union[int, torch.Size, Iterable[int]] = None,
+        meas_dims: Union[int, torch.Size, Iterable[int]] = None,
+        *,
+        noise_model: nn.Module = nn.Identity(),
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu"),
     ):
-        super().__init__(H, Ord, meas_shape)
+        super().__init__(
+            H,
+            meas_shape,
+            meas_dims,
+            noise_model=noise_model,
+            dtype=dtype,
+            device=device,
+        )
 
-        if img_shape is not None:
-            self._img_shape = img_shape
-            if img_shape[0] < self.meas_shape[0] or img_shape[1] < self.meas_shape[1]:
-                raise ValueError(
-                    "The image shape must be at least as large as the measurement "
-                    + f"shape. Got image shape {img_shape} and measurement shape "
-                    + f"{self.meas_shape}."
-                )
-        # else, it is done in the _Base class __init__ (set to meas_shape)
+        self.time_dim = time_dim
+        if self.time_dim in self.meas_dims:
+            raise RuntimeError(
+                f"The time dimension must not be in the measurement dimensions. Found {self.time_dim} in {self.meas_dims}."
+            )
 
     @property
     def H(self) -> torch.tensor:
