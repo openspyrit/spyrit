@@ -990,7 +990,7 @@ class FreeformLinear(Linear):
         x = torch.movedim(x, self.meas_dims, self.last_dims)
 
         if self.mask_type == "index":
-            return x[..., *self.index_mask]
+            return x[(..., *self.index_mask)]
 
         elif self.mask_type == "bool":
             # flatten along the masked dimensions
@@ -1079,7 +1079,7 @@ class FreeformLinear(Linear):
                 dtype=x.dtype,
                 device=x.device,
             )
-            output[..., *self.index_mask] = x
+            output[(..., *self.index_mask)] = x
 
         elif self.mask_type == "bool":
             # create a new tensor with an intermediate shape
