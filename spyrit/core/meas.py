@@ -870,6 +870,14 @@ class Linear(nn.Module):
         input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
         return input
 
+    def fast_pinv(self, y: torch.tensor, *args, **kwargs):
+        r""" """
+        return None
+
+    def fast_H_pinv(self, *args, **kwargs) -> torch.tensor:
+        r""" """
+        return None
+
     # def _extract_patterns(self, matrix: torch.tensor) -> torch.tensor:
     #     matrix_pos, matrix_neg = self.split_tensor(matrix)
     #     return torch.cat([matrix_pos, matrix_neg], 1).reshape(
@@ -1265,7 +1273,7 @@ class HadamSplit2d(LinearSplit):
     def measure_H(self, x: torch.tensor):
         r""" """
         if self.fast:
-            x = spytorch.mult_transform_2d(self.H1d, x)
+            x = spytorch.mult_2d_separable(self.H1d, x)
             x = self.reindex(x, "rows", False)
             x = self.vectorize(x)
             return x[..., : self.M]
@@ -1282,14 +1290,18 @@ class HadamSplit2d(LinearSplit):
                 )
             y = self.reindex(y, "cols", False)
             y = self.unvectorize(y)
-            y = spytorch.mult_transform_2d(self.H1d, y)
+            y = spytorch.mult_2d_separable(self.H1d, y)
             return y
         else:
             return super().adjoint_H(y)
 
-    def fast_inverse(self, y: torch.tensor):
+    def fast_pinv(self, y: torch.tensor):
         r""" """
         return self.adjoint_H(y) / self.N
+
+    def fast_H_pinv(self) -> torch.tensor:
+        r""" """
+        return self.H.T / self.N
 
 
 # =============================================================================
