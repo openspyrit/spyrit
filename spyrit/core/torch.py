@@ -15,6 +15,7 @@ import torch.nn as nn
 import torchvision
 
 import spyrit.misc.walsh_hadamard as wh
+import spyrit.core.warp as warp
 
 
 # =============================================================================
