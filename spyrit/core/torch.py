@@ -20,8 +20,6 @@ import spyrit.misc.walsh_hadamard as wh
 # =============================================================================
 # Walsh / Hadamard -related functions
 # =============================================================================
-
-
 def assert_power_of_2(n, raise_error=True):
     r"""Asserts that n is a power of 2.
 
@@ -121,39 +119,93 @@ def walsh_matrix(n):
 
 
 def walsh_matrix_2d(n):
-    r"""Returns Walsh-ordered Hadamard matrix in 2D.
+    r"""2D Walsh-ordered Hadamard matrix. 
+    
+    This is the matrix :math:`A\in\mathbb{R}^{n^2 \times n^2}` such that :math:`Ax` represents the 2D Hadamard transform of the vectorised image :math:`x`.
 
     Args:
-        n (int): Order of the matrix, which must be a power of two.
+        :attr:`n` (:obj:`int`): Order of the transform :math:`n`, which must be a power of two.
 
     Raises:
-        ValueError: If n is not a positive integer or if n is not a power of 2.
+        ValueError: If :attr:`n` is not a positive integer that is a power of 2.
 
     Returns:
-        torch.tensor: A n*n-by-n*n matrix representing the 2D Walsh-ordered
-        Hadamard matrix.
+        :class:`torch.Tensor`: Matrix :math:`A` with shape :math:`(n^2,n^2)`.
     """
     H1d = walsh_matrix(n)
     return torch.kron(H1d, H1d)
 
 
 def walsh2_torch(img, H=None):
-    r"""Deprecated function. Use `fwht_2d` instead."""
-    raise NotImplementedError("This function is deprecated. Use `fwht_2d` instead.")
-
-
-def mult_transform(H: torch.tensor, x: torch.tensor, dim: int = -1) -> torch.tensor:
-    r"""Applies the transform defined by H to the input tensor x.
-
-    This applies a transform defined by the matrix `H` to a batch of vectors `x`.
+    #r"""Deprecated function. Use `fwht_2d` instead."""
+    #raise NotImplementedError("This function is deprecated. Use `fwht_2d` instead.")
+    r"""Return 2D Walsh-ordered Hadamard transform of an image
+    
+    This applies the 1D transform :math:`H \in \mathbb{R}^{n \times n}` to the rows and to the columns of batches of images :math:`X\in \mathbb{R}^{n \times n}`
+    
+    .. math::
+        
+        Y = H X H^T.
 
     Args:
-        H (torch.tensor): Transform matrix, has to be 2D with shape :math:`(a,b)`.
+        :attr:`img` (:class:`torch.tensor`): Batch of images :math:`X` with shape :math:`(*,n,n)`.
+        
+        :attr:`H` (:class:`torch.tensor`, optional): 1D Walsh-ordered Hadamard matrix with shape :math:`(n,n)`.
 
-        x (torch.tensor): Input tensor to transform. Its :attr:`dim`-th dimension
-        must have :math:`b` elements.
+    Returns:
+        :class:`torch.tensor`: Transformed image :math:`Y` with shape :math:`(*, n, n)` where :math:`*` is the same number as for :attr:`img`.
+        
+    See Also:
+        :func:`~spyrit.core.torch.fwht_2d` implements the same transform with a different algorithm.
 
-        dim (int, optional): The dimension along which to apply the transform.
+    Example: 
+        Example 1: Basic example
+        
+        >>> img = torch.randn(256, 1, 64, 64)
+        >>> had = walsh2_torch(img)
+        
+        Example 2: Same on GPU
+    
+        >>> img = torch.randn(256, 1, 64, 64)
+        >>> img = img.to(device='cuda:0')
+        >>> had = walsh2_torch(img)
+        >>> print(had.device)
+       
+        Example 3: This will be on CPU (sama as img)
+        
+        >>> img = torch.randn(256, 1, 64, 64)
+        >>> H = walsh_matrix(64)
+        >>> H = H.to(device='cuda:0')
+        >>> had = walsh2_torch(img, H)
+        >>> print(had.device)
+        
+        Example 4: On GPU using :class:`torch.float64`
+        
+        >>> img = torch.randn(256, 1, 64, 64)
+        >>> img = img.to(device='cuda:0', dtype=torch.float64)
+        >>> had = walsh2_torch(img)
+        >>> print(had.device,'+',had.dtype)
+    """
+    if H is None:
+        H = walsh_matrix(img.shape[-1])
+        
+    H = H.to(device=img.device, dtype=img.dtype) # move in if?
+    
+    return mult_2d_separable(H, img)
+
+
+def mult_1D(H: torch.tensor, x: torch.tensor, dim: int = -1) -> torch.tensor:
+    r"""Multiply a matrix to batches of (1D) vectors.
+
+    This computes matrix-vector products to a batch of vectors :math:`x`. 
+
+    Args:
+        H (torch.tensor): Matrix with shape :math:`(a,b)`. The matrix :math:`H` multiplies to one of the dimensions of the batch of vectors.
+
+        x (torch.tensor): Batch of vectors. The :attr:`dim`-th dimension of the tensor
+        must have length :math:`b`.
+
+        dim (int, optional): The dimension along which multiplication applies.
         Default is -1.
 
     Returns:
@@ -168,25 +220,23 @@ def mult_transform(H: torch.tensor, x: torch.tensor, dim: int = -1) -> torch.ten
     return x
 
 
-def mult_transform_2d(H: torch.tensor, x: torch.tensor) -> torch.tensor:
-    r"""Applies twice the 1D transform defined by H to the input tensor x.
-
-    This function applies a 1D transform defined by the matrix `H` twice (once
-    on the left, once on the right with the transposed matrix) to a batch of 2D
-    tensors `x`.
-
-    .. note:
-        This is equivalent to calling `H @ x @ H.T`
+def mult_2d_separable(H: torch.tensor, x: torch.tensor) -> torch.tensor:
+    r"""Applies separable transform to batches of (2D) images.
+    
+    This applies the same transform :math:`H` to the rows and columns of a batch of images :math:`X`
+    
+    .. math::
+        
+        Y = H X H^T.
 
     Args:
-        H (torch.tensor): 2D transform matrix with shape :math:`(a, b)`.
+        H (:class:`torch.tensor`): Matrix :math:`H` with shape :math:`(a, b)`.
 
-        x (torch.tensor): Input tensor to transform. Must have shape
-        :math:`(*, b, b)` wheree * represents any number of batch dimensions.
+        x (:class:`torch.tensor`): Input tensor to transform with shape
+        :math:`(*, b, b)` where :math:`*` represents any number of batch dimensions.
 
     Returns:
-        torch.tensor: Transformed tensor. Has shape :math:`(*, a, a)` where * is
-        the same number of batch dimensions as the input tensor.
+        :class:`torch.tensor`: Transformed image :math:`Y` with shape :math:`(*, a, a)` where :math:`*` is the same number of batch dimensions as the input tensor.
     """
     x = H @ x @ H.T
     return x
