@@ -700,6 +700,9 @@ class Linear(nn.Module):
         meas_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_dims: Union[int, torch.Size, Iterable[int]] = None,
         noise_model: nn.Module = nn.Identity(),
+        *,
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu"),
     ):
         super().__init__()
 
@@ -707,6 +710,8 @@ class Linear(nn.Module):
             meas_shape = [meas_shape]
         if type(meas_dims) is int:
             meas_dims = [meas_dims]
+
+        H = H.to(device=device, dtype=dtype)
 
         # don't store H if we use a HadamSplit
         if not isinstance(self, HadamSplit2d):
@@ -735,6 +740,10 @@ class Linear(nn.Module):
     @property
     def device(self) -> torch.device:
         return self.H.device
+
+    @property
+    def dtype(self) -> torch.dtype:
+        return self.H.dtype
 
     @property
     def matrix_to_inverse(self) -> torch.tensor:
@@ -904,8 +913,13 @@ class FreeformLinear(Linear):
         meas_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_dims: Union[int, torch.Size, Iterable[int]] = None,
         noise_model: bool = None,
+        *,
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu"),
     ):
-        super().__init__(matrix, meas_shape, meas_dims, noise_model)
+        super().__init__(
+            matrix, meas_shape, meas_dims, noise_model, dtype=dtype, device=device
+        )
 
         # select mask type
         if index_mask is not None:
@@ -1122,14 +1136,43 @@ class FreeformLinear(Linear):
 class LinearSplit(Linear):
     r""" """
 
-    def __init__(self, H, meas_shape=None, meas_dims=None, noise_model=nn.Identity()):
-        super().__init__(H, meas_shape, meas_dims, noise_model)
+    def __init__(
+        self,
+        H,
+        meas_shape=None,
+        meas_dims=None,
+        noise_model=nn.Identity(),
+        *,
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu"),
+    ):
+        super().__init__(
+            H, meas_shape, meas_dims, noise_model, dtype=dtype, device=device
+        )
 
         # split positive and negative components
         pos, neg = nn.functional.relu(H), nn.functional.relu(-H)
         A = torch.cat([pos, neg], 1).reshape(2 * self.M, self.N)
-        self.A = nn.Parameter(A, requires_grad=False)
+        self.A = nn.Parameter(A, requires_grad=False, device=device, dtype=dtype)
         self._matrix_to_inverse = "H"  # should be "A" or "H"
+
+    @property
+    def device(self) -> torch.device:
+        if self.H.device == self.A.device:
+            return self.H.device
+        else:
+            raise RuntimeError(
+                f"device undefined, H and A are on different device (found {self.H.device} and {self.A.device} respectively)"
+            )
+
+    @property
+    def dtype(self) -> torch.dtype:
+        if self.H.dtype == self.A.dtype:
+            return self.H.dtype
+        else:
+            raise RuntimeError(
+                f"dtype undefined, H and A are of different dtype (found {self.H.dtype} and {self.A.dtype} respectively)"
+            )
 
     @property
     def matrix_to_inverse(self):
@@ -1192,19 +1235,36 @@ class HadamSplit2d(LinearSplit):
         order: torch.tensor = None,
         noise_model=nn.Identity(),
         fast=True,
+        *,
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu"),
     ):
         meas_dims = (-2, -1)
         meas_shape = (h, h)
-        self.H1d = spytorch.walsh2_torch(h).to(torch.int8)  # 1D version of H
+        # 1D version of H
+        self.H1d = spytorch.walsh2_torch(h).to(dtype=dtype, device=device)
 
         # call Linear constructor (avoid setting A)
         super(LinearSplit, self).__init__(
-            torch.empty(h**2, h**2), meas_shape, meas_dims, noise_model
+            torch.empty(h**2, h**2),
+            meas_shape,
+            meas_dims,
+            noise_model,
+            dtype=dtype,
+            device=device,
         )
         self.M = M
         self.order = order
         self.indices = torch.argsort(-order.flatten(), stable=True).to(torch.int32)
         self.fast = fast
+
+    @property
+    def dtype(self) -> torch.dtype:
+        return self.H1d.dtype
+
+    @property
+    def device(self) -> torch.device:
+        return self.H1d.device
 
     @property
     def H(self):
