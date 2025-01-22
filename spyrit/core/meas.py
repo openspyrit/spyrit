@@ -2253,35 +2253,6 @@ class DynamicLinear(Linear):
 
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
 
-    def calc_det(self, def_field):
-        # def_field of shape (n_frames, img_shape[0], img_shape[1], 2) in range [0, h-1] x [0, w-1]
-        v1, v2 = def_field[:, :, :, 0], def_field[:, :, :, 1]
-        n_frames = def_field.shape[0]
-
-        # def opérateur gradient (differences finies non normalisées)
-        L = lambda u: torch.stack(
-            [
-                torch.cat(
-                    [torch.diff(u, dim=1), torch.ones(n_frames, 1, u.shape[2])], dim=1
-                ),
-                torch.cat(
-                    [torch.diff(u, dim=2), torch.ones(n_frames, u.shape[1], 1)], dim=2
-                ),
-            ],
-            dim=3,
-        )
-
-        dx_v1 = L(v1)[..., 1]
-        dx_v2 = L(v2)[..., 1]
-        dy_v1 = L(v1)[..., 0]
-        dy_v2 = L(v2)[..., 0]
-
-        det = (
-            dx_v1 * dy_v2 - dx_v2 * dy_v1
-        )  # shape is (n_frames, img_shape[0], img_shape[1])
-
-        return det
-
     def build_H_dyn_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
         """Computes the pseudo-inverse of the dynamic measurement matrix
         `H_dyn` and stores it in the attribute `H_dyn_pinv`.

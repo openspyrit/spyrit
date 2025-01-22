@@ -324,6 +324,32 @@ class DeformationField(nn.Module):
 
             return out  # has shape (n_frames, c, h, w)
 
+    def det(self) -> torch.tensor:
+        r""" """
+
+        v1, v2 = self.field[:, :, :, 0], self.field[:, :, :, 1]
+        n_frames = self.field.shape[0]
+
+        # def opérateur gradient (differences finies non normalisées)
+        L = lambda u: torch.stack(
+            [
+                torch.cat(
+                    [torch.diff(u, dim=1), torch.ones(n_frames, 1, u.shape[2])], dim=1
+                ),
+                torch.cat(
+                    [torch.diff(u, dim=2), torch.ones(n_frames, u.shape[1], 1)], dim=2
+                ),
+            ],
+            dim=3,
+        )
+
+        dx_v1, dy_v1 = torch.split(L(v1), split_size_or_sections=1, dim=-1)
+        dx_v2, dy_v2 = torch.split(L(v2), split_size_or_sections=1, dim=-1)
+
+        # shape is (n_frames, img_shape[0], img_shape[1])
+        det = dx_v1 * dy_v2 - dx_v2 * dy_v1
+        return det
+
     def _warn_field(self):
         # using float64 is preferred for accuracy
         if self.field.dtype == torch.float32:
