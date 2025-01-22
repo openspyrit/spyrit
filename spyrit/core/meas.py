@@ -699,8 +699,8 @@ class Linear(nn.Module):
         H: torch.tensor,
         meas_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_dims: Union[int, torch.Size, Iterable[int]] = None,
-        noise_model: nn.Module = nn.Identity(),
         *,
+        noise_model: nn.Module = nn.Identity(),
         dtype: torch.dtype = torch.float32,
         device: torch.device = torch.device("cpu"),
     ):
@@ -912,13 +912,18 @@ class FreeformLinear(Linear):
         meas_dims: Union[int, torch.Size, Iterable[int]] = None,
         index_mask: torch.tensor = None,  # must have shape (len(meas_shape), H.shape[-1])
         bool_mask: torch.tensor = None,
-        noise_model: bool = None,
         *,
+        noise_model: bool = None,
         dtype: torch.dtype = torch.float32,
         device: torch.device = torch.device("cpu"),
     ):
         super().__init__(
-            H, meas_shape, meas_dims, noise_model, dtype=dtype, device=device
+            H,
+            meas_shape,
+            meas_dims,
+            noise_model=noise_model,
+            dtype=dtype,
+            device=device,
         )
 
         # select mask type
@@ -1136,13 +1141,19 @@ class LinearSplit(Linear):
         H,
         meas_shape=None,
         meas_dims=None,
-        noise_model=nn.Identity(),
         *,
+        noise_model=nn.Identity(),
         dtype: torch.dtype = torch.float32,
         device: torch.device = torch.device("cpu"),
     ):
         super().__init__(
-            H, meas_shape, meas_dims, noise_model, dtype=dtype, device=device
+            H,
+            meas_shape,
+            meas_dims,
+            noise_model,
+            noise_model=noise_model,
+            dtype=dtype,
+            device=device,
         )
 
         # split positive and negative components
@@ -1228,9 +1239,9 @@ class HadamSplit2d(LinearSplit):
         h: int,
         M: int,
         order: torch.tensor = None,
-        noise_model=nn.Identity(),
         fast=True,
         *,
+        noise_model=nn.Identity(),
         dtype: torch.dtype = torch.float32,
         device: torch.device = torch.device("cpu"),
     ):
@@ -1244,7 +1255,7 @@ class HadamSplit2d(LinearSplit):
             torch.empty(h**2, h**2),
             meas_shape,
             meas_dims,
-            noise_model,
+            noise_model=noise_model,
             dtype=dtype,
             device=device,
         )
