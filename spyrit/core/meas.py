@@ -688,10 +688,19 @@ import spyrit.core.torch as spytorch
 
 # =============================================================================
 class Linear(nn.Module):
-    r"""_summary_
+    r"""
+    Compute 
+    
+    .. math::
+        y =\mathcal{N}\left(Ax\right),
+        
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^J \to \mathbb{R}^J` represents a (not necessarily linear) noise operator (e.g., Poisson or Poisson-Gaussian), :math:`A \colon\, \mathbb{R}^N \to \mathbb{R}^J` is the actual acquisition operator that models the (positive) DMD patterns, and :math:`J` is the number of DMD patterns. 
 
     Args:
-        nn (_type_): _description_
+        :attr:`H` (:class:`torch.tensor`, optional): Acquisition matrix :math:`A`.
+        
+        
+        
     """
 
     def __init__(
@@ -705,6 +714,11 @@ class Linear(nn.Module):
         device: torch.device = torch.device("cpu"),
     ):
         super().__init__()
+
+        if meas_shape is None:
+            meas_shape = H.shape[-1]
+        if meas_dims is None:
+            meas_dims = -1
 
         if type(meas_shape) is int:
             meas_shape = [meas_shape]
