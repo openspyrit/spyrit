@@ -28,41 +28,6 @@ import spyrit.core.meas as meas
 
 
 # =============================================================================
-class NoNoise(nn.Module):
-    """A placeholder that returns measurements without noise.
-
-    This is the base class for the noise models. All noise models should inherit
-    from this class. It returns any given measurement tensor without any noise.
-
-    Args:
-        None
-
-    Attributes:
-        noise_function (function): The function that adds noise to the incoming
-        measurements. It is `lambda x: x`.
-    """
-
-    def __init__(self):
-        super().__init__()
-
-        def noise_function(x: torch.tensor) -> torch.tensor:
-            return x
-
-        self.noise_function = noise_function
-
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        """Returns measurements as they are.
-
-        Args:
-            x (torch.tensor): Any measurement tensor.
-
-        Returns:
-            torch.tensor: The same measurement tensor.
-        """
-        return self.noise_function(x)
-
-
-# =============================================================================
 # class NoNoise(nn.Module):
 #     # =========================================================================
 #     r"""
@@ -181,7 +146,7 @@ class NoNoise(nn.Module):
 
 
 # ==============================================================================
-class Gaussian(NoNoise):
+class Gaussian(nn.Module):
     r"""
     Simulates measurements corrupted by additive Gaussian noise
 
@@ -585,7 +550,7 @@ class Gaussian(NoNoise):
 
 
 # =============================================================================
-class Poisson(NoNoise):
+class Poisson(nn.Module):
     r"""Adds Poisson noise to incoming measurements.
 
     The Poisson noise is parameterized by its intensity :math:`\alpha`. The
@@ -606,11 +571,6 @@ class Poisson(NoNoise):
         super().__init__()
         self.alpha = alpha
 
-        def noise_function(x: torch.tensor) -> torch.tensor:
-            return torch.poisson(x * self.alpha)
-
-        self.noise_function = noise_function
-
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Adds Poisson noise to incoming measurements.
 
@@ -624,7 +584,7 @@ class Poisson(NoNoise):
         Returns:
             torch.tensor: The same measurement tensor with Poisson noise.
         """
-        return super().forward(x)
+        return torch.poisson(x * self.alpha)
 
 
 # =============================================================================
@@ -652,12 +612,6 @@ class PoissonApproxGauss(Poisson):
     def __init__(self, alpha: float):
         super().__init__(alpha)
 
-        def noise_function(x: torch.tensor) -> torch.tensor:
-            x = x * self.alpha
-            return x + torch.sqrt(x) * torch.randn_like(x)
-
-        self.noise_function = noise_function
-
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Adds Gaussian-approximated Poisson noise to incoming measurements.
 
@@ -674,7 +628,8 @@ class PoissonApproxGauss(Poisson):
         """
         if torch.any(x < 0):
             raise RuntimeError("Input tensor contains negative values.")
-        return super().forward(x)
+        x *= self.alpha
+        return x + torch.sqrt(x) * torch.randn_like(x)
 
 
 # =============================================================================
@@ -707,12 +662,6 @@ class PoissonApproxGaussSameNoise(Poisson):
     def __init__(self, alpha: float):
         super().__init__(alpha)
 
-        def noise_function(x: torch.tensor) -> torch.tensor:
-            x = x * self.alpha
-            return x + torch.sqrt(x) * torch.randn((*[1] * (x.ndim - 1), x.shape[-1]))
-
-        self.noise_function = noise_function
-
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Adds identical Gaussian-approximated Poisson noise to incoming measurements.
 
@@ -737,4 +686,5 @@ class PoissonApproxGaussSameNoise(Poisson):
         """
         if torch.any(x < 0):
             raise RuntimeError("Input tensor contains negative values.")
-        return super().forward(x)
+        x *= self.alpha
+        return x + torch.sqrt(x) * torch.randn((*[1] * (x.ndim - 1), x.shape[-1]))
