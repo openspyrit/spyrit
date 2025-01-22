@@ -1,12 +1,12 @@
 """
-Noise models for simulations.
+Noise models
 
 .. math::
 
-    y \sim \mathcal{N}\left(z;\theta),
+    y \sim \mathcal{N}\left(z;\theta\right),
     
 where :math:`\mathcal{N}` the noise distribution, :math:`z` represents the 
-noiseless measurements, and :math:`\mathcal{\theta}` represents the parameters
+noiseless measurements, and :math:`\theta` represents the parameters
 of the noise distribution.
 
 There are two main classes in this module, which simulate Gaussian and Poisson
