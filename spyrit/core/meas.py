@@ -751,6 +751,10 @@ class Linear(nn.Module):
                 + f"in the measurement shape {self.meas_shape}."
             )
 
+        # define the available matrices for reconstruction
+        self._available_pinv_matrices = ["H"]
+        self._selected_pinv_matrix = "H"  # select default here (no choice)
+
     @property
     def device(self) -> torch.device:
         return self.H.device
@@ -760,8 +764,19 @@ class Linear(nn.Module):
         return self.H.dtype
 
     @property
-    def matrix_to_inverse(self) -> torch.tensor:
-        return self.H
+    def matrix_to_inverse(self) -> str:
+        return self._selected_pinv_matrix
+
+    def get_matrix_to_inverse(self) -> torch.tensor:
+        return getattr(self, self.matrix_to_inverse)
+
+    def set_matrix_to_inverse(self, matrix_name: str) -> None:
+        if matrix_name in self._available_pinv_matrices.keys():
+            self._selected_pinv_matrix = matrix_name
+        else:
+            raise KeyError(
+                f"Matrix {matrix_name} not available for pinv. Available matrices: {self._available_pinv_matrices.keys()}"
+            )
 
     def measure(self, x: torch.tensor) -> torch.tensor:
         r"""Apply the measurement patterns (no noise) to the incoming tensor.
@@ -1174,7 +1189,10 @@ class LinearSplit(Linear):
         pos, neg = nn.functional.relu(H), nn.functional.relu(-H)
         A = torch.cat([pos, neg], 1).reshape(2 * self.M, self.N)
         self.A = nn.Parameter(A, requires_grad=False, device=device, dtype=dtype)
-        self._matrix_to_inverse = "H"  # should be "A" or "H"
+
+        # define the available matrices for reconstruction
+        self._available_pinv_matrices = ["H", "A"]
+        self._selected_pinv_matrix = "H"  # select default here
 
     @property
     def device(self) -> torch.device:
@@ -1193,21 +1211,6 @@ class LinearSplit(Linear):
             raise RuntimeError(
                 f"dtype undefined, H and A are of different dtype (found {self.H.dtype} and {self.A.dtype} respectively)"
             )
-
-    @property
-    def matrix_to_inverse(self):
-        if self._matrix_to_inverse == "H":
-            return self.H
-        elif self._matrix_to_inverse == "A":
-            return self.A
-        else:
-            raise AttributeError(
-                f"matrix_to_inverse must be either 'H' or 'A', found {self._matrix_to_inverse}."
-            )
-
-    @matrix_to_inverse.setter
-    def matrix_to_inverse(self, matrix: str):
-        self._matrix_to_inverse = matrix
 
     def measure(self, x: torch.tensor):
         r""" """
@@ -1250,10 +1253,10 @@ class HadamSplit2d(LinearSplit):
 
     def __init__(
         self,
-        h: int,
         M: int,
+        h: int,
         order: torch.tensor = None,
-        fast=True,
+        fast: bool = True,
         *,
         noise_model=nn.Identity(),
         dtype: torch.dtype = torch.float32,
@@ -1262,7 +1265,7 @@ class HadamSplit2d(LinearSplit):
         meas_dims = (-2, -1)
         meas_shape = (h, h)
         # 1D version of H
-        self.H1d = spytorch.walsh2_torch(h).to(dtype=dtype, device=device)
+        self.H1d = spytorch.walsh_matrix(h).to(dtype=dtype, device=device)
 
         # call Linear constructor (avoid setting A)
         super(LinearSplit, self).__init__(
@@ -1275,7 +1278,9 @@ class HadamSplit2d(LinearSplit):
         )
         self.M = M
         self.order = order
-        self.indices = torch.argsort(-order.flatten(), stable=True).to(torch.int32)
+        self.indices = torch.argsort(-order.flatten(), stable=True).to(
+            dtype=torch.int32, device=self.device
+        )
         self.fast = fast
 
     @property
@@ -1354,8 +1359,9 @@ class HadamSplit2d(LinearSplit):
         r""" """
         if self.fast:
             x = spytorch.mult_2d_separable(self.H1d, x)
-            x = self.reindex(x, "rows", False)
             x = self.vectorize(x)
+            x = x.index_select(dim=-1, index=self.indices)
+            # x = self.reindex(x, "rows", False)
             return x[..., : self.M]
         else:
             return super().measure_H(x)
@@ -1838,8 +1844,7 @@ class HadamSplit2d(LinearSplit):
 
 # =============================================================================
 class DynamicLinear(Linear):
-    r"""
-    Simulates the measurement of a moving object :math:`y = H \cdot x(t)`.
+    r"""Simulates the measurement of a moving object :math:`y = H \cdot x(t)`.
 
     Computes linear measurements :math:`y` from incoming images: :math:`y = Hx`,
     where :math:`H` is a linear operator (matrix) and :math:`x` is a
@@ -1964,72 +1969,15 @@ class DynamicLinear(Linear):
                 f"The time dimension must not be in the measurement dimensions. Found {self.time_dim} in {self.meas_dims}."
             )
 
-    @property
-    def H(self) -> torch.tensor:
-        """Dynamic measurement matrix H. Equal to self.H_dyn."""
-        return self.H_dyn
-
-    @property
-    def H_dyn(self) -> torch.tensor:
-        """Dynamic measurement matrix H."""
-        try:
-            return self._param_H_dyn.data
-        except AttributeError as e:
-            raise AttributeError(
-                "The dynamic measurement matrix H has not been set yet. "
-                + "Please call build_H_dyn() before accessing the attribute "
-                + "H_dyn (or H)."
-            ) from e
-
-    @H_dyn.setter
-    def H_dyn(self, value: torch.tensor) -> None:
-        self._param_H_dyn = nn.Parameter(value.to(torch.float64), requires_grad=False)
-        try:
-            del H_pinv
-        except UnboundLocalError as e:
-            if "H_pinv" in str(e):
-                pass
+        # define the available matrices for reconstruction
+        self._available_pinv_matrices = ["H_dyn"]
+        self._selected_pinv_matrix = "H_dyn"  # select default here
 
     @property
     def recon_mode(self) -> str:
         """Interpolation mode used for reconstruction."""
         return self._recon_mode
 
-    @property
-    def H_pinv(self) -> torch.tensor:
-        """Dynamic pseudo-inverse H_pinv. Equal to self.H_dyn_pinv."""
-        return self.H_dyn_pinv
-
-    @H_pinv.deleter
-    def H_pinv(self) -> None:
-        del self.H_dyn_pinv
-
-    @property
-    def H_dyn_pinv(self) -> torch.tensor:
-        """Dynamic pseudo-inverse H_pinv."""
-        try:
-            return self._param_H_dyn_pinv.data
-        except AttributeError as e:
-            raise AttributeError(
-                "The dynamic pseudo-inverse H_pinv has not been set yet. "
-                + "Please call build_H_dyn_pinv() before accessing the attribute "
-                + "H_dyn_pinv (or H_pinv)."
-            ) from e
-
-    @H_dyn_pinv.setter
-    def H_dyn_pinv(self, value: torch.tensor) -> None:
-        self._param_H_dyn_pinv = nn.Parameter(
-            value.to(torch.float64), requires_grad=False
-        )
-
-    @H_dyn_pinv.deleter
-    def H_dyn_pinv(self) -> None:
-        try:
-            del self._param_H_dyn_pinv
-        except UnboundLocalError:
-            pass
-
-    # @mprof.profile
     def build_H_dyn(
         self,
         motion: DeformationField,
@@ -2236,7 +2184,7 @@ class DynamicLinear(Linear):
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
 
         else:
-            det = self.calc_det(def_field)
+            det = motion.det()
 
             meas_pattern = meas_pattern.reshape(
                 meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1]
@@ -2353,28 +2301,6 @@ class DynamicLinear(Linear):
         """
         x = spytorch.center_crop(x, self.meas_shape)
         return self._static_forward_with_op(x, self.H_dyn)
-
-    def _set_Ord(self, Ord: torch.tensor) -> None:
-        """Set the order matrix used to sort the rows of H."""
-        super()._set_Ord(Ord)
-        # delete self.H (self._param_H_dyn)
-        try:
-            del self._param_H_dyn
-            warnings.warn(
-                "The dynamic measurement matrix H has been deleted. "
-                + "Please call build_H_dyn() to recompute it."
-            )
-        except AttributeError:
-            pass
-        # delete self.H_pinv (self._param_H_dyn_pinv)
-        try:
-            del self._param_H_dyn_pinv
-            warnings.warn(
-                "The dynamic pseudo-inverse H_pinv has been deleted. "
-                + "Please call build_H_dyn_pinv() to recompute it."
-            )
-        except AttributeError:
-            pass
 
     def _spline(self, dx, mode):
         """
@@ -2764,11 +2690,3 @@ class DynamicLinear(Linear):
         # we pass the whole F matrix to the constructor
         super().__init__(F, Ord, (h, h), img_shape)
         self._M = M
-
-
-#     def _set_Ord(self, Ord: torch.tensor) -> None:
-#         """Set the order matrix used to sort the rows of H."""
-#         # get only the indices, as done in spyrit.core.torch.sort_by_significance
-#         self._indices = torch.argsort(-Ord.flatten(), stable=True).to(torch.int32)
-#         # update the Ord attribute
-#         self._param_Ord.data = Ord.to(self.device)

@@ -1096,3 +1096,56 @@ def regularized_lstsq(A: torch.tensor, y: torch.tensor, regularization: str, **k
         )
 
     return x
+
+
+# =============================================================================
+# Dynamic Handling
+# =============================================================================
+
+
+# def H_dyn_no_warping(
+#     H: torch.tensor,
+#     deformation_field: warp.DeformationField,
+#     mode: str = "bilinear",
+#     warping: bool = False,
+# ) -> torch.tensor:
+#     pass
+
+
+# def H_dyn_warping(
+#     H: torch.tensor,
+#     deformation_field: warp.DeformationField,
+#     mode: str = "bilinear",
+# ) -> torch.tensor:
+#     r""" """
+
+#     det = deformation_field.det()
+
+#     meas_pattern = meas_pattern.reshape(
+#         meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1]
+#     )
+#     meas_pattern_ext = torch.zeros(
+#         (meas_pattern.shape[0], 1, self.img_shape[0], self.img_shape[1])
+#     )
+#     amp_max_h = (self.img_shape[0] - self.meas_shape[0]) // 2
+#     amp_max_w = (self.img_shape[1] - self.meas_shape[1]) // 2
+#     meas_pattern_ext[
+#         :,
+#         :,
+#         amp_max_h : self.meas_shape[0] + amp_max_h,
+#         amp_max_w : self.meas_shape[1] + amp_max_w,
+#     ] = meas_pattern
+#     meas_pattern_ext = meas_pattern_ext.to(dtype=motion.field.dtype)
+
+#     H_dyn = nn.functional.grid_sample(
+#         meas_pattern_ext,
+#         motion.field,
+#         mode=mode,
+#         padding_mode="zeros",
+#         align_corners=True,
+#     )
+#     H_dyn = det.reshape((meas_pattern.shape[0], -1)) * H_dyn.reshape(
+#         (meas_pattern.shape[0], -1)
+#     )
+
+#     self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
