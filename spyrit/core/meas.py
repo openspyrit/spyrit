@@ -225,7 +225,7 @@ class Linear(nn.Module):
             all the dimensions of the input tensor that are not included in :attr:`self.meas_dims`.
 
         Example:
-            (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 10.
+            Example 1: (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 10.
             
             >>> H = torch.randn(10, 15)
             >>> meas_op = Linear(H)
@@ -234,7 +234,7 @@ class Linear(nn.Module):
             >>> print(y.shape)
             torch.Size([3, 4, 10])
             
-            3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 10. The acquisition matrix applies to both dimensions -2 and -1. 
+            Example 2: 3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 10. The acquisition matrix applies to both dimensions -2 and -1. 
             
             >>> H = torch.randn(10, 60)
             >>> meas_op = Linear(H, meas_shape=(15, 4))
@@ -251,62 +251,66 @@ class Linear(nn.Module):
 
     def adjoint(self, m: torch.tensor, unvectorize=False):
         r"""        
-        Applies adjoint (transpose) to measurements
+        Applies adjoint (transpose) of acquisition matrix to measurements
         
         .. math::
             x = H^Tm,
 
-        where :math:`H^T\in\mathbb{R}^{N\times M}` is the adjoint of the acquisition matrix, :math:`m \in \mathbb{R}^M` is a measurement.
+        where :math:`H^T\in\mathbb{R}^{N\times M}` is the adjoint of the 
+        acquisition matrix, :math:`m \in \mathbb{R}^M` is a measurement.
 
         Args:
-            :attr:`m` (:class:`torch.tensor`): A batch of measurements :math:`m`. The
-            dimensions indexed by :attr:`self.meas_dims` must match the measurement
-            shape :attr:`self.meas_shape`. 
+            :attr:`m` (:class:`torch.tensor`): A batch of measurement 
+            :math:`m` of shape :math:`(*, M)` where :math:`*`  denotes all the 
+            dimensions that are not included in :attr:`self.meas_dims` 
             
-            :attr:`unvectorize` (bool, optional): Whether to call :meth:`unvectorize`
-            after the operation. Defaults to False.
+            
+            :attr:`unvectorize` (:obj:`bool`, optional): Whether to unvectorize
+            the measurement dimensions. This calls 
+            :meth:`~spyrit.core.meas.unvectorize()` after mutiplication by the 
+            adjoint. Defaults to False.
 
         Returns:
-            :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
-            all the dimensions of the input tensor that are not included in :attr:`self.meas_dims`.
-            
-
-        Args:
-            y (:class:`torch.tensor`): A tensor of shape (*, self.M) where * denotes
-            0 or more batch dimensions.
-
-           
-
-        Returns:
-            :class:`torch.tensor`: A tensor of shape (*, self.N) if `reshape_output` is
-            False, or the :meth:`unvectorize`d version of that tensor.
+            :class:`torch.tensor`: A batch of signals :math:`x`. 
+            If :attr:`unvectorize` is :obj:`False`, :math:`x` has shape 
+            :math:`(*, N)` where :math:`*` is the same as for :attr:`m`. If 
+            :attr:`unvectorize` is :obj:`True`, :math:`x` is reshaped such that
+            the dimensions :attr:`self.meas_dims` match the measurement shape 
+            :attr:`self.meas_shape`.
             
 
         Example:
-            (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 10.
+            Example 2: (3, 4) measurements of length 10 produces (3, 4) signals
+            of length 10.
             
             >>> H = torch.randn(10, 15)
             >>> meas_op = Linear(H)
-            >>> x = torch.randn(3, 4, 15)
-            >>> y = meas_op.measure(x)
-            >>> print(y.shape)
-            torch.Size([3, 4, 10])
+            >>> m = torch.randn(3, 4, 10)
+            >>> x = meas_op.adjoint(m)
+            >>> print(x.shape)
+            orch.Size([3, 4, 15])
             
-            3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 10. The acquisition matrix applies to both dimensions -2 and -1. 
+            
+            Example 2: 3 measurements of length 10 produces 3 signals of length
+            60
             
             >>> H = torch.randn(10, 60)
             >>> meas_op = Linear(H, meas_shape=(15, 4))
-            >>> x = torch.randn(3, 15, 4)
-            >>> y = meas_op.measure(x)
-            >>> print(y.shape)
-            >>> print(meas_op.meas_dims)
-            torch.Size([3, 10])
-            torch.Size([-2, -1])
+            >>> m = torch.randn(3, 10)
+            >>> x = meas_op.adjoint(m)
+            >>> print(x.shape)
+            torch.Size([3, 60])
+            
+            Using unvectorize=True produces 3 signals of length (15, 4)
+            
+            >>> x = meas_op.adjoint(m, unvectorize=True)
+            >>> print(x.shape)
+            torch.Size([3, 15, 4])
         """
         m = torch.einsum("mn,...m->...n", self.H, m)
         if unvectorize:
             m = self.unvectorize(m)
-        return y
+        return m
 
     def unvectorize(self, input: torch.tensor) -> torch.tensor:
         r"""Unflatten the last dimension of a tensor to the measurement shape at
