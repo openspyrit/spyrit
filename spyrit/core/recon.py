@@ -429,13 +429,6 @@ class PinvNet(_PrebuiltFullNet):
         super().__init__(acqu_modules, recon_modules)
         self.pinv_kwargs = pinv_kwargs
 
-        if not pinv_kwargs.get("reshape_output", False):
-            warnings.warn(
-                "The output of the pseudo inverse operator will *NOT* be reshaped (de-vectorized) before the denoising step."
-                + "Consider setting the optional keyword parameter `reshape_output` to `True` in the PinvNet constructor.",
-                UserWarning,
-            )
-
     @property
     def pinv(self):
         return self.recon_modules.pinv
