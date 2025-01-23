@@ -774,13 +774,6 @@ class TikhoNet(_PrebuiltFullNet):
         recon_modules = OrderedDict({"prep": prep, "tikho": tikho, "denoi": denoi})
         super().__init__(acqu_modules, recon_modules)
 
-        if not kwargs.get("reshape_output", False):
-            warnings.warn(
-                "The output of the Tikhonov operator will *NOT* be reshaped (de-vectorized) before the denoising step."
-                + "Consider setting the optional keyword parameter `reshape_output` to `True` in the TikhoNet constructor.",
-                UserWarning,
-            )
-
     @property
     def tikho(self):
         return self.recon_modules["tikho"]
@@ -859,7 +852,7 @@ class LearnedPGD(nn.Module):
     denoi(\hat{x_k} - step * H^T (Hx_k - y))`
 
     Args:
-        :attr:`noise`: Acquisition operator (see :class:`~spyrit.core.noise`)
+        :attr:`acqu`: Acquisition operator (see :class:`~spyrit.core.meas`)
 
         :attr:`prep`: Preprocessing operator (see :class:`~spyrit.core.prep`)
 
@@ -905,14 +898,14 @@ class LearnedPGD(nn.Module):
         :attr:`output`: Reconstructed images with shape :math:`(B,C,H,W)`
 
     Attributes:
-        :attr:`Acq`: Acquisition operator initialized as :attr:`noise`
+        :attr:`acqu`: Acquisition operator initialized as :attr:`acqu`
 
         :attr:`prep`: Preprocessing operator initialized as :attr:`prep`
 
         :attr:`pinv`: Analytical reconstruction operator initialized as
         :class:`~spyrit.core.recon.PseudoInverse()`
 
-        :attr:`Denoi`: Image denoising operator initialized as :attr:`denoi`
+        :attr:`denoi`: Image denoising operator initialized as :attr:`denoi`
 
     Example:
         >>> B, C, H, M = 10, 1, 64, 64**2
@@ -931,9 +924,10 @@ class LearnedPGD(nn.Module):
 
     def __init__(
         self,
-        noise,
+        acqu: meas.LinearSplit,
         prep,
         denoi=nn.Identity(),
+        *,
         iter_stop=3,
         x0=0,
         step=None,
@@ -944,14 +938,16 @@ class LearnedPGD(nn.Module):
         gt=None,
         log_fidelity=False,
         res_learn=False,
+        **pinv_kwargs,
     ):
         super().__init__()
         # nn.module
-        self.acqu = noise
+        self.acqu = acqu
         self.prep = prep
         self.denoi = denoi
+        self.pinv_kwargs = pinv_kwargs
 
-        self.pinv = inverse.PseudoInverse()
+        self.pinv = inverse.PseudoInverse(self.acqu, **pinv_kwargs)
 
         # LPGD algo
         self.x0 = x0
@@ -991,8 +987,8 @@ class LearnedPGD(nn.Module):
     def set_stepsize(self, step):
         if step is None:
             # Stimate stepsize from Lipschitz constant
-            if hasattr(self.acqu.meas_op, "N"):
-                step = 1 / self.acqu.meas_op.N
+            if hasattr(self.acqu, "N"):
+                step = 1 / self.acqu.N
             else:
                 # Estimate step size as 1/sv_max(H^TH); if failed, set to 1e-4
                 self.step_estimation = True
@@ -1058,7 +1054,7 @@ class LearnedPGD(nn.Module):
         return self.acqu(x)
 
     def hessian_sv(self):
-        H = self.acqu.meas_op.H
+        H = self.acqu.H
         if self.wls:
             std_mat = 1 / torch.sqrt(self.meas_variance)
             std_mat = torch.diag(std_mat.reshape(-1))
@@ -1075,7 +1071,7 @@ class LearnedPGD(nn.Module):
         self.step = 2 / (s.min() + s.max())  # Kressner, EPFL, GD #1/(2*s.max()**2)
 
     def cost_fun(self, x, y):
-        proj = self.acqu.meas_op.forward_H(x)
+        proj = self.acqu.forward_H(x)
         res = proj - y
         if self.wls:
             res = res / torch.sqrt(self.meas_variance)
@@ -1122,8 +1118,7 @@ class LearnedPGD(nn.Module):
         if self.wls:
             # Get variance of the measurements
             if hasattr(self.prep, "sigma"):
-                meas_variance = self.prep.sigma(x)
-                self.meas_variance = meas_variance
+                self.meas_variance = x / (self.prep.alpha**2)
             else:
                 print(
                     "WLS requires the variance of the measurements to be known!. Estimating var==m"
@@ -1138,22 +1133,21 @@ class LearnedPGD(nn.Module):
 
         # If pinv method is defined
         if self.x0 != 0:
-            if hasattr(self.acqu.meas_op, "pinv"):
-                x = self.acqu.meas_op.pinv(m)
+            x = self.pinv(m)
+            # if hasattr(self.acqu, "pinv"):
+            #     x = self.acqu.pinv(m)
 
-                # proximal step (prior)
-                if isinstance(self.denoi, nn.ModuleList):
-                    x = self.denoi[0](x)
-                else:
-                    x = self.denoi(x)
+            # proximal step (prior)
+            if isinstance(self.denoi, nn.ModuleList):
+                x = self.denoi[0](x)
+            else:
+                x = self.denoi(x)
 
             if self.res_learn:
                 z0 = x.detach().clone()
         else:
             # zero init
-            x = torch.zeros(
-                (*x.shape[:-1], *self.acqu.meas_op.meas_shape), device=x.device
-            )
+            x = torch.zeros((*x.shape[:-1], *self.acqu.meas_shape), device=x.device)
 
         if self.log_fidelity:
             self.cost = []
@@ -1165,16 +1159,16 @@ class LearnedPGD(nn.Module):
             with torch.no_grad():
                 self.mse.append(self.mse_fun(x, self.x_gt).cpu().numpy().tolist())
 
-        u = None
+        # u = None  # is this line useless ??
 
         for i in range(self.iter_stop):
             # gradient step (data fidelity)
-            res = self.acqu.meas_op.forward_H(x) - m
+            res = self.acqu.forward_H(x) - m
             if self.wls:
                 res = res / meas_variance
-                upd = step[i].reshape(-1, 1) * self.acqu.meas_op.adjoint(res)
+                upd = step[i].reshape(-1, 1) * self.acqu.adjoint(res)
             else:
-                upd = step[i] * self.acqu.meas_op.adjoint(res)
+                upd = step[i] * self.acqu.adjoint_H(res)
             x = x - upd
 
             if i == 0 and self.res_learn and self.x0 == 0:
@@ -1207,6 +1201,9 @@ class LearnedPGD(nn.Module):
 
     def reconstruct_expe(self, x):
         r"""Reconstruction step of a reconstruction network
+
+        .. warning ::
+            !! This method hasn't been updated to the incoming v3 !!
 
         Same as :meth:`reconstruct` reconstruct except that:
 
