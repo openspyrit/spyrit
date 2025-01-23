@@ -105,6 +105,21 @@ class Rescale(nn.Module):
         """
         return y / self.alpha
 
+    def sigma(self, y: torch.tensor) -> torch.tensor:
+        r"""Estimates the variance of raw measurements.
+
+        The variance is estimated as :math:`x / \alpha^2`, where :math:`x` are
+        *raw* measurements, i.e. before any rescaling.
+
+        Args:
+            x (torch.tensor): batch of measurement vectors, of any shape.
+
+        Returns:
+            torch.tensor: The estimated variance of the measurements, with the
+            same shape.
+        """
+        return y / (self.alpha**2)
+
 
 # =============================================================================
 class UnsplitRescale(Rescale):
@@ -123,7 +138,7 @@ class UnsplitRescale(Rescale):
     def __init__(self, alpha):
         super().__init__(alpha)
 
-    def forward(self, y: torch.tensor, mode: str = "sub") -> torch.tensor:
+    def forward(self, y: torch.tensor) -> torch.tensor:
         r"""Rescale the input tensor and unsplit it.
 
         Depending on the value of `mode`, it returns `(y[..., 0::2] - y[..., 1::2])/alpha`
@@ -140,8 +155,28 @@ class UnsplitRescale(Rescale):
         Returns:
             torch.tensor: The rescaled and unsplit tensor of shape :math:`(*, m)`.
         """
-        y = Unsplit.forward(y, mode=mode)  # Unsplit
+        y = Unsplit.forward(y, mode="sub")  # Unsplit
         y = super().forward(y)  # Rescale
+        return y
+
+    def sigma(self, y: torch.tensor) -> torch.tensor:
+        r"""Estimates the variance of raw *split* measurements.
+
+        The variance is estimated as :math:`(x[0::2]+x[1::2]) / \alpha^2`.
+
+        .. important::
+            This assumes the measurements have been acquired with a split measurement
+            operator (see :class:`spyrit.core.meas.LinearSplit`).
+
+        Args:
+            y (torch.tensor): batch of measurements, of shape :math:`(*, 2m)`.
+
+        Returns:
+            torch.tensor: The estimated variance of the measurements, with the
+            shape :math:`(*, m)`.
+        """
+        y = Unsplit.forward(y, mode="add")
+        y = super().sigma(y)
         return y
 
 
@@ -469,6 +504,9 @@ class Rerange(nn.Module):
             :math:`[x,y]`.
         """
         return Rerange(self.output_range, self.input_range)
+
+    def __repr__(self):
+        return f"Rerange({self.input_range} -> {self.output_range})"
 
 
 # =============================================================================

@@ -573,78 +573,23 @@ class DCNet(_PrebuiltFullNet):
     ):
         sigma = acqu.reindex(sigma, "rows", False)
         sigma = acqu.reindex(sigma, "cols", True)
-        sigma_perm = sigma
-        self.tikho = inverse.TikhonovMeasurementPriorDiag(sigma_perm, acqu.M)
+        tikho = inverse.TikhonovMeasurementPriorDiag(acqu, sigma)
 
         acqu_modules = OrderedDict({"acqu": acqu})
-        recon_modules = OrderedDict({"prep": prep, "tikho": self.tikho, "denoi": denoi})
+        recon_modules = OrderedDict({"prep": prep, "tikho": tikho, "denoi": denoi})
         super().__init__(acqu_modules, recon_modules)
 
     @property
     def tikho(self):
-        return self.recon_modules["tikho"]
+        return self.recon_modules.tikho
 
     @tikho.setter
     def tikho(self, value):
-        self.recon_modules["tikho"] = value
+        self.recon_modules.tikho = value
 
     @tikho.deleter
     def tikho(self):
-        del self.recon_modules["tikho"]
-
-    # def forward(self, x):
-    #     r"""Full pipeline of the reconstruction network
-
-    #     Args:
-    #         :attr:`x`: ground-truth images
-
-    #     Shape:
-    #         :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
-
-    #         :attr:`output`: reconstructed images with shape :math:`(B,C,H,W)`
-
-    #     Example:
-    #         >>> B, C, H, M = 10, 1, 64, 64**2
-    #         >>> Ord = torch.ones((H,H))
-    #         >>> meas = HadamSplit(M, H, Ord)
-    #         >>> noise = NoNoise(meas)
-    #         >>> prep = SplitPoisson(1.0, M, H*H)
-    #         >>> sigma = torch.rand([H**2, H**2])
-    #         >>> recnet = DCNet(noise,prep,sigma)
-    #         >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
-    #         >>> z = recnet(x)
-    #         >>> print(z.shape)
-    #         torch.Size([10, 1, 64, 64])
-    #     """
-    #     x = self.acquire(x)
-    #     x = self.reconstruct(x)
-    #     return x
-
-    # def acquire(self, x):
-    #     r"""Simulate data acquisition
-
-    #     Args:
-    #         :attr:`x`: ground-truth images
-
-    #     Shape:
-    #         :attr:`x`: ground-truth images with shape :math:`(B,C,H,W)`
-
-    #         :attr:`output`: measurement vectors with shape :math:`(BC,2M)`
-
-    #     Example:
-    #         >>> B, C, H, M = 10, 1, 64, 64**2
-    #         >>> Ord = torch.ones((H,H))
-    #         >>> meas = HadamSplit(M, H, Ord)
-    #         >>> noise = NoNoise(meas)
-    #         >>> prep = SplitPoisson(1.0, M, H*H)
-    #         >>> sigma = torch.rand([H**2, H**2])
-    #         >>> recnet = DCNet(noise,prep,sigma)
-    #         >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
-    #         >>> z = recnet.acquire(x)
-    #         >>> print(z.shape)
-    #         torch.Size([10, 8192])
-    #     """
-    #     return self.acqu(x)
+        del self.recon_modules.tikho
 
     def reconstruct(self, y):
         r"""Reconstruct an image from measurements.
@@ -664,7 +609,7 @@ class DCNet(_PrebuiltFullNet):
         # estimate the variance of the measurements
         var_noi = self.prep.sigma(y)
         y = self.prep(y)
-        y = self.tikho.forward_no_prior(y, var_noi, self.acqu)
+        y = self.tikho.forward_no_prior(y, var_noi)
         y = self.denoi(y)
         return y
 
@@ -776,15 +721,15 @@ class TikhoNet(_PrebuiltFullNet):
 
     @property
     def tikho(self):
-        return self.recon_modules["tikho"]
+        return self.recon_modules.tikho
 
     @tikho.setter
     def tikho(self, value):
-        self.recon_modules["tikho"] = value
+        self.recon_modules.tikho = value
 
     @tikho.deleter
     def tikho(self):
-        del self.recon_modules["tikho"]
+        del self.recon_modules.tikho
 
     def reconstruct(self, x):
         r"""Reconstruction (measurement-to-image mapping)
@@ -925,7 +870,7 @@ class LearnedPGD(nn.Module):
     def __init__(
         self,
         acqu: meas.LinearSplit,
-        prep,
+        prep: prep.UnsplitRescale,
         denoi=nn.Identity(),
         *,
         iter_stop=3,
@@ -1071,7 +1016,7 @@ class LearnedPGD(nn.Module):
         self.step = 2 / (s.min() + s.max())  # Kressner, EPFL, GD #1/(2*s.max()**2)
 
     def cost_fun(self, x, y):
-        proj = self.acqu.forward_H(x)
+        proj = self.acqu.measure_H(x)
         res = proj - y
         if self.wls:
             res = res / torch.sqrt(self.meas_variance)
@@ -1118,7 +1063,7 @@ class LearnedPGD(nn.Module):
         if self.wls:
             # Get variance of the measurements
             if hasattr(self.prep, "sigma"):
-                self.meas_variance = x / (self.prep.alpha**2)
+                self.meas_variance = self.prep.sigma(x)
             else:
                 print(
                     "WLS requires the variance of the measurements to be known!. Estimating var==m"
@@ -1163,13 +1108,13 @@ class LearnedPGD(nn.Module):
 
         for i in range(self.iter_stop):
             # gradient step (data fidelity)
-            res = self.acqu.forward_H(x) - m
+            res = self.acqu.measure_H(x) - m
             if self.wls:
                 res = res / meas_variance
-                upd = step[i].reshape(-1, 1) * self.acqu.adjoint(res)
+                upd = step[i].reshape(-1, 1) * self.acqu.adjoint_H(res)
             else:
                 upd = step[i] * self.acqu.adjoint_H(res)
-            x = x - upd
+            x = x - self.acqu.unvectorize(upd)
 
             if i == 0 and self.res_learn and self.x0 == 0:
                 # if x0 does not exist

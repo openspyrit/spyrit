@@ -236,7 +236,7 @@ class Tikhonov(nn.Module):
         meas_op: meas.Linear,
         sigma: torch.tensor,
         approx=False,
-        reshape_output: bool = False,
+        reshape_output: bool = True,
     ):
         super().__init__()
 
@@ -359,34 +359,30 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         :math:`\Sigma_1`.
 
     Example:
+        >>> meas_op = spyrit.core.meas.HadamSplit2d(400, 32)
         >>> sigma = torch.rand([32*32, 32*32])
-        >>> recon_op = TikhonovMeasurementPriorDiag(sigma, 400)
+        >>> recon_op = TikhonovMeasurementPriorDiag(meas_op, sigma)
     """
 
-    def __init__(self, sigma: torch.tensor, M: int):
+    def __init__(
+        self,
+        meas_op: meas.HadamSplit2d,
+        sigma: torch.tensor,
+        reshape_output: bool = True,
+    ):
         super().__init__()
 
-        # N = sigma.shape[0]
+        self.meas_op = meas_op
+        self.reshape_output = reshape_output
 
+        M = self.meas_op.M
         var_prior = sigma.diag()[:M]
-
-        # self.denoi = Denoise_layer(M)
-        # self.denoi.weight.data = torch.sqrt(var_prior)
-        # self.denoi.weight.data = self.denoi.weight.data.float()
-        # self.denoi.weight.requires_grad = False
-
         self.denoise_weights = nn.Parameter(torch.sqrt(var_prior), requires_grad=False)
 
         Sigma1 = sigma[:M, :M]
         Sigma21 = sigma[M:, :M]
-        # W = Sigma21 @ torch.linalg.inv(Sigma1)
         W = torch.linalg.solve(Sigma1.T, Sigma21.T).T
-
         self.comp = nn.Parameter(W, requires_grad=False)
-        # self.comp = nn.Linear(M, N - M, False)
-        # self.comp.weight.data = W
-        # self.comp.weight.data = self.comp.weight.data.float()
-        # self.comp.weight.requires_grad = False
 
     def wiener_denoise(self, x: torch.tensor, var: torch.tensor) -> torch.tensor:
         """Returns a denoised version of the input tensor using the variance prior.
@@ -406,12 +402,15 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         weights_squared = self.denoise_weights**2
         return torch.mul((weights_squared / (weights_squared + var)), x)
 
-    def forward_no_prior(self, x, var, meas_op):
+    def forward_no_prior(self, x, var):
+        r"""Forward method but with x0 = 0"""
         y1 = self.wiener_denoise(x, var)
         y2 = y1 @ self.comp.T
 
         y = torch.cat((y1, y2), -1)
-        y = meas_op.inverse(y)
+        y = self.meas_op.fast_pinv(y)
+        if self.reshape_output:
+            y = self.meas_op.unvectorize(y)
         return y
 
     def forward(
@@ -419,7 +418,6 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         x: torch.tensor,
         x_0: torch.tensor,
         var: torch.tensor,
-        meas_op: meas.HadamSplit2d,
     ) -> torch.tensor:
         r"""
         Computes the Tikhonov regularization with prior in the measurement domain.
@@ -453,9 +451,9 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 
         Shape:
             - :attr:`x`: :math:`(*, M)`
-            - :attr:`x_0`: :math:`(*, N)`
+            - :attr:`x_0`: :math:`(*, h, w)`
             - :attr:`var` :math:`(*, M)`
-            - Output: :math:`(*, N)`
+            - Output: :math:`(*, h, w)`
 
         Example:
             >>> B, H, M = 85, 32, 512
@@ -469,7 +467,7 @@ class TikhonovMeasurementPriorDiag(nn.Module):
             >>> x = recon_op(y, x_0, var, meas)
             torch.Size([85, 1024])
         """
-        x = x - meas_op.forward_H(x_0)
-        x = self.forward_no_prior(x, var, meas_op)
+        x = x - self.meas_op.forward_H(x_0)
+        x = self.forward_no_prior(x, var, self.meas_op)
         x += x_0
         return x
