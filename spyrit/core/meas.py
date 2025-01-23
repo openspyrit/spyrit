@@ -118,6 +118,7 @@ class Linear(nn.Module):
         # don't store H if we use a HadamSplit
         if not isinstance(self, HadamSplit2d):
             self.H = nn.Parameter(H, requires_grad=False)
+            self.H = self.H.to(dtype=dtype, device=device)
         self.noise_model = noise_model
 
         # additional attributes
