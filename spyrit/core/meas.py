@@ -704,7 +704,8 @@ class HadamSplit2d(LinearSplit):
         meas_dims = (-2, -1)
         meas_shape = (h, h)
         # 1D version of H
-        self.H1d = spytorch.walsh_matrix(h).to(dtype=dtype, device=device)
+        self.H1d = nn.Parameter(spytorch.walsh_matrix(h), requires_grad=False)
+        self.H1d = self.H1d.to(dtype=dtype, device=device)
 
         # call Linear constructor (avoid setting A)
         super(LinearSplit, self).__init__(
