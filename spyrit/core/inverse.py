@@ -80,7 +80,7 @@ class PseudoInverse(nn.Module):
         if self.store_pinv:
             if not use_fast_pinv:
                 self.pinv = spytorch.regularized_pinv(
-                    self.meas_op.get_matrix_to_inverse(), regularization, **reg_kwargs
+                    self.meas_op.get_matrix_to_inverse, regularization, **reg_kwargs
                 )
             # do we have a fast pseudo-inverse computation available?
             elif hasattr(self.meas_op, "fast_H_pinv"):
@@ -143,9 +143,9 @@ class PseudoInverse(nn.Module):
 
         else:
             if not self.use_fast_pinv:
-                # make get_matrix_to_inverse() a batched 2D matrix
+                # make get_matrix_to_inverse a batched 2D matrix
                 y = spytorch.regularized_lstsq(
-                    self.meas_op.get_matrix_to_inverse(),
+                    self.meas_op.get_matrix_to_inverse,
                     y,
                     self.regularization,
                     **self.reg_kwargs,
@@ -246,7 +246,7 @@ class Tikhonov(nn.Module):
         self.reshape_output = reshape_output
         self.img_shape = meas_op.img_shape
 
-        A = meas_op.get_matrix_to_inverse()  # get H or A
+        A = meas_op.get_matrix_to_inverse  # get H or A
 
         # *measurement* covariance
         if approx:
