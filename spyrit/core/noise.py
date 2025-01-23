@@ -1,342 +1,86 @@
 """
-Noise models for simulating measurements in imaging.
+Noise models
 
-There are four classes in this module, that each simulate a different type of
-noise in the measurements. The classes simulate the following types of noise:
+.. math::
 
-- NoNoise: Simulates measurements with no noise
+    y \sim \mathcal{N}\left(z;\theta\right),
+    
+where :math:`\mathcal{N}` the noise distribution, :math:`z` represents the 
+noiseless measurements, and :math:`\theta` represents the parameters
+of the noise distribution.
 
-- Poisson: Simulates measurements corrupted by Poisson noise (each pixel
-    receives a number of photons that follows a Poisson distribution)
-
-- PoissonApproxGauss: Simulates measurements corrupted by Poisson noise, but
-    approximates the Poisson distribution with a Gaussian distribution
-
-- PoissonApproxGaussSameNoise: Simulates measurements corrupted by Poisson
-    noise, but all measurements in a batch are corrupted with the same noise
-    sample (approximated by a Gaussian distribution)
+There are two main classes in this module, which simulate Gaussian and Poisson
+noise.
 """
-
-from typing import Union
 
 import torch
 import torch.nn as nn
-
 # import torch.nn.functional as F
-
-import spyrit.core.meas as meas
-
-
-# =============================================================================
-# class NoNoise(nn.Module):
-#     # =========================================================================
-#     r"""
-#     Simulates measurements not corrupted by noise.
-
-#     Assuming incoming images :math:`x` in the range [-1;1], measurements are
-#     first simulated from images in the range [0;1] by computing
-#     :math:`y = \frac{1}{2} H(1+x)`.
-
-#     .. note::
-#         Assumes that the incoming images :math:`x` are in the range [-1;1]
-
-#     The class is constructed from a measurement operator (see the
-#     :mod:`~spyrit.core.meas` submodule)
-
-#     Args:
-#         :attr:`meas_op` : Measurement operator (see the
-#         :mod:`~spyrit.core.meas` submodule)
-
-#     Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator
-#         >>> H = torch.rand([400,32*32])
-#         >>> linear_op = Linear(H)
-#         >>> linear_acq = NoNoise(linear_op)
-
-#     Example 2: Using a :class:`~spyrit.core.meas.HadamSplit` measurement operator
-#         >>> H = torch.rand([400,32*32])
-#         >>> Perm = torch.rand([32*32,32*32])
-#         >>> split_op = HadamSplit(H, Perm, 32, 32)
-#         >>> split_acq = NoNoise(split_op)
-#     """
-
-#     def __init__(self, meas_op: Union[Linear, LinearSplit, HadamSplit]):
-#         super().__init__()
-#         self.meas_op = meas_op
-
-#     @property
-#     def device(self) -> torch.device:
-#         return self.meas_op.device
-
-#     def forward(self, x: torch.tensor) -> torch.tensor:
-#         r"""Simulates measurements
-
-#         Args:
-#             :attr:`x`: Batch of images. The input is directly passed to the
-#             measurement operator, so its shape depends on the type of the
-#             measurement operator.
-
-#         Output:
-#             The batch of measurements. Its shape depends on the input shape.
-
-#         Shape:
-#             :attr:`x`: :math:`(*, h, w)` if `self.meas_op` is a static
-#             measurement operator, :math:`(*, t, c, h, w)` if it is a dynamic
-#             measurement operator.
-#             :attr:`Output`: :math:`(*, M)` (static measurements) or `(*, c, M)`
-#             (dynamic measurements)
-
-#         Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator
-#             >>> x = torch.FloatTensor(10, 3, 32, 32).uniform_(-1, 1)
-#             >>> linear_acq = NoNoise(linear_op)
-#             >>> y = linear_acq(x)
-#             >>> print(y.shape)
-#             torch.Size([10, 3, 400])
-
-#         Example 2: Using a :class:`~spyrit.core.meas.DynamicLinear` measurement operator
-#             >>> x = torch.FloatTensor(10, 400, 3, 32, 32).uniform_(-1, 1)
-#             >>> dyn_acq = DynamicLinear(torch.rand(400, 32*32))
-#             >>> noise_acq = NoNoise(dyn_acq)
-#             >>> y = split_acq(x)
-#             >>> print(y.shape)
-#             torch.Size([10, 3, 400])
-#         """
-#         x = (x + 1) / 2
-#         x = self.meas_op(x)
-#         return x
-
-#     def reindex(
-#         self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
-#     ) -> torch.tensor:
-#         """Sorts a tensor along a specified axis using the indices tensor.
-
-#         The indices tensor is contained in the attribute :attr:`self.meas_op.indices`.
-#         This is equivalent to calling :math:`self.meas_op.reindex` with the same
-#         arguments.
-
-#         The indices tensor contains the new indices of the elements in the values
-#         tensor. `values[0]` will be placed at the index `indices[0]`, `values[1]`
-#         at `indices[1]`, and so on.
-
-#         Using the inverse permutation allows to revert the permutation: in this
-#         case, it is the element at index `indices[0]` that will be placed at the
-#         index `0`, the element at index `indices[1]` that will be placed at the
-#         index `1`, and so on.
-
-#         .. note::
-#             See :func:`~spyrit.core.torch.reindex()` for more details.
-
-#         Args:
-#             values (torch.tensor): The tensor to sort. Can be 1D, 2D, or any
-#             multi-dimensional batch of 2D tensors.
-
-#             axis (str, optional): The axis to sort along. Must be either 'rows' or
-#             'cols'. If `values` is 1D, `axis` is not used. Default is 'rows'.
-
-#             inverse_permutation (bool, optional): Whether to apply the permutation
-#             inverse. Default is False.
-
-#         Raises:
-#             ValueError: If `axis` is not 'rows' or 'cols'.
-
-#         Returns:
-#             torch.tensor: The sorted tensor by the given indices along the
-#             specified axis.
-#         """
-#         return self.meas_op.reindex(x, axis, inverse_permutation)
-
 
 # ==============================================================================
 class Gaussian(nn.Module):
     r"""
-    Simulates measurements corrupted by additive Gaussian noise
+    Simulate measurements corrupted by additive Gaussian noise
 
     .. math::
 
-        y \sim \mathcal{N}\left(\mu = Hx, \sigma^2\right),
+        y \sim \mathcal{N}\left(\mu = z, \sigma^2\right),
 
-    where :math:`\mathcal{N}(\mu, \sigma^2)` is a Gaussian distribution with mean :math:`\mu` and
-    variance :math:`\sigma^2`, :math:`H` is the measurement operator and :math:`x` is the input signal/image.
+    where :math:`\mathcal{N}(\mu, \sigma^2)` is a Gaussian distribution
+    with mean :math:`\mu` and variance :math:`\sigma^2` and :math:`z` are
+    the noiseless measurements.
 
-    The class is constructed from a measurement operator :math:`H` and the
-    standard deviation of the noise :math:`\sigma`.
+    The class is constructed from the standard deviation of the noise :math:`\sigma`.
 
     Args:
-        - :attr:`meas_op` (:mod:`~spyrit.core.meas`): Measurement operator :math:`H`
+        :attr:`sigma` (:class:`float`): Standard deviation of the noise :math:`\sigma`
 
-        - :attr:`sigma` (float): Standard deviation of the noise :math:`\sigma`
-
-    Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator
-        >>> H = torch.rand([400,32*32])
-        >>> linear_op = Linear(H)
-        >>> linear_acq = Gaussian(linear_op, 10.0)
-
+    Example:
+        >>> noise = Gaussian(1.0)
+        >>> z = torch.tensor([1, 3, 6])
+        >>> y = noise(z)
+        >>> print(y)
     """
 
-    def __init__(
-        self,
-        meas_op: meas.Linear,
-        sigma=1.0,
-    ):
+    def __init__(self, sigma:float=0.1):
         super().__init__()
-        self.meas_op = meas_op
         self.sigma = sigma
 
-    def forward(self, x):
+    def forward(self, z):
         r"""Simulates measurements corrupted by additive Gaussian noise
 
         .. math::
 
-            y \sim \mathcal{N}\left(\mu = Hx, \sigma^2\right),
+            y \sim \mathcal{N}\left(\mu = z, \sigma^2\right),
 
         where :math:`\mathcal{N}(\mu, \sigma^2)` is a Gaussian distribution
-        with mean :math:`\mu` and variance :math:`\sigma^2`, :math:`H` is the
-        measurement operator and :math:`x` is the input signal/image.
+        with mean :math:`\mu` and variance :math:`\sigma^2` and :math:`z` are
+        the noiseless measurements.
 
         Args:
-            :attr:`x`: Batch of images :math:`x` with shape :math:`(*, h, w)`
-            if :attr:`self.meas_op` is a static measurement operator, or
-            :math:`(*, t, c, h, w)` if :attr:`self.meas_op` is a dynamic
-            measurement operator.
+            :attr:`z` (:class:`torch.tensor`): Noiseless measurements :math:`z` with arbitrary shape.
 
         Output:
-            Batch of measurements :math:`y` with shape :math:`(*, M)` if
-            :attr:`self.meas_op` is a static measurement operator or
-            :math:`(*, c, M)` if :attr:`self.meas_op` is a dynamic
-            measurement operator.
+            :class:`torch.tensor`: Noisy measurement :math:`y` with the same shape as :attr:`z`.
 
-        Example 1: Two different noisy measurement vectors from a :class:`~spyrit.core.meas.Linear` measurement operator
-            >>> H = torch.rand([400,32*32])
-            >>> meas_op = Linear(H)
-            >>> noise_op = Gaussian(meas_op, 10.0)
-            >>> x = torch.FloatTensor(10, 32, 32).uniform_(-1, 1)
-            >>> y = noise_op(x)
+        Example: 
+            Two different noisy measurement vectors
+            
+            >>> import spyrit.core.noise as sn
+            >>> import torch
+            >>> noise = sn.Gaussian(0.1)
+            >>> z = torch.empty(10, 4).uniform_(1, 2)
+            >>> y = noise(z)
             >>> print(y.shape)
-            torch.Size([10, 400])
             >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-            Measurements in (-42.06 , 61.63)
-            >>> y = noise_op(x)
+            torch.Size([10, 4])
+            Measurements in (0.86 , 2.09)
+            
+            >>> y = noise(z)
             >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-            Measurements in (-43.89 , 47.60)
+            Measurements in (1.01 , 1.98)
         """
-        x = self.meas_op(x)
-        x = x + self.sigma * torch.randn(x.shape)
-        return x
-
-
-# # =============================================================================
-# class Poisson(NoNoise):
-#     # =========================================================================
-#     r"""
-#     Simulates measurements corrupted by Poisson noise
-
-#     Assuming incoming images :math:`x` in the range [-1;1], measurements are
-#     first simulated for images in the range [0; :math:`\alpha`]. Then, Poisson
-#     noise is applied: :math:`y = \mathcal{P}(\frac{\alpha}{2} H(1+x))`.
-
-#     .. note::
-#         Assumes that the incoming images :math:`x` are in the range [-1;1]
-
-#     The class is constructed from a measurement operator and an image
-#     intensity :math:`\alpha` that controls the noise level.
-
-#     Args:
-#         :attr:`meas_op`: Measurement operator :math:`H` (see the :mod:`~spyrit.core.meas` submodule)
-
-#         :attr:`alpha` (float): Image intensity (in photoelectrons)
-
-#     Example 1: Using a :class:`~spyrit.core.meas.Linear` measurement operator
-#         >>> H = torch.rand([400,32*32])
-#         >>> linear_op = Linear(H)
-#         >>> linear_acq = Poisson(linear_op, 10.0)
-
-#     Example 2: Using a :class:`~spyrit.core.meas.HadamSplit` measurement operator
-#         >>> H = torch.rand([400,32*32])
-#         >>> Perm = torch.rand([32*32,32*32])
-#         >>> split_op = HadamSplit(H, Perm, 32, 32)
-#         >>> split_acq = Poisson(split_op, 200.0)
-
-#     Example 3: Using a :class:`~spyrit.core.meas.LinearSplit` measurement operator
-#         >>> H = torch.rand(24,64)
-#         >>> split_row_op = LinearSplit(H)
-#         >>> split_acq = Poisson(split_row_op, 50.0)
-#     """
-
-#     def __init__(
-#         self,
-#         meas_op: Union[Linear, LinearSplit, HadamSplit],
-#         alpha=50.0,
-#     ):
-#         super().__init__(meas_op)
-#         self.alpha = alpha
-
-#     def forward(self, x):
-#         r"""
-#         Simulates measurements corrupted by Poisson noise
-
-#         Args:
-#             :attr:`x`: Batch of images. The input is directly passed to the
-#             measurement operator, so its shape depends on the type of the
-#             measurement operator.
-
-#         Output:
-#             :attr:`y` The batch of measurements. Its shape depends on the input
-#             shape.
-
-#         Shape:
-#             :attr:`x`: :math:`(*, h, w)` if `self.meas_op` is a static
-#             measurement operator, :math:`(*, t, c, h, w)` if it is a dynamic
-#             measurement operator.
-
-#             :attr:`Output`: :math:`(*, M)` (static measurements) or `(*, c, M)`
-#             (dynamic measurements)
-
-#         Example 1: Two noisy measurement vectors from a :class:`~spyrit.core.meas.Linear` measurement operator
-#             >>> H = torch.rand([400,32*32])
-#             >>> meas_op = Linear(H)
-#             >>> noise_op = Poisson(meas_op, 10.0)
-#             >>> x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
-#             >>> y = noise_op(x)
-#             >>> print(y.shape)
-#             >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-#             >>> y = noise_op(x)
-#             >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-#             torch.Size([10, 400])
-#             Measurements in (2249.00 , 2896.00)
-#             Measurements in (2237.00 , 2880.00)
-
-#         Example 2: Two noisy measurement vectors from a :class:`~spyrit.core.meas.HadamSplit` operator
-#             >>> Perm = torch.rand([32*32,32*32])
-#             >>> meas_op = HadamSplit(H, Perm, 32, 32)
-#             >>> noise_op = Poisson(meas_op, 200.0)
-#             >>> x = torch.FloatTensor(10, 32*32).uniform_(-1, 1)
-#             >>> y = noise_op(x)
-#             >>> print(y.shape)
-#             >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-#             >>> y = noise_op(x)
-#             >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-#             torch.Size([10, 800])
-#             Measurements in (0.00 , 55338.00)
-#             Measurements in (0.00 , 55077.00)
-
-#         Example 3: Two noisy measurement vectors from a :class:`~spyrit.core.meas.LinearSplit` operator
-#             >>> H = torch.rand(24,64)
-#             >>> meas_op = LinearSplit(H)
-#             >>> noise_op = Poisson(meas_op, 50.0)
-#             >>> x = torch.FloatTensor(10, 64, 92).uniform_(-1, 1)
-#             >>> y = noise_op(x)
-#             >>> print(y.shape)
-#             >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-#             >>> y = noise_op(x)
-#             >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-#             torch.Size([10, 48, 92])
-#             Measurements in (500.00 , 1134.00)
-#             Measurements in (465.00 , 1140.00)
-#         """
-#         x = super().forward(x)  # NoNoise forward (scaling to [0, 1])
-#         x *= self.alpha
-#         x = F.relu(x)  # remove small negative values
-#         x = torch.poisson(x)
-#         return x
+        return z + self.sigma * torch.randn(z.shape)
 
 
 # # =============================================================================
@@ -551,140 +295,207 @@ class Gaussian(nn.Module):
 
 # =============================================================================
 class Poisson(nn.Module):
-    r"""Adds Poisson noise to incoming measurements.
+    r"""Simulate measurements corrupted by Poisson noise
 
-    The Poisson noise is parameterized by its intensity :math:`\alpha`. The
-    incoming measurements are multiplied by :math:`\alpha` and then corrupted
-    by Poisson noise as follows: :math:`\mathcal{P}(\alpha x)`. The noise
-    intensity is defined in the constructor.
+    .. math::
+        y \sim \mathcal{P}\left(\alpha z\right), \quad \text{with }z\ge 0
+        
+    where :math:`\mathcal{P}` is the Poisson distribution and :math:`\alpha` represents the intensity of the noiseless measurements :math:`z`.
+    
+    The class is constructed from the intensity :math:`\alpha`.
 
     Args:
-        alpha (float): The intensity of the incoming measurements.
+        :attr:`alpha` (:class:`float`): The intensity of the measurements. Defaults to 10.
 
     Attributes:
-        alpha (float): The intensity of the incoming measurements.
-        noise_function (function): The function that adds Poisson noise to the
-        incoming measurements. It is `lambda x: torch.poisson(x * self.alpha)`.
+        :attr:`alpha` (:class:`float`): Intensity of the measurements.
+        
+    Example:
+        >>> noise = Poisson(10.0)
+        >>> z = torch.tensor([1, 3, 6])
+        >>> y = noise(z)
+        >>> print(y)
+        tensor([11., 32., 57.])
     """
 
-    def __init__(self, alpha: float):
+    def __init__(self, alpha: float = 10):
         super().__init__()
         self.alpha = alpha
 
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        r"""Adds Poisson noise to incoming measurements.
-
-        The Poisson noise is calculated as :math:`\mathcal{P}(\alpha x)`,
-        where :math:`\alpha` is the intensity of the incoming measurements and
-        is defined in the constructor.
+    def forward(self, z: torch.tensor) -> torch.tensor:
+        r"""Corrupt measurement by Poisson noise
+        
+        .. math::
+            y \sim \mathcal{P}\left(\alpha z\right).
 
         Args:
-            x (torch.tensor): Any measurement tensor, with any shape.
+            :attr:`z` (:class:`torch.tensor`): Measurements :math:`z` with arbitrary shape.
 
         Returns:
-            torch.tensor: The same measurement tensor with Poisson noise.
+            :class:`torch.tensor`: Noisy measurement :math:`y` with the same shape as :attr:`z`.
+            
+        Example: 
+            Two different noisy measurement vectors
+            
+            >>> import spyrit.core.noise as sn
+            >>> import torch
+            >>> noise = sn.Poisson(100)
+            >>> z = torch.empty(10, 4).uniform_(0, 1)
+            >>> y = noise(z)
+            >>> print(y.shape)
+            >>> print(f"Noiseless measurements in ({torch.min(z):.2f} , {torch.max(z):.2f})")
+            >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            torch.Size([10, 4])
+            Noiseless measurements in (0.03 , 0.97)
+            Noisy measurements in (3.00 , 96.00)
+            
+            >>> y = noise(z)
+            >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            Noisy measurements in (2.00 , 124.00)
         """
-        return torch.poisson(x * self.alpha)
+        return torch.poisson(self.alpha*z)
 
 
 # =============================================================================
 class PoissonApproxGauss(Poisson):
-    r"""Adds Gaussian-approximated Poisson noise to incoming measurements.
+    r"""Gaussian approximation of Poisson noise
 
-    The Gaussian-approximated Poisson noise is parameterized by its intensity
-    :math:`\alpha`. The incoming measurements are multiplied by :math:`\alpha`
-    and then corrupted by Gaussian noise as follows:
-    :math:`x \cdot \alpha + \sqrt{x \cdot \alpha} \cdot \mathcal{N}(0, 1)`.
-    The noise intensity is defined in the constructor.
+    .. math::
+        y \sim  \alpha z  + \sqrt{\alpha z} \cdot \mathcal{N}(0, 1), \quad \text{with }z\ge 0
+
+    where  :math:`\alpha` represents the intensity of the noiseless     
+    measurements :math:`z`, and :math:`\mathcal{N}(0, 1)` is a Gaussian
+    distribution with zero mean and unit variance.
+    
+    This is an approximation of :math:`y \sim \mathcal{P}\left(\alpha z\right)`, where :math:`\mathcal{P}` is the Poisson distribution. Computing the Gaussian approximation is faster than the original Poisson model. 
 
     Args:
-        alpha (float): The intensity of the incoming measurements.
+        :attr:`alpha` (:class:`float`): The intensity of the measurements. Defaults to 10.
 
     Attributes:
-        alpha (float): The intensity of the incoming measurements.
-        noise_function (function): The function that adds Gaussian-approximated
-        Poisson noise to the incoming measurements.
+        :attr:`alpha` (:class:`float`): Intensity of the measurements.
 
-    Raises:
-        RuntimeError: If there are negative values in the input tensor.
     """
 
-    def __init__(self, alpha: float):
+    def __init__(self, alpha: float = 10):
         super().__init__(alpha)
 
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        r"""Adds Gaussian-approximated Poisson noise to incoming measurements.
+    def forward(self, z: torch.tensor) -> torch.tensor:
+        r"""Corrupt measurement by Gaussian approximation of Poisson noise
 
-        The Gaussian-approximated Poisson noise is calculated as :math:`x +
-        \sqrt{x} \cdot \mathcal{N}(0, 1)`, where :math:`x` is the intensity of
-        the incoming measurements and is defined in the constructor.
+        .. math::
+            y \sim  \alpha z  + \sqrt{\alpha z} \cdot \mathcal{N}(0, 1) \quad \text{with }z\ge 0
 
         Args:
-            x (torch.tensor): Any measurement tensor, with any shape.
+            :attr:`z` (:class:`torch.tensor`): Measurements :math:`z` with 
+            arbitrary shape.
 
         Returns:
-            torch.tensor: The same measurement tensor with Gaussian-approximated
-            Poisson noise.
+            :class:`torch.tensor`: Noisy measurement :math:`y` with the same 
+            shape as :attr:`z`.
+            
+        Raises:
+             RuntimeError: If there are negative values in the input tensor.
+             
+        Example: 
+            Two different noisy measurement vectors
+            
+            >>> import spyrit.core.noise as sn
+            >>> import torch
+            >>> noise = sn.PoissonApproxGauss(100)
+            >>> z = torch.empty(10, 4).uniform_(0, 1)
+            >>> y = noise(z)
+            >>> print(y.shape)
+            >>> print(f"Noiseless measurements in ({torch.min(z):.2f} , {torch.max(z):.2f})")
+            >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            torch.Size([10, 4])
+            Noiseless measurements in (0.06 , 0.96)
+            Noisy measurements in (3.63 , 116.96)
+            
+            >>> y = noise(z)
+            >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            Noisy measurements in (3.25 , 110.16)
         """
-        if torch.any(x < 0):
+        if torch.any(z < 0):
             raise RuntimeError("Input tensor contains negative values.")
-        x *= self.alpha
-        return x + torch.sqrt(x) * torch.randn_like(x)
+        
+        return self.alpha*z + torch.sqrt(self.alpha*z) * torch.randn_like(z)
 
 
 # =============================================================================
 class PoissonApproxGaussSameNoise(Poisson):
-    r"""Adds identical Gaussian-approximated Poisson noise to incoming measurements.
+    r"""Gaussian approximation of Poisson noise
 
-    The Gaussian-approximated Poisson noise is parameterized by its intensity
-    :math:`\alpha`. The incoming measurements are multiplied by :math:`\alpha`
-    and then corrupted by Gaussian noise as follows:
-    :math:`x \cdot \alpha + \sqrt{x \cdot \alpha} \cdot \mathcal{N}(0, 1)`.
-    The noise intensity is defined in the constructor.
+    .. math::
+        y \sim  \alpha z  + \sqrt{\alpha z} \cdot \mathcal{N}(0, 1), \quad \text{with }z\ge 0
 
+    where  :math:`\alpha` represents the intensity of the noiseless     
+    measurements :math:`z`, and :math:`\mathcal{N}(0, 1)` is a Gaussian
+    distribution with zero mean and unit variance.
+    
+    This is an approximation of :math:`y \sim \mathcal{P}\left(\alpha z\right)`, where :math:`\mathcal{P}` is the Poisson distribution. Computing the Gaussian approximation is faster than the original Poisson model. 
+    
     .. important::
-        Contrary to :class:`~spyrit.core.noise.PoissonApproxGauss2`, all dimensions
-        of the incoming measurements except the last one are corrupted with the same
-        noise sample.
+        Contrary to :class:`~spyrit.core.noise.PoissonApproxGauss`, 
+        different noise realisations apply only to the last dimension of 
+        the input tensor. The same noise realisations are repeated to the 
+        first dimensions of the input tensor.
 
     Args:
-        alpha (float): The intensity of the incoming measurements.
+        :attr:`alpha` (:class:`float`): The intensity of the measurements. Defaults to 10.
 
     Attributes:
-        alpha (float): The intensity of the incoming measurements.
-        noise_function (function): The function that adds Gaussian-approximated
-        Poisson noise to the incoming measurements.
-
-    Raises:
-        RuntimeError: If there are negative values in the input tensor.
+        :attr:`alpha` (:class:`float`): Intensity of the measurements.
     """
 
-    def __init__(self, alpha: float):
+    def __init__(self, alpha: float = 10):
         super().__init__(alpha)
 
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        r"""Adds identical Gaussian-approximated Poisson noise to incoming measurements.
+    def forward(self, z: torch.tensor) -> torch.tensor:
+        r"""Corrupt measurement by Gaussian approximation of Poisson noise
 
-        The Gaussian-approximated Poisson noise is calculated as
-        :math:`x \cdot \alpha + \sqrt{x \cdot \alpha} \cdot \mathcal{N}(0, 1)`,
-        where :math:`x` is the measurement tensor and :math:`\alpha` is the
-        intensity of the incoming measurements defined in the constructor. The
-        gaussian noise is identical for all dimensions of :math:`x` except the
-        last one.
-
-        .. important::
-            Contrary to :class:`~spyrit.core.noise.PoissonApproxGauss2`, all dimensions
-            of the incoming measurements except the last one are corrupted with the same
-            noise sample.
+        .. math::
+            y \sim  \alpha z  + \sqrt{\alpha z} \cdot \mathcal{N}(0, 1) \quad \text{with }z\ge 0
 
         Args:
-            x (torch.tensor): Any measurement tensor, with any shape.
+            :attr:`z` (:class:`torch.tensor`): Measurements :math:`z` with 
+            arbitrary shape.
 
         Returns:
-            torch.tensor: The same measurement tensor with Gaussian-approximated
-            Poisson noise, identical for all dimensions except the last one.
+            :class:`torch.tensor`: Noisy measurement :math:`y` with the same 
+            shape as :attr:`z`.
+            
+        .. important::
+            Contrary to :class:`~spyrit.core.noise.PoissonApproxGauss`, 
+            different noise realisations apply only to the last dimension of 
+            the input tensor. The same noise realisations are repeated to the 
+            first dimensions of the input tensor.
+            
+        Raises:
+             RuntimeError: If there are negative values in the input tensor.
+             
+        Example: 
+            Two different noisy measurement vectors
+            
+            >>> import spyrit.core.noise as sn
+            >>> import torch
+            >>> noise = sn.PoissonApproxGaussSameNoise(100)
+            >>> z = torch.empty(10, 4).uniform_(0, 1)
+            >>> y = noise(z)
+            >>> print(y.shape)
+            >>> print(f"Noiseless measurements in ({torch.min(z):.2f} , {torch.max(z):.2f})")
+            >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            torch.Size([10, 4])
+            Noiseless measurements in (0.13 , 0.98)
+            Noisy measurements in (10.74 , 108.50)
+            
+            >>> y = noise(z)
+            >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            Noisy measurements in (9.95 , 103.54)
         """
-        if torch.any(x < 0):
+        if torch.any(z < 0):
             raise RuntimeError("Input tensor contains negative values.")
-        x *= self.alpha
-        return x + torch.sqrt(x) * torch.randn((*[1] * (x.ndim - 1), x.shape[-1]))
+        y = torch.sqrt(self.alpha*z)
+        y = y*torch.randn((*[1]*(z.ndim - 1),z.shape[-1]))
+        y = y + self.alpha*z
+        return y
