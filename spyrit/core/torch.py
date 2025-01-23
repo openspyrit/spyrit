@@ -1067,8 +1067,6 @@ def regularized_lstsq(A: torch.tensor, y: torch.tensor, regularization: str, **k
     batches = y.shape[:-1]
 
     if regularization == "rcond":
-        driver = kwargs.get("driver", "gelsd")
-        kwargs["driver"] = driver
         lhs = A.expand(*batches, m, n)
         rhs = y.unsqueeze(-1)
         x = torch.linalg.lstsq(lhs, rhs, **kwargs).solution
