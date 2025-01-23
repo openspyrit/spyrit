@@ -1069,7 +1069,7 @@ def regularized_lstsq(A: torch.tensor, y: torch.tensor, regularization: str, **k
     if regularization == "rcond":
         lhs = A.expand(*batches, m, n)
         rhs = y.unsqueeze(-1)
-        x, _ = torch.linalg.lstsq(lhs, rhs, **kwargs)
+        x, _, _, _ = torch.linalg.lstsq(lhs, rhs, **kwargs)
         x = x.squeeze(-1)
 
     elif regularization == "L2":
