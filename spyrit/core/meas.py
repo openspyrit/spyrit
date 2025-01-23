@@ -30,6 +30,7 @@ import torch.nn as nn
 from spyrit.core.warp import DeformationField
 import spyrit.core.torch as spytorch
 
+
 # =============================================================================
 class Linear(nn.Module):
     r"""
@@ -37,54 +38,54 @@ class Linear(nn.Module):
 
     .. math::
         m =\mathcal{N}\left(Hx\right),
-        
+
     where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H \colon\, \mathbb{R}^N \to \mathbb{R}^M` is the acquisition matrix, :math:`M` is the number of measurements, :math:`N` is the dimension of the signal, and :math:`x \in \mathbb{R}^N` is the signal of interest.
-    
+
     .. important::
         The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`).
 
     Args:
         :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
         with shape :math:`(M, N)`. Only real values are supported.
-        
-        :attr:`meas_shape` (tuple, optional): Shape of the underliying 
-        multi-dimensional array :math:`X`. Must be a tuple of integers 
-        :math:`(N_1, ... ,N_k)` such that :math:`\prod_k N_k = N`. If not, an 
+
+        :attr:`meas_shape` (tuple, optional): Shape of the underliying
+        multi-dimensional array :math:`X`. Must be a tuple of integers
+        :math:`(N_1, ... ,N_k)` such that :math:`\prod_k N_k = N`. If not, an
         error is raised. Defaults to None.
-        
-        :attr:`meas_dims` (tuple, optional): Dimensions of :math:`X` the 
-        acquisition matrix applies to. Must be a tuple with the same length as 
-        :attr:`meas_shape`. If not, an error is raised. Defaults to the last 
-        dimensions of the multi-dimensional array :math:`X` (e.g., `(-2,-1)` 
+
+        :attr:`meas_dims` (tuple, optional): Dimensions of :math:`X` the
+        acquisition matrix applies to. Must be a tuple with the same length as
+        :attr:`meas_shape`. If not, an error is raised. Defaults to the last
+        dimensions of the multi-dimensional array :math:`X` (e.g., `(-2,-1)`
         when `len(meas_shape)`).
-        
+
         :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. Defaults to = `torch.nn.Identity`.
-    
+
     Attributes:
         :attr:`H` (:class:`torch.tensor`): (Learnable) measurement matrix of shape
         :math:`(M, N)` initialized as :math:`H`.
-        
-        :attr:`meas_shape` (tuple): Shape of the underliying 
+
+        :attr:`meas_shape` (tuple): Shape of the underliying
         multi-dimensional array :math:`X`.
-        
-        :attr:`meas_dims` (tuple): Dimensions the acquisition matrix applies to. 
-        
-        :attr:`meas_ndim` (int): Number of dimensions the 
-        acquisition matrix applies to. This is `len(meas_dims)` 
-    
+
+        :attr:`meas_dims` (tuple): Dimensions the acquisition matrix applies to.
+
+        :attr:`meas_ndim` (int): Number of dimensions the
+        acquisition matrix applies to. This is `len(meas_dims)`
+
         :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
-    
+
         :attr:`M` (int): Number of measurements :math:`M`.
-    
+
     Example: (to be updated!)
         Example 1:
-            
+
         >>> H = torch.rand([400, 1600])
         >>> meas_op = Linear(H)
         >>> print(meas_op)
 
         Example 2:
-            
+
         >>> H = torch.rand([400, 1600])
         >>> meas_op = Linear(H, True)
         >>> print(meas_op)
@@ -105,7 +106,7 @@ class Linear(nn.Module):
         if meas_shape is None:
             meas_shape = H.shape[-1]
         if meas_dims is None:
-            meas_dims = list(range(len(meas_shape)))
+            meas_dims = list(-range(len(meas_shape)), 0)
 
         if type(meas_shape) is int:
             meas_shape = [meas_shape]
@@ -822,7 +823,27 @@ class HadamSplit2d(LinearSplit):
         return x[..., : self.M]
 
     def fast_pinv(self, y: torch.tensor):
-        r""" """
+        r"""Fast computation of the least squares solution of :math:`Hx = y`.
+
+        The matrix `H` is the 2D Hadamard matrix (equal to the Kronecker product
+        of `self.H1d` with itself).
+
+        This uses internally the 2D separable Hadamard transform with matrix
+        multiplication (the matrix being stored in `self.H1d`). If the number
+        of measurements is smaller than the number of pixels (subsampling), the
+        measurement tensor is zero-padded to reach the number of pixels.
+
+        Args:
+            y (torch.tensor): Input tensor. Has shape `(*, M)` where `*` denotes
+            any number of dimensions and `M` the number of measurements as defined
+            by the attribute `self.M`.
+
+        Returns:
+            torch.tensor: The least squares solution of the system :math:`Hx = y`.
+            Has shape `(*, N)` where `*` denotes the same number of dimensions
+            and `N` the number of pixels in the image as defined by the attribute
+            `self.N`.
+        """
         if self.N != self.M:
             y = torch.cat(
                 (y, torch.zeros(*y.shape[:-1], self.N - self.M, device=y.device)),
@@ -831,6 +852,7 @@ class HadamSplit2d(LinearSplit):
         y = self.reindex(y, "cols", False)
         y = self.unvectorize(y)
         y = spytorch.mult_2d_separable(self.H1d, y)
+        y = self.vectorize(y)
         return y / self.N
 
     def fast_H_pinv(self) -> torch.tensor:

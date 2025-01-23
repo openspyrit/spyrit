@@ -494,6 +494,16 @@ class Rerange(nn.Module):
         c, d = self.output_range
         return (x - c) * (b - a) / (d - c) + a
 
+    def inverse(self):
+        r"""Returns a different instance of the same class with the input and
+        output ranges swapped.
+
+        Returns:
+            Rerange: The inverse affine transform that maps :math:`[a,b]` to
+            :math:`[x,y]`.
+        """
+        return Rerange(self.output_range, self.input_range)
+
 
 # =============================================================================
 # class DirectPoisson(nn.Module):
