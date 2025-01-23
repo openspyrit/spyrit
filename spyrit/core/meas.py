@@ -112,7 +112,7 @@ class Linear(nn.Module):
         if type(meas_dims) is int:
             meas_dims = [meas_dims]
 
-        H = H.to(device=device, dtype=dtype)
+        #H = H.to(device=device, dtype=dtype)
 
         # don't store H if we use a HadamSplit
         if not isinstance(self, HadamSplit2d):
@@ -522,7 +522,77 @@ class FreeformLinear(Linear):
 
 # =============================================================================
 class LinearSplit(Linear):
-    r""" """
+    r"""
+    Simulate linear measurements by splitting an acquisition matrix :math:`H\in \mathbb{R}^{M\times N}` that contains negative values. In pratice, only positive values can be implemented using a DMD. Therefore, we acquire
+ 
+    .. math::
+        y =\mathcal{N}\left(Ax\right),
+        
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` represents a noise operator (e.g., Gaussian), :math:`A \colon\, \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns, :math:`x \in \mathbb{R}^N` is the signal of interest., :math:`2M` is the number of DMD patterns, and :math:`N` is the dimension of the signal.
+    
+    Given a matrix :math:`H`, we define the positive DMD patterns :math:`A` from the positive and negative components :math:`H`. In practice, the even rows of :math:`A` contain the positive components of :math:`H`, while odd rows of :math:`A` contain the negative components of :math:`H`. Mathematically,
+
+    .. math::
+        \begin{cases}
+            A[0::2, :] = H_{+}, \text{ with } H_{+} = \max(0,H),\\
+            A[1::2, :] = H_{-}, \text{ with } H_{-} = \max(0,-H).
+        \end{cases}
+    
+    .. note::
+        :math:`H_{+}` and :math:`H_{-}` are such that :math:`H_{+} - H_{-} = H`.
+    
+    .. important::
+        The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`).
+
+    Args:
+        :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
+        with shape :math:`(M, N)`. Only real values are supported.
+        
+        :attr:`meas_shape` (tuple, optional): Shape of the underliying 
+        multi-dimensional array :math:`X`. Must be a tuple of integers 
+        :math:`(N_1, ... ,N_k)` such that :math:`\prod_k N_k = N`. If not, an 
+        error is raised. Defaults to None.
+        
+        :attr:`meas_dims` (tuple, optional): Dimensions of :math:`X` the 
+        acquisition matrix applies to. Must be a tuple with the same length as 
+        :attr:`meas_shape`. If not, an error is raised. Defaults to the last 
+        dimensions of the multi-dimensional array :math:`X` (e.g., `(-2,-1)` 
+        when `len(meas_shape)`).
+        
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. Defaults to = `torch.nn.Identity`.
+    
+    Attributes:
+        :attr:`A` (:class:`torch.tensor`): (Learnable) measurement matrix of shape
+        :math:`(2M, N)` initialized as :math:`A`.
+        
+        :attr:`H` (:class:`torch.tensor`): (Learnable) measurement matrix of shape
+        :math:`(M, N)` initialized as :math:`H`.
+        
+        :attr:`meas_shape` (tuple): Shape of the underliying 
+        multi-dimensional array :math:`X`.
+        
+        :attr:`meas_dims` (tuple): Dimensions the acquisition matrix applies to. 
+        
+        :attr:`meas_ndim` (int): Number of dimensions the 
+        acquisition matrix applies to. This is `len(meas_dims)` 
+    
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
+    
+        :attr:`M` (int): Number of measurements :math:`M`.
+    
+    Example: (to be updated!)
+        Example 1:
+            
+        >>> H = torch.rand([400, 1600])
+        >>> meas_op = Linear(H)
+        >>> print(meas_op)
+
+        Example 2:
+            
+        >>> H = torch.rand([400, 1600])
+        >>> meas_op = Linear(H, True)
+        >>> print(meas_op)
+    """
 
     def __init__(
         self,
