@@ -703,9 +703,6 @@ class HadamSplit2d(LinearSplit):
     ):
         meas_dims = (-2, -1)
         meas_shape = (h, h)
-        # 1D version of H
-        self.H1d = nn.Parameter(spytorch.walsh_matrix(h), requires_grad=False)
-        self.H1d = self.H1d.to(dtype=dtype, device=device)
 
         # call Linear constructor (avoid setting A)
         super(LinearSplit, self).__init__(
@@ -716,7 +713,10 @@ class HadamSplit2d(LinearSplit):
             dtype=dtype,
             device=device,
         )
-        self.M = M
+        # 1D version of H
+        self.H1d = nn.Parameter(spytorch.walsh_matrix(h), requires_grad=False)
+        self.H1d = self.H1d.to(dtype=dtype, device=device)
+        self.M = M  # supercharged self.M
         self.order = order
         self.indices = torch.argsort(-order.flatten(), stable=True).to(
             dtype=torch.int32, device=self.device
@@ -822,7 +822,7 @@ class HadamSplit2d(LinearSplit):
         # x = self.reindex(x, "rows", False)
         return x[..., : self.M]
 
-    def fast_pinv(self, y: torch.tensor):
+    def fast_pinv(self, y: torch.tensor) -> torch.tensor:
         r"""Fast computation of the least squares solution of :math:`Hx = y`.
 
         The matrix `H` is the 2D Hadamard matrix (equal to the Kronecker product
@@ -852,8 +852,7 @@ class HadamSplit2d(LinearSplit):
         y = self.reindex(y, "cols", False)
         y = self.unvectorize(y)
         y = spytorch.mult_2d_separable(self.H1d, y)
-        y = self.vectorize(y)
-        return y / self.N
+        return self.vectorize(y) / self.N
 
     def fast_H_pinv(self) -> torch.tensor:
         r""" """
