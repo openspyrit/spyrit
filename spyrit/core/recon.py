@@ -71,7 +71,6 @@ class FullNet(nn.Sequential):
             {"acqu_modules": acqu_modules, "recon_modules": recon_modules}
         )
         super().__init__(all_modules)
-        print(2)
 
     def forward(self, x):
         r"""Simulates measurements and reconstructs the signal.
