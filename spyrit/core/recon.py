@@ -71,7 +71,6 @@ class FullNet(nn.Sequential):
             {"acqu_modules": acqu_modules, "recon_modules": recon_modules}
         )
         super().__init__(all_modules)
-        print(2)
 
     def forward(self, x):
         r"""Simulates measurements and reconstructs the signal.
@@ -148,39 +147,39 @@ class _PrebuiltFullNet(FullNet):
 
     @property
     def acqu(self):
-        return self.acqu_modules["acqu"]
+        return self.acqu_modules.acqu
 
     @acqu.setter
     def acqu(self, value):
-        self.acqu_modules["acqu"] = value
+        self.acqu_modules.acqu = value
 
     @acqu.deleter
     def acqu(self):
-        del self.acqu_modules["acqu"]
+        del self.acqu_modules.acqu
 
     @property
     def prep(self):
-        return self.recon_modules["prep"]
+        return self.recon_modules.prep
 
     @prep.setter
     def prep(self, value):
-        self.recon_modules["prep"] = value
+        self.recon_modules.prep = value
 
     @prep.deleter
     def prep(self):
-        del self.recon_modules["prep"]
+        del self.recon_modules.prep
 
     @property
     def denoi(self):
-        return self.recon_modules["denoi"]
+        return self.recon_modules.denoi
 
     @denoi.setter
     def denoi(self, value):
-        self.recon_modules["denoi"] = value
+        self.recon_modules.denoi = value
 
     @denoi.deleter
     def denoi(self):
-        del self.recon_modules["denoi"]
+        del self.recon_modules.denoi
 
 
 # =============================================================================
@@ -427,12 +426,13 @@ class PinvNet(_PrebuiltFullNet):
         acqu_modules = OrderedDict({"acqu": acqu})
         recon_modules = OrderedDict({"prep": prep, "pinv": pinv, "denoi": denoi})
 
-        super().init(acqu_modules, recon_modules)
+        super().__init__(acqu_modules, recon_modules)
         self.pinv_kwargs = pinv_kwargs
 
-        if denoi != nn.Identity() and pinv_kwargs.get("reshape_output", False):
+        if not pinv_kwargs.get("reshape_output", False):
             warnings.warn(
-                "The output of the pseudo inverse operator will *NOT* be reshaped (de-vectorized) before the denoising step.",
+                "The output of the pseudo inverse operator will *NOT* be reshaped (de-vectorized) before the denoising step."
+                + "Consider setting the optional keyword parameter `reshape_output` to `True` in the PinvNet constructor.",
                 UserWarning,
             )
 
@@ -781,9 +781,10 @@ class TikhoNet(_PrebuiltFullNet):
         recon_modules = OrderedDict({"prep": prep, "tikho": tikho, "denoi": denoi})
         super().__init__(acqu_modules, recon_modules)
 
-        if denoi != nn.Identity() and kwargs.get("reshape_output", False):
+        if not kwargs.get("reshape_output", False):
             warnings.warn(
-                "The output of the Tikhonov operator will *NOT* be reshaped (de-vectorized) before the denoising step.",
+                "The output of the Tikhonov operator will *NOT* be reshaped (de-vectorized) before the denoising step."
+                + "Consider setting the optional keyword parameter `reshape_output` to `True` in the TikhoNet constructor.",
                 UserWarning,
             )
 

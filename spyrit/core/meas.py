@@ -30,667 +30,11 @@ import torch.nn as nn
 from spyrit.core.warp import DeformationField
 import spyrit.core.torch as spytorch
 
-
-# =============================================================================
-# BASE CLASS - FOR INHERITANCE ONLY (INTERAL USE)
-# =============================================================================
-# class _Base(nn.Module):
-
-#     def __init__(
-#         self,
-#         H_static: torch.tensor,
-#         Ord: torch.tensor = None,
-#         meas_shape: tuple = None,
-#     ) -> None:
-#         super().__init__()
-
-#         # store meas_shape and check it is correct
-#         if meas_shape is None:
-#             self._meas_shape = (
-#                 int(math.sqrt(H_static.shape[1])),
-#                 int(math.sqrt(H_static.shape[1])),
-#             )
-#         else:
-#             self._meas_shape = meas_shape
-#         if self._meas_shape[0] * self._meas_shape[1] != H_static.shape[1]:
-#             raise ValueError(
-#                 f"The number of pixels in the measurement matrix H "
-#                 + f"({H_static.shape[1]}) does not match the measurement shape "
-#                 + f"{self._meas_shape}."
-#             )
-#         self._img_shape = self._meas_shape
-
-#         if Ord is not None:
-#             H_static, ind = spytorch.sort_by_significance(
-#                 H_static, Ord, "rows", False, get_indices=True
-#             )
-#         else:
-#             ind = torch.arange(H_static.shape[0])
-#             Ord = torch.arange(H_static.shape[0], 0, -1)
-
-#         # convert H to float32 if it is not float64
-#         if H_static.dtype != torch.float64:
-#             H_static = H_static.to(torch.float32)
-
-#         # attributes for internal use
-#         self._param_H_static = nn.Parameter(H_static, requires_grad=False)
-#         # need to store M because H_static may be cropped (see HadamSplit)
-#         self._M = H_static.shape[0]
-
-#         self._param_Ord = nn.Parameter(Ord.to(torch.float32), requires_grad=False)
-#         self._indices = ind.to(torch.int32)
-#         self._device_tracker = nn.Parameter(torch.tensor(0.0), requires_grad=False)
-
-#     ### PROPERTIES ------
-#     @property
-#     def M(self) -> int:
-#         """Number of measurements (first dimension of H)"""
-#         return self._M
-
-#     @property
-#     def N(self) -> int:
-#         """Number of pixels in the image"""
-#         return self.img_h * self.img_w
-
-#     @property
-#     def h(self) -> int:
-#         """Measurement pattern height"""
-#         return self.meas_shape[0]
-
-#     @property
-#     def w(self) -> int:
-#         """Measurement pattern width"""
-#         return self.meas_shape[1]
-
-#     @property
-#     def meas_shape(self) -> tuple:
-#         """Shape of the measurement patterns (height, width). Note that
-#         `height * width = N`."""
-#         return self._meas_shape
-
-#     @property
-#     def img_shape(self) -> tuple:
-#         """Shape of the image (height, width)."""
-#         return self._img_shape
-
-#     @property
-#     def img_h(self) -> int:
-#         """Height of the image"""
-#         return self._img_shape[0]
-
-#     @property
-#     def img_w(self) -> int:
-#         """Width of the image"""
-#         return self._img_shape[1]
-
-#     @property
-#     def indices(self) -> torch.tensor:
-#         """Indices used to sort the rows of H"""
-#         return self._indices
-
-#     @property
-#     def Ord(self) -> torch.tensor:
-#         """Order matrix used to sort the rows of H"""
-#         return self._param_Ord.data
-
-#     @Ord.setter
-#     def Ord(self, value: torch.tensor) -> None:
-#         self._set_Ord(value)
-
-#     @property
-#     def H_static(self) -> torch.tensor:
-#         """Static measurement matrix H."""
-#         return self._param_H_static.data[: self.M, :]
-
-#     @property
-#     def P(self) -> torch.tensor:
-#         """Measurement matrix P with positive and negative components. Used in
-#         classes *Split and *HadamSplit."""
-#         return self._param_P.data[: 2 * self.M, :]
-
-#     @property
-#     def device(self) -> torch.device:
-#         return self._device_tracker.device
-
-#     ### -------------------
-
-#     def pinv(
-#         self, x: torch.tensor, reg: str = "rcond", eta: float = 1e-3, diff=False
-#     ) -> torch.tensor:
-#         r"""Computes the pseudo inverse solution :math:`y = H^\dagger x`.
-
-#         This method will compute the pseudo inverse solution using the
-#         measurement matrix pseudo-inverse :math:`H^\dagger` if it has been
-#         calculated and stored in the attribute :attr:`H_pinv`. If not, the
-#         pseudo inverse will be not be explicitly computed and the torch
-#         function :func:`torch.linalg.lstsq` will be used to solve the linear
-#         system.
-
-#         Args:
-#             :attr:`x` (torch.tensor): batch of measurement vectors. If x has
-#             more than 1 dimension, the pseudo inverse is applied to each
-#             image in the batch.
-
-#             :attr:`reg` (str, optional): Regularization method to use.
-#             Available options are 'rcond', 'L2' and 'H1'. 'rcond' uses the
-#             :attr:`rcond` parameter found in :func:`torch.linalg.lstsq`.
-#             This parameter must be specified if the pseudo inverse has not been
-#             computed. Defaults to None.
-
-#             :attr:`eta` (float, optional): Regularization parameter. Only
-#             relevant when :attr:`reg` is specified. Defaults to None.
-
-#             :attr:`diff` (bool, optional): Use only if a split operator is used
-#             and if the pseudo inverse has not been computed. Whether to use the
-#             difference of positive and negative patterns.
-#             The difference is applied to the measurements and to the dynamic
-#             measurement matrix. Defaults to False.
-
-#         Shape:
-#             :math:`x`: :math:`(*, M)` where * denotes the batch size and `M`
-#             the number of measurements.
-
-#             Output: :math:`(*, N)` where * denotes the batch size and `N`
-#             the number of pixels in the image.
-
-#         Example:
-#             >>> H = torch.randn([400, 1600])
-#             >>> meas_op = Linear(H, True)
-#             >>> x = torch.randn([10, 400])
-#             >>> y = meas_op.pinv(x)
-#             >>> print(y.shape)
-#             torch.Size([10, 1600])
-#         """
-#         # have we calculated the pseudo inverse ?
-#         if hasattr(self, "H_pinv"):
-#             ans = self._pinv_mult(x)
-
-#         else:
-
-#             if isinstance(self, Linear):
-#                 H_to_inv = self.H_static
-#             elif type(self) == DynamicLinear:
-#                 H_to_inv = self.H_dyn
-#             elif isinstance(self, DynamicLinearSplit):
-#                 if diff:
-#                     x = x[..., ::2] - x[..., 1::2]
-#                     H_to_inv = self.H_dyn[::2, :] - self.H_dyn[1::2, :]
-#                 else:
-#                     H_to_inv = self.H_dyn
-#             else:
-#                 raise NotImplementedError(
-#                     "It seems you have instanciated a _Base element. This class "
-#                     + "Should not be called on its own."
-#                 )
-
-#             # cast to dtype of x
-#             H_to_inv = H_to_inv.to(x.dtype)
-#             # devices are supposed to be the same, don't bother checking
-
-#             if reg == "rcond":
-#                 original_device = x.device
-#                 # to use lstsq with rank deficient matrices is not supported on GPU
-#                 # github.com/pytorch/pytorch/issues/117122
-#                 if x.device != torch.device("cpu"):
-#                     H_to_inv = H_to_inv.cpu()
-#                     x = x.cpu()
-
-#                 A = H_to_inv.expand(*x.shape[:-1], *H_to_inv.shape)  # shape (*, M, N)
-#                 B = x.unsqueeze(-1).to(A.dtype)  # shape (*, M, 1)
-#                 ans = torch.linalg.lstsq(A, B, rcond=eta, driver="gelsd")
-#                 ans = ans.solution.to(x.dtype).squeeze(-1)  # shape (*, N)
-#                 ans = ans.to(original_device)
-
-#             elif reg == "L2":
-#                 A = torch.matmul(H_to_inv.mT, H_to_inv) + eta * torch.eye(
-#                     H_to_inv.shape[1]
-#                 )
-#                 A = A.expand(*x.shape[:-1], *A.shape)
-#                 B = torch.matmul(x.to(H_to_inv.dtype), H_to_inv)
-#                 ans = torch.linalg.solve(A, B).to(x.dtype)
-
-#             elif reg == "H1":
-#                 Dx, Dy = spytorch.neumann_boundary(self.img_shape)
-#                 D2 = Dx.T @ Dx + Dy.T @ Dy
-
-#                 A = torch.matmul(H_to_inv.mT, H_to_inv) + eta * D2
-#                 A = A.expand(*x.shape[:-1], *A.shape)
-#                 B = torch.matmul(x.to(H_to_inv.dtype), H_to_inv)
-#                 ans = torch.linalg.solve(A, B).to(x.dtype)
-
-#             elif reg is None:
-#                 raise ValueError(
-#                     "Regularization method not specified. Please compute "
-#                     + "the dynamic pseudo-inverse or specify a regularization "
-#                     + "method."
-#                 )
-#             else:
-#                 raise NotImplementedError(
-#                     f"Regularization method ({reg}) not implemented. Please "
-#                     + "use 'rcond', 'L2' or 'H1'."
-#                 )
-
-#         # if we used bicubic b spline, convolve with the kernel
-#         if hasattr(self, "recon_mode") and self.recon_mode == "bicubic":
-#             kernel = torch.tensor([[1, 4, 1], [4, 16, 4], [1, 4, 1]]) / 36
-#             conv = nn.Conv2d(1, 1, kernel_size=3, padding=1, bias=False)
-#             conv.weight.data = kernel.reshape(1, 1, 3, 3).to(ans.dtype)
-
-#             ans = (
-#                 conv(ans.reshape(-1, 1, self.img_h, self.img_w))
-#                 .reshape(-1, self.img_h * self.img_w)
-#                 .data
-#             )
-
-#         return ans.reshape(*ans.shape[:-1], *self.img_shape)
-
-#     def reindex(
-#         self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
-#     ) -> torch.tensor:
-#         """Sorts a tensor along a specified axis using the indices tensor. The
-#         indices tensor is contained in the attribute :attr:`self.indices`.
-
-#         The indices tensor contains the new indices of the elements in the values
-#         tensor. `values[0]` will be placed at the index `indices[0]`, `values[1]`
-#         at `indices[1]`, and so on.
-
-#         Using the inverse permutation allows to revert the permutation: in this
-#         case, it is the element at index `indices[0]` that will be placed at the
-#         index `0`, the element at index `indices[1]` that will be placed at the
-#         index `1`, and so on.
-
-#         .. note::
-#             See :func:`~spyrit.core.torch.reindex()` for more details.
-
-#         Args:
-#             values (torch.tensor): The tensor to sort. Can be 1D, 2D, or any
-#             multi-dimensional batch of 2D tensors.
-
-#             axis (str, optional): The axis to sort along. Must be either 'rows' or
-#             'cols'. If `values` is 1D, `axis` is not used. Default is 'rows'.
-
-#             inverse_permutation (bool, optional): Whether to apply the permutation
-#             inverse. Default is False.
-
-#         Raises:
-#             ValueError: If `axis` is not 'rows' or 'cols'.
-
-#         Returns:
-#             torch.tensor: The sorted tensor by the given indices along the
-#             specified axis.
-#         """
-#         return spytorch.reindex(x, self.indices.to(x.device), axis, inverse_permutation)
-
-#     def unvectorize(self, input: torch.tensor) -> torch.tensor:
-#         """Reshape a vectorized tensor to the measurement shape (heigth, width).
-
-#         Input:
-#             input (torch.tensor): A tensor of shape (*, N) where * denotes the
-#             batch size and :math:`N = hw` is the total number of pixels in the
-#             image.
-
-#         Output:
-#             torch.tensor: A tensor of shape (*, h, w) where * denotes the batch
-#             size and h, w the height and width of the image.
-#         """
-#         return input.reshape(*input.shape[:-1], *self.meas_shape)
-
-#     def vectorize(self, input: torch.tensor) -> torch.tensor:
-#         """Vectorize an image-shaped tensor.
-
-#         Input:
-#             input (torch.tensor): A tensor of shape (*, h, w) where * denotes the
-#             batch size and h, w the height and width of the image.
-
-#         Output:
-#             torch.tensor: A tensor of shape (*, N) where * denotes the batch size
-#             and :math:`N = hw` is the total number of pixels in the image.
-#         """
-#         return input.reshape(*input.shape[:-2], self.N)
-
-#     def _static_forward_with_op(
-#         self, x: torch.tensor, op: torch.tensor
-#     ) -> torch.tensor:
-#         return torch.einsum("mhw,...hw->...m", self.unvectorize(op).to(x.dtype), x)
-
-#     # @mprof.profile
-#     def _dynamic_forward_with_op(
-#         self, x: torch.tensor, op: torch.tensor
-#     ) -> torch.tensor:
-#         x = spytorch.center_crop(x, self.meas_shape)
-#         return torch.einsum("thw,...tchw->...ct", self.unvectorize(op).to(x.dtype), x)
-
-#     def _pinv_mult(self, y: torch.tensor) -> torch.tensor:
-#         """Uses the pre-calculated pseudo inverse to compute the solution.
-#         We assume that the pseudo inverse has been calculated and stored in the
-#         attribute :attr:`H_pinv`.
-#         """
-#         A = self.H_pinv.expand(*y.shape[:-1], *self.H_pinv.shape)
-#         B = y.unsqueeze(-1).to(A.dtype)
-#         ans = torch.matmul(A, B).to(y.dtype).squeeze(-1)
-#         return ans
-
-#     def _set_Ord(self, Ord: torch.tensor) -> None:
-#         """Set the order matrix used to sort the rows of H. This is used in
-#         the Ord.setter property. This method is defined for simplified
-#         inheritance. For internal use only."""
-#         # unsort the rows of H
-#         H_natural = self.reindex(self.H_static, "rows", inverse_permutation=True)
-#         # resort the rows of H ; store indices in self._indices
-#         H_resorted, self._indices = spytorch.sort_by_significance(
-#             H_natural, Ord, "rows", False, get_indices=True
-#         )
-#         # update values of H, Ord
-#         self._param_H_static.data = H_resorted.to(self.device)
-#         self._param_Ord.data = Ord.to(self.device)
-
-#     def _set_P(self, H_static: torch.tensor) -> None:
-#         """Set the positive and negative components of the measurement matrix
-#         P from the static measurement matrix H_static. For internal use only.
-#         Used in classes *Split and *HadamSplit."""
-#         H_pos = nn.functional.relu(H_static)
-#         H_neg = nn.functional.relu(-H_static)
-#         self._param_P = nn.Parameter(
-#             torch.cat([H_pos, H_neg], 1).reshape(
-#                 2 * H_static.shape[0], H_static.shape[1]
-#             ),
-#             requires_grad=False,
-#         )
-
-#     def _build_pinv(self, tensor: torch.tensor, reg: str, eta: float) -> torch.tensor:
-
-#         if reg == "rcond":
-#             pinv = torch.linalg.pinv(tensor, atol=eta)
-
-#         elif reg == "L2":
-#             if tensor.shape[0] >= tensor.shape[1]:
-#                 pinv = (
-#                     torch.linalg.inv(
-#                         tensor.T @ tensor + eta * torch.eye(tensor.shape[1])
-#                     )
-#                     @ tensor.T
-#                 )
-#             else:
-#                 pinv = tensor.T @ torch.linalg.inv(
-#                     tensor @ tensor.T + eta * torch.eye(tensor.shape[0])
-#                 )
-
-#         elif reg == "H1":
-#             # Boundary condition matrices
-#             Dx, Dy = spytorch.neumann_boundary(self.img_shape)
-#             D2 = (Dx.T @ Dx + Dy.T @ Dy).to(tensor.device)
-#             pinv = torch.linalg.inv(tensor.T @ tensor + eta * D2) @ tensor.T
-
-#         else:
-#             raise NotImplementedError(
-#                 f"Regularization method '{reg}' is not implemented. Please "
-#                 + "choose either 'rcond', 'L2' or 'H1'."
-#             )
-#         return pinv.to(self.device)
-
-#     def _attributeslist(self) -> list:
-#         _list = [
-#             ("M", "self.M", _Base),
-#             ("N", "self.N", _Base),
-#             ("H.shape", "self.H_static.shape", _Base),
-#             ("meas_shape", "self._meas_shape", _Base),
-#             ("H_dyn", "hasattr(self, 'H_dyn')", DynamicLinear),
-#             ("img_shape", "self.img_shape", DynamicLinear),
-#             ("H_pinv", "hasattr(self, 'H_pinv')", _Base),
-#             ("P.shape", "self.P.shape", (LinearSplit, DynamicLinearSplit)),
-#         ]
-#         return _list
-
-#     def __repr__(self) -> str:
-#         s_begin = f"{self.__class__.__name__}(\n  "
-#         s_fill = "\n  ".join(
-#             [
-#                 f"({k}): {eval(v)}"
-#                 for k, v, t in self._attributeslist()
-#                 if isinstance(self, t)
-#             ]
-#         )
-#         s_end = "\n)"
-#         return s_begin + s_fill + s_end
-
-
-# # =============================================================================
-# class Linear(_Base):
-#     # =========================================================================
-#     r"""
-#     Simulates linear measurements :math:`y = Hx`.
-
-#     Computes linear measurements from incoming images: :math:`y = Hx`,
-#     where :math:`H` is a given linear operator (matrix) and :math:`x` is a
-#     vectorized image or batch of images.
-
-#     The class is constructed from a matrix :math:`H` of shape :math:`(M,N)`,
-#     where :math:`N` represents the number of pixels in the image and
-#     :math:`M` the number of measurements.
-
-#     Args:
-#         :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
-#         with shape :math:`(M, N)`. Only real values are supported.
-
-#         :attr:`pinv` (bool): Whether to store the pseudo inverse of the
-#         measurement matrix :math:`H`. If `True`, the pseudo inverse is
-#         initialized as :math:`H^\dagger` and stored in the attribute
-#         :attr:`H_pinv`. It is alwats possible to compute and store the pseudo
-#         inverse later using the method :meth:`build_H_pinv`. Defaults to `False`.
-
-#         :attr:`rtol` (float, optional): Cutoff for small singular values (see
-#         :mod:`torch.linalg.pinv`). Only relevant when :attr:`pinv` is `True`.
-
-#         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
-#         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
-#         will correspond to the highest value in :math:`Ord`. Must contain
-#         :math:`M` values. If some values repeat, the order is kept. Defaults to
-#         None.
-
-#         :attr:`meas_shape` (tuple, optional): Shape of the image :math:`x`.
-#         Must be a tuple of two integers representing the height and width of the
-#         image. If not specified, the image is suppposed to be a square.
-#         If not, an error is raised. Defaults to None.
-
-#     Attributes:
-#         :attr:`H` (torch.tensor): The learnable measurement matrix of shape
-#         :math:`(M, N)` initialized as :math:`H`.
-
-#         :attr:`H_static` (torch.tensor): alias for :attr:`H`.
-
-#         :attr:`H_pinv` (torch.tensor, optional): The learnable pseudo inverse
-#         measurement matrix :math:`H^\dagger` of shape :math:`(N, M)`.
-
-#         :attr:`M` (int): Number of measurements performed by the linear operator.
-
-#         :attr:`N` (int): Number of pixels in the image.
-
-#         :attr:`h` (int): Measurement pattern height.
-
-#         :attr:`w` (int): Measurement pattern width.
-
-#         :attr:`meas_shape` (tuple): Shape of the image :math:`x`
-#         (height, width). Is equal to `(self.h, self.w)`.
-
-#         :attr:`indices` (torch.tensor): Indices used to sort the rows of H.	It
-#         is used by the method :meth:`reindex()`.
-
-#         :attr:`Ord` (torch.tensor): Order matrix used to sort the rows of H. It
-#         is used by :func:`~spyrit.core.torch.sort_by_significance()`.
-
-#     .. note::
-#         If you know the pseudo inverse of :math:`H` and want to store it, it is
-#         best to initialize the class with :attr:`pinv` set to `False` and then
-#         call :meth:`build_H_pinv` to store the pseudo inverse.
-
-#     Example 1:
-#         >>> H = torch.rand([400, 1600])
-#         >>> meas_op = Linear(H, pinv=False)
-#         >>> print(meas_op)
-#         Linear(
-#           (M): 400
-#           (N): 1600
-#           (H.shape): torch.Size([400, 1600])
-#           (meas_shape): (40, 40)
-#           (H_pinv): False
-#         )
-
-#     Example 2:
-#         >>> H = torch.rand([400, 1600])
-#         >>> meas_op = Linear(H, True)
-#         >>> print(meas_op)
-#         Linear(
-#           (M): 400
-#           (N): 1600
-#           (H.shape): torch.Size([400, 1600])
-#           (meas_shape): (40, 40)
-#           (H_pinv): True
-#         )
-#     """
-
-#     def __init__(
-#         self,
-#         H: torch.tensor,
-#         pinv: bool = False,
-#         rtol: float = None,
-#         Ord: torch.tensor = None,
-#         meas_shape: tuple = None,  # (height, width)
-#     ):
-#         super().__init__(H, Ord, meas_shape)
-#         if pinv:
-#             self.build_H_pinv(reg="rcond", eta=rtol)
-
-#     @property
-#     def H(self) -> torch.tensor:
-#         return self.H_static
-
-#     @property
-#     def H_pinv(self) -> torch.tensor:
-#         return self._param_H_static_pinv.data
-
-#     @H_pinv.setter
-#     def H_pinv(self, value: torch.tensor) -> None:
-#         self._param_H_static_pinv = nn.Parameter(
-#             value.to(torch.float64), requires_grad=False
-#         )
-
-#     @H_pinv.deleter
-#     def H_pinv(self) -> None:
-#         del self._param_H_static_pinv
-
-#     # Deprecated method - included for backwards compatibility but to remove
-#     def get_H(self) -> torch.tensor:
-#         """Deprecated method. Use the attribute self.H instead."""
-#         warnings.warn(
-#             "The method get_H() is deprecated and will be removed in a future "
-#             + "version. Please use the attribute self.H instead."
-#         )
-#         return self.H
-
-#     def build_H_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
-#         """Used to set the pseudo inverse of the measurement matrix :math:`H`
-#         using `torch.linalg.pinv`. The result is stored in the attribute
-#         :attr:`H_pinv`.
-
-#         Args:
-#             reg (str, optional): Regularization method to use. Available options
-#             are 'rcond', 'L2' and 'H1'. 'rcond' uses the :attr:`rcond` parameter
-#             found in :func:`torch.linalg.lstsq`. This parameter must be specified
-#             if the pseudo inverse has not been computed. Defaults to None.
-
-#             eta (float, optional): Regularization parameter (cutoff for small
-#             singular values, see :mod:`torch.linalg.pinv`). Defaults to None,
-#             in which case the default value of :mod:`torch.linalg.pinv` is used.
-
-#         Returns:
-#             None. The pseudo inverse is stored in the attribute :attr:`H_pinv`.
-#         """
-#         self.H_pinv = self._build_pinv(self.H_static, reg, eta)
-
-#     def forward(self, x: torch.tensor) -> torch.tensor:
-#         r"""Applies linear transform to incoming images: :math:`y = Hx`.
-
-#         This is equivalent to computing :math:`x \cdot H^T`. The input images
-#         must be unvectorized.
-
-#         Args:
-#             :math:`x` (torch.tensor): Batch of images of shape :math:`(*, h, w)`.
-#             `*` can have any number of dimensions, for instance `(b, c)` where
-#             `b` is the batch size and `c` the number of channels. `h` and `w`
-#             are the height and width of the images.
-
-#         Shape:
-#             :math:`x`: :math:`(*, h, w)` where * denotes the batch size and `N`
-#             the total number of pixels in the image.
-
-#             Output: :math:`(*, M)` where * denotes any number of dimensions
-#             and `M` the number of measurements.
-
-#         Example:
-#             >>> H = torch.randn([400, 1600])
-#             >>> meas_op = Linear(H)
-#             >>> x = torch.randn([10, 40, 40])
-#             >>> y = meas_op(x)
-#             >>> print(y.shape)
-#             torch.Size([10, 400])
-#         """
-#         # left multiplication with transpose is equivalent to right mult
-#         # return x @ self.H.T.to(x.dtype).to(x.device)
-#         return self._static_forward_with_op(x, self.H)
-
-#     def adjoint(self, y: torch.tensor) -> torch.tensor:
-#         r"""Applies adjoint transform to incoming measurements :math:`x = H^{T}y`
-
-#         This brings back the measurements in the image domain, but is not
-#         equivalent to the inverse of the forward operator.
-
-#         Args:
-#             :math:`y` (torch.tensor): batch of measurement vectors of shape
-#             :math:`(*, M)` where * denotes any number of dimensions (e.g.
-#             `(b,c)` where `b` is the batch size and `c` the number of channels)
-#             and `M` the number of measurements.
-
-#         Output:
-#             torch.tensor: The adjoint of the input measurements, which are
-#             in the image domain. It has shape :math:`(*, h, w)` where * denotes
-#             any number of dimensions and `h`, `w` the height and width of the
-#             images.
-
-#         Shape:
-#             :math:`y`: :math:`(*, M)`
-
-#             Output: :math:`(*, h, w)`
-
-#         Example:
-#             >>> H = torch.randn([400, 1600])
-#             >>> meas_op = Linear(H)
-#             >>> y = torch.randn([10, 400]
-#             >>> x = meas_op.adjoint(y)
-#             >>> print(x.shape)
-#             torch.Size([10, 40, 40])
-#         """
-#         # return x @ self.H.to(x.dtype).to(x.device)
-#         return torch.einsum("mhw,...m->...hw", self.unvectorize(self.H).to(y.dtype), y)
-
-#     def _set_Ord(self, Ord: torch.tensor) -> None:
-#         """Set the order matrix used to sort the rows of H."""
-#         super()._set_Ord(Ord)
-#         # delete self.H_pinv (self._param_H_static_pinv)
-#         try:
-#             del self._param_H_static_pinv
-#             warnings.warn(
-#                 "The pseudo-inverse H_pinv has been deleted. Please call "
-#                 + "build_H_pinv() to recompute it."
-#             )
-#         except AttributeError:
-#             pass
-
-
 # =============================================================================
 class Linear(nn.Module):
     r"""
-    Simulates linear measurements 
-    
+    Simulates linear measurements
+
     .. math::
         m =\mathcal{N}\left(Hx\right),
         
@@ -761,7 +105,7 @@ class Linear(nn.Module):
         if meas_shape is None:
             meas_shape = H.shape[-1]
         if meas_dims is None:
-            meas_dims = -1
+            meas_dims = list(range(len(meas_shape)))
 
         if type(meas_shape) is int:
             meas_shape = [meas_shape]
@@ -810,16 +154,9 @@ class Linear(nn.Module):
     def matrix_to_inverse(self) -> str:
         return self._selected_pinv_matrix
 
+    @property
     def get_matrix_to_inverse(self) -> torch.tensor:
-        return getattr(self, self.matrix_to_inverse)
-
-    def set_matrix_to_inverse(self, matrix_name: str) -> None:
-        if matrix_name in self._available_pinv_matrices.keys():
-            self._selected_pinv_matrix = matrix_name
-        else:
-            raise KeyError(
-                f"Matrix {matrix_name} not available for pinv. Available matrices: {self._available_pinv_matrices.keys()}"
-            )
+        return getattr(self, self._selected_pinv_matrix)
 
     def measure(self, x: torch.tensor) -> torch.tensor:
         r"""Apply the measurement patterns (no noise) to the incoming tensor.
@@ -951,29 +288,8 @@ class Linear(nn.Module):
         input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
         return input
 
-    def fast_pinv(self, y: torch.tensor, *args, **kwargs):
-        r""" """
-        return None
 
-    def fast_H_pinv(self, *args, **kwargs) -> torch.tensor:
-        r""" """
-        return None
-
-    # def _extract_patterns(self, matrix: torch.tensor) -> torch.tensor:
-    #     matrix_pos, matrix_neg = self.split_tensor(matrix)
-    #     return torch.cat([matrix_pos, matrix_neg], 1).reshape(
-    #         2 * matrix.shape[0], matrix.shape[1]
-    #     )
-
-    # def _set_patterns(self, matrix: torch.tensor) -> None:
-    #     if self.split:
-    #         self.patterns = nn.Parameter(
-    #             self._extract_patterns(matrix), requires_grad=False
-    #         )
-    #     else:
-    #         self.patterns = nn.Parameter(matrix, requires_grad=False)
-
-
+# =============================================================================
 class FreeformLinear(Linear):
     r"""Performs linear measurements on a subset (mask) of pixels in the image."""
 
@@ -1228,14 +544,15 @@ class LinearSplit(Linear):
         )
 
         # split positive and negative components
-        pos, neg = nn.functional.relu(H), nn.functional.relu(-H)
+        pos, neg = nn.functional.relu(self.H), nn.functional.relu(-self.H)
         A = torch.cat([pos, neg], 1).reshape(2 * self.M, self.N)
+        # A is built from self.H which is cast to device and dtype
         self.A = nn.Parameter(A, requires_grad=False)
 
         # define the available matrices for reconstruction
         self._available_pinv_matrices = ["H", "A"]
         self._selected_pinv_matrix = "H"  # select default here
-        
+
         # HERE: device=device, dtype=dtype
 
     @property
@@ -1254,6 +571,14 @@ class LinearSplit(Linear):
         else:
             raise RuntimeError(
                 f"dtype undefined, H and A are of different dtype (found {self.H.dtype} and {self.A.dtype} respectively)"
+            )
+
+    def set_matrix_to_inverse(self, matrix_name: str) -> None:
+        if matrix_name in self._available_pinv_matrices.keys():
+            self._selected_pinv_matrix = matrix_name
+        else:
+            raise KeyError(
+                f"Matrix {matrix_name} not available for pinv. Available matrices: {self._available_pinv_matrices.keys()}"
             )
 
     def measure(self, x: torch.tensor):
@@ -1391,43 +716,52 @@ class HadamSplit2d(LinearSplit):
     def measure(self, x: torch.tensor) -> torch.tensor:
         r""""""
         if self.fast:
-            onex = torch.sum(x, dim=-1, keepdim=True)
-            Hx = self.measure_H(x)
-            y_pos, y_neg = (onex + Hx) / 2, (onex - Hx) / 2
-            y = torch.cat([y_pos, y_neg], -1).reshape(2 * self.M, self.N)
-            return y
+            return self.fast_measure(x)
         else:
             return super().measure(x)
 
     def measure_H(self, x: torch.tensor):
         r""" """
         if self.fast:
-            x = spytorch.mult_2d_separable(self.H1d, x)
-            x = self.vectorize(x)
-            x = x.index_select(dim=-1, index=self.indices)
-            # x = self.reindex(x, "rows", False)
-            return x[..., : self.M]
+            return self.fast_measure_H(x)
         else:
             return super().measure_H(x)
 
     def adjoint_H(self, y: torch.tensor) -> torch.tensor:
         r""""""
         if self.fast:
-            if self.N != self.M:
-                y = torch.cat(
-                    (y, torch.zeros(*y.shape[:-1], self.N - self.M, device=y.device)),
-                    -1,
-                )
-            y = self.reindex(y, "cols", False)
-            y = self.unvectorize(y)
-            y = spytorch.mult_2d_separable(self.H1d, y)
-            return y
+            return self.fast_pinv(y) * self.N
         else:
             return super().adjoint_H(y)
 
+    def fast_measure(self, x: torch.tensor) -> torch.tensor:
+        r""" """
+        Hx = self.measure_H(x)
+        x_sum = Hx[..., 0]
+        y_pos, y_neg = (x_sum + Hx) / 2, (x_sum - Hx) / 2
+        new_shape = y_pos.shape[:-1] + (2 * self.M,)
+        y = torch.stack([y_pos, y_neg], -1).reshape(new_shape)
+        return y
+
+    def fast_measure_H(self, x: torch.tensor) -> torch.tensor:
+        r""" """
+        x = spytorch.mult_2d_separable(self.H1d, x)
+        x = self.vectorize(x)
+        x = x.index_select(dim=-1, index=self.indices)
+        # x = self.reindex(x, "rows", False)
+        return x[..., : self.M]
+
     def fast_pinv(self, y: torch.tensor):
         r""" """
-        return self.adjoint_H(y) / self.N
+        if self.N != self.M:
+            y = torch.cat(
+                (y, torch.zeros(*y.shape[:-1], self.N - self.M, device=y.device)),
+                -1,
+            )
+        y = self.reindex(y, "cols", False)
+        y = self.unvectorize(y)
+        y = spytorch.mult_2d_separable(self.H1d, y)
+        return y / self.N
 
     def fast_H_pinv(self) -> torch.tensor:
         r""" """

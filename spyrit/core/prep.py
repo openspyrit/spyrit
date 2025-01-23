@@ -7,6 +7,8 @@ without splitting the measurement matrix in its positive and negative parts),
 while the second one is used for split measurements.
 """
 
+from typing import Union
+
 import torch
 import torch.nn as nn
 
@@ -435,6 +437,62 @@ class UnsplitRescaleEstim(RescaleEstim):
         y = Unsplit.forward(y, mode=mode)
         y = super().forward(y)  # estimate alpha and divide
         return y
+
+
+# =============================================================================
+class Rerange(nn.Module):
+    r"""Applies the affine transform that maps :math:`[x,y]` to :math:`[a,b]`.
+
+    Args:
+        input_range (tuple): The input range :math:`[x,y]`.
+
+        output_range (tuple): The output range :math:`[a,b]`.
+
+    Attributes:
+        input_range (tuple): The input range :math:`[x,y]`.
+
+        output_range (tuple): The output range :math:`[a,b]`.
+    """
+
+    def __init__(
+        self, input_range: Union[tuple, list], output_range: Union[tuple, list]
+    ):
+        super().__init__()
+        self.input_range = input_range
+        self.output_range = output_range
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r"""Applies the affine transform to the input tensor.
+
+        It corresponds to the affine transformation that maps the input range
+        :math:`[x,y]` to the output range :math:`[a,b]`.
+
+        Args:
+            x (torch.tensor): The input tensor to apply the affine transform to.
+            Has arbitrary shape.
+
+        Returns:
+            torch.tensor: The input tensor with the affine transform applied.
+            It has the same shape as the input tensor.
+        """
+        a, b = self.input_range
+        c, d = self.output_range
+        return (x - a) * (d - c) / (b - a) + c
+
+    def backward(self, x: torch.tensor) -> torch.tensor:
+        r"""Applies the inverse affine transform to the input tensor.
+
+        Args:
+            x (torch.tensor): The input tensor to apply the inverse affine
+            transform to. Has arbitrary shape.
+
+        Returns:
+            torch.tensor: The input tensor with the inverse affine transform
+            applied. It has the same shape as the input tensor.
+        """
+        a, b = self.input_range
+        c, d = self.output_range
+        return (x - c) * (b - a) / (d - c) + a
 
 
 # =============================================================================
