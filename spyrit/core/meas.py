@@ -689,12 +689,12 @@ import spyrit.core.torch as spytorch
 # =============================================================================
 class Linear(nn.Module):
     r"""
-    Compute 
+    Simulates linear measurements 
     
     .. math::
         y =\mathcal{N}\left(Ax\right),
         
-    where :math:`\mathcal{N} \colon\, \mathbb{R}^J \to \mathbb{R}^J` represents a (not necessarily linear) noise operator (e.g., Poisson or Poisson-Gaussian), :math:`A \colon\, \mathbb{R}^N \to \mathbb{R}^J` is the actual acquisition operator that models the (positive) DMD patterns, and :math:`J` is the number of DMD patterns. 
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^J \to \mathbb{R}^J` represents a noise operator (e.g., Gaussian), :math:`A \colon\, \mathbb{R}^N \to \mathbb{R}^J` is the acquisition matrix that models the DMD patterns, and :math:`J` is the number of DMD patterns. 
 
     Args:
         :attr:`H` (:class:`torch.tensor`, optional): Acquisition matrix :math:`A`.
@@ -1179,7 +1179,6 @@ class LinearSplit(Linear):
             H,
             meas_shape,
             meas_dims,
-            noise_model,
             noise_model=noise_model,
             dtype=dtype,
             device=device,
@@ -1188,11 +1187,13 @@ class LinearSplit(Linear):
         # split positive and negative components
         pos, neg = nn.functional.relu(H), nn.functional.relu(-H)
         A = torch.cat([pos, neg], 1).reshape(2 * self.M, self.N)
-        self.A = nn.Parameter(A, requires_grad=False, device=device, dtype=dtype)
+        self.A = nn.Parameter(A, requires_grad=False)
 
         # define the available matrices for reconstruction
         self._available_pinv_matrices = ["H", "A"]
         self._selected_pinv_matrix = "H"  # select default here
+        
+        # HERE: device=device, dtype=dtype
 
     @property
     def device(self) -> torch.device:
