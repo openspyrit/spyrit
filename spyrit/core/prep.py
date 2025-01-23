@@ -7,6 +7,8 @@ without splitting the measurement matrix in its positive and negative parts),
 while the second one is used for split measurements.
 """
 
+from typing import Union
+
 import torch
 import torch.nn as nn
 
@@ -452,7 +454,9 @@ class Rerange(nn.Module):
         output_range (tuple): The output range :math:`[a,b]`.
     """
 
-    def __init__(self, input_range: tuple, output_range: tuple):
+    def __init__(
+        self, input_range: Union[tuple, list], output_range: Union[tuple, list]
+    ):
         super().__init__()
         self.input_range = input_range
         self.output_range = output_range
