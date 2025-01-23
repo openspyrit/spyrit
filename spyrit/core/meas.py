@@ -39,7 +39,7 @@ class Linear(nn.Module):
     .. math::
         m =\mathcal{N}\left(Hx\right),
 
-    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H \colon\, \mathbb{R}^N \to \mathbb{R}^M` is the acquisition matrix, :math:`M` is the number of measurements, :math:`N` is the dimension of the signal, and :math:`x \in \mathbb{R}^N` is the signal of interest.
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
 
     .. important::
         The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`).
@@ -104,22 +104,22 @@ class Linear(nn.Module):
         super().__init__()
 
         if meas_shape is None:
-            meas_shape = [H.shape[-1]]
-        if meas_dims is None:
-            meas_dims = list(-range(len(meas_shape)), 0)
-
+            meas_shape = H.shape[-1]
+            
         if type(meas_shape) is int:
             meas_shape = [meas_shape]
+        self.meas_shape = torch.Size(meas_shape)
+
+        if meas_dims is None:
+            meas_dims = list(range(-len(self.meas_shape), 0))
         if type(meas_dims) is int:
             meas_dims = [meas_dims]
-
-        #H = H.to(device=device, dtype=dtype)
+        self.meas_dims = torch.Size(meas_dims)
 
         # don't store H if we use a HadamSplit
         if not isinstance(self, HadamSplit2d):
             self.H = nn.Parameter(H, requires_grad=False)
-        self.meas_shape = torch.Size(meas_shape)
-        self.meas_dims = torch.Size(meas_dims)
+            self.H = self.H.to(dtype=dtype, device=device)
         self.noise_model = noise_model
 
         # additional attributes
@@ -165,81 +165,147 @@ class Linear(nn.Module):
         .. math::
             m = Hx,
 
-        where :math:`H \colon\, \mathbb{R}^N \to \mathbb{R}^M` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
+        where :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
 
         .. note::
             This method does not degrade measurement with noise. To do so, see :func:`~spyrit.core.meas.forward()`
 
         Args:
-            x (:class:`torch.tensor`): A batch of signals :math:`x`. The
+            :attr:`x` (:class:`torch.tensor`): A batch of signals :math:`x`. The
             dimensions indexed by :attr:`self.meas_dims` must match the measurement
             shape :attr:`self.meas_shape`. 
 
         Returns:
             :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
-            all the dimensions of the input tensor that are not included in `self.meas_dims`.
+            all the dimensions of the input tensor that are not included in :attr:`self.meas_dims`.
 
         Example:
-            A 15x4 pixel image:
+            (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 10.
             
-            >>> H = torch.randn(10, 60)
+            >>> H = torch.randn(10, 15)
             >>> meas_op = Linear(H)
-            >>> x = torch.randn(3, 15, 4)
+            >>> x = torch.randn(3, 4, 15)
             >>> y = meas_op.measure(x)
             >>> print(y.shape)
-            torch.Size([3, 10])
+            torch.Size([3, 4, 10])
+            
+            3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 10. The acquisition matrix applies to both dimensions -2 and -1. 
             
             >>> H = torch.randn(10, 60)
             >>> meas_op = Linear(H, meas_shape=(15, 4))
             >>> x = torch.randn(3, 15, 4)
             >>> y = meas_op.measure(x)
             >>> print(y.shape)
+            >>> print(meas_op.meas_dims)
             torch.Size([3, 10])
+            torch.Size([-2, -1])
         """
         x = self.vectorize(x)
         x = torch.einsum("mn,...n->...m", self.H, x)
         return x
 
     def forward(self, x: torch.tensor):
-        r"""Forward pass (measurement + noise) of the measurement operator.
+        r"""Simulate noisy measurements
+        
+        .. math::
+            m =\mathcal{N}\left(Hx\right),
 
-        The forward pass includes both the measurement and the noise model. It
-        is equivalent to the method `measure()` followed by the noise model
-        :meth:`forward()` method.
+        where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
+
+        .. note::
+            This method degrades measurements with noise. To compute :math:`Hx` only, see :func:`~spyrit.core.meas.measure()`.
 
         Args:
-            x (:class:`torch.tensor`): A tensor where the dimensions indexed by
-            `self.meas_dims` match the measurement shape `self.meas_shape`.
+            :attr:`x` (:class:`torch.tensor`): A batch of signals :math:`x`. The
+            dimensions indexed by :attr:`self.meas_dims` must match the measurement
+            shape :attr:`self.meas_shape`. 
 
         Returns:
-            :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
-            all the dimensions of the input tensor not included in `self.meas_dims`.
+            :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
+            all the dimensions of the input tensor that are not included in :attr:`self.meas_dims`.
 
         Example:
-            >>> matrix = torch.randn(10, 60)
-            >>> meas_op = Linear(matrix, meas_shape=(15, 4)
+            (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 10.
+            
+            >>> H = torch.randn(10, 15)
+            >>> meas_op = Linear(H)
+            >>> x = torch.randn(3, 4, 15)
+            >>> y = meas_op(x)
+            >>> print(y.shape)
+            torch.Size([3, 4, 10])
+            
+            3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 10. The acquisition matrix applies to both dimensions -2 and -1. 
+            
+            >>> H = torch.randn(10, 60)
+            >>> meas_op = Linear(H, meas_shape=(15, 4))
+            >>> x = torch.randn(3, 15, 4)
+            >>> y = meas_op(x)
+            >>> print(y.shape)
+            >>> print(meas_op.meas_dims)
+            torch.Size([3, 10])
+            torch.Size([-2, -1])
         """
         x = self.measure(x)
         x = self.noise_model(x)
         return x
 
-    def adjoint(self, y: torch.tensor, unvectorize=False):
-        r"""Applies the adjoint (transpose) of the measurement matrix.
+    def adjoint(self, m: torch.tensor, unvectorize=False):
+        r"""        
+        Applies adjoint (transpose) to measurements
+        
+        .. math::
+            x = H^Tm,
+
+        where :math:`H^T\in\mathbb{R}^{N\times M}` is the adjoint of the acquisition matrix, :math:`m \in \mathbb{R}^M` is a measurement.
+
+        Args:
+            :attr:`m` (:class:`torch.tensor`): A batch of measurements :math:`m`. The
+            dimensions indexed by :attr:`self.meas_dims` must match the measurement
+            shape :attr:`self.meas_shape`. 
+            
+            :attr:`unvectorize` (bool, optional): Whether to call :meth:`unvectorize`
+            after the operation. Defaults to False.
+
+        Returns:
+            :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
+            all the dimensions of the input tensor that are not included in :attr:`self.meas_dims`.
+            
 
         Args:
             y (:class:`torch.tensor`): A tensor of shape (*, self.M) where * denotes
             0 or more batch dimensions.
 
-            unvectorize (bool, optional): Whether to call :meth:`unvectorize`
-            after the operation. Defaults to False.
+           
 
         Returns:
             :class:`torch.tensor`: A tensor of shape (*, self.N) if `reshape_output` is
             False, or the :meth:`unvectorize`d version of that tensor.
+            
+
+        Example:
+            (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 10.
+            
+            >>> H = torch.randn(10, 15)
+            >>> meas_op = Linear(H)
+            >>> x = torch.randn(3, 4, 15)
+            >>> y = meas_op.measure(x)
+            >>> print(y.shape)
+            torch.Size([3, 4, 10])
+            
+            3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 10. The acquisition matrix applies to both dimensions -2 and -1. 
+            
+            >>> H = torch.randn(10, 60)
+            >>> meas_op = Linear(H, meas_shape=(15, 4))
+            >>> x = torch.randn(3, 15, 4)
+            >>> y = meas_op.measure(x)
+            >>> print(y.shape)
+            >>> print(meas_op.meas_dims)
+            torch.Size([3, 10])
+            torch.Size([-2, -1])
         """
-        y = torch.einsum("mn,...m->...n", self.H, y)
+        m = torch.einsum("mn,...m->...n", self.H, m)
         if unvectorize:
-            y = self.unvectorize(y)
+            m = self.unvectorize(m)
         return y
 
     def unvectorize(self, input: torch.tensor) -> torch.tensor:
@@ -718,7 +784,8 @@ class HadamSplit2d(LinearSplit):
         meas_dims = (-2, -1)
         meas_shape = (h, h)
         # 1D version of H
-        self.H1d = spytorch.walsh_matrix(h).to(dtype=dtype, device=device)
+        self.H1d = nn.Parameter(spytorch.walsh_matrix(h), requires_grad=False)
+        self.H1d = self.H1d.to(dtype=dtype, device=device)
 
         # call Linear constructor (avoid setting A)
         super(LinearSplit, self).__init__(
