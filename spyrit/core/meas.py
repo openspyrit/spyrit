@@ -1365,7 +1365,27 @@ class HadamSplit2d(LinearSplit):
         return x[..., : self.M]
 
     def fast_pinv(self, y: torch.tensor):
-        r""" """
+        r"""Fast computation of the least squares solution of :math:`Hx = y`.
+
+        The matrix `H` is the 2D Hadamard matrix (equal to the Kronecker product
+        of `self.H1d` with itself).
+
+        This uses internally the 2D separable Hadamard transform with matrix
+        multiplication (the matrix being stored in `self.H1d`). If the number
+        of measurements is smaller than the number of pixels (subsampling), the
+        measurement tensor is zero-padded to reach the number of pixels.
+
+        Args:
+            y (torch.tensor): Input tensor. Has shape `(*, M)` where `*` denotes
+            any number of dimensions and `M` the number of measurements as defined
+            by the attribute `self.M`.
+
+        Returns:
+            torch.tensor: The least squares solution of the system :math:`Hx = y`.
+            Has shape `(*, N)` where `*` denotes the same number of dimensions
+            and `N` the number of pixels in the image as defined by the attribute
+            `self.N`.
+        """
         if self.N != self.M:
             y = torch.cat(
                 (y, torch.zeros(*y.shape[:-1], self.N - self.M, device=y.device)),
@@ -1374,6 +1394,7 @@ class HadamSplit2d(LinearSplit):
         y = self.reindex(y, "cols", False)
         y = self.unvectorize(y)
         y = spytorch.mult_2d_separable(self.H1d, y)
+        y = self.vectorize(y)
         return y / self.N
 
     def fast_H_pinv(self) -> torch.tensor:
