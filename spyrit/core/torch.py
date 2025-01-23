@@ -64,7 +64,7 @@ def sequency_perm(X, ind=None):
 
     Returns:
         torch.tensor: output of shape (*,n).
-        
+
     Note:
         Same as :func:`spyrit.misc.walsh_hadamard.sequency_perm()` for torch tensors.
 
@@ -321,11 +321,11 @@ def fwht(x, order=True, dim=-1):
         >>> x = np.random.rand(2**12)
         >>> t = timeit.timeit(lambda: wh.fwht(x,False), number=2000)
         >>> print(f"Fast Hadamard transform numpy CPU (2000x): {t:.4f} seconds")
-        
+
         >>> x_torch = torch.from_numpy(x)
         >>> t = timeit.timeit(lambda: st.fwht(x_torch,False), number=2000)
         >>> print(f"Fast Hadamard transform pytorch CPU (2000x): {t:.4f} seconds")
-        
+
         >>> x_torch = torch.from_numpy(x).to(torch.device('cuda:0'))
         >>> t = timeit.timeit(lambda: st.fwht(x_torch,False), number=2000)
         >>> print(f"Fast Hadamard transform pytorch GPU (2000x): {t:.4f} seconds")
@@ -1067,9 +1067,11 @@ def regularized_lstsq(A: torch.tensor, y: torch.tensor, regularization: str, **k
     batches = y.shape[:-1]
 
     if regularization == "rcond":
+        driver = kwargs.get("driver", "gelsd")
+        kwargs["driver"] = driver
         lhs = A.expand(*batches, m, n)
         rhs = y.unsqueeze(-1)
-        x, _ = torch.linalg.lstsq(lhs, rhs, **kwargs)
+        x = torch.linalg.lstsq(lhs, rhs, **kwargs).solution
         x = x.squeeze(-1)
 
     elif regularization == "L2":
