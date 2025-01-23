@@ -908,29 +908,8 @@ class Linear(nn.Module):
         input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
         return input
 
-    def fast_pinv(self, y: torch.tensor, *args, **kwargs):
-        r""" """
-        return None
 
-    def fast_H_pinv(self, *args, **kwargs) -> torch.tensor:
-        r""" """
-        return None
-
-    # def _extract_patterns(self, matrix: torch.tensor) -> torch.tensor:
-    #     matrix_pos, matrix_neg = self.split_tensor(matrix)
-    #     return torch.cat([matrix_pos, matrix_neg], 1).reshape(
-    #         2 * matrix.shape[0], matrix.shape[1]
-    #     )
-
-    # def _set_patterns(self, matrix: torch.tensor) -> None:
-    #     if self.split:
-    #         self.patterns = nn.Parameter(
-    #             self._extract_patterns(matrix), requires_grad=False
-    #         )
-    #     else:
-    #         self.patterns = nn.Parameter(matrix, requires_grad=False)
-
-
+# =============================================================================
 class FreeformLinear(Linear):
     r"""Performs linear measurements on a subset (mask) of pixels in the image."""
 
@@ -1347,43 +1326,52 @@ class HadamSplit2d(LinearSplit):
     def measure(self, x: torch.tensor) -> torch.tensor:
         r""""""
         if self.fast:
-            onex = torch.sum(x, dim=-1, keepdim=True)
-            Hx = self.measure_H(x)
-            y_pos, y_neg = (onex + Hx) / 2, (onex - Hx) / 2
-            y = torch.cat([y_pos, y_neg], -1).reshape(2 * self.M, self.N)
-            return y
+            return self.fast_measure(x)
         else:
             return super().measure(x)
 
     def measure_H(self, x: torch.tensor):
         r""" """
         if self.fast:
-            x = spytorch.mult_2d_separable(self.H1d, x)
-            x = self.vectorize(x)
-            x = x.index_select(dim=-1, index=self.indices)
-            # x = self.reindex(x, "rows", False)
-            return x[..., : self.M]
+            return self.fast_measure_H(x)
         else:
             return super().measure_H(x)
 
     def adjoint_H(self, y: torch.tensor) -> torch.tensor:
         r""""""
         if self.fast:
-            if self.N != self.M:
-                y = torch.cat(
-                    (y, torch.zeros(*y.shape[:-1], self.N - self.M, device=y.device)),
-                    -1,
-                )
-            y = self.reindex(y, "cols", False)
-            y = self.unvectorize(y)
-            y = spytorch.mult_2d_separable(self.H1d, y)
-            return y
+            return self.fast_pinv(y) * self.N
         else:
             return super().adjoint_H(y)
 
+    def fast_measure(self, x: torch.tensor) -> torch.tensor:
+        r""" """
+        Hx = self.measure_H(x)
+        x_sum = Hx[..., 0]
+        y_pos, y_neg = (x_sum + Hx) / 2, (x_sum - Hx) / 2
+        new_shape = y_pos.shape[:-1] + (2 * self.M,)
+        y = torch.stack([y_pos, y_neg], -1).reshape(new_shape)
+        return y
+
+    def fast_measure_H(self, x: torch.tensor) -> torch.tensor:
+        r""" """
+        x = spytorch.mult_2d_separable(self.H1d, x)
+        x = self.vectorize(x)
+        x = x.index_select(dim=-1, index=self.indices)
+        # x = self.reindex(x, "rows", False)
+        return x[..., : self.M]
+
     def fast_pinv(self, y: torch.tensor):
         r""" """
-        return self.adjoint_H(y) / self.N
+        if self.N != self.M:
+            y = torch.cat(
+                (y, torch.zeros(*y.shape[:-1], self.N - self.M, device=y.device)),
+                -1,
+            )
+        y = self.reindex(y, "cols", False)
+        y = self.unvectorize(y)
+        y = spytorch.mult_2d_separable(self.H1d, y)
+        return y / self.N
 
     def fast_H_pinv(self) -> torch.tensor:
         r""" """

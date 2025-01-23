@@ -64,7 +64,8 @@ class PseudoInverse(nn.Module):
         meas_op: Union[meas.Linear, meas.DynamicLinear],
         regularization: str = "rcond",
         store_pinv: bool = False,
-        reshape_output: bool = False,
+        use_fast_pinv: bool = False,
+        reshape_output: bool = True,
         **reg_kwargs,
     ) -> None:
 
@@ -72,18 +73,18 @@ class PseudoInverse(nn.Module):
         self.meas_op = meas_op
         self.regularization = regularization
         self.store_pinv = store_pinv
+        self.use_fast_pinv = use_fast_pinv
         self.reshape_output = reshape_output
         self.reg_kwargs = reg_kwargs
 
         if self.store_pinv:
-            # do we have a fast pseudo-inverse computation available?
-            fast_H_pinv = meas_op.fast_H_pinv()
-            if fast_H_pinv is not None:
-                self.pinv = fast_H_pinv
-            else:
+            if not use_fast_pinv:
                 self.pinv = spytorch.regularized_pinv(
                     self.meas_op.get_matrix_to_inverse(), regularization, **reg_kwargs
                 )
+            # do we have a fast pseudo-inverse computation available?
+            elif hasattr(self.meas_op, "fast_H_pinv"):
+                self.pinv = meas_op.fast_H_pinv()
 
     def forward(self, y: torch.tensor) -> torch.tensor:
         r"""Computes pseudo-inverse of measurements.
@@ -141,10 +142,7 @@ class PseudoInverse(nn.Module):
             y = y.squeeze(-1)
 
         else:
-            fast_pinv = self.meas_op.fast_pinv(y)
-            if fast_pinv is not None:
-                y = fast_pinv
-            else:
+            if not self.use_fast_pinv:
                 # make get_matrix_to_inverse() a batched 2D matrix
                 y = spytorch.regularized_lstsq(
                     self.meas_op.get_matrix_to_inverse(),
@@ -152,6 +150,8 @@ class PseudoInverse(nn.Module):
                     self.regularization,
                     **self.reg_kwargs,
                 )
+            elif hasattr(self.meas_op, "fast_pinv"):
+                y = self.meas_op.fast_pinv(y)
 
         if self.reshape_output:
             y = self.meas_op.unvectorize(y)
