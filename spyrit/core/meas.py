@@ -104,7 +104,7 @@ class Linear(nn.Module):
         super().__init__()
 
         if meas_shape is None:
-            meas_shape = H.shape[-1]
+            meas_shape = [H.shape[-1]]
         if meas_dims is None:
             meas_dims = list(-range(len(meas_shape)), 0)
 
@@ -160,24 +160,37 @@ class Linear(nn.Module):
         return getattr(self, self._selected_pinv_matrix)
 
     def measure(self, x: torch.tensor) -> torch.tensor:
-        r"""Apply the measurement patterns (no noise) to the incoming tensor.
+        r"""Simulate noiseless measurements
+        
+        .. math::
+            m = Hx,
 
-        The input tensor is multiplied by the measurement patterns.
+        where :math:`H \colon\, \mathbb{R}^N \to \mathbb{R}^M` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
 
         .. note::
-            This method does not include the noise model.
+            This method does not degrade measurement with noise. To do so, see :func:`~spyrit.core.meas.forward()`
 
         Args:
-            x (torch.tensor): A tensor where the dimensions indexed by
-            `self.meas_dims` match the measurement shape `self.meas_shape`.
+            x (:class:`torch.tensor`): A batch of signals :math:`x`. The
+            dimensions indexed by :attr:`self.meas_dims` must match the measurement
+            shape :attr:`self.meas_shape`. 
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.M) where * denotes
-            all the dimensions of the input tensor not included in `self.meas_dims`.
+            :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
+            all the dimensions of the input tensor that are not included in `self.meas_dims`.
 
-        Example with a RGB 15x4 pixel image:
-            >>> matrix = torch.randn(10, 60)
-            >>> meas_op = Linear(matrix, meas_shape=(15, 4))
+        Example:
+            A 15x4 pixel image:
+            
+            >>> H = torch.randn(10, 60)
+            >>> meas_op = Linear(H)
+            >>> x = torch.randn(3, 15, 4)
+            >>> y = meas_op.measure(x)
+            >>> print(y.shape)
+            torch.Size([3, 10])
+            
+            >>> H = torch.randn(10, 60)
+            >>> meas_op = Linear(H, meas_shape=(15, 4))
             >>> x = torch.randn(3, 15, 4)
             >>> y = meas_op.measure(x)
             >>> print(y.shape)
@@ -195,11 +208,11 @@ class Linear(nn.Module):
         :meth:`forward()` method.
 
         Args:
-            x (torch.tensor): A tensor where the dimensions indexed by
+            x (:class:`torch.tensor`): A tensor where the dimensions indexed by
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.M) where * denotes
+            :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example:
@@ -214,14 +227,14 @@ class Linear(nn.Module):
         r"""Applies the adjoint (transpose) of the measurement matrix.
 
         Args:
-            y (torch.tensor): A tensor of shape (*, self.M) where * denotes
+            y (:class:`torch.tensor`): A tensor of shape (*, self.M) where * denotes
             0 or more batch dimensions.
 
             unvectorize (bool, optional): Whether to call :meth:`unvectorize`
             after the operation. Defaults to False.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.N) if `reshape_output` is
+            :class:`torch.tensor`: A tensor of shape (*, self.N) if `reshape_output` is
             False, or the :meth:`unvectorize`d version of that tensor.
         """
         y = torch.einsum("mn,...m->...n", self.H, y)
@@ -238,12 +251,12 @@ class Linear(nn.Module):
         their original positions as defined by `self.meas_dims`.
 
         Input:
-            input (torch.tensor): A tensor of shape (*, self.N) where
+            input (:class:`torch.tensor`): A tensor of shape (*, self.N) where
             * denotes any batch size and `self.N` is the number of
             measured items (pixels for instance).
 
         Output:
-            torch.tensor: A tensor where the dimensions indexed by
+            :class:`torch.tensor`: A tensor where the dimensions indexed by
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Example:
@@ -268,11 +281,11 @@ class Linear(nn.Module):
         dimension of the output tensor.
 
         Input:
-            input (torch.tensor): A tensor where the dimensions indexed by
+            input (:class:`torch.tensor`): A tensor where the dimensions indexed by
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Output:
-            torch.tensor: A tensor of shape (*, self.N) where * denotes
+            :class:`torch.tensor`: A tensor of shape (*, self.N) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example:
@@ -358,12 +371,12 @@ class FreeformLinear(Linear):
         dimension of the output tensor.
 
         Args:
-            x (torch.tensor): The input tensor to select the mask from. The
+            x (:class:`torch.tensor`): The input tensor to select the mask from. The
             dimensions indexed by `self.meas_dims` should match the measurement shape
             `self.meas_shape`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.N) where * denotes
+            :class:`torch.tensor`: A tensor of shape (*, self.N) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
@@ -401,11 +414,11 @@ class FreeformLinear(Linear):
             This method does not include the noise model.
 
         Args:
-            x (torch.tensor): A tensor where the dimensions indexed by
+            x (:class:`torch.tensor`): A tensor where the dimensions indexed by
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.M) where * denotes
+            :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
         """
         x = self.mask_vectorize(x)
@@ -420,11 +433,11 @@ class FreeformLinear(Linear):
         :meth:`forward()` method.
 
         Args:
-            x (torch.tensor): A tensor where the dimensions indexed by
+            x (:class:`torch.tensor`): A tensor where the dimensions indexed by
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.M) where * denotes
+            :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Measure the upper half of 32x32 images
@@ -449,14 +462,14 @@ class FreeformLinear(Linear):
             The output tensor is not a view of the input tensor.
 
         Args:
-            x (torch.tensor): tensor to be expanded. Its last dimension must
+            x (:class:`torch.tensor`): tensor to be expanded. Its last dimension must
             contain `self.N` elements.
 
             fill_value (Any, optional): Fill value for all the indices not
             covered by the mask. Defaults to 0.
 
         Returns:
-            torch.tensor: A tensor where the dimensions indexed by `self.meas_dims`
+            :class:`torch.tensor`: A tensor where the dimensions indexed by `self.meas_dims`
             match the measurement shape `self.meas_shape`.
         """
 
@@ -497,7 +510,7 @@ class FreeformLinear(Linear):
         dimension of the output tensor.
 
         Args:
-            x (torch.tensor): The input tensor to select the mask from. The
+            x (:class:`torch.tensor`): The input tensor to select the mask from. The
             dimensions indexed by `self.meas_dims` should match the measurement shape
             `self.meas_shape`.
 
@@ -505,7 +518,7 @@ class FreeformLinear(Linear):
             This function is an alias for the method :meth:`apply_mask`.
 
         Returns:
-            torch.tensor: A tensor of shape (*, self.N) where * denotes
+            :class:`torch.tensor`: A tensor of shape (*, self.N) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
@@ -531,7 +544,7 @@ class LinearSplit(Linear):
         
     where :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` represents a noise operator (e.g., Gaussian), :math:`A \colon\, \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns, :math:`x \in \mathbb{R}^N` is the signal of interest., :math:`2M` is the number of DMD patterns, and :math:`N` is the dimension of the signal.
     
-    Given a matrix :math:`H`, we define the positive DMD patterns :math:`A` from the positive and negative components :math:`H`. In practice, the even rows of :math:`A` contain the positive components of :math:`H`, while odd rows of :math:`A` contain the negative components of :math:`H`. Mathematically,
+    Given a matrix :math:`H`, we define the positive DMD patterns :math:`A` from the positive and negative components :math:`H`. In practice, the even rows of :math:`A` contain the positive components of :math:`H`, while odd rows of :math:`A` contain the negative components of :math:`H`
 
     .. math::
         \begin{cases}
@@ -563,8 +576,8 @@ class LinearSplit(Linear):
         :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. Defaults to = `torch.nn.Identity`.
     
     Attributes:
-        :attr:`A` (:class:`torch.tensor`): (Learnable) measurement matrix of shape
-        :math:`(2M, N)` initialized as :math:`A`.
+        :attr:`A` (:class:`torch.tensor`): (Learnable) positive measurement 
+        matrix of shape :math:`(2M, N)` initialized as :math:`A`.
         
         :attr:`H` (:class:`torch.tensor`): (Learnable) measurement matrix of shape
         :math:`(M, N)` initialized as :math:`H`.
@@ -766,7 +779,7 @@ class HadamSplit2d(LinearSplit):
             See :func:`~spyrit.core.torch.reindex()` for more details.
 
         Args:
-            values (torch.tensor): The tensor to sort. Can be 1D, 2D, or any
+            values (:class:`torch.tensor`): The tensor to sort. Can be 1D, 2D, or any
             multi-dimensional batch of 2D tensors.
 
             axis (str, optional): The axis to sort along. Must be either 'rows' or
@@ -779,7 +792,7 @@ class HadamSplit2d(LinearSplit):
             ValueError: If `axis` is not 'rows' or 'cols'.
 
         Returns:
-            torch.tensor: The sorted tensor by the given indices along the
+            :class:`torch.tensor`: The sorted tensor by the given indices along the
             specified axis.
         """
         return spytorch.reindex(x, self.indices.to(x.device), axis, inverse_permutation)
@@ -834,12 +847,12 @@ class HadamSplit2d(LinearSplit):
         measurement tensor is zero-padded to reach the number of pixels.
 
         Args:
-            y (torch.tensor): Input tensor. Has shape `(*, M)` where `*` denotes
+            y (:class:`torch.tensor`): Input tensor. Has shape `(*, M)` where `*` denotes
             any number of dimensions and `M` the number of measurements as defined
             by the attribute `self.M`.
 
         Returns:
-            torch.tensor: The least squares solution of the system :math:`Hx = y`.
+            :class:`torch.tensor`: The least squares solution of the system :math:`Hx = y`.
             Has shape `(*, N)` where `*` denotes the same number of dimensions
             and `N` the number of pixels in the image as defined by the attribute
             `self.N`.
