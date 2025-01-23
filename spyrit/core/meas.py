@@ -689,18 +689,18 @@ import spyrit.core.torch as spytorch
 # =============================================================================
 class Linear(nn.Module):
     r"""
-    Compute 
-    
+    Compute
+
     .. math::
         y =\mathcal{N}\left(Ax\right),
-        
-    where :math:`\mathcal{N} \colon\, \mathbb{R}^J \to \mathbb{R}^J` represents a (not necessarily linear) noise operator (e.g., Poisson or Poisson-Gaussian), :math:`A \colon\, \mathbb{R}^N \to \mathbb{R}^J` is the actual acquisition operator that models the (positive) DMD patterns, and :math:`J` is the number of DMD patterns. 
+
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^J \to \mathbb{R}^J` represents a (not necessarily linear) noise operator (e.g., Poisson or Poisson-Gaussian), :math:`A \colon\, \mathbb{R}^N \to \mathbb{R}^J` is the actual acquisition operator that models the (positive) DMD patterns, and :math:`J` is the number of DMD patterns.
 
     Args:
         :attr:`H` (:class:`torch.tensor`, optional): Acquisition matrix :math:`A`.
-        
-        
-        
+
+
+
     """
 
     def __init__(
@@ -718,7 +718,7 @@ class Linear(nn.Module):
         if meas_shape is None:
             meas_shape = H.shape[-1]
         if meas_dims is None:
-            meas_dims = -1
+            meas_dims = list(range(len(meas_shape)))
 
         if type(meas_shape) is int:
             meas_shape = [meas_shape]
@@ -767,16 +767,9 @@ class Linear(nn.Module):
     def matrix_to_inverse(self) -> str:
         return self._selected_pinv_matrix
 
+    @property
     def get_matrix_to_inverse(self) -> torch.tensor:
-        return getattr(self, self.matrix_to_inverse)
-
-    def set_matrix_to_inverse(self, matrix_name: str) -> None:
-        if matrix_name in self._available_pinv_matrices.keys():
-            self._selected_pinv_matrix = matrix_name
-        else:
-            raise KeyError(
-                f"Matrix {matrix_name} not available for pinv. Available matrices: {self._available_pinv_matrices.keys()}"
-            )
+        return getattr(self, self._selected_pinv_matrix)
 
     def measure(self, x: torch.tensor) -> torch.tensor:
         r"""Apply the measurement patterns (no noise) to the incoming tensor.
@@ -1158,16 +1151,16 @@ class LinearSplit(Linear):
             H,
             meas_shape,
             meas_dims,
-            noise_model,
             noise_model=noise_model,
             dtype=dtype,
             device=device,
         )
 
         # split positive and negative components
-        pos, neg = nn.functional.relu(H), nn.functional.relu(-H)
+        pos, neg = nn.functional.relu(self.H), nn.functional.relu(-self.H)
         A = torch.cat([pos, neg], 1).reshape(2 * self.M, self.N)
-        self.A = nn.Parameter(A, requires_grad=False, device=device, dtype=dtype)
+        # A is built from self.H which is cast to device and dtype
+        self.A = nn.Parameter(A, requires_grad=False)
 
         # define the available matrices for reconstruction
         self._available_pinv_matrices = ["H", "A"]
@@ -1189,6 +1182,14 @@ class LinearSplit(Linear):
         else:
             raise RuntimeError(
                 f"dtype undefined, H and A are of different dtype (found {self.H.dtype} and {self.A.dtype} respectively)"
+            )
+
+    def set_matrix_to_inverse(self, matrix_name: str) -> None:
+        if matrix_name in self._available_pinv_matrices.keys():
+            self._selected_pinv_matrix = matrix_name
+        else:
+            raise KeyError(
+                f"Matrix {matrix_name} not available for pinv. Available matrices: {self._available_pinv_matrices.keys()}"
             )
 
     def measure(self, x: torch.tensor):
