@@ -105,21 +105,19 @@ class Linear(nn.Module):
 
         if meas_shape is None:
             meas_shape = H.shape[-1]
-        if meas_dims is None:
-            meas_dims = list(-range(len(meas_shape)), 0)
-
         if type(meas_shape) is int:
             meas_shape = [meas_shape]
+        self.meas_shape = torch.Size(meas_shape)
+
+        if meas_dims is None:
+            meas_dims = list(range(-len(self.meas_shape), 0))
         if type(meas_dims) is int:
             meas_dims = [meas_dims]
-
-        #H = H.to(device=device, dtype=dtype)
+        self.meas_dims = torch.Size(meas_dims)
 
         # don't store H if we use a HadamSplit
         if not isinstance(self, HadamSplit2d):
             self.H = nn.Parameter(H, requires_grad=False)
-        self.meas_shape = torch.Size(meas_shape)
-        self.meas_dims = torch.Size(meas_dims)
         self.noise_model = noise_model
 
         # additional attributes
