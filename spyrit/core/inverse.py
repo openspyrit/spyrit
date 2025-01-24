@@ -359,7 +359,7 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         :math:`\Sigma_1`.
 
     Example:
-        >>> meas_op = spyrit.core.meas.HadamSplit2d(400, 32)
+        >>> meas_op = spyrit.core.meas.HadamSplit2d(32, 400)
         >>> sigma = torch.rand([32*32, 32*32])
         >>> recon_op = TikhonovMeasurementPriorDiag(meas_op, sigma)
     """
