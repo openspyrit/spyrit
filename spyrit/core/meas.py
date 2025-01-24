@@ -105,7 +105,7 @@ class Linear(nn.Module):
 
         if meas_shape is None:
             meas_shape = H.shape[-1]
-            
+
         if type(meas_shape) is int:
             meas_shape = [meas_shape]
         self.meas_shape = torch.Size(meas_shape)
@@ -118,8 +118,7 @@ class Linear(nn.Module):
 
         # don't store H if we use a HadamSplit
         if not isinstance(self, HadamSplit2d):
-            self.H = nn.Parameter(H, requires_grad=False)
-            self.H = self.H.to(dtype=dtype, device=device)
+            self.H = nn.Parameter(H, requires_grad=False).to(dtype=dtype, device=device)
         self.noise_model = noise_model
 
         # additional attributes
@@ -161,7 +160,7 @@ class Linear(nn.Module):
 
     def measure(self, x: torch.tensor) -> torch.tensor:
         r"""Simulate noiseless measurements
-        
+
         .. math::
             m = Hx,
 
@@ -173,7 +172,7 @@ class Linear(nn.Module):
         Args:
             :attr:`x` (:class:`torch.tensor`): A batch of signals :math:`x`. The
             dimensions indexed by :attr:`self.meas_dims` must match the measurement
-            shape :attr:`self.meas_shape`. 
+            shape :attr:`self.meas_shape`.
 
         Returns:
             :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
@@ -181,16 +180,16 @@ class Linear(nn.Module):
 
         Example:
             (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 10.
-            
+
             >>> H = torch.randn(10, 15)
             >>> meas_op = Linear(H)
             >>> x = torch.randn(3, 4, 15)
             >>> y = meas_op.measure(x)
             >>> print(y.shape)
             torch.Size([3, 4, 10])
-            
-            3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 10. The acquisition matrix applies to both dimensions -2 and -1. 
-            
+
+            3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 10. The acquisition matrix applies to both dimensions -2 and -1.
+
             >>> H = torch.randn(10, 60)
             >>> meas_op = Linear(H, meas_shape=(15, 4))
             >>> x = torch.randn(3, 15, 4)
@@ -206,7 +205,7 @@ class Linear(nn.Module):
 
     def forward(self, x: torch.tensor):
         r"""Simulate noisy measurements
-        
+
         .. math::
             m =\mathcal{N}\left(Hx\right),
 
@@ -218,7 +217,7 @@ class Linear(nn.Module):
         Args:
             :attr:`x` (:class:`torch.tensor`): A batch of signals :math:`x`. The
             dimensions indexed by :attr:`self.meas_dims` must match the measurement
-            shape :attr:`self.meas_shape`. 
+            shape :attr:`self.meas_shape`.
 
         Returns:
             :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
@@ -226,16 +225,16 @@ class Linear(nn.Module):
 
         Example:
             Example 1: (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 10.
-            
+
             >>> H = torch.randn(10, 15)
             >>> meas_op = Linear(H)
             >>> x = torch.randn(3, 4, 15)
             >>> y = meas_op(x)
             >>> print(y.shape)
             torch.Size([3, 4, 10])
-            
-            Example 2: 3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 10. The acquisition matrix applies to both dimensions -2 and -1. 
-            
+
+            Example 2: 3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 10. The acquisition matrix applies to both dimensions -2 and -1.
+
             >>> H = torch.randn(10, 60)
             >>> meas_op = Linear(H, meas_shape=(15, 4))
             >>> x = torch.randn(3, 15, 4)
@@ -250,59 +249,59 @@ class Linear(nn.Module):
         return x
 
     def adjoint(self, m: torch.tensor, unvectorize=False):
-        r"""        
+        r"""
         Applies adjoint (transpose) of acquisition matrix to measurements
-        
+
         .. math::
             x = H^Tm,
 
-        where :math:`H^T\in\mathbb{R}^{N\times M}` is the adjoint of the 
+        where :math:`H^T\in\mathbb{R}^{N\times M}` is the adjoint of the
         acquisition matrix, :math:`m \in \mathbb{R}^M` is a measurement.
 
         Args:
-            :attr:`m` (:class:`torch.tensor`): A batch of measurement 
-            :math:`m` of shape :math:`(*, M)` where :math:`*`  denotes all the 
-            dimensions that are not included in :attr:`self.meas_dims` 
-            
-            
+            :attr:`m` (:class:`torch.tensor`): A batch of measurement
+            :math:`m` of shape :math:`(*, M)` where :math:`*`  denotes all the
+            dimensions that are not included in :attr:`self.meas_dims`
+
+
             :attr:`unvectorize` (:obj:`bool`, optional): Whether to unvectorize
-            the measurement dimensions. This calls 
-            :meth:`~spyrit.core.meas.unvectorize()` after mutiplication by the 
+            the measurement dimensions. This calls
+            :meth:`~spyrit.core.meas.unvectorize()` after mutiplication by the
             adjoint. Defaults to False.
 
         Returns:
-            :class:`torch.tensor`: A batch of signals :math:`x`. 
-            If :attr:`unvectorize` is :obj:`False`, :math:`x` has shape 
-            :math:`(*, N)` where :math:`*` is the same as for :attr:`m`. If 
+            :class:`torch.tensor`: A batch of signals :math:`x`.
+            If :attr:`unvectorize` is :obj:`False`, :math:`x` has shape
+            :math:`(*, N)` where :math:`*` is the same as for :attr:`m`. If
             :attr:`unvectorize` is :obj:`True`, :math:`x` is reshaped such that
-            the dimensions :attr:`self.meas_dims` match the measurement shape 
+            the dimensions :attr:`self.meas_dims` match the measurement shape
             :attr:`self.meas_shape`.
-            
+
 
         Example:
             Example 2: (3, 4) measurements of length 10 produces (3, 4) signals
             of length 10.
-            
+
             >>> H = torch.randn(10, 15)
             >>> meas_op = Linear(H)
             >>> m = torch.randn(3, 4, 10)
             >>> x = meas_op.adjoint(m)
             >>> print(x.shape)
             orch.Size([3, 4, 15])
-            
-            
+
+
             Example 2: 3 measurements of length 10 produces 3 signals of length
             60
-            
+
             >>> H = torch.randn(10, 60)
             >>> meas_op = Linear(H, meas_shape=(15, 4))
             >>> m = torch.randn(3, 10)
             >>> x = meas_op.adjoint(m)
             >>> print(x.shape)
             torch.Size([3, 60])
-            
+
             Using unvectorize=True produces 3 signals of length (15, 4)
-            
+
             >>> x = meas_op.adjoint(m, unvectorize=True)
             >>> print(x.shape)
             torch.Size([3, 15, 4])
@@ -776,8 +775,8 @@ class HadamSplit2d(LinearSplit):
 
     def __init__(
         self,
-        M: int,
         h: int,
+        M: int,
         order: torch.tensor = None,
         fast: bool = True,
         *,
@@ -787,6 +786,8 @@ class HadamSplit2d(LinearSplit):
     ):
         meas_dims = (-2, -1)
         meas_shape = (h, h)
+        if M is None:
+            M = h**2
 
         # call Linear constructor (avoid setting A)
         super(LinearSplit, self).__init__(
@@ -798,8 +799,9 @@ class HadamSplit2d(LinearSplit):
             device=device,
         )
         # 1D version of H
-        self.H1d = nn.Parameter(spytorch.walsh_matrix(h), requires_grad=False)
-        self.H1d = self.H1d.to(dtype=dtype, device=device)
+        self.H1d = nn.Parameter(spytorch.walsh_matrix(h), requires_grad=False).to(
+            dtype=dtype, device=device
+        )
         self.M = M  # supercharged self.M
         self.order = order
         self.indices = torch.argsort(-order.flatten(), stable=True).to(
