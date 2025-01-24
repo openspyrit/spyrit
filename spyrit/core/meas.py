@@ -771,7 +771,111 @@ class LinearSplit(Linear):
 
 # =============================================================================
 class HadamSplit2d(LinearSplit):
-    r""" """
+    r"""Simulates splitted measurements with a Hadamard matrix :math:`H`:
+    :math:`y = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}x`
+
+    Computes linear measurements from incoming images: :math:`y = Ax`,
+    where :math:`A` is a linear operator (matrix) and :math:`x` is an image or
+    batch of images.
+
+    The matrix :math:`A` contains only positive values and is obtained by
+    splitting a Hadamard-based matrix :math:`H` such that
+    :math:`A` has a shape of :math:`(2M, N)` and `A[0::2, :] = H_{+}` and
+    `A[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
+    :math:`H_{-} = \max(0,-H)`.
+
+    :math:`H` is obtained by selecting a re-ordered subsample of :math:`M` rows
+    of a "full" Hadamard matrix :math:`F` with shape :math:`(N^2, N^2)`.
+    :math:`N` must be a power of 2.
+
+    Args:
+        :attr:`h` (int): Measurement pattern size. The width and height are equal,
+        so the measurement pattern is square. The Hadamard matrix will have shape
+        :math:`(h^2, h^2)` before any subsampling (see :attr:`M`).
+
+        :attr:`M` (int): Number of measurements if subsampling. It determines
+        the size of the subsampled Hadamard matrix :math:`H`.
+
+        :attr:`order` (torch.tensor, optional): Significance matrix used to reorder
+        the rows of the measurement matrix :math:`H`. The new rows of :math:`H`
+        will be sorted by decreasing order of significance (i.e. the first row
+        of :math:`H` will correspond to the highest value in :attr:`order`).
+
+        :attr:`fast` (bool, optional): Whether to use the fast Hadamard transform
+        algorithm. If False, it uses matrix-vector products. Defaults to True.
+
+        noise_model (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
+        Defaults to `torch.nn.Identity`.
+
+        dtype (torch.dtype, optional): Data type of the measurement matrix. Defaults
+        to `torch.float32`.
+
+        device (torch.device, optional): Device of the measurement matrix. Defaults
+        to `torch.device("cpu")`.
+
+    .. note:
+        The argument :attr:`order` is particularly useful when rearranging the
+        measurements by decreasing variance. The variance matrix can simply be
+        put as `order`.
+
+    Attributes:
+        :attr
+
+        :attr:`H` (torch.tensor): The learnable measurement matrix of shape
+        :math:`(M, N)`.
+
+        :attr:`M` (int): Number of measurements performed by the linear operator
+        :math:`H`. The linear operator :math:`A` performs :math:`2M` measurements.
+
+        :attr:`N` (int): Number of pixels in the image, is equal to :math:`h^2`.
+
+
+        :attr:`H_static` (torch.tensor): alias for :attr:`H`.
+
+        :attr:`P` (torch.tensor): The splitted measurement matrix of shape
+        :math:`(2M, N)`.
+
+        :attr:`H_pinv` (torch.tensor, optional): The learnable pseudo inverse
+        measurement matrix :math:`H^\dagger` of shape :math:`(N, M)`.
+
+        :attr:`M` (int): Number of measurements performed by the linear operator.
+        Is equal to the parameter :attr:`M`.
+
+
+        :attr:`h` (int): Measurement pattern height.
+
+        :attr:`w` (int): Measurement pattern width. Is equal to :math:`h`.
+
+        :attr:`meas_shape` (tuple): Shape of the measurement patterns
+        (height, width). Is equal to `(self.h, self.h)`.
+
+        :attr:`indices` (torch.tensor): Indices used to sort the rows of H.	It
+        is used by the method :meth:`reindex()`.
+
+        :attr:`Ord` (torch.tensor): Order matrix used to sort the rows of H. It
+        is used by :func:`~spyrit.core.torch.sort_by_significance()`.
+
+    .. note::
+        The computation of a Hadamard transform :math:`Fx` benefits a fast
+        algorithm, as well as the computation of inverse Hadamard transforms.
+
+    .. note::
+        :math:`H = H_{+} - H_{-}`
+
+    Example:
+        >>> h = 32
+        >>> Ord = torch.randn(h, h)
+        >>> meas_op = HadamSplit(400, h, Ord)
+        >>> print(meas_op)
+        HadamSplit(
+          (M): 400
+          (N): 1024
+          (H.shape): torch.Size([400, 1024])
+          (meas_shape): (32, 32)
+          (H_pinv): True
+          (P.shape): torch.Size([800, 1024])
+        )
+    """
 
     def __init__(
         self,
