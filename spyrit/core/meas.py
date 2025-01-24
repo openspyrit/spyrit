@@ -935,6 +935,9 @@ class HadamSplit2d(LinearSplit):
     def H(self):
         H = torch.kron(self.H1d, self.H1d)
         H = self.reindex(H, "rows", False)
+
+        # !!!!
+
         return H[: self.M, :]
 
     @property
