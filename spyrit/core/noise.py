@@ -82,7 +82,8 @@ class Gaussian(nn.Module):
             >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
             Measurements in (1.01 , 1.98)
         """
-        return z + self.sigma * torch.randn(z.shape)
+        return torch.normal(z, self.sigma)
+        # z + self.sigma * torch.randn(z.shape, device=z.device)
 
 
 # =============================================================================

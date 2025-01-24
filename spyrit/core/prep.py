@@ -13,6 +13,7 @@ import torch
 import torch.nn as nn
 
 import spyrit.core.inverse as inverse
+import spyrit.core.meas as meas
 
 
 # =============================================================================
@@ -224,7 +225,7 @@ class RescaleEstim(nn.Module):
         operator. Exists only if `estim_mode` is "pinv".
     """
 
-    def __init__(self, meas_op, estim_mode: str = "mean", **pinv_kwargs):
+    def __init__(self, meas_op: meas.Linear, estim_mode: str = "mean", **pinv_kwargs):
         super().__init__()
         self.meas_op = meas_op
         self.estim_mode = estim_mode
@@ -262,8 +263,8 @@ class RescaleEstim(nn.Module):
         Returns:
             torch.tensor: The estimated gain value of shape :math:`(*, 1)`.
         """
-        y_pinv = self.pinv(y)
-        alpha = torch.max(y_pinv, -1, keepdim=True)
+        y_pinv = self.meas_op.vectorize(self.pinv(y))
+        alpha = torch.max(y_pinv, -1, keepdim=True).values
         return alpha
 
     def estim_alpha(self, y: torch.tensor) -> torch.tensor:
@@ -311,6 +312,24 @@ class RescaleEstim(nn.Module):
         alpha = self.estim_alpha(y)
         y = y / alpha
         return y
+
+    def sigma(self, y: torch.tensor) -> torch.tensor:
+        r"""Estimate the variance of raw measurements.
+
+        The variance is estimated as :math:`x / \alpha^2`, where :math:`x` are
+        *raw* measurements, i.e. before any rescaling.
+
+        Args:
+            x (torch.tensor): batch of measurement vectors, of shape :math:`(*, m)`,
+            where :math:`m` is the number of measurements as defined in the
+            measurement operator (and accessible in :attr:`meas_op.M`).
+
+        Returns:
+            torch.tensor: The estimated variance of the measurements, with the
+            same shape.
+        """
+        alpha = self.estim_alpha(y)
+        return y / (alpha**2)
 
 
 # =============================================================================
@@ -438,6 +457,25 @@ class UnsplitRescaleEstim(RescaleEstim):
         y = Unsplit.forward(y, mode=mode)
         y = super().forward(y)  # estimate alpha and divide
         return y
+
+    def sigma(self, y: torch.tensor) -> torch.tensor:
+        r"""Estimate the variance of raw SPLIT measurements.
+
+        The variance is estimated as :math:`(x[0::2]+x[1::2]) / \alpha^2`.
+
+        .. important::
+            This assumes the measurements have been acquired with a split measurement
+            operator (see :class:`spyrit.core.meas.LinearSplit`).
+
+        Args:
+            y (torch.tensor): batch of measurements, of shape :math:`(*, 2m)`.
+
+        Returns:
+            torch.tensor: The estimated variance of the measurements, with the
+            shape :math:`(*, m)`.
+        """
+        y = Unsplit.forward(y, mode="add")
+        return super().sigma(y)
 
 
 # =============================================================================
