@@ -819,15 +819,23 @@ class HadamSplit2d(LinearSplit):
         put as `order`.
 
     Attributes:
-        :attr
-
         :attr:`H` (torch.tensor): The learnable measurement matrix of shape
         :math:`(M, N)`.
 
+        :attr:`A` (torch.tensor): The splitted measurement matrix of shape
+        :math:`(2M, N)`.
+
         :attr:`M` (int): Number of measurements performed by the linear operator
-        :math:`H`. The linear operator :math:`A` performs :math:`2M` measurements.
+        :math:`H`.
 
         :attr:`N` (int): Number of pixels in the image, is equal to :math:`h^2`.
+
+        :attr:`meas_shape` (torch.Size): Shape of the measurement patterns. Is
+        equal to :math:`(h, h)`.
+
+        :attr:`meas_dims` (torch.Size): Dimensions of the image the acquisition
+        matrix applies to. Is equal to `(-2, -1)`.
+
 
 
         :attr:`H_static` (torch.tensor): alias for :attr:`H`.

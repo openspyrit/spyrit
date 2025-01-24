@@ -350,7 +350,7 @@ class DCNet(_PrebuiltFullNet):
 
     def __init__(
         self,
-        acqu: meas.Linear,
+        acqu: meas.HadamSplit2d,
         prep: Union[prep.Rescale, prep.RescaleEstim],
         sigma: torch.tensor,
         denoi=nn.Identity(),
