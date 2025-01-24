@@ -155,7 +155,7 @@ class _PrebuiltFullNet(FullNet):
         super().__init__(acqu_modules, recon_modules, device=device)
 
     @property
-    def acqu(self):
+    def acqu(self) -> meas.Linear:
         return self.acqu_modules.acqu
 
     @acqu.setter
@@ -350,8 +350,8 @@ class DCNet(_PrebuiltFullNet):
 
     def __init__(
         self,
-        acqu: meas.Linear,
-        prep,
+        acqu: meas.HadamSplit2d,
+        prep: Union[prep.Rescale, prep.RescaleEstim],
         sigma: torch.tensor,
         denoi=nn.Identity(),
         *,
@@ -366,7 +366,7 @@ class DCNet(_PrebuiltFullNet):
         super().__init__(acqu_modules, recon_modules, device=device)
 
     @property
-    def tikho(self):
+    def tikho(self) -> inverse.TikhonovMeasurementPriorDiag:
         return self.recon_modules.tikho
 
     @tikho.setter
@@ -377,7 +377,7 @@ class DCNet(_PrebuiltFullNet):
     def tikho(self):
         del self.recon_modules.tikho
 
-    def reconstruct(self, y):
+    def reconstruct(self, y: torch.tensor) -> torch.tensor:
         r"""Reconstruct an image from measurements.
 
         This method sucessively applies the preprocessing operator :attr:`prep`,
@@ -385,18 +385,35 @@ class DCNet(_PrebuiltFullNet):
         operator :attr:`denoi` to the input measurement vectors :attr:`x`.
 
         Args:
-            :attr:`y`: raw measurement vectors. Has shape :math:`(b, c, m)`
+            :attr:`y`: raw measurement vectors. Have shape :math:`(b, c, m)`
 
-        Shape:
-            :attr:`y`: raw measurement vectors with shape :math:`(b, c, m)`
-
-            :attr:`output`: reconstructed images with shape :math:`(b,c,h,w)`
+        Returns:
+            torch.tensor: Reconstructed images. Have shape :math:`(b,c,h,w)`
         """
         # estimate the variance of the measurements
         var_noi = self.prep.sigma(y)
         y = self.prep(y)
         y = self.tikho.forward_no_prior(y, var_noi)
         y = self.denoi(y)
+        return y
+
+    def reconstruct_pinv(self, y: torch.tensor) -> torch.tensor:
+        r"""Reconstruct an image from measurements without denoising.
+
+        This method sucessively applies the preprocessing operator :attr:`prep`
+        and the Tikhonov regularization operator :attr:`tikho` to the input
+        measurement vectors :attr:`x`.
+
+        Args:
+            :attr:`y`: raw measurement vectors. Have shape :math:`(b, c, m)`
+
+        Returns:
+            torch.tensor: Reconstructed images. Have shape :math:`(b,c,h,w)`
+        """
+        # estimate the variance of the measurements
+        var_noi = self.prep.sigma(y)
+        y = self.prep(y)
+        y = self.tikho.forward_no_prior(y, var_noi)
         return y
 
 

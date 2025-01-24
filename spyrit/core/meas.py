@@ -819,15 +819,23 @@ class HadamSplit2d(LinearSplit):
         put as `order`.
 
     Attributes:
-        :attr
-
         :attr:`H` (torch.tensor): The learnable measurement matrix of shape
         :math:`(M, N)`.
 
+        :attr:`A` (torch.tensor): The splitted measurement matrix of shape
+        :math:`(2M, N)`.
+
         :attr:`M` (int): Number of measurements performed by the linear operator
-        :math:`H`. The linear operator :math:`A` performs :math:`2M` measurements.
+        :math:`H`.
 
         :attr:`N` (int): Number of pixels in the image, is equal to :math:`h^2`.
+
+        :attr:`meas_shape` (torch.Size): Shape of the measurement patterns. Is
+        equal to :math:`(h, h)`.
+
+        :attr:`meas_dims` (torch.Size): Dimensions of the image the acquisition
+        matrix applies to. Is equal to `(-2, -1)`.
+
 
 
         :attr:`H_static` (torch.tensor): alias for :attr:`H`.
@@ -903,8 +911,8 @@ class HadamSplit2d(LinearSplit):
             device=device,
         )
         # 1D version of H
-        #H1d = spytorch.walsh_matrix(h).to(dtype=dtype, device=device)
-        #self.H1d = nn.Parameter(H1d, requires_grad=False)
+        # H1d = spytorch.walsh_matrix(h).to(dtype=dtype, device=device)
+        # self.H1d = nn.Parameter(H1d, requires_grad=False)
         self.H1d = nn.Parameter(spytorch.walsh_matrix(h), requires_grad=False).to(
             dtype=dtype, device=device
         )
@@ -1011,7 +1019,7 @@ class HadamSplit2d(LinearSplit):
         x = spytorch.mult_2d_separable(self.H1d, x)
         x = self.vectorize(x)
         x = x.index_select(dim=-1, index=self.indices)
-        #x = self.reindex(x, "rows", False)
+        # x = self.reindex(x, "rows", False)
         return x[..., : self.M]
 
     def fast_pinv(self, y: torch.tensor) -> torch.tensor:

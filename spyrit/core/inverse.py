@@ -142,7 +142,9 @@ class PseudoInverse(nn.Module):
             y = y.squeeze(-1)
 
         else:
-            if not self.use_fast_pinv:
+            if hasattr(self.meas_op, "fast_pinv") and self.use_fast_pinv:
+                y = self.meas_op.fast_pinv(y)
+            else:
                 # make get_matrix_to_inverse a batched 2D matrix
                 y = spytorch.regularized_lstsq(
                     self.meas_op.get_matrix_to_inverse,
@@ -150,8 +152,6 @@ class PseudoInverse(nn.Module):
                     self.regularization,
                     **self.reg_kwargs,
                 )
-            elif hasattr(self.meas_op, "fast_pinv"):
-                y = self.meas_op.fast_pinv(y)
 
         if self.reshape_output:
             y = self.meas_op.unvectorize(y)
