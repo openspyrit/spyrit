@@ -1,5 +1,4 @@
-"""
-Noise models
+r"""Noise models
 
 .. math::
 

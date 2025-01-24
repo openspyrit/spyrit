@@ -78,13 +78,13 @@ class PseudoInverse(nn.Module):
         self.reg_kwargs = reg_kwargs
 
         if self.store_pinv:
-            if not use_fast_pinv:
+            # do we have a fast pseudo-inverse computation available?
+            if self.use_fast_pinv and hasattr(self.meas_op, "fast_H_pinv"):
+                self.pinv = meas_op.fast_H_pinv()
+            else:
                 self.pinv = spytorch.regularized_pinv(
                     self.meas_op.get_matrix_to_inverse, regularization, **reg_kwargs
                 )
-            # do we have a fast pseudo-inverse computation available?
-            elif hasattr(self.meas_op, "fast_H_pinv"):
-                self.pinv = meas_op.fast_H_pinv()
 
     def forward(self, y: torch.tensor) -> torch.tensor:
         r"""Computes pseudo-inverse of measurements.
@@ -142,10 +142,9 @@ class PseudoInverse(nn.Module):
             y = y.squeeze(-1)
 
         else:
-            if hasattr(self.meas_op, "fast_pinv") and self.use_fast_pinv:
+            if self.use_fast_pinv and hasattr(self.meas_op, "fast_pinv"):
                 y = self.meas_op.fast_pinv(y)
             else:
-                # make get_matrix_to_inverse a batched 2D matrix
                 y = spytorch.regularized_lstsq(
                     self.meas_op.get_matrix_to_inverse,
                     y,
