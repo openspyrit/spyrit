@@ -64,7 +64,7 @@ class PseudoInverse(nn.Module):
         meas_op: Union[meas.Linear, meas.DynamicLinear],
         regularization: str = "rcond",
         store_pinv: bool = False,
-        use_fast_pinv: bool = False,
+        use_fast_pinv: bool = True,
         reshape_output: bool = True,
         **reg_kwargs,
     ) -> None:
