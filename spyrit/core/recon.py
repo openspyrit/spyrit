@@ -555,11 +555,15 @@ class TikhoNet(_PrebuiltFullNet):
 # =============================================================================
 class LearnedPGD(nn.Module):
     r"""Learned Proximal Gradient Descent reconstruction network.
+    
     Iterative algorithm that alternates between a gradient step and a proximal step,
-    where the proximal operator is learned denoiser. The update rule is given by:
+    where the proximal operator is replaced by a learned denoiser. The update rule is given by
 
-    :math:`x_{k+1} = prox(\hat{x_k} - step * H^T (Hx_k - y))=
-    denoi(\hat{x_k} - step * H^T (Hx_k - y))`
+    .. math::
+        
+        x_{k+1} = \texttt{denoi}\left(x_k - \gamma \, H^T (Hx_k - m)\right)
+        
+    where :math:`x_k\in\mathbb{R}^N` is the current estimate, :math:`\gamma\in\mathbb{R}` is the step size, :math:`H\in\mathbb{R}^{M\times N}` is the forward model, and :math:`m\in\mathbb{R}^{M}` are the measurements.
 
     Args:
         :attr:`acqu`: Acquisition operator (see :class:`~spyrit.core.meas`)
@@ -577,12 +581,12 @@ class LearnedPGD(nn.Module):
         :attr:`step` (float): Step size of the LPGD algorithm. Default is None,
         and it is estimated as the inverse of the Lipschitz constant of the gradient of the
         data fidelity term.
-            - If :math:`meas_op.N` is available, the step size is estimated as
-            :math:`step=1/L=1/\text{meas_op.N}`, true for Hadamard operators.
-            - If not, the step size is estimated from by computing
-            the Lipschitz constant as the largest singular value of the
-            Hessians, :math:`L=\lambda_{\max}(H^TH)`. If this fails,
-            the step size is set to 1e-4.
+            - If :attr:`meas_op.N` is available, the step size is estimated as
+              :math:`\gamma=1/N` which is true for Hadamard operators.
+            - If not, the step size is estimated by computing
+              the Lipschitz constant as the largest singular value of the
+              Hessian :math:`L=\lambda_{\max}(H^TH)`. If this fails,
+              the step size is set to 1e-4.
 
         :attr:`step_estimation` (bool): Default False. See :attr:`step` for details.
 
@@ -639,7 +643,7 @@ class LearnedPGD(nn.Module):
         denoi=nn.Identity(),
         *,
         iter_stop=3,
-        x0=0,
+        x0=0.5, # image in [0,1]
         step=None,
         step_estimation=False,
         step_grad=False,
@@ -842,22 +846,25 @@ class LearnedPGD(nn.Module):
             step = meas_variance_img_min * step
 
         # If pinv method is defined
-        if self.x0 != 0:
-            x = self.pinv(m)
-            # if hasattr(self.acqu, "pinv"):
-            #     x = self.acqu.pinv(m)
+        #if self.x0 != 0:
+        # if self.x0 != 0.5:
+        #     x = self.pinv(m)
+        #     # if hasattr(self.acqu, "pinv"):
+        #     #     x = self.acqu.pinv(m)
 
-            # proximal step (prior)
-            if isinstance(self.denoi, nn.ModuleList):
-                x = self.denoi[0](x)
-            else:
-                x = self.denoi(x)
+        #     # proximal step (prior)
+        #     if isinstance(self.denoi, nn.ModuleList):
+        #         x = self.denoi[0](x)
+        #     else:
+        #         x = self.denoi(x)
 
-            if self.res_learn:
-                z0 = x.detach().clone()
-        else:
+        #     if self.res_learn:
+        #         z0 = x.detach().clone()
+        # else:
             # zero init
-            x = torch.zeros((*x.shape[:-1], *self.acqu.meas_shape), device=x.device)
+            #x = torch.zeros((*x.shape[:-1], *self.acqu.meas_shape), device=x.device)
+            # 0.5 init
+        x = self.x0*torch.ones((*x.shape[:-1], *self.acqu.meas_shape), device=x.device)
 
         if self.log_fidelity:
             self.cost = []
