@@ -246,6 +246,8 @@ class RescaleEstim(nn.Module):
         computation.
 
     Attributes:
+        :attr:`self.alpha` (:class:`torch.tensor`): Estimated gain/intensity.
+        
         :attr:`self.meas_op` (spyrit.core.meas.Linear): Measurement operator used to
         simulate the measurements.
 
@@ -276,6 +278,7 @@ class RescaleEstim(nn.Module):
     def __init__(self, meas_op: meas.Linear, **pinv_kwargs):
         super().__init__()
         self.meas_op = meas_op
+        self.alpha = None
         self.estim_mode = "pinv"
         self.pinv_kwargs = pinv_kwargs
         self.pinv = inverse.PseudoInverse(self.meas_op, **pinv_kwargs)
@@ -320,8 +323,8 @@ class RescaleEstim(nn.Module):
         Returns:
             :class:`torch.tensor`: Rescaled measurements of shape :math:`(*, M)`.
         """
-        alpha = self.estim_alpha(y)
-        return y / alpha
+        self.alpha = self.estim_alpha(y)
+        return y / self.alpha
 
 
 # =============================================================================
@@ -349,6 +352,8 @@ class UnsplitRescaleEstim(RescaleEstim):
         computation. Only used if `estim_mode` is "pinv".
 
     Attributes:
+        :attr:`self.alpha` (:class:`torch.tensor`): Estimated gain/intensity.
+        
         :attr:`self.meas_op` (spyrit.core.meas.LinearSplit): Measurement 
         operator used to simulate the measurements.
 
@@ -357,7 +362,7 @@ class UnsplitRescaleEstim(RescaleEstim):
         :attr:`self.pinv_kwargs` (dict): Additional keyword arguments to pass to the
         pseudo-inverse initialization. Only used if `estim_mode` is "pinv".
 
-         :attr:`self.pinv` (spyrit.core.inverse.PseudoInverse): Pseudo-inverse
+        :attr:`self.pinv` (spyrit.core.inverse.PseudoInverse): Pseudo-inverse
         operator. Exists only if `estim_mode` is "pinv".
     """
     # The gain value :math:`alpha` to divide the measurements by is estimated in
@@ -453,6 +458,10 @@ class UnsplitRescaleEstim(RescaleEstim):
 
         .. important::
             This function takes the raw measurments as input and must be called before :meth:`forward()`.
+            
+        .. note::
+            
+            alpha could be saved to avoid to recomputing it.
 
         Args:
             y (:class:`torch.tensor`): batch of measurements of shape :math:`(*, 2M)`.
@@ -462,7 +471,6 @@ class UnsplitRescaleEstim(RescaleEstim):
         """
         alpha = self.estim_alpha(Unsplit.forward(y, mode="sub"))
         v = Unsplit.forward(y, mode="add")
-    
         return v / alpha**2
     
 
