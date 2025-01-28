@@ -18,17 +18,25 @@ import spyrit.core.meas as meas
 
 # =============================================================================
 class Unsplit(nn.Module):
-    r"""Preprocess the data acquired with a split measurement operator.
-
-    This class handles split measurements by either adding or subtracting the
-    alternating odd- and even-indexed measurements. It is equivalent to either
-    of these lines:
-
-    .. code-block:: python
-
-        measmts_preprocessed = measmts[..., 0::2] + measmts[..., 1::2]
-        measmts_preprocessed = measmts[..., 0::2] - measmts[..., 1::2]
-
+    r"""Preprocess measurements simulated using split measurement operator.
+    
+    Given measurements :math:`y\in\mathbb{R}^{2M}`, it computes either :math:`y_+ - y_-` or :math:`y_+ + y_-`. The positive and negative measurements :math:`y_+\in\mathbb{R}^{M}` and :math:`y_-\in\mathbb{R}^{M}` are given by 
+        
+    .. math::
+        y_+ = 
+        \begin{bmatrix}
+            y[0]\\
+            y[2]\\
+            y[2M-2]\\
+        \end{bmatrix}
+        \quad\text{and}\quad
+        y_- = 
+        \begin{bmatrix}
+            y[1]\\
+            y[3]\\
+            y[2M-1]\\
+        \end{bmatrix}.
+        
     Args:
         None
 
@@ -36,14 +44,18 @@ class Unsplit(nn.Module):
         None
 
     Example:
+        >>> import torch
         >>> import spyrit.core.meas as meas
         >>> import spyrit.core.prep as prep
-        >>> H = torch.rand([400,32*32])  # 400 measurements, 32x32 image
-        >>> img = torch.rand([10,32*32])  # 10 images of size 32x32
+        >>> H = torch.rand([400,32])  
+        >>> img = torch.rand([10,32])  
         >>> meas_op = meas.LinearSplit(H)
         >>> split_op = prep.Unsplit()
-        >>> measmts = meas_op(img)  # shape (10, 800) because of splitting
-        >>> print(split_op(measmts).shape)
+        >>> y = meas_op(img)
+        >>> m = split_op(y)
+        >>> print(y.shape)
+        >>> print(m.shape)
+        torch.Size([10, 800])
         torch.Size([10, 400])
     """
 
@@ -52,21 +64,48 @@ class Unsplit(nn.Module):
 
     @staticmethod
     def forward(y: torch.tensor, mode: str = "sub") -> torch.tensor:
-        r"""Preprocess to compensate for splitting of the measurement operator.
-
-        It computes `y[..., 0::2] - y[..., 1::2]` if `mode` is 'sub' or
-        `y[..., 0::2] + y[..., 1::2]` if `mode` is 'add'.
+        r"""Preprocess measurements simulated using split measurement operator.
+        
+        Given measurements :math:`y\in\mathbb{R}^{2M}`, it computes either :math:`y_+ - y_-` or :math:`y_+ + y_-`. The positive and negative measurements :math:`y_+\in\mathbb{R}^{M}` and :math:`y_-\in\mathbb{R}^{M}` are given by 
+            
+        .. math::
+            y_+ = 
+            \begin{bmatrix}
+                y[0]\\
+                y[2]\\
+                y[2M-2]\\
+            \end{bmatrix}
+            \quad\text{and}\quad
+            y_- = 
+            \begin{bmatrix}
+                y[1]\\
+                y[3]\\
+                y[2M-1]\\
+            \end{bmatrix}.
 
         Args:
-            y (torch.tensor): batch of measurement vectors of shape :math:`(*, 2m)`
+            :attr:`y` (:class:`torch.tensor`): Measurement of shape :math:`(*, 2M)`
 
-            mode (str, optional): 'sub' or 'add'. If 'sub', the difference between
-            the even and odd indices is computed. If 'add', the sum is computed.
+            :attr:`mode` (str, optional): 'sub' or 'add'. If 'sub', :math:`y_+ - y_-` is returned. If 'add', :math:`y_+ + y_-` is returned.
             Defaults to 'sub'.
 
         Returns:
-            torch.tensor: The tensor of shape :math:`(*, m)` with the even- and
-            odd- indexed values of the input tensor subtracted or added.
+            :class:`torch.tensor`: Preprocessed measurements of shape :math:`(*, M)`.
+            
+        Example:
+            >>> import torch
+            >>> import spyrit.core.meas as meas
+            >>> import spyrit.core.prep as prep
+            >>> H = torch.rand([400,32])  
+            >>> img = torch.rand([10,32])  
+            >>> meas_op = meas.LinearSplit(H)
+            >>> split_op = prep.Unsplit()
+            >>> y = meas_op(img)
+            >>> m = split_op(y)
+            >>> print(y.shape)
+            >>> print(m.shape)
+            torch.Size([10, 800])
+            torch.Size([10, 400])
         """
         if mode == "sub":
             return y[..., 0::2] - y[..., 1::2]
@@ -78,17 +117,23 @@ class Unsplit(nn.Module):
 
 # =============================================================================
 class Rescale(nn.Module):
-    r"""Rescale a tensor from :math:`[0,\alpha]` to :math:`[0,1]`.
+    r"""Rescale measurements as
+    
+    .. math:: 
+        
+        m = \frac{y}{\alpha}
 
-    This effectively divides the input tensor by :math:`\alpha`. It is useful
-    if the measurements are acquired with some gain factor that needs to be
-    compensated for.
+    where :math:`y` is the input tensor and :math:`\alpha` represents some gain.
+
+    .. note::
+        
+        This rescale the input tensor from :math:`[0,\alpha]` to :math:`[0,1]`. When measurements are simulated using some gain factor (e.g., Poisson corrupted measurements), the gain is compensated for.
 
     Args:
-        alpha (float): The value to divide the input tensor by.
+        :attr:`alpha` (float): Gain :math:`\alpha`.
 
     Attributes:
-        alpha (float): The value to divide the input tensor by.
+        :attr:`alpha`  (float): Gain :math:`\alpha`.
     """
 
     def __init__(self, alpha):
@@ -96,85 +141,82 @@ class Rescale(nn.Module):
         self.alpha = alpha
 
     def forward(self, y: torch.tensor) -> torch.tensor:
-        r"""Rescale the input tensor by dividing it by :attr:`alpha`.
+        r"""Rescale the tensor by dividing it by :math:`\alpha`.
 
         Args:
-            y (torch.tensor): The input tensor to rescale.
+            :attr:`y` (:class:`torch.tensor`): Input tensor with arbitrary shape.
 
         Returns:
-            torch.tensor: The rescaled tensor with same shape.
+            :class:`torch.tensor`: Rescaled tensor with the same shape as the input.
         """
         return y / self.alpha
 
-    def sigma(self, y: torch.tensor) -> torch.tensor:
-        r"""Estimates the variance of raw measurements.
-
-        The variance is estimated as :math:`x / \alpha^2`, where :math:`x` are
-        *raw* measurements, i.e. before any rescaling.
+    def sigma(self, v: torch.tensor) -> torch.tensor:
+        r"""Rescale the variance of the measurements
+        
+        .. math:: 
+            
+            \text{var}(m) = \frac{\text{var}(y)}{\alpha^2}
 
         Args:
-            x (torch.tensor): batch of measurement vectors, of any shape.
+            :attr:`v` (:class:`torch.tensor`): Variance of :math:`y` with arbitrary shape.
 
         Returns:
-            torch.tensor: The estimated variance of the measurements, with the
-            same shape.
+            :class:`torch.tensor`: Rescaled variance with the same shape as the input.
         """
-        return y / (self.alpha**2)
+        return v / (self.alpha**2)
 
 
 # =============================================================================
 class UnsplitRescale(Rescale):
-    r"""Unsplit a tensor and rescale it from :math:`[0,\alpha]` to :math:`[0,1]`.
+    r"""Unsplit and rescale measurements as
+    
+    .. math:: 
+        
+        m = \frac{y_+ - y_-}{\alpha},
 
-    This is equivalent to appplying successively a :class:`Unsplit` and a
-    :class:`Rescale` operator.
+    where :math:`y_-` and :math:`y_+` are the raw measurements and :math:`\alpha` represents their intensity.
 
     Args:
-        alpha (float): The value to divide the input tensor by.
+        :attr:`\alpha` (float): Measurement intensity :math:`\alpha`.
 
     Attributes:
-        alpha (float): The value to divide the input tensor by.
+        :attr:`\alpha` (float): Measurement intensity :math:`\alpha`.
     """
 
     def __init__(self, alpha):
         super().__init__(alpha)
 
     def forward(self, y: torch.tensor) -> torch.tensor:
-        r"""Rescale the input tensor and unsplit it.
+        r"""Unsplit and rescale measurements
+        
+        .. math:: 
+            m = \frac{y_+ - y_-}{\alpha},
 
-        Depending on the value of `mode`, it returns `(y[..., 0::2] - y[..., 1::2])/alpha`
-        if `mode` is "sub" (default) or `(y[..., 0::2] + y[..., 1::2])/alpha`
-        if `mode` is "add.
+        where :math:`y_-` :math:`y_+` are the raw measurements and :math:`\alpha` represents their intensity.
 
         Args:
-            y (torch.tensor): Input tensor of shape :math:`(*, 2m)`
-
-            mode (str): Whether the odd indices should be added to or subtracted
-            from the even indices. If "sub", the difference is computed. If "add",
-            the sum is computed. Defaults to "sub".
+            :attr:`y` (:class:`torch.tensor`): Raw measurements of shape :math:`(*, 2M)`
 
         Returns:
-            torch.tensor: The rescaled and unsplit tensor of shape :math:`(*, m)`.
+            :class:`torch.tensor`: Rescaled and unsplit measurements of shape :math:`(*, M)`.
         """
         y = Unsplit.forward(y, mode="sub")  # Unsplit
         y = super().forward(y)  # Rescale
         return y
 
     def sigma(self, y: torch.tensor) -> torch.tensor:
-        r"""Estimates the variance of raw *split* measurements.
-
-        The variance is estimated as :math:`(x[0::2]+x[1::2]) / \alpha^2`.
-
-        .. important::
-            This assumes the measurements have been acquired with a split measurement
-            operator (see :class:`spyrit.core.meas.LinearSplit`).
+        r"""Rescale the variance
+        
+        .. math:: 
+            
+            \text{var}(m) = \frac{\text{var}(y_+) + \text{var}(y_-)}{\alpha^2}
 
         Args:
-            y (torch.tensor): batch of measurements, of shape :math:`(*, 2m)`.
+            v (:class:`torch.tensor`): Variance of :math:`y`  with shape :math:`(*, 2M)`.
 
         Returns:
-            torch.tensor: The estimated variance of the measurements, with the
-            shape :math:`(*, m)`.
+            :class:`torch.tensor`: Variance of :math:`m` with shape :math:`(*, M)`.
         """
         y = Unsplit.forward(y, mode="add")
         y = super().sigma(y)
@@ -183,104 +225,194 @@ class UnsplitRescale(Rescale):
 
 # =============================================================================
 class RescaleEstim(nn.Module):
-    r"""Rescale measurements by an estimated gain value :math:`alpha`.
+    r"""Rescale measurements as
+    
+    .. math:: 
+        
+        m = \frac{y}{\alpha},
 
-    The gain value :math:`alpha` to divide the measurements by is estimated in
-    two different ways: either by taking the mean of the measurements or by
-    taking the maximum value of the pseudo-inverse of the measurements.
-
-    The first method, referred to as `mean`, defines :math:`alpha` as the
-    average measurement value of a single pixel. The second method, referred to
-    as `pinv`, computes the pseudo inverse of the measurements and defines
-    :math:`alpha` as the maximum over the last dimension of the resulting tensor.
-
-    The `mean` method is faster but does not guarantee that the gain value is
-    accurate. The `pinv` method is slower, but yields a more accurate estimate
-    of the gain value.
+    where :math:`y` is the measurement and :math:`\alpha` represents some 
+    gain/intensity that needs to be estimated from :math:`y`.
 
     .. important:
-        This class is intended to be used only with measurements acquired with
-        no splitting. For split measurements, use :class:`UnsplitRescaleEstim`.
+        This class is designed for measurements acquired without splitting. For
+        split measurements, use :class:`UnsplitRescaleEstim`.
 
     Args:
-        meas_op (spyrit.core.meas.Linear): The measurement operator used to get
-        the measurements. It should not be a split measurement operator.
-
-        estim_mode (str, optional): The method to estimate the gain value. Can
-        be either "mean" or "pinv". Defaults to "mean".
+        :attr:`meas_op` (spyrit.core.meas.Linear): Measurement operator used to get
+        the measurements :math:`y`. It should not be a split measurement operator.
 
         **pinv_kwargs: Additional keyword arguments to pass to the pseudo-inverse
-        computation. Only used if `estim_mode` is "pinv".
+        computation.
 
     Attributes:
-        self.meas_op (spyrit.core.meas.Linear): The measurement operator used to
-        get the measurements.
+        :attr:`self.meas_op` (spyrit.core.meas.Linear): Measurement operator used to
+        simulate the measurements.
 
-        self.estim_mode (str): The method to estimate the gain value.
+        :attr:`self.estim_mode` (str): Set to "pinv".
 
-        self.pinv_kwargs (dict): Additional keyword arguments to pass to the
-        pseudo-inverse initialization. Only used if `estim_mode` is "pinv".
+        :attr:`self.pinv_kwargs` (dict): Additional keyword arguments to pass to the
+        pseudo-inverse initialization.
 
-        self.pinv (spyrit.core.inverse.PseudoInverse): The pseudo-inverse
-        operator. Exists only if `estim_mode` is "pinv".
+        :attr:`self.pinv` (spyrit.core.inverse.PseudoInverse): Pseudo-inverse
+        operator.
     """
+    # :attr:`estim_mode` (str, optional): The method to estimate the gain value. Can
+    # be either "mean" or "pinv". Defaults to "mean".
 
-    def __init__(self, meas_op: meas.Linear, estim_mode: str = "mean", **pinv_kwargs):
+    # The gain value :math:`\alpha` to divide the measurements by is estimated in
+    # two different ways: either by taking the mean of the measurements or by
+    # taking the maximum value of the pseudo-inverse of the measurements.
+
+    # The first method, referred to as `mean`, defines :math:`alpha` as the
+    # average measurement value of a single pixel. The second method, referred to
+    # as `pinv`, computes the pseudo inverse of the measurements and defines
+    # :math:`alpha` as the maximum over the last dimension of the resulting tensor.
+
+    # The `mean` method is faster but does not guarantee that the gain value is
+    # accurate. The `pinv` method is slower, but yields a more accurate estimate
+    # of the gain value.
+
+    def __init__(self, meas_op: meas.Linear, **pinv_kwargs):
         super().__init__()
         self.meas_op = meas_op
-        self.estim_mode = estim_mode
+        self.estim_mode = "pinv"
         self.pinv_kwargs = pinv_kwargs
-        if estim_mode == "pinv":
-            self.pinv = inverse.PseudoInverse(self.meas_op, **pinv_kwargs)
-
-    def mean_estim(self, y: torch.tensor) -> torch.tensor:
-        r"""Estimate the gain value by taking the mean of the measurements.
-
-        Args:
-            y (torch.tensor): The measurements to estimate the gain value from.
-            Has shape :math:`(*, m)`, where :math:`m` is the number of
-            measurements as defined in the measurement operator (and accessible
-            in :attr:`meas_op.M`) and `*` can be any number of dimensions.
-
-        Returns:
-            torch.tensor: The estimated gain value of shape :math:`(*, 1)`.
-        """
-        y = torch.sum(y, -1, keepdim=True)
-        # take the matrix *H* because the measurements are NOT split
-        divisor = self.meas_op.H.sum(dim=-1, keepdim=True).expand(y.shape)
-        alpha = torch.div(y, divisor)
-        return alpha
+        self.pinv = inverse.PseudoInverse(self.meas_op, **pinv_kwargs)
 
     def pinv_estim(self, y: torch.tensor) -> torch.tensor:
-        r"""Estimate the gain value by taking the maximum of the pseudo-inverse.
+        r"""Estimate gain from pseudo-inverse.
 
         Args:
-            y (torch.tensor): The measurements to estimate the gain value from.
-            Has any shape :math:`(*, m)`, where :math:`m` is the number of
-            measurements as defined in the measurement operator (and accessible
-            in :attr:`meas_op.M`) and `*` can be any number of dimensions.
+            :attr:`y` (:class:`torch.tensor`): The measurements with shape :math:`(*, M)`, where :math:`*` can be any number of dimensions and :math:`M` matches the number of measurements defined by :attr:`meas_op.M`.
 
         Returns:
-            torch.tensor: The estimated gain value of shape :math:`(*, 1)`.
+            :class:`torch.tensor`: Estimated intensity :math:`\alpha` of shape :math:`(*, 1)`.
         """
         y_pinv = self.meas_op.vectorize(self.pinv(y))
         alpha = torch.max(y_pinv, -1, keepdim=True).values
         return alpha
 
     def estim_alpha(self, y: torch.tensor) -> torch.tensor:
-        r"""Estimate the gain value :math:`alpha` from the measurements.
-
-        This method calls either :meth:`pinv_estim` or :meth:`mean_estim`
-        depending on the value of :attr:`estim_mode`.
+        r"""Estimate gain from pseudo-inverse.
 
         Args:
-            y (torch.tensor): The measurements to estimate the gain value from.
-            Has any shape :math:`(*, m)`, where :math:`m` is the number of
-            measurements as defined in the measurement operator (and accessible
-            in :attr:`meas_op.M`) and `*` can be any number of dimensions.
+            :attr:`y` (:class:`torch.tensor`): The measurements with shape :math:`(*, M)`, where :math:`*` can be any number of dimensions and :math:`M` matches the number of measurements defined by :attr:`meas_op.M`.
 
         Returns:
-            torch.tensor: The estimated gain value of shape :math:`(*, 1)`.
+            :class:`torch.tensor`: Estimated intensity :math:`\alpha` of shape :math:`(*, 1)`.
+        """
+        return self.pinv_estim(y)
+
+    def forward(self, y: torch.tensor) -> torch.tensor:
+        r"""Rescale measurements as
+        
+        .. math:: 
+            
+            m = \frac{y}{\alpha},
+
+        where :math:`y` is the measurement and :math:`\alpha` represents some 
+        gain/intensity that needs to be estimated from :math:`y`.
+
+        Args:
+            :attr:`y` (:class:`torch.tensor`):  The measurements with shape :math:`(*, M)`, where :math:`*` can be any number of dimensions and :math:`M` matches the number of measurements defined by :attr:`meas_op.M`.
+
+        Returns:
+            :class:`torch.tensor`: Rescaled measurements of shape :math:`(*, M)`.
+        """
+        alpha = self.estim_alpha(y)
+        return y / alpha
+
+
+# =============================================================================
+class UnsplitRescaleEstim(RescaleEstim):
+    r"""Unsplit and rescale measurements as
+    
+    .. math:: 
+        
+        m = \frac{y_+ - y_-}{\alpha},
+
+    where :math:`y_-` and :math:`y_+` are the raw measurements and :math:`\alpha` represents a gain/intensity that needs to be estimated from :math:`y_-` and :math:`y_+`.
+    
+    .. important:
+        This class is designed for measurements acquired with splitting. For
+        unsplit measurements, use :class:`RescaleEstim`.
+        
+    Args:
+        :attr:`meas_op` (spyrit.core.meas.LinearSplit): Measurement operator used to get
+        the measurements :math:`y`. It should be a split measurement operator.
+
+        :attr:`estim_mode` (str, optional): Method to estimate the gain. Can
+        be either "mean" or "pinv". Defaults to "pinv".
+
+        **pinv_kwargs: Additional keyword arguments to pass to the pseudo-inverse
+        computation. Only used if `estim_mode` is "pinv".
+
+    Attributes:
+        :attr:`self.meas_op` (spyrit.core.meas.LinearSplit): Measurement 
+        operator used to simulate the measurements.
+
+        :attr:`self.estim_mode` (str): Method to estimate the gain value.
+
+        :attr:`self.pinv_kwargs` (dict): Additional keyword arguments to pass to the
+        pseudo-inverse initialization. Only used if `estim_mode` is "pinv".
+
+         :attr:`self.pinv` (spyrit.core.inverse.PseudoInverse): Pseudo-inverse
+        operator. Exists only if `estim_mode` is "pinv".
+    """
+    # The gain value :math:`alpha` to divide the measurements by is estimated in
+    # two different ways: either by taking the mean of the measurements or by
+    # taking the maximum value of the pseudo-inverse of the measurements.
+
+    # The first method, referred to as `mean`, defines :math:`alpha` as the
+    # average measurement value of a single pixel. The second method, referred to
+    # as `pinv`, computes the pseudo inverse of the measurements and defines
+    # :math:`alpha` as the maximum over the last dimension of the resulting tensor.
+
+    # The `mean` method is faster but does not guarantee that the gain value is
+    # accurate. The `pinv` method is slower, but yields a more accurate estimate
+    # of the gain value.
+
+    def __init__(self, meas_op, **pinv_kwargs):
+        
+        if not isinstance(meas_op, meas.LinearSplit):
+            raise ValueError("meas_op should be a LinearSplit")
+        super().__init__(meas_op, **pinv_kwargs)
+        
+
+    def mean_estim(self, y):
+        r"""(Not tested yet) Estimate the gain from the mean of the raw measurements.
+
+        .. important::
+            This method is only to be called on measurements acquired with
+            split measurement operators.
+
+        Args:
+            :attr:`y` (:class:`torch.tensor`):  The measurements with shape :math:`(*, 2M)`, where :math:`*` can be any number of dimensions and :math:`M` matches the number of measurements defined by :attr:`meas_op.M`.
+
+        Returns:
+            :class:`torch.tensor`: The estimated gain value of shape :math:`(*, 1)`.
+        """
+        if not isinstance(self.meas_op, meas.HadamSplit2d):
+            Warning("Mean estimation is only exact for HadamSplit2d operators")
+            
+        y = torch.sum(y, -1, keepdim=True)
+        # take the matrix *A* because the measurements ARE split
+        divisor = self.meas_op.A.sum(dim=-1, keepdim=True).expand(y.shape)
+        alpha = torch.div(y, divisor)
+        return alpha    
+
+
+    def estim_alpha(self, y: torch.tensor) -> torch.tensor:
+        r"""Estimate the gain from the raw measurements.
+
+        This calls either :meth:`pinv_estim` or :meth:`mean_estim` depending on :attr:`self.estim_mode`.
+
+        Args:
+            :attr:`y` (:class:`torch.tensor`):  The measurements with shape :math:`(*, 2M)`, where :math:`*` can be any number of dimensions and :math:`M` matches the number of measurements defined by :attr:`meas_op.M`.
+
+        Returns:
+            :class:`torch.tensor`: The estimated gain value of shape :math:`(*, 1)`.
         """
         if self.estim_mode == "pinv":
             return self.pinv_estim(y)
@@ -290,193 +422,49 @@ class RescaleEstim(nn.Module):
             raise ValueError(
                 f"self.estim_mode should be either 'pinv' or 'mean' (found {self.estim_mode})"
             )
+            
 
     def forward(self, y: torch.tensor) -> torch.tensor:
-        r"""Divide the measurements by the estimated gain value.
+        r"""Unsplit and rescale raw measurements
+        
+        .. math:: 
+            
+            m = \frac{y_+ - y_-}{\alpha}
 
-        The gain value is estimated by calling :meth:`estim_alpha`, which in turn
-        calls either :meth:`pinv_estim` or :meth:`mean_estim` depending on the
-        value of :attr:`estim_mode`. The measurements are then divided by the
-        estimated gain value.
+        where :math:`y_-` :math:`y_+` are the raw measurements and :math:`\alpha` is the intensity estimated by calling :meth:`estim_alpha`.
 
         Args:
-            y (torch.tensor): The measurements to divide by the estimated gain
-            value. Has any shape :math:`(*, m)`, where :math:`m` is the number of
-            measurements as defined in the measurement operator (and accessible
-            in :attr:`meas_op.M`) and `*` can be any number of dimensions.
+            :attr:`y` (:class:`torch.tensor`):  The measurements with shape :math:`(*, 2M)`, where :math:`*` can be any number of dimensions and :math:`M` matches the number of measurements defined by :attr:`meas_op.M`.
 
         Returns:
-            torch.tensor: The measurements divided by the estimated gain value.
-            Have the same shape as the input tensor :math:`(*, m)`.
+            :class:`torch.tensor`: Rescaled unsplit measurements with shape :math:`(*, M)`.
         """
-        alpha = self.estim_alpha(y)
-        y = y / alpha
-        return y
+        y = Unsplit.forward(y, mode="sub")
+        return super().forward(y)
 
     def sigma(self, y: torch.tensor) -> torch.tensor:
-        r"""Estimate the variance of raw measurements.
+        r"""Estimate the variance of raw split measurements as
 
-        The variance is estimated as :math:`x / \alpha^2`, where :math:`x` are
-        *raw* measurements, i.e. before any rescaling.
-
-        Args:
-            x (torch.tensor): batch of measurement vectors, of shape :math:`(*, m)`,
-            where :math:`m` is the number of measurements as defined in the
-            measurement operator (and accessible in :attr:`meas_op.M`).
-
-        Returns:
-            torch.tensor: The estimated variance of the measurements, with the
-            same shape.
-        """
-        alpha = self.estim_alpha(y)
-        return y / (alpha**2)
-
-
-# =============================================================================
-class UnsplitRescaleEstim(RescaleEstim):
-    r"""Unsplit a tensor then rescale it using an estimated gain value.
-
-    This is equivalent to applying successively a :class:`Unsplit` and a
-    :class:`RescaleEstim` operator.
-
-    The gain value :math:`alpha` to divide the measurements by is estimated in
-    two different ways: either by taking the mean of the measurements or by
-    taking the maximum value of the pseudo-inverse of the measurements.
-
-    The first method, referred to as `mean`, defines :math:`alpha` as the
-    average measurement value of a single pixel. The second method, referred to
-    as `pinv`, computes the pseudo inverse of the measurements and defines
-    :math:`alpha` as the maximum over the last dimension of the resulting tensor.
-
-    The `mean` method is faster but does not guarantee that the gain value is
-    accurate. The `pinv` method is slower, but yields a more accurate estimate
-    of the gain value.
-
-    .. important:
-        This class is intended to be used only with measurements acquired with
-        splitting. For measurements acquired without splitting, use
-        :class:`RescaleEstim`.
-
-    Args:
-        meas_op (spyrit.core.meas.Linear): The measurement operator used to get
-        the measurements. It should not be a split measurement operator.
-
-        estim_mode (str, optional): The method to estimate the gain value. Can
-        be either "mean" or "pinv". Defaults to "mean".
-
-        **pinv_kwargs: Additional keyword arguments to pass to the pseudo-inverse
-        computation. Only used if `estim_mode` is "pinv".
-
-    Attributes:
-        self.meas_op (spyrit.core.meas.Linear): The measurement operator used to
-        get the measurements.
-
-        self.estim_mode (str): The method to estimate the gain value.
-
-        self.pinv_kwargs (dict): Additional keyword arguments to pass to the
-        pseudo-inverse initialization. Only used if `estim_mode` is "pinv".
-
-        self.pinv (spyrit.core.inverse.PseudoInverse): The pseudo-inverse
-        operator. Exists only if `estim_mode` is "pinv".
-    """
-
-    def __init__(self, meas_op, estim_mode: str = "mean", **pinv_kwargs):
-        super().__init__(meas_op, estim_mode, **pinv_kwargs)
-
-    def mean_estim(self, y):
-        r"""Estimate the gain value by taking the mean of the measurements.
+        .. math:: 
+            
+            \sigma^2 = \frac{y_+ + y_-}{\alpha^2}
+            
+        where :math:`y_-` :math:`y_+` are the raw measurements.
 
         .. important::
-            This method is only to be called on measurements acquired with
-            split measurement operators.
+            This function takes the raw measurments as input and must be called before :meth:`forward()`.
 
         Args:
-            y (torch.tensor): The measurements to estimate the gain value from.
-            Has shape :math:`(*, 2m)`, where :math:`m` is the number of
-            measurements as defined in the measurement operator (and accessible
-            in :attr:`meas_op.M`) and `*` can be any number of dimensions.
+            y (:class:`torch.tensor`): batch of measurements of shape :math:`(*, 2M)`.
 
         Returns:
-            torch.tensor: The estimated gain value of shape :math:`(*, 1)`.
+            torch.tensor: Estimated variance with shape :math:`(*, M)`.
         """
-        y = torch.sum(y, -1, keepdim=True)
-        # take the matrix *A* because the measurements ARE split
-        divisor = self.meas_op.A.sum(dim=-1, keepdim=True).expand(y.shape)
-        alpha = torch.div(y, divisor)
-        return alpha
-
-    def pinv_estim(self, y: torch.tensor) -> torch.tensor:
-        r"""Estimate the gain value by taking the maximum of the pseudo-inverse.
-
-        Args:
-            y (torch.tensor): The measurements to estimate the gain value from.
-            Has any shape :math:`(*, 2m)`, where :math:`m` is the number of
-            measurements as defined in the measurement operator (and accessible
-            in :attr:`meas_op.M`) and `*` can be any number of dimensions.
-
-        Returns:
-            torch.tensor: The estimated gain value of shape :math:`(*, 1)`.
-        """
-        return super().pinv_estim(y)
-
-    def estim_alpha(self, y: torch.tensor) -> torch.tensor:
-        r"""Estimate the gain value :math:`alpha` from the measurements.
-
-        This method calls either :meth:`pinv_estim` or :meth:`mean_estim`
-        depending on the value of :attr:`estim_mode`.
-
-        Args:
-            y (torch.tensor): The measurements to estimate the gain value from.
-            Has any shape :math:`(*, 2m)`, where :math:`m` is the number of
-            measurements as defined in the measurement operator (and accessible
-            in :attr:`meas_op.M`) and `*` can be any number of dimensions.
-
-        Returns:
-            torch.tensor: The estimated gain value of shape :math:`(*, 1)`.
-        """
-        return super().estim_alpha(y)
-
-    def forward(self, y: torch.tensor, mode: str = "sub") -> torch.tensor:
-        r"""Divide the measurements by the estimated gain value.
-
-        The gain value is estimated by calling :meth:`estim_alpha`, which in turn
-        calls either :meth:`pinv_estim` or :meth:`mean_estim` depending on the
-        value of :attr:`estim_mode`. The measurements are then divided by the
-        estimated gain value.
-
-        Args:
-            y (torch.tensor): The measurements to divide by the estimated gain
-            value. Has shape :math:`(*, 2m)`, where :math:`m` is the number of
-            measurements as defined in the measurement operator (and accessible
-            in :attr:`meas_op.M`) and `*` can be any number of dimensions.
-
-        Returns:
-            torch.tensor: The measurements unsplitted and divided by the
-            estimated gain value. Has shape :math:`(*, m)`.
-        """
-        y = Unsplit.forward(y, mode=mode)
-        y = super().forward(y)  # estimate alpha and divide
-        return y
-
-    def sigma(self, y: torch.tensor) -> torch.tensor:
-        r"""Estimate the variance of raw SPLIT measurements.
-
-        The variance is estimated as :math:`(x[0::2]+x[1::2]) / \alpha^2`.
-
-        .. important::
-            This assumes the measurements have been acquired with a split measurement
-            operator (see :class:`spyrit.core.meas.LinearSplit`).
-
-        Args:
-            y (torch.tensor): batch of measurements, of shape :math:`(*, 2m)`.
-
-        Returns:
-            torch.tensor: The estimated variance of the measurements, with the
-            shape :math:`(*, m)`.
-        """
-        y = Unsplit.forward(y, mode="add")
-        return super().sigma(y)
-
+        alpha = self.estim_alpha(Unsplit.forward(y, mode="sub"))
+        v = Unsplit.forward(y, mode="add")
+    
+        return v / alpha**2
+    
 
 # =============================================================================
 class Rerange(nn.Module):
@@ -507,11 +495,11 @@ class Rerange(nn.Module):
         :math:`[x,y]` to the output range :math:`[a,b]`.
 
         Args:
-            x (torch.tensor): The input tensor to apply the affine transform to.
+            x (:class:`torch.tensor`): The input tensor to apply the affine transform to.
             Has arbitrary shape.
 
         Returns:
-            torch.tensor: The input tensor with the affine transform applied.
+            :class:`torch.tensor`: The input tensor with the affine transform applied.
             It has the same shape as the input tensor.
         """
         a, b = self.input_range
@@ -522,11 +510,11 @@ class Rerange(nn.Module):
         r"""Applies the inverse affine transform to the input tensor.
 
         Args:
-            x (torch.tensor): The input tensor to apply the inverse affine
+            x (:class:`torch.tensor`): The input tensor to apply the inverse affine
             transform to. Has arbitrary shape.
 
         Returns:
-            torch.tensor: The input tensor with the inverse affine transform
+            :class:`torch.tensor`: The input tensor with the inverse affine transform
             applied. It has the same shape as the input tensor.
         """
         a, b = self.input_range
