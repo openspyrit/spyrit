@@ -250,7 +250,7 @@ class Linear(nn.Module):
 
     def adjoint(self, m: torch.tensor, unvectorize=False):
         r"""
-        Applies adjoint (transpose) of acquisition matrix to measurements
+        Apply adjoint.
 
         .. math::
             x = H^Tm,
@@ -849,7 +849,7 @@ class LinearSplit(Linear):
         return x
 
     def adjoint(self, y: torch.tensor):
-        r""" Applies the adjoint of the matrix A.
+        r""" Apply adjoint of matrix A.
         
         It computes
      
@@ -893,7 +893,7 @@ class LinearSplit(Linear):
         return y
 
     def adjoint_H(self, m: torch.tensor, unvectorize=False):
-        r""" Applies the adjoint of the matrix A.
+        r""" Apply adjoint of matrix H.
         
         It computes
      
@@ -1332,7 +1332,7 @@ class HadamSplit2d(LinearSplit):
             return super().measure_H(x)
 
     def adjoint_H(self, m: torch.tensor) -> torch.tensor:
-        r""" Apply the adjoint of H.
+        r""" Apply the adjoint of matrix H.
         
         Args:
             :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` length is :attr:`self.M`.
