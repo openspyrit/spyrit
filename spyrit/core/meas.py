@@ -292,9 +292,9 @@ class Linear(nn.Module):
 
             Example 2: 3 measurements of length 10 produces 3 signals of length
             60
-
+            >>> import spyrit.core.meas as meas
             >>> H = torch.randn(10, 60)
-            >>> meas_op = Linear(H, meas_shape=(15, 4))
+            >>> meas_op = meas.Linear(H, meas_shape=(15, 4))
             >>> m = torch.randn(3, 10)
             >>> x = meas_op.adjoint(m)
             >>> print(x.shape)
@@ -665,18 +665,29 @@ class LinearSplit(Linear):
     
         :attr:`M` (int): Number of measurements :math:`M`.
     
-    Example: (to be updated!)
-        Example 1:
+    Examples:
+    
+        Example 1: (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 20.
             
-        >>> H = torch.rand([400, 1600])
-        >>> meas_op = Linear(H)
-        >>> print(meas_op)
+        >>> import spyrit.core.meas as meas    
+        >>> H = torch.randn(10, 15)
+        >>> meas_op = meas.LinearSplit(H)
+        >>> x = torch.randn(3, 4, 15)
+        >>> y = meas_op(x)
+        >>> print(y.shape)
+        torch.Size([3, 4, 20])
 
-        Example 2:
+        Example 2: 3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 20. The acquisition matrix applies to both dimensions -2 and -1.
             
-        >>> H = torch.rand([400, 1600])
-        >>> meas_op = Linear(H, True)
-        >>> print(meas_op)
+        >>> import spyrit.core.meas as meas    
+        >>> H = torch.randn(10, 60)
+        >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
+        >>> x = torch.randn(3, 15, 4)
+        >>> y = meas_op(x)
+        >>> print(y.shape)
+        >>> print(meas_op.meas_dims)
+        torch.Size([3, 20])
+        torch.Size([-2, -1])
     """
 
     def __init__(
@@ -737,35 +748,296 @@ class LinearSplit(Linear):
             )
 
     def measure(self, x: torch.tensor):
-        r""" """
+        r""" Simulate noiseless measurements from matrix A.
+        
+        It acquires
+     
+        .. math::
+            y = Ax,
+            
+        where :math:`A \in \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns, :math:`x \in \mathbb{R}^N` is the signal of interest., :math:`2M` is the number of DMD patterns, and :math:`N` is the dimension of the signal.
+        
+        Given a matrix :math:`H \in \mathbb{R}^{M\times N}`, we define the positive DMD patterns :math:`A` from the positive and negative components of :math:`H`.
+        
+        .. note::
+            
+            The acquisition matrix :math:`A` is given by :attr:`self.A`.
+        
+        Args:
+            :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
+            dimensions :attr:`self.meas_dims` must have shape
+            shape :attr:`self.meas_shape`.
+        
+        Returns:
+            :class:`torch.tensor`: Measurement vector :math:`y` of length :attr:`2*self.M`.
+
+        Examples:
+            
+            Example 1: (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 20.
+            
+            >>> import spyrit.core.meas as meas    
+            >>> H = torch.randn(10, 15)
+            >>> meas_op = meas.LinearSplit(H)
+            >>> x = torch.randn(3, 4, 15)
+            >>> y = meas_op.measure(x)
+            >>> print(y.shape)
+            torch.Size([3, 4, 20])
+
+            Example 2: 3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 20. The acquisition matrix applies to both dimensions -2 and -1.
+            
+            >>> import spyrit.core.meas as meas    
+            >>> H = torch.randn(10, 60)
+            >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
+            >>> x = torch.randn(3, 15, 4)
+            >>> y = meas_op.measure(x)
+            >>> print(y.shape)
+            >>> print(meas_op.meas_dims)
+            torch.Size([3, 20])
+            torch.Size([-2, -1])
+        """
         x = self.vectorize(x)
         x = torch.einsum("mn,...n->...m", self.A, x)
         return x
 
     def measure_H(self, x: torch.tensor):
-        r""" """
+        r""" Simulate noiseless measurements from matrix H.
+        
+        It computes
+     
+        .. math::
+            m = Hx,
+            
+        where :math:`H \in \mathbb{R}^{M\times N}` is the acquisition matrix (that may contain negative values), :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of DMD patterns, and :math:`N` is the dimension of the signal.
+        
+        .. note::
+            
+            The acquisition matrix :math:`H` is given by :attr:`self.H`.
+        
+        Args:
+            :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
+            dimensions :attr:`self.meas_dims` must have shape
+            shape :attr:`self.meas_shape`.
+        
+        Returns:
+            :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`self.M`.
+
+        Examples:
+            Example 1: (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 10.
+            
+            >>> import spyrit.core.meas as meas    
+            >>> H = torch.randn(10, 15)
+            >>> meas_op = meas.LinearSplit(H)
+            >>> x = torch.randn(3, 4, 15)
+            >>> y = meas_op.measure_H(x)
+            >>> print(y.shape)
+            torch.Size([3, 4, 10])
+
+            Example 2: 3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 10. The acquisition matrix applies to both dimensions -2 and -1.
+            
+            >>> import spyrit.core.meas as meas    
+            >>> H = torch.randn(10, 60)
+            >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
+            >>> x = torch.randn(3, 15, 4)
+            >>> y = meas_op.measure_H(x)
+            >>> print(y.shape)
+            >>> print(meas_op.meas_dims)
+            torch.Size([3, 10])
+            torch.Size([-2, -1])
+        """
         x = self.vectorize(x)
         x = torch.einsum("mn,...n->...m", self.H, x)
         return x
 
     def adjoint(self, y: torch.tensor):
-        r""" """
+        r""" Applies the adjoint of the matrix A.
+        
+        It computes
+     
+        .. math::
+            x = A^Ty,
+            
+        where :math:`A \in \mathbb{R}^{2M\times N}` is the acquisition matrix (that may contain negative values) and :math:`y \in \mathbb{R}^{2M}` is a measurement vector.
+        
+        .. note::
+            
+            The acquisition matrix :math:`A` is given by :attr:`self.A`.
+        
+        Args:
+            :attr:`y` (:class:`torch.tensor`): Measurement :math:`y` whose dimensions :attr:`self.meas_dims` must have shape :attr:`self.meas_shape`.
+        
+        Returns:
+            :class:`torch.tensor`: A batch of signals :math:`x` with shape :math:`(*, N)` where :math:`*` is the same as for :attr:`m`.
+
+        Examples:
+            Example 1: (3, 4) measurements of length 20 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) signals of length 15.
+            
+            >>> import spyrit.core.meas as meas    
+            >>> H = torch.randn(10, 15)
+            >>> meas_op = meas.LinearSplit(H)
+            >>> y = torch.randn(3, 4, 20)
+            >>> x = meas_op.adjoint(y)
+            >>> print(x.shape)
+            torch.Size([3, 4, 15])
+
+            Example 2: 3 measurements of length 20 are measured with an acquisition matrix of shape (10, 60). This produces 3 signals of length 60.
+            
+            >>> import spyrit.core.meas as meas    
+            >>> H = torch.randn(10, 60)
+            >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
+            >>> m = torch.randn(3, 20)
+            >>> x = meas_op.adjoint(m)
+            >>> print(x.shape)
+            torch.Size([3, 60])
+        """
         y = torch.einsum("mn,...m->...n", self.A, y)
         return y
 
-    def adjoint_H(self, y: torch.tensor):
-        r""" """
-        y = torch.einsum("mn,...m->...n", self.H, y)
-        return y
+    def adjoint_H(self, m: torch.tensor, unvectorize=False):
+        r""" Applies the adjoint of the matrix A.
+        
+        It computes
+     
+        .. math::
+            x = H^Tm,
+            
+        where :math:`H \in \mathbb{R}^{M\times N}` is the acquisition matrix (that may contain negative values), :math:`m \in \mathbb{R}^M` is a measurement vector.
+        
+        .. note::
+            
+            The acquisition matrix :math:`H` is given by :attr:`self.H`.
+        
+        Args:
+            :attr:`m` (:class:`torch.tensor`): Measurements :math:`m` whose dimensions :attr:`self.meas_dims` must have shape :attr:`self.meas_shape`.
+        
+        Returns:
+            A batch of signals :math:`x`. If :attr:`unvectorize` is :obj:`False`, :math:`x` has shape :math:`(*, N)` where :math:`*` is the same as for :attr:`m`. If :attr:`unvectorize` is :obj:`True`, :math:`x` is reshaped such that the dimensions :attr:`self.meas_dims` have shape :attr:`self.meas_shape`.
+
+        Examples:
+            Example 1: (3, 4) measurements of length 10 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) signals of length 15.
+            
+            >>> import spyrit.core.meas as meas    
+            >>> H = torch.randn(10, 15)
+            >>> meas_op = meas.LinearSplit(H)
+            >>> m = torch.randn(3, 4, 10)
+            >>> x = meas_op.adjoint_H(m)
+            >>> print(x.shape)
+            torch.Size([3, 4, 15])
+
+            Example 2: 3 measurements of length 10 are measured with an acquisition matrix of shape (10, 60). This produces 3 signals of length 60.
+            
+            >>> import spyrit.core.meas as meas    
+            >>> H = torch.randn(10, 60)
+            >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
+            >>> m = torch.randn(3, 10)
+            >>> x = meas_op.adjoint_H(m)
+            >>> print(x.shape)
+            torch.Size([3, 60])
+            
+            Using unvectorize=True produces 3 signals of length (15, 4)
+
+            >>> x = meas_op.adjoint_H(m, unvectorize=True)
+            >>> print(x.shape)
+            torch.Size([3, 15, 4])
+        """
+        return super().adjoint(m, unvectorize=unvectorize)
 
     def forward(self, x: torch.tensor):
-        r""" """
+        r""" Simulate noisy measurements from matrix A.
+        
+        It computes
+     
+        .. math::
+            y =\mathcal{N}\left(Ax\right),
+            
+        where :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` represents a noise operator (e.g., Gaussian), where :math:`A \in \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns, :math:`x \in \mathbb{R}^N` is the signal of interest., :math:`2M` is the number of DMD patterns, and :math:`N` is the dimension of the signal.
+        
+        Given a matrix :math:`H \in \mathbb{R}^{M\times N}`, we define the positive DMD patterns :math:`A` from the positive and negative components of :math:`H`.
+        
+        .. note::
+            
+            The acquisition matrix :math:`A` is given by :attr:`self.A`.
+        
+        Args:
+            :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
+            dimensions :attr:`self.meas_dims` must have shape
+            shape :attr:`self.meas_shape`.
+        
+        Returns:
+            :class:`torch.tensor`: Measurement vector :math:`y` of length :attr:`2*self.M`.
+
+        Examples:
+            
+            Example 1: (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 20.
+            
+            >>> import spyrit.core.meas as meas    
+            >>> H = torch.randn(10, 15)
+            >>> meas_op = meas.LinearSplit(H)
+            >>> x = torch.randn(3, 4, 15)
+            >>> y = meas_op(x)
+            >>> print(y.shape)
+            torch.Size([3, 4, 20])
+
+            Example 2: 3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 20. The acquisition matrix applies to both dimensions -2 and -1.
+            
+            >>> import spyrit.core.meas as meas    
+            >>> H = torch.randn(10, 60)
+            >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
+            >>> x = torch.randn(3, 15, 4)
+            >>> y = meas_op(x)
+            >>> print(y.shape)
+            >>> print(meas_op.meas_dims)
+            torch.Size([3, 20])
+            torch.Size([-2, -1])
+        """
         x = self.measure(x)
         x = self.noise_model(x)
         return x
 
     def forward_H(self, x: torch.tensor):
-        r""" """
+        r""" Simulate noisy measurements from matrix H.
+        
+        It computes
+     
+        .. math::
+            m =\mathcal{N}\left(Hx\right),
+
+        where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H \in \mathbb{R}^{M\times N}` is the acquisition matrix (that may contain negative values), :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of DMD patterns, and :math:`N` is the dimension of the signal.
+        
+        .. note::
+            
+            The acquisition matrix :math:`H` is given by :attr:`self.H`.
+        
+        Args:
+            :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
+            dimensions :attr:`self.meas_dims` must have shape
+            shape :attr:`self.meas_shape`.
+        
+        Returns:
+            :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`self.M`.
+
+        Examples:
+            Example 1: (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 10.
+            
+            >>> import spyrit.core.meas as meas    
+            >>> H = torch.randn(10, 15)
+            >>> meas_op = meas.LinearSplit(H)
+            >>> x = torch.randn(3, 4, 15)
+            >>> y = meas_op.forward_H(x)
+            >>> print(y.shape)
+            torch.Size([3, 4, 10])
+
+            Example 2: 3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 10. The acquisition matrix applies to both dimensions -2 and -1.
+            
+            >>> import spyrit.core.meas as meas    
+            >>> H = torch.randn(10, 60)
+            >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
+            >>> x = torch.randn(3, 15, 4)
+            >>> y = meas_op.forward_H(x)
+            >>> print(y.shape)
+            >>> print(meas_op.meas_dims)
+            torch.Size([3, 10])
+            torch.Size([-2, -1])
+        """
         x = self.measure_H(x)
         x = self.noise_model(x)
         return x
