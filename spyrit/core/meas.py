@@ -1045,7 +1045,7 @@ class LinearSplit(Linear):
 
 # =============================================================================
 class HadamSplit2d(LinearSplit):
-    r""" Simulate linear measurements by splitting a "2D" Hadamard matrix.
+    r""" Simulate 2D Hadamard split acquisitions.
     
     It acquires
  
@@ -1238,9 +1238,9 @@ class HadamSplit2d(LinearSplit):
         return spytorch.reindex(x, self.indices.to(x.device), axis, inverse_permutation)
 
     def measure(self, x: torch.tensor) -> torch.tensor:
-        r""" Simulate linear measurements by splitting a "2D" Hadamard matrix.
+        r""" Simulate noiseless measurements from matrix A.
         
-        It acquires
+        It computes
      
         .. math::
             y =\mathcal{S}\left(AXA^T\right),
@@ -1286,9 +1286,9 @@ class HadamSplit2d(LinearSplit):
             return super().measure(x)
 
     def measure_H(self, x: torch.tensor):
-        r""" Simulate linear measurements from a "2D" Hadamard matrix.
+        r""" Simulate noiseless measurements from matrix H.
         
-        It acquires
+        It computes
      
         .. math::
             m =\mathcal{S}\left(HXH^T\right),
@@ -1296,7 +1296,7 @@ class HadamSplit2d(LinearSplit):
         where :math:`\mathcal{S} \colon\, \mathbb{R}^{h\times h} \to \mathbb{R}^{M}` is the subsampling operator, :math:`H \colon\, \mathbb{R}^{h\times h}` is the Hadamard matrix, :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image.
         
         Args:
-            :attr:`y` (:class:`torch.tensor`): Image :math:`X` whose
+            :attr:`x` (:class:`torch.tensor`): Image :math:`X` whose
             dimensions :attr:`self.meas_dims` must have shape
             shape :attr:`self.meas_shape`.
         
@@ -1332,7 +1332,7 @@ class HadamSplit2d(LinearSplit):
             return super().measure_H(x)
 
     def adjoint_H(self, m: torch.tensor) -> torch.tensor:
-        r""" Apply the adjoint of H to the input.
+        r""" Apply the adjoint of H.
         
         Args:
             :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` length is :attr:`self.M`.
@@ -1369,7 +1369,7 @@ class HadamSplit2d(LinearSplit):
             return super().adjoint_H(m)
 
     def fast_measure(self, x: torch.tensor) -> torch.tensor:
-        r""" """
+        r""" Simulate noiseless measurements from matrix A. """
         Hx = self.measure_H(x)
         x_sum = Hx[..., None, 0] # indexing while keeping the original shape
         y_pos, y_neg = (x_sum + Hx) / 2, (x_sum - Hx) / 2
@@ -1378,7 +1378,7 @@ class HadamSplit2d(LinearSplit):
         return y
 
     def fast_measure_H(self, x: torch.tensor) -> torch.tensor:
-        r""" """
+        r""" Simulate noiseless measurements from matrix H. """
         x = spytorch.mult_2d_separable(self.H1d, x)
         x = self.vectorize(x)
         x = x.index_select(dim=-1, index=self.indices)
@@ -1386,7 +1386,7 @@ class HadamSplit2d(LinearSplit):
         return x[..., : self.M]
 
     def fast_pinv(self, m: torch.tensor) -> torch.tensor:
-        r"""Apply the pseudo inverse of H to the input.
+        r"""Apply the pseudo inverse of H.
 
         Args:
             :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` of length :attr:`self.M`.
