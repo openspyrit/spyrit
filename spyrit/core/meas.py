@@ -1534,11 +1534,10 @@ class DynamicLinear(_Base):
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
 
         else:
-            motion_inverse_approx = self.approx_inv_deform(motion)
+            # motion_inverse_approx = self.approx_inv_deform(motion)  ## WRONG, TOO COARSE APPROXIMATION
+            # def_field needs to be passed as the inverse deform now
 
-            scale_factor = (torch.tensor(self.img_shape) - 1).to(self.device)
-            def_field_inv_approx = (motion_inverse_approx.field + 1) / 2 * scale_factor
-            det = self.calc_det(def_field_inv_approx)
+            det = self.calc_det(def_field)
 
             meas_pattern = meas_pattern.reshape(
                 meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1]
@@ -1558,7 +1557,7 @@ class DynamicLinear(_Base):
 
             H_dyn = nn.functional.grid_sample(
                 meas_pattern_ext,
-                motion_inverse_approx.field,
+                motion.field,
                 mode=mode,
                 padding_mode="zeros",
                 align_corners=True,
