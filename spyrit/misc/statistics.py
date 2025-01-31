@@ -122,7 +122,13 @@ def data_loaders_imagenet(
 
 
 def data_loaders_ImageNet(
-    train_root, val_root=None, img_size=64, batch_size=512, seed=7, shuffle=False
+    train_root, 
+    val_root=None, 
+    img_size=64, 
+    batch_size=512, 
+    seed=7, 
+    shuffle=False,
+    normalize=True
 ):
     """
     Args:
@@ -143,7 +149,8 @@ def data_loaders_ImageNet(
                 size=(img_size, img_size), pad_if_needed=True, padding_mode="edge"
             ),
             torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.5], [0.5]),
+            torchvision.transforms.Normalize([0.5], [0.5]) if normalize else torch.nn.Identity(),
+            
         ]
     )
 
@@ -188,7 +195,7 @@ class CenterCrop:
             return inputs
 
 
-def transform_gray_norm(img_size):
+def transform_gray_norm(img_size, normalize=True):
     """
     Args:
         img_size=int, image size
@@ -206,7 +213,7 @@ def transform_gray_norm(img_size):
             # torchvision.transforms.CenterCrop(img_size),
             CenterCrop(img_size),
             torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.5], [0.5]),
+            torchvision.transforms.Normalize([0.5], [0.5]) if normalize else torch.nn.Identity(),
         ]
     )
     return transform
