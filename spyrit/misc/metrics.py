@@ -14,6 +14,7 @@ from torchvision import datasets, models, transforms
 import torch.nn.functional as F
 import imageio
 import matplotlib.pyplot as plt
+import skimage.metrics as skm
 
 
 def batch_psnr(torch_batch, output_batch):
@@ -263,6 +264,24 @@ def ssim(I1, I2):
         (mu1**2 + mu2**2 + c1) * (s1**2 + s2**2 + c2)
     )
     return result
+
+def ssim_sk(x_gt, x, img_dyn=None):
+    """ 
+    SSIM from skimage
+    
+    Args:
+        torch tensors
+        
+    Returns:
+        torch tensor
+    """
+    if not isinstance(x, np.ndarray):
+        x = x.cpu().detach().numpy().squeeze()
+        x_gt = x_gt.cpu().detach().numpy().squeeze()
+    ssim_val = np.zeros(x.shape[0])
+    for i in range(x.shape[0]):
+        ssim_val[i] = skm.structural_similarity(x_gt[i], x[i], data_range=img_dyn)
+    return torch.tensor(ssim_val)
 
 
 def batch_psnr_vid(input_batch, output_batch):
