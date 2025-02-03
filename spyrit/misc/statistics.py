@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 
 import spyrit.misc.walsh_hadamard as wh
 import spyrit.core.torch as spytorch
+import spyrit.misc.metrics as sm
 
 
 # %% data loaders
@@ -251,6 +252,168 @@ def data_loaders_stl10(
 
     return dataloaders
 
+
+def stat_psnr(model, 
+              dataloader, 
+              device, 
+              n_loop=1, 
+              num_batchs=None, 
+              img_dyn=None, 
+              ):
+    """
+    nloop > 1 is relevant for dataloaders with random crops such as that
+    provided by data_loaders_ImageNet
+
+    """
+    # Get dimensions and estimate total number of images in the dataset
+    inputs, _ = next(iter(dataloader))
+    (b, c, nx, ny) = inputs.shape
+    
+    if num_batchs is None:
+        tot_num = len(dataloader)*b
+    else:
+        tot_num = num_batchs*b
+
+    # just in case...
+    model.eval()
+
+    # Init
+    n = 0
+    mean = torch.tensor([.0], device=device)
+
+    # Pass 1: Compute Mean
+    for i in range(n_loop):
+        for jj, (inputs, _) in enumerate(dataloader):
+            if num_batchs is not None and jj >= num_batchs:
+                break
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+            
+            psnr_batch = sm.psnr_torch(inputs, outputs, img_dyn=img_dyn)
+            
+            # remove infinite values and NaNs
+            valid_mask = torch.isfinite(psnr_batch)
+            psnr_batch = psnr_batch[valid_mask]
+            
+            mean += torch.sum(psnr_batch)
+            
+            # print
+            n = n + inputs.shape[0]
+            print(f"Mean:  {n} / (less than) {tot_num*n_loop} images", end="\n")
+        #print("", end="\n")
+
+    mean = mean/n
+    mean = torch.squeeze(mean)
+    
+    # Pass 2: Variance
+    n = 0
+    var = torch.tensor([.0], device=device)
+    for i in range(n_loop):
+        for jj, (inputs, _) in enumerate(dataloader):
+            if num_batchs is not None and jj >= num_batchs:
+                break
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+            psnr_batch = sm.psnr_torch(inputs, outputs, img_dyn=img_dyn)
+            psnr_batch = (psnr_batch - mean)**2
+
+            # remove infinite values and NaNs
+            valid_mask = torch.isfinite(psnr_batch)
+            psnr_batch = psnr_batch[valid_mask]
+            
+            var += torch.sum(psnr_batch)
+            
+            # print
+            n = n + inputs.shape[0]
+            print(f"var:  {n} / (less than) {tot_num*n_loop} images", end="\n")
+        #print("", end="\n")
+
+    var = var/(n-1)
+    var = torch.squeeze(var)
+    
+    return mean, var
+
+def stat_ssim(model, 
+              dataloader, 
+              device, 
+              n_loop=1, 
+              num_batchs=None, 
+              img_dyn=None, 
+              ):
+    """
+    nloop > 1 is relevant for dataloaders with random crops such as that
+    provided by data_loaders_ImageNet
+    
+    Returns:
+        torch.tensor on cpu
+        
+        torch.tensor on cpu
+
+    """
+    # Get dimensions and estimate total number of images in the dataset
+    inputs, _ = next(iter(dataloader))
+    (b, c, nx, ny) = inputs.shape
+    tot_num = len(dataloader) * b
+
+    # just in case...
+    model.eval()
+
+    # Init
+    n = 0
+    mean = torch.tensor([.0], device=device)
+
+    # Pass 1: Compute Mean
+    for i in range(n_loop):
+        for jj, (inputs, _) in enumerate(dataloader):
+            if num_batchs is not None and jj >= num_batchs:
+                break
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+            
+            batch = sm.ssim_sk(inputs, outputs, img_dyn=img_dyn)
+            
+            # remove infinite values and NaNs
+            valid_mask = torch.isfinite(batch)
+            batch = batch[valid_mask]
+            
+            mean += torch.sum(batch)
+            
+            # print
+            n = n + inputs.shape[0]
+            print(f"Mean:  {n} / (less than) {tot_num*n_loop} images", end="\n")
+        #print("", end="\n")
+    
+    mean = mean/n
+    mean = torch.squeeze(mean)
+    mean = mean.to(device="cpu")
+    
+    # Pass 2: Variance
+    n = 0
+    var = torch.tensor([.0], device=device)
+    for i in range(n_loop):
+        for jj, (inputs, _) in enumerate(dataloader):
+            if num_batchs is not None and jj >= num_batchs:
+                break
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+            batch = sm.ssim_sk(inputs, outputs, img_dyn=img_dyn)
+            batch = (batch - mean)**2
+
+            # remove infinite values and NaNs
+            valid_mask = torch.isfinite(batch)
+            batch = batch[valid_mask]
+            
+            var += torch.sum(batch)
+            
+            # print
+            n = n + inputs.shape[0]
+            print(f"var:  {n} / (less than) {tot_num*n_loop} images", end="\n")
+        #print("", end="\n")
+
+    var = var/(n-1)
+    var = torch.squeeze(var)
+    
+    return mean, var
 
 # %% Walsh Hadamard domain
 def stat_walsh_ImageNet(
