@@ -37,33 +37,65 @@ class PseudoInverse(nn.Module):
         forward method of this class.
 
     Args:
-        :attr:`meas_op`: Measurement operator. The measurements operator are
-        defined in :mod:`spyrit.core.meas`.
+        :attr:`meas_op`: Measurement operator. See :mod:`spyrit.core.meas`.
 
-        :attr:`store_pinv` (bool): If False, the pseudo-inverse is not computed
-        explicitly but instead the least squares solution is computed at each
-        forward pass using the function :func:`torch.linalg.lstsq`. This is
-        a more numerically stable but slower approach when using large batches.
+        :attr:`regularization` (str): Regularization method. Can be 'rcond',
+        'L2', or 'H1'. Default: 'rcond'.
+
+    Keyword Args:
+        :attr:`store_H_pinv` (bool): If False, the pseudo-inverse of the measurement
+        matrix is not computed explicitly but instead the least squares solution
+        is computed at each forward pass using the function :func:`torch.linalg.lstsq`.
         If True, computes and stores at initialization the pseudo-inverse
-        (:func:`torch.linalg.pinv`) of the measurement matrix. This is useful
-        when the same measurement matrix is used multiple times. Default: False
+        of the measurement matrix using the function :func:`torch.linalg.pinv`.
+        Default: False
+
+        :attr:`use_fast_pinv` (bool): If True, uses a fast computation of either
+        the measurement matrix pseudo-inverse or the least squares solution.
+        This only works if the measurement operator has a fast pseudo-inverse
+        method. Default: True.
+
+        :attr:`reshape_output` (bool): If True, reshapes the output to the shape
+        of the image using :meth:`meas_op.unvectorize`. Default: True.
+
+        :attr:`reg_kwargs`: Additional keyword arguments that are passed to
+        :func:`spyrit.core.torch.regularized_pinv` when :attr:`store_pinv` is True
+        or to :func:`torch.linalg.lstsq` when :attr:`store_pinv` is False.
+    
+    Attributes:
+        :attr:`meas_op`: Measurement operator initialized as :attr:`meas_op`.
+
+        :attr:`regularization`: Regularization method initialized as :attr:`regularization`.
+
+        :attr:`store_H_pinv`: Indicates if the pseudo-inverse is stored.
+
+        :attr:`use_fast_pinv`: Indicates if the fast pseudo-inverse is used.
+
+        :attr:`reshape_output`: Indicates if the output is reshaped.
+
+        :attr:`reg_kwargs`: Additional keyword arguments passed to the
+        :func:`spyrit.core.torch.regularized_pinv` or :func:`torch.linalg.lstsq`
+        functions.
+
+        :attr:`pinv`: The pseudo-inverse of the measurement matrix. It is computed
+        only if :attr:`store_H_pinv` is True.
 
     Example:
-        >>> H = torch.rand([400,32*32])
-        >>> Perm = torch.rand([32*32,32*32])
-        >>> meas_op =  HadamSplit(H, Perm, 32, 32)
-        >>> y = torch.rand([85,400], dtype=torch.float)
-        >>> pinv_op = PseudoInverse()
+        >>> h, M = 32, 400
+        >>> meas_op = HadamSplit2d(h, M)
+        >>> y = torch.rand([85, 3, 400])
+        >>> pinv_op = PseudoInverse(meas_op, 'rcond')
         >>> x = pinv_op(y, meas_op)
         >>> print(x.shape)
-        torch.Size([85, 1024])
+        torch.Size([85, 3, 32, 32])
     """
 
     def __init__(
         self,
         meas_op: Union[meas.Linear, meas.DynamicLinear],
         regularization: str = "rcond",
-        store_pinv: bool = False,
+        *,
+        store_H_pinv: bool = False,
         use_fast_pinv: bool = True,
         reshape_output: bool = True,
         **reg_kwargs,
@@ -72,12 +104,12 @@ class PseudoInverse(nn.Module):
         super().__init__()
         self.meas_op = meas_op
         self.regularization = regularization
-        self.store_pinv = store_pinv
+        self.store_H_pinv = store_H_pinv
         self.use_fast_pinv = use_fast_pinv
         self.reshape_output = reshape_output
         self.reg_kwargs = reg_kwargs
 
-        if self.store_pinv:
+        if self.store_H_pinv:
             # do we have a fast pseudo-inverse computation available?
             if self.use_fast_pinv and hasattr(self.meas_op, "fast_H_pinv"):
                 self.pinv = meas_op.fast_H_pinv()
@@ -89,10 +121,10 @@ class PseudoInverse(nn.Module):
     def forward(self, y: torch.tensor) -> torch.tensor:
         r"""Computes pseudo-inverse of measurements.
 
-        If :attr:`self.store_pinv` is True, computes the product of the
+        If :attr:`self.store_H_pinv` is True, computes the product of the
         stored pseudo-inverse and the measurements.
 
-        If :attr:`self.store_pinv` is False, computes the least squares solution
+        If :attr:`self.store_H_pinv` is False, computes the least squares solution
         of the measurements. In this case, any additional keyword arguments
         passed to the :class:`PseudoInverse` constructor (and store in
         :attr:`self.reg_kwargs` are used here. These can include:
@@ -106,35 +138,26 @@ class PseudoInverse(nn.Module):
             the amount of regularization applied to the pseudo-inverse.
 
         Args:
-            :attr:`y`: Batch of measurement vectors.
-
-            :attr:`args`: Additional arguments that are passed to
-            :func:`torch.linalg.lstsq` when :attr:`store_pinv` is False.
-
-            :attr:`kwargs`: Additional keyword arguments that are passed to
-            :func:`torch.linalg.lstsq` when :attr:`store_pinv` is False.
-
-        Shape:
-
-            :attr:`y`: :math:`(*, M)`, where :math:`*` is any number of
-            dimensions and :math:`M` is the number of measurements of the
-            measurement operator (:attr:`meas_op.n_meas`).
-
-            :attr:`output`: :math:`(*, N)`, where :math:`N` is the same number of
-            dimensions, and :math:`N` is the number of items measured (pixels)
-            of the measurement operator (:attr:`meas_op.n_pixels`).
+            :attr:`y` (torch.tensor): Batch of measurement vectors of shape :math:`(*, M)`,
+            where :math:`*` is any number of dimensions and :math:`M` is the
+            number of measurements of the measurement operator (:attr:`meas_op.M`).
+        
+        Returns:
+            :attr:`output` (torch.tensor): Batch of reconstructed images of shape
+            :math:`(*, N)` or the image shape as defined in the measurement operator
+            (in `meas_op.meas_shape`) depending on the value of
+            :attr:`self.reshape_output`.
 
         Example:
-            >>> H = torch.rand([400,32*32])
-            >>> Perm = torch.rand([32*32,32*32])
-            >>> meas_op =  HadamSplit(H, Perm, 32, 32)
-            >>> y = torch.rand([85,400], dtype=torch.float)
-            >>> pinv_op = PseudoInverse()
+            >>> h, M = 32, 400
+            >>> meas_op = HadamSplit2d(h, M)
+            >>> y = torch.rand([85, 3, 400])
+            >>> pinv_op = PseudoInverse(meas_op, 'rcond')
             >>> x = pinv_op(y, meas_op)
             >>> print(x.shape)
-            torch.Size([85, 1024])
+            torch.Size([85, 3, 32, 32])
         """
-        if self.store_pinv:
+        if self.store_H_pinv:
             # Expand the pseudo-inverse to the batch size of y
             pinv = self.pinv.expand(*y.shape[:-1], *self.pinv.shape)
             y = y.unsqueeze(-1)
@@ -160,7 +183,7 @@ class PseudoInverse(nn.Module):
 
 # =============================================================================
 class Tikhonov(nn.Module):
-    r"""Tikhonov regularization (aka as ridge regression).
+    r"""Tikhonov regularization.
 
     It estimates the signal :math:`x\in\mathbb{R}^{N}` the from linear
     measurements :math:`y = Ax\in\mathbb{R}^{M}` corrupted by noise by solving
@@ -190,30 +213,37 @@ class Tikhonov(nn.Module):
 
     Args:
         - :attr:`meas_op` : Measurement operator (see :class:`~spyrit.core.meas`).
-        Its measurement operator has shape :math:`(M, N)`, with :math:`M` the
-        number of measurements and :math:`N` the number of pixels in the image.
 
-        - :attr:`sigma` : Signal covariance prior, of shape :math:`(N, N)`.
+        - :attr:`sigma` : Signal (image) covariance prior, of shape :math:`(N, N)`.
 
-        - :attr:`diagonal_approximation` : A boolean indicating whether to set
+        - :attr:`approx` : A boolean indicating whether to set
         the non-diagonal elements of :math:`A \Sigma A^T` to zero. Default is
         False. If True, this speeds up the computation of the inverse
         :math:`(A \Sigma A^T + \Sigma_\alpha)^{-1}`.
 
+        - :attr:`reshape_output` : A boolean indicating whether to reshape the
+        output to the shape of the image. Default is True.
+
     Attributes:
         - :attr:`meas_op` : Measurement operator initialized as :attr:`meas_op`.
 
-        - :attr:`diagonal_approximation` : Indicates if the diagonal approximation
+        - :attr:`sigma` : Signal covariance prior initialized as :attr:`sigma`.
+
+        - :attr:`approx` : Indicates if the diagonal approximation
         is used.
+
+        - :attr:`reshape_output` : Indicates if the output is reshaped.
 
         - :attr:`img_shape` : Shape of the image, initialized as :attr:`meas_op.img_shape`.
 
         - :attr:`sigma_meas` : Measurement covariance prior initialized as
-        :math:`A \Sigma A^T`. If :attr:`diagonal_approximation` is True, the
-        non-diagonal elements are set to zero.
+        :math:`A \Sigma A^T`. If :attr:`approx` is True, the non-diagonal elements
+        are set to zero. It is pre-computed at initialization to speed up future
+        computations.
 
         - :attr:`sigma_A_T` : Covariance of the missing measurements initialized
-        as :math:`\Sigma A^T`.
+        as :math:`\Sigma A^T`. It is computed at initialization to speed up future
+        computations.
 
     Example:
         >>> B, H, M, N = 85, 17, 32, 64
@@ -304,15 +334,14 @@ class Tikhonov(nn.Module):
 
         Args:
             :attr:`y` (torch.tensor):  A batch of measurement vectors :math:`y`
+            of shape :math:`(*, M)`.
 
             :attr:`gamma` (torch.tensor): A batch of noise covariance :math:`\Gamma`
-
-        Shape:
-            :attr:`y` (torch.tensor): :math:`(*, M)`
-
-            :attr:`gamma` (torch.tensor): :math:`(*, M, M)`
-
-            Output (torch.tensor): :math:`(*, N)`
+            of shape :math:`(*, M, M)`.
+        
+        Returns:
+            (torch.tensor): A batch of reconstructed images of shape :math:`(*, N)`
+            or the :meth:`meas_op.unvectorize`d version of the image shape.
         """
         y = self.divide(y, gamma)
         y = torch.matmul(self.sigma_A_T, y.unsqueeze(-1)).squeeze(-1)
@@ -325,8 +354,7 @@ class Tikhonov(nn.Module):
 
 # =============================================================================
 class TikhonovMeasurementPriorDiag(nn.Module):
-    r"""
-    Tikhonov regularisation with prior in the measurement domain.
+    r"""Tikhonov regularisation with prior in the measurement domain.
 
     Considering linear measurements :math:`m = Hx \in\mathbb{R}^M`, where
     :math:`H = GF` is the measurement matrix and :math:`x\in\mathbb{R}^N` is a
@@ -347,15 +375,24 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         covariance of :math:`Fx`.
 
     Args:
-        - :attr:`sigma`:  covariance prior with shape :math:`N` x :math:`N`
-        - :attr:`M`: number of measurements :math:`M`
+        - :attr:`meas_op`: A Hadamard measurement operator (see :mod:`spyrit.core.meas.HadamSplit2d`)
+
+        - :attr:`sigma`: Measurement covariance prior with shape :math:`N` x :math:`N`
+
+        - :attr:`reshape_output`: A boolean indicating whether to reshape the
+        output to the shape of the image. Default is True.
 
     Attributes:
-        :attr:`comp`: The learnable completion layer initialized as
-        :math:`\Sigma_1 \Sigma_{21}^{-1}`. This layer is a :class:`nn.Linear`
+        :attr:`meas_op`: Measurement operator initialized as :attr:`meas_op`.
+        
+        :attr:`reshape_output`: Indicates if the output is reshaped to the input
+        shape.
 
-        :attr:`denoi`: The learnable denoising layer initialized from
-        :math:`\Sigma_1`.
+        :attr:`denoise_weights`: The learnable denoising layer initialized from
+        :math:`\Sigma_1`. This layer is a :class:`nn.Parameter`.
+
+        :attr:`comp`: The learnable matrix initialized from :math:`\Sigma_{21}`.
+        This matrix is a :class:`nn.Parameter`.
 
     Example:
         >>> meas_op = spyrit.core.meas.HadamSplit2d(32, 400)
@@ -384,7 +421,7 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         self.comp = nn.Parameter(W, requires_grad=False)
 
     def wiener_denoise(self, x: torch.tensor, var: torch.tensor) -> torch.tensor:
-        """Returns a denoised version of the input tensor using the variance prior.
+        r"""Returns a denoised version of the input tensor using the variance prior.
 
         This uses the attribute self.denoise_weights, which is a learnable
         parameter.
@@ -397,12 +434,44 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         Returns:
             torch.tensor: The denoised tensor.
         """
-
         weights_squared = self.denoise_weights**2
         return torch.mul((weights_squared / (weights_squared + var)), x)
 
     def forward_no_prior(self, x, var):
-        r"""Forward method but with x0 = 0"""
+        r"""Computes the Tikhonov regularization with prior in the measurement domain.
+
+        We approximate the solution as:
+
+        .. math::
+            \hat{x} = x_0 + F^{-1} \begin{bmatrix} m_1 \\ m_2\end{bmatrix}
+
+        with :math:`m_1 = D_1(D_1 + \Sigma_\alpha)^{-1} (m - GF x_0)` and
+        :math:`m_2 = \Sigma_1 \Sigma_{21}^{-1} m_1`, where
+        :math:`\Sigma = \begin{bmatrix} \Sigma_1 & \Sigma_{21}^\top \\ \Sigma_{21} & \Sigma_2\end{bmatrix}`
+        and  :math:`D_1 =\textrm{Diag}(\Sigma_1)`. Assuming the noise
+        covariance :math:`\Sigma_\alpha` is diagonal, the matrix inversion
+        involved in the computation of :math:`m_1` is straightforward.
+
+        This is an approximation to the exact solution
+
+        .. math::
+            \hat{x} &= x_0 + F^{-1}\begin{bmatrix}\Sigma_1 \\ \Sigma_{21} \end{bmatrix}
+                      [\Sigma_1 + \Sigma_\alpha]^{-1} (m - GF x_0)
+
+        See Lemma B.0.5 of the PhD dissertation of A. Lorente Mur (2021):
+        https://theses.hal.science/tel-03670825v1/file/these.pdf
+
+        Args:
+            - :attr:`x` (torch.tensor): A batch of measurement vectors of shape
+            :math:`(*, M)`.
+
+            - :attr:`var` (torch.tensor): A batch of measurement noise variances
+            :math:`\Sigma_\alpha` of shape :math:`(*, M)`.
+        
+        Returns:
+            torch.tensor: The reconstructed image of shape :math:`(*, N)` or the
+            :meth:`meas_op.unvectorize`d version of the image shape.
+        """
         y1 = self.wiener_denoise(x, var)
         y2 = y1 @ self.comp.T
 
@@ -418,10 +487,10 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         x_0: torch.tensor,
         var: torch.tensor,
     ) -> torch.tensor:
-        r"""
-        Computes the Tikhonov regularization with prior in the measurement domain.
+        r"""Computes the Tikhonov regularization with prior in the measurement domain.
 
-        We approximate the solution as:
+        This method, unlike the :meth:`forward_no_prior` method, allows for a
+        non-zero mean image prior :math:`x_0`. We approximate the solution as:
 
         .. math::
             \hat{x} = x_0 + F^{-1} \begin{bmatrix} m_1 \\ m_2\end{bmatrix}
