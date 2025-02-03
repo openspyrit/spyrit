@@ -4,8 +4,7 @@
 #   See LICENSE.md for further details
 # -----------------------------------------------------------------------------
 
-"""Contains miscellaneous Numpy / Pytorch functions useful for spyrit.core.
-"""
+"""Contains miscellaneous Numpy / Pytorch functions useful for spyrit.core."""
 
 # from .disp import *
 # from .metrics import *

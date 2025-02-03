@@ -1,2 +1,1 @@
-"""Core module for Spyrit package, containing the main classes and functions.
-"""
+"""Core module for Spyrit package, containing the main classes and functions."""
