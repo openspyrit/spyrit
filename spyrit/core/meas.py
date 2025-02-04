@@ -1079,6 +1079,8 @@ class HadamSplit2d(LinearSplit):
 
         :attr:`fast` (bool, optional): Whether to use the fast Hadamard transform
         algorithm. If False, it uses matrix-vector products. Defaults to True.
+        
+        :attr:`reshape_output` (bool, optional): Whether reshape the output of adjoint and pinv methods to images. If False, output are vectors.
 
         noise_model (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
         Defaults to `torch.nn.Identity()`.
@@ -1138,6 +1140,7 @@ class HadamSplit2d(LinearSplit):
         M: int = None,
         order: torch.tensor = None,
         fast: bool = True,
+        reshape_output: bool = False,
         *,
         noise_model=nn.Identity(),
         dtype: torch.dtype = torch.float32,
@@ -1172,6 +1175,7 @@ class HadamSplit2d(LinearSplit):
             dtype=torch.int32, device=self.device
         )
         self.fast = fast
+        self.reshape_output = reshape_output
 
     @property
     def dtype(self) -> torch.dtype:
@@ -1419,6 +1423,17 @@ class HadamSplit2d(LinearSplit):
             >>> x = meas_op.fast_pinv(m)
             >>> print(x.shape)
             torch.Size([8, 2, 1024])
+            
+            Example 3: Output images, not vectors
+                
+            >>> import torch
+            >>> import spyrit.core.meas as meas
+            >>> h, M = 32, 49
+            >>> meas_op = meas.HadamSplit2d(h, M, reshape_output=True)
+            >>> m = torch.empty(8, 2, M).uniform_(0, 1)
+            >>> x = meas_op.fast_pinv(m)
+            >>> print(x.shape)
+            torch.Size([8, 2, 32, 32])
         """
         if self.N != self.M:
             m = torch.cat(
@@ -1427,8 +1442,12 @@ class HadamSplit2d(LinearSplit):
             )
         m = self.reindex(m, "cols", False)
         m = self.unvectorize(m)
-        m = spytorch.mult_2d_separable(self.H1d, m)
-        return self.vectorize(m) / self.N
+        m = spytorch.mult_2d_separable(self.H1d, m) / self.N
+        
+        if not self.reshape_output:
+            m = self.vectorize(m)
+        
+        return m
 
     def fast_H_pinv(self) -> torch.tensor:
         r""" Return the pseudo inverse of the matrix H"""
@@ -2733,5 +2752,5 @@ class DynamicLinear(Linear):
         #         # empty = torch.empty(h**2, h**2)  # just to get the shape
 
         # we pass the whole F matrix to the constructor
-        super().__init__(F, Ord, (h, h), img_shape)
-        self._M = M
+        # super().__init__(F, Ord, (h, h), img_shape)
+        # self._M = M
