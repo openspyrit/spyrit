@@ -319,6 +319,16 @@ class Tikhonov(nn.Module):
 
         Returns:
             torch.tensor: The divided tensor. Shape :math:`(*, M)`.
+        
+        Example:
+            >>> M, N = 400, 4096
+            >>> meas_op = Linear(torch.rand(M,N), meas_shape=(32,32))
+            >>> sigma = torch.rand(N,N)
+            >>> tikho = Tikhonov(meas_op, sigma, approx=False, reshape_output=True)
+            >>> y = torch.rand(85, 3, M)
+            >>> gamma = torch.eye(M).expand(85, 3, M, M)
+            >>> print(tikho.divide(y, gamma).shape)
+            torch.Size([85, 3, 4096])
         """
         if self.approx:
             return y / (self.sigma_meas + torch.diagonal(gamma, dim1=-2, dim2=-1))
@@ -330,9 +340,7 @@ class Tikhonov(nn.Module):
             y = torch.linalg.solve((self.sigma_meas + gamma).expand(expand_shape), y)
             return y.squeeze(-1)
 
-    def forward(
-        self, y: torch.tensor, gamma: torch.tensor  # x_0: torch.tensor,
-    ) -> torch.tensor:
+    def forward(self, y: torch.tensor, gamma: torch.tensor) -> torch.tensor:
         r"""Reconstructs the signal from measurements and noise covariance.
 
         The Tikhonov solution is computed as
@@ -356,6 +364,30 @@ class Tikhonov(nn.Module):
         Returns:
             (torch.tensor): A batch of reconstructed images of shape :math:`(*, N)`
             or the :meth:`meas_op.unvectorize`d version of the image shape.
+
+        Example 1: With reshape_output = True
+            >>> b, c, h, w = 85, 3, 32, 32
+            >>> M, N = 400, h*w
+            >>> meas_op = Linear(torch.rand(M,N), meas_shape=(h,w))
+            >>> x = torch.randn(b,c,h,w)
+            >>> y = meas_op(x)
+            >>> sigma = torch.rand(N,N)
+            >>> tikho = Tikhonov(meas_op, sigma, approx=False, reshape_output=True)
+            >>> gamma = torch.eye(M).expand(b, c, M, M)
+            >>> print(tikho(y, gamma).shape)
+            torch.Size([85, 3, 32, 32])
+        
+        Example 2: With reshape_output = False
+            >>> b, c, h, w = 13, 1, 35, 20
+            >>> M, N = 1000, h*w
+            >>> meas_op = Linear(torch.rand(M,N), meas_shape=(h,w))
+            >>> x = torch.randn(b,c,h,w)
+            >>> y = meas_op(x)
+            >>> sigma = torch.rand(N,N)
+            >>> tikho = Tikhonov(meas_op, sigma, approx=False, reshape_output=False)
+            >>> gamma = torch.eye(M).expand(b, c, M, M)
+            >>> print(tikho(y, gamma).shape)
+            torch.Size([13, 1, 700])
         """
         y = self.divide(y, gamma)
         y = torch.matmul(self.sigma_A_T, y.unsqueeze(-1)).squeeze(-1)
