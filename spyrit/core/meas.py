@@ -1245,7 +1245,7 @@ class HadamSplit2d(LinearSplit):
         return spytorch.reindex(x, self.indices.to(x.device), axis, inverse_permutation)
 
     def measure(self, x: torch.tensor) -> torch.tensor:
-        r""" Simulate noiseless measurements from matrix A.
+        r"""Simulate noiseless measurements from matrix A.
         
         It computes
      
@@ -1293,7 +1293,7 @@ class HadamSplit2d(LinearSplit):
             return super().measure(x)
 
     def measure_H(self, x: torch.tensor):
-        r""" Simulate noiseless measurements from matrix H.
+        r"""Simulate noiseless measurements from matrix H.
         
         It computes
      
@@ -1338,18 +1338,20 @@ class HadamSplit2d(LinearSplit):
         else:
             return super().measure_H(x)
 
-    def adjoint_H(self, m: torch.tensor) -> torch.tensor:
-        r""" Apply the adjoint of matrix H.
+    def adjoint_H(self, m: torch.tensor, unvectorize=False) -> torch.tensor:
+        r"""Apply the adjoint of matrix H.
         
         Args:
             :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` length is :attr:`self.M`.
             
+            :attr:`unvectorize` (bool): whether to apply a :meth:`unvectorize`
+            operation at the end of the computation.
+
         Returns:
             Vectorized image vector :math:`x \in \mathbb{R}^{h^2}`
 
         Examples:
             Example 1: No subsampling
-                
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> h = 32
@@ -1360,7 +1362,6 @@ class HadamSplit2d(LinearSplit):
             torch.Size([10, 1024])
             
             Example 2: With subsampling
-                
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> h, M = 32, 49
@@ -1371,9 +1372,10 @@ class HadamSplit2d(LinearSplit):
             torch.Size([8, 2, 1024])
         """
         if self.fast:
-            return self.fast_pinv(m) * self.N
+            # fast_pinv takes 'vectorize' as argument
+            return self.fast_pinv(m, not unvectorize) * self.N
         else:
-            return super().adjoint_H(m)
+            return super().adjoint_H(m, unvectorize)
 
     def fast_measure(self, x: torch.tensor) -> torch.tensor:
         r""" Simulate noiseless measurements from matrix A. """
@@ -1392,21 +1394,26 @@ class HadamSplit2d(LinearSplit):
         # x = self.reindex(x, "rows", False)
         return x[..., : self.M]
 
-    def fast_pinv(self, m: torch.tensor) -> torch.tensor:
+    def fast_pinv(self, m: torch.tensor, vectorize=False) -> torch.tensor:
         r"""Apply the pseudo inverse of H.
 
         Args:
             :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` of length :attr:`self.M`.
                 
+            :attr:`vectorize` (bool): Whether to apply the :meth:`vectorize` method
+            after computation of the pseudo inverse.
+
         Returns:
             :class:`torch.tensor`: Vectorized image :math:`x` of length :attr:`self.N`.
             
         .. note::
-            We use the separability of the 2D Hadamard transform. Only multiplications with the "1D" Hadamard matrix (i.e., :attr:`self.H1d`) are required. If the number of measurements is smaller than the number of pixels, the measurement vector is zero-padded.
+            We use the separability of the 2D Hadamard transform. Only multiplications
+            with the "1D" Hadamard matrix (i.e., :attr:`self.H1d`) are required. If
+            the number of measurements is smaller than the number of pixels,
+            the measurement vector is zero-padded.
             
         Examples:
             Example 1: No subsampling
-                
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> h = 32
@@ -1417,7 +1424,6 @@ class HadamSplit2d(LinearSplit):
             torch.Size([10, 1024])
             
             Example 2: With subsampling
-                
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> h, M = 32, 49
@@ -1428,7 +1434,6 @@ class HadamSplit2d(LinearSplit):
             torch.Size([8, 2, 1024])
             
             Example 3: Output images, not vectors
-                
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> h, M = 32, 49
@@ -1447,9 +1452,8 @@ class HadamSplit2d(LinearSplit):
         m = self.unvectorize(m)
         m = spytorch.mult_2d_separable(self.H1d, m) / self.N
         
-        if not self.reshape_output:
+        if vectorize:
             m = self.vectorize(m)
-        
         return m
 
     def fast_H_pinv(self) -> torch.tensor:
