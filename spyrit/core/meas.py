@@ -1379,7 +1379,7 @@ class HadamSplit2d(LinearSplit):
 
     def fast_measure(self, x: torch.tensor) -> torch.tensor:
         r""" Simulate noiseless measurements from matrix A. """
-        Hx = self.measure_H(x)
+        Hx = self.fast_measure_H(x)
         x_sum = Hx[..., None, 0] # indexing while keeping the original shape
         y_pos, y_neg = (x_sum + Hx) / 2, (x_sum - Hx) / 2
         new_shape = y_pos.shape[:-1] + (2 * self.M,)
