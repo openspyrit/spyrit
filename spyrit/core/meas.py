@@ -249,8 +249,9 @@ class Linear(nn.Module):
         return x
 
     def adjoint(self, m: torch.tensor, unvectorize=False):
-        r"""
-        Apply adjoint.
+        r"""Apply adjoint of matrix H.
+
+        It computes
 
         .. math::
             x = H^Tm,
@@ -848,8 +849,8 @@ class LinearSplit(Linear):
         x = torch.einsum("mn,...n->...m", self.H, x)
         return x
 
-    def adjoint(self, y: torch.tensor):
-        r""" Apply adjoint of matrix A.
+    def adjoint(self, y: torch.tensor, unvectorize=False):
+        r"""Apply adjoint of matrix A.
         
         It computes
      
@@ -890,6 +891,8 @@ class LinearSplit(Linear):
             torch.Size([3, 60])
         """
         y = torch.einsum("mn,...m->...n", self.A, y)
+        if unvectorize:
+            m = self.unvectorize(m)
         return y
 
     def adjoint_H(self, m: torch.tensor, unvectorize=False):
