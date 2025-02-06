@@ -16,23 +16,23 @@ import spyrit.core.torch as spytorch
 class PseudoInverse(nn.Module):
     r"""Moore-Penrose pseudoinverse.
 
-    Considering linear measurements :math:`y = Hx`, where :math:`H` is the
-    measurement matrix and :math:`x` is a vectorized image, it estimates
-    :math:`x` from :math:`y` by computing :math:`\hat{x} = H^\dagger y`, where
-    :math:`H` is the Moore-Penrose pseudo inverse of :math:`H`.
+    This allows to solve the linear problem :math:`Ax = B`, by either
+    computing the least-squares solution of the equation, or by
+    computing the pseudo-inverse matrix of :math:`A`. This behavior
+    is defined by the keyword parameter :attr:`store_H_pinv`.
 
-    The pseudo inverse can either be computed using the function
-    :func:`torch.linalg.lstsq` at each forward pass or computed once and stored
-    at initialization using the function :func:`torch.linalg.pinv`. The
-    parameter :attr:`store_pinv` controls this behavior.
+    This class can also handle regularization in the computation of
+    the least-squares solution or the matrix pseudo-inverse. The
+    available regularization methods are `rcond` (which truncates the
+    matrix's SVD below a certain threshold), `L2` and `H1`.
 
     .. note::
-        When :attr:`store_pinv` is True, additional parameters (such as
+        When :attr:`store_H_pinv` is `True`, additional parameters (such as
         regularization parameters) can be passed as keyword arguments to the
         class constructor.
 
     .. note::
-        When :attr:`store_pinv` is False, additional parameters (such as
+        When :attr:`store_pinv` is `False`, additional parameters (such as
         regularization parameters) can be passed as keyword arguments to the
         forward method of this class.
 
@@ -43,8 +43,7 @@ class PseudoInverse(nn.Module):
         'L2', or 'H1'. Default: 'rcond'.
 
     Keyword Args:
-        :attr:`store_H_pinv` (bool): If False, the pseudo-inverse of the measurement
-        matrix is not computed explicitly but instead the least squares solution
+        :attr:`store_H_pinv` (bool): If False, the least squares solution
         is computed at each forward pass using the function :func:`torch.linalg.lstsq`.
         If True, computes and stores at initialization the pseudo-inverse
         of the measurement matrix using the function :func:`torch.linalg.pinv`.
@@ -60,7 +59,8 @@ class PseudoInverse(nn.Module):
 
         :attr:`reg_kwargs`: Additional keyword arguments that are passed to
         :func:`spyrit.core.torch.regularized_pinv` when :attr:`store_pinv` is True
-        or to :func:`torch.linalg.lstsq` when :attr:`store_pinv` is False.
+        or to :func:`spyrit.core.torch.resularized_lstsq` when :attr:`store_pinv`
+        is False.
     
     Attributes:
         :attr:`meas_op`: Measurement operator initialized as :attr:`meas_op`.
@@ -80,7 +80,14 @@ class PseudoInverse(nn.Module):
         :attr:`pinv`: The pseudo-inverse of the measurement matrix. It is computed
         only if :attr:`store_H_pinv` is True.
 
-    Example:
+    Example 1:
+        >>> meas_op = Linear(torch.rand(32**2, 400), (32,32))
+        >>> pinv_op = PseudoInverse(meas_op, 'H1', store_H_pinv=True)
+        >>> x = pinv_op(torch.rand(85, 3, 400))
+        >>> print(x.shape)
+        torch.Size([85, 3, 32, 32])
+
+    Example 2:
         >>> h, M = 32, 400
         >>> meas_op = HadamSplit2d(h, M)
         >>> y = torch.rand([85, 3, 400])
@@ -148,14 +155,21 @@ class PseudoInverse(nn.Module):
             (in `meas_op.meas_shape`) depending on the value of
             :attr:`self.reshape_output`.
 
-        Example:
-            >>> h, M = 32, 400
-            >>> meas_op = HadamSplit2d(h, M)
-            >>> y = torch.rand([85, 3, 400])
-            >>> pinv_op = PseudoInverse(meas_op, 'rcond')
-            >>> x = pinv_op(y, meas_op)
-            >>> print(x.shape)
-            torch.Size([85, 3, 32, 32])
+    Example 1:
+        >>> meas_op = Linear(torch.rand(32**2, 400), (32,32))
+        >>> pinv_op = PseudoInverse(meas_op, 'H1', store_H_pinv=True)
+        >>> x = pinv_op(torch.rand(85, 3, 400))
+        >>> print(x.shape)
+        torch.Size([85, 3, 32, 32])
+
+    Example 2:
+        >>> h, M = 32, 400
+        >>> meas_op = HadamSplit2d(h, M)
+        >>> y = torch.rand([85, 3, 400])
+        >>> pinv_op = PseudoInverse(meas_op, 'rcond')
+        >>> x = pinv_op(y, meas_op)
+        >>> print(x.shape)
+        torch.Size([85, 3, 32, 32])
         """
         if self.store_H_pinv:
             # Expand the pseudo-inverse to the batch size of y
