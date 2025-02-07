@@ -61,9 +61,10 @@ where :math:`H\colon  \mathbb{R}^{M\times N}` is a linear measurement operator, 
 
 In practice, measurements are obtained by uploading a set of light patterns onto a spatial light modulator (e.g., a digital micromirror device (DMD), see :ref:`principle`). Therefore, only positive patterns can be implemented. We model the actual acquisition process as 
 
-.. _eq:acquisition:
 
 .. math::
+    :label: eq_acquisition
+    
     y = \mathcal{N}(Ax)
 
 where :math:`\mathcal{N} \colon \mathbb{R}^J \to \mathbb{R}^J` represents a noise operator (e.g., Poisson or Poisson-Gaussian), :math:`A \in \mathbb{R}_+^{J\times N}` is the actual acquisition operator that models the (positive) DMD patterns, and :math:`J` is the number of DMD patterns. 
@@ -72,9 +73,9 @@ Handling non negativity with pre-processing
 -----------------------------------
 We may preprocess the measurements before reconstruction to transform the actual measurements into the target measurements
 
-.. _eq:prep:
-
 .. math::
+    :label: eq:prep
+    
     m = By \approx Hx
 
 where :math:`B\colon\mathbb{R}^{J}\to \mathbb{R}^{M}` is the preprocessing operator chosen such that :math:`BA=H`. Note that the noise of the preprocessed measurements :math:`m=By` is not the same as that of the actual measurements :math:`y`. 
@@ -107,7 +108,7 @@ A simple yet efficient method consists in correcting a traditional (e.g. linear)
 .. _eq:recon_direct:
 
 .. math::
-    \mathcal{R}_\theta = \mathcal{G}_\theta \circ \mathcal{R},  
+    \mathcal{R}_\theta = \mathcal{G}_\theta \circ \mathcal{R},  \quad \text{Eq. 1}
     
 where :math:`\mathcal{R}\colon\mathbb{R}^{M}\to\mathbb{R}^N` is a traditional hand-crafted (e.g., regularized) reconstruction operator and :math:`\mathcal{G}_\theta\colon\mathbb{R}^{N}\to\mathbb{R}^N` is a nonlinear neural network that acts in the image domain. 
 
@@ -145,17 +146,17 @@ Submodules
 SPyRiT has a modular structure with the core functionality organised in the 8 submodules of
 :class:`spyrit.core`. 
 
-1. :mod:`spyrit.core.meas` provides measurement operators that compute linear measurements corresponding to `A` in :ref:`eq:acquisition`. It also provides the adjoint and the pseudoinverse of `A`, which are the basis of any reconstruction algorithm.
+1. :mod:`spyrit.core.meas` provides measurement operators that compute linear measurements corresponding to :math:`A` in :eq:`eq_acquisition`. It also provides the adjoint and the pseudoinverse of :math:`A`, which are the basis of any reconstruction algorithm.
     
-2. :mod:`spyrit.core.noise` provides noise operators corresponding to :math:`\mathcal{N}` in :ref:`eq:acquisition`.
+2. :mod:`spyrit.core.noise` provides noise operators corresponding to :math:`\mathcal{N}` in :eq:`eq_acquisition`.
 
-3. :mod:`spyrit.core.prep` provides preprocessing operators for the operator `B` introduced in :ref:`eq:prep`. 
+3. :mod:`spyrit.core.prep` provides preprocessing operators for the operator :math:`B` introduced in :eq:`eq:prep`. 
     
 4. :mod:`spyrit.core.nnet` provides known neural networks corresponding to :math:`\mathcal{G}` in :ref:`eq:recon_direct` or :ref:`eq:pgd_no_Gamma`.
 
 5. :mod:`spyrit.core.recon` returns the reconstruction operator corresponding to :math:`\mathcal{R}`. 
 
-6. :mod:`spyrit.core.warp` provides the functionality to solve the minimisation problem of :ref:`eq:train`. 
+6. :mod:`spyrit.core.train` provides the functionality to solve the minimisation problem of :ref:`eq:train`. 
 
 7. :mod:`spyrit.core.warp` contains the operators used for dynamic acquisitions.
 
