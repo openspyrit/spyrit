@@ -64,6 +64,7 @@ In practice, measurements are obtained by uploading a set of light patterns onto
 
 .. math::
     :label:eq_acquisition
+    
     y = \mathcal{N}(Ax)
 
 where :math:`\mathcal{N} \colon \mathbb{R}^J \to \mathbb{R}^J` represents a noise operator (e.g., Poisson or Poisson-Gaussian), :math:`A \in \mathbb{R}_+^{J\times N}` is the actual acquisition operator that models the (positive) DMD patterns, and :math:`J` is the number of DMD patterns. 
@@ -73,7 +74,8 @@ Handling non negativity with pre-processing
 We may preprocess the measurements before reconstruction to transform the actual measurements into the target measurements
 
 .. math::
-    :label: eq:prep
+    :label:eq_prep
+    
     m = By \approx Hx
     
 
@@ -93,7 +95,8 @@ Learning phase
 In the case of supervised learning, it is assumed that a training dataset :math:`\{x^{(i)},y^{(i)}\}_{1 \le i \le I}` of :math:`I` pairs of ground truth images in :math:`\mathbb{R}^N` and measurements in :math:`\mathbb{R}^M` is available}. :math:`\theta^*` is then obtained by solving 
 
 .. math::
-    :label: eq:train
+    :label:eq_train
+    
     \min_{\theta}\,{\sum_{i =1}^I \mathcal{L}\left(x^{(i)},\mathcal{R}_\theta(By^{(i)})\right)},
     
 
@@ -105,7 +108,8 @@ Reconstruction operator
 A simple yet efficient method consists in correcting a traditional (e.g. linear) reconstruction by a data-driven nonlinear step 
 
 .. math::
-    :label:eq:recon_direct
+    :label:eq_recon_direct
+    
     \mathcal{R}_\theta = \mathcal{G}_\theta \circ \mathcal{R},
     
 where :math:`\mathcal{R}\colon\mathbb{R}^{M}\to\mathbb{R}^N` is a traditional hand-crafted (e.g., regularized) reconstruction operator and :math:`\mathcal{G}_\theta\colon\mathbb{R}^{N}\to\mathbb{R}^N` is a nonlinear neural network that acts in the image domain. 
@@ -113,7 +117,9 @@ where :math:`\mathcal{R}\colon\mathbb{R}^{M}\to\mathbb{R}^N` is a traditional ha
 Algorithm unfolding consists in defining :math:`\mathcal{R}_\theta` from an iterative scheme
 
 .. math::
-    \mathcal{R}_\theta = \mathcal{R}_{\theta_K} \circ ... \circ \mathcal{R}_{\theta_1}, :label:eq:pgd_no_Gamma
+    :label:eq_pgd_no_Gamma
+
+    \mathcal{R}_\theta = \mathcal{R}_{\theta_K} \circ ... \circ \mathcal{R}_{\theta_1}, 
 
 where :math:`\mathcal{R}_{\theta_k}` can be interpreted as the computation of the :math:`k`-th iteration of the iterative scheme and :math:`\theta = \bigcup_{k} \theta_k`.
 
@@ -146,13 +152,13 @@ SPyRiT has a modular structure with the core functionality organised in the 8 su
     
 2. :mod:`spyrit.core.noise` provides noise operators corresponding to :math:`\mathcal{N}` in Eq. :eq:`eq_acquisition`.
 
-3. :mod:`spyrit.core.prep` provides preprocessing operators for the operator :math:`B` introduced in Eq. :eq:`eq:prep`. 
+3. :mod:`spyrit.core.prep` provides preprocessing operators for the operator :math:`B` introduced in Eq. :eq:`eq_prep`. 
     
-4. :mod:`spyrit.core.nnet` provides known neural networks corresponding to :math:`\mathcal{G}` in Eq. :ref:`eq:recon_direct` or Eq.:eq:`eq:pgd_no_Gamma`.
+4. :mod:`spyrit.core.nnet` provides known neural networks corresponding to :math:`\mathcal{G}` in Eq. :ref:`eq_recon_direct` or Eq.:eq:`eq_pgd_no_Gamma`.
 
 5. :mod:`spyrit.core.recon` returns the reconstruction operator corresponding to :math:`\mathcal{R}`. 
 
-6. :mod:`spyrit.core.train` provides the functionality to solve the minimisation problem of Eq. :eq:`eq:train`. 
+6. :mod:`spyrit.core.train` provides the functionality to solve the minimisation problem of Eq. :eq:`eq_train`. 
 
 7. :mod:`spyrit.core.warp` contains the operators used for dynamic acquisitions.
 
@@ -169,7 +175,7 @@ Finally, :mod:`spyrit.external` provides access to `DR-UNet <https://github.com/
 
    gallery/index
 
-. autosummary::
+.. autosummary::
    :toctree: _autosummary
    :template: spyrit-module-template.rst
    :recursive:
