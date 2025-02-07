@@ -175,9 +175,11 @@ Finally, :mod:`spyrit.external` provides access to `DR-UNet <https://github.com/
 
    gallery/index
 
-.. toctree::
-   :maxdepth: 2
-   :hidden:
+.. autosummary::
+   :toctree: _autosummary
+   :template: spyrit-module-template.rst
+   :recursive:
+   :caption: Contents
    
    spyrit.core
    spyrit.misc
