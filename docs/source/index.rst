@@ -74,9 +74,9 @@ Handling non negativity with pre-processing
 We may preprocess the measurements before reconstruction to transform the actual measurements into the target measurements
 
 .. math::
-    :label: eq:prep
     
     m = By \approx Hx
+    :label:eq:prep
 
 where :math:`B\colon\mathbb{R}^{J}\to \mathbb{R}^{M}` is the preprocessing operator chosen such that :math:`BA=H`. Note that the noise of the preprocessed measurements :math:`m=By` is not the same as that of the actual measurements :math:`y`. 
 
@@ -93,10 +93,9 @@ Learning phase
 -----------------------------------
 In the case of supervised learning, it is assumed that a training dataset :math:`\{x^{(i)},y^{(i)}\}_{1 \le i \le I}` of :math:`I` pairs of ground truth images in :math:`\mathbb{R}^N` and measurements in :math:`\mathbb{R}^M` is available}. :math:`\theta^*` is then obtained by solving 
 
-.. _eq:train:
-
 .. math::
     \min_{\theta}\,{\sum_{i =1}^I \mathcal{L}\left(x^{(i)},\mathcal{R}_\theta(By^{(i)})\right)},
+    :label: eq:train
 
 where :math:`\mathcal{L}` is the training loss (e.g., squared error). In the case where only ground truth images :math:`\{x^{(i)}\}_{1 \le i \le I}` are available, the associated measurements are simulated as :math:`y^{(i)} = \mathcal{N}(Ax^{(i)})`, :math:`1 \le i \le I`.
 
@@ -105,19 +104,15 @@ Reconstruction operator
 -----------------------------------
 A simple yet efficient method consists in correcting a traditional (e.g. linear) reconstruction by a data-driven nonlinear step 
 
-.. _eq:recon_direct:
-
 .. math::
-    \mathcal{R}_\theta = \mathcal{G}_\theta \circ \mathcal{R},  \quad \text{Eq. 1}
+    \mathcal{R}_\theta = \mathcal{G}_\theta \circ \mathcal{R}, \quad :label:eq:recon_direct
     
 where :math:`\mathcal{R}\colon\mathbb{R}^{M}\to\mathbb{R}^N` is a traditional hand-crafted (e.g., regularized) reconstruction operator and :math:`\mathcal{G}_\theta\colon\mathbb{R}^{N}\to\mathbb{R}^N` is a nonlinear neural network that acts in the image domain. 
 
 Algorithm unfolding consists in defining :math:`\mathcal{R}_\theta` from an iterative scheme
 
-.. _eq:pgd_no_Gamma:
-
 .. math::
-    \mathcal{R}_\theta = \mathcal{R}_{\theta_K} \circ ... \circ \mathcal{R}_{\theta_1},
+    \mathcal{R}_\theta = \mathcal{R}_{\theta_K} \circ ... \circ \mathcal{R}_{\theta_1}, :label:eq:pgd_no_Gamma
 
 where :math:`\mathcal{R}_{\theta_k}` can be interpreted as the computation of the :math:`k`-th iteration of the iterative scheme and :math:`\theta = \bigcup_{k} \theta_k`.
 
@@ -144,38 +139,27 @@ Submodules
 -----------------------------------
 
 SPyRiT has a modular structure with the core functionality organised in the 8 submodules of
-:class:`spyrit.core`. 
+:mod:`spyrit.core`. 
 
 1. :mod:`spyrit.core.meas` provides measurement operators that compute linear measurements corresponding to :math:`A` in :eq:`eq_acquisition`. It also provides the adjoint and the pseudoinverse of :math:`A`, which are the basis of any reconstruction algorithm.
     
-2. :mod:`spyrit.core.noise` provides noise operators corresponding to :math:`\mathcal{N}` in :eq:`eq_acquisition`.
+2. :mod:`spyrit.core.noise` provides noise operators corresponding to :math:`\mathcal{N}` in Eq. :eq:`eq_acquisition`.
 
-3. :mod:`spyrit.core.prep` provides preprocessing operators for the operator :math:`B` introduced in :eq:`eq:prep`. 
+3. :mod:`spyrit.core.prep` provides preprocessing operators for the operator :math:`B` introduced in Eq. :eq:`eq:prep`. 
     
-4. :mod:`spyrit.core.nnet` provides known neural networks corresponding to :math:`\mathcal{G}` in :ref:`eq:recon_direct` or :ref:`eq:pgd_no_Gamma`.
+4. :mod:`spyrit.core.nnet` provides known neural networks corresponding to :math:`\mathcal{G}` in Eq. :ref:`eq:recon_direct` or Eq. :eq:`eq:pgd_no_Gamma`.
 
 5. :mod:`spyrit.core.recon` returns the reconstruction operator corresponding to :math:`\mathcal{R}`. 
 
-6. :mod:`spyrit.core.train` provides the functionality to solve the minimisation problem of :ref:`eq:train`. 
+6. :mod:`spyrit.core.train` provides the functionality to solve the minimisation problem of Eq. :eq:`eq:train`. 
 
 7. :mod:`spyrit.core.warp` contains the operators used for dynamic acquisitions.
 
 8. :mod:`spyrit.core.torch` contains utility functions.
 
-In addition, the subpackage :class:`spyrit.misc` contains various utility functions for Numpy / PyTorch that can be used independently of the core functions.
+In addition, :mod:`spyrit.misc` contains various utility functions for Numpy / PyTorch that can be used independently of the core functions.
 
-
-.. autosummary::
-   :toctree: _autosummary
-   :template: spyrit-module-template.rst
-   :recursive:
-   :caption: Contents
-
-   spyrit.core
-   spyrit.misc
-   spyrit.external
-
-
+Finally, :mod:`spyrit.external` provides access to `DR-UNet<https://github.com/cszn/DPIR/blob/master/models/network_unet.py>`_.
 
 .. toctree::
    :maxdepth: 2
