@@ -669,6 +669,7 @@ class LinearSplit(Linear):
     
         Example 1: (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 20.
             
+        >>> import torch
         >>> import spyrit.core.meas as meas    
         >>> H = torch.randn(10, 15)
         >>> meas_op = meas.LinearSplit(H)
@@ -679,6 +680,7 @@ class LinearSplit(Linear):
 
         Example 2: 3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 20. The acquisition matrix applies to both dimensions -2 and -1.
             
+        >>> import torch
         >>> import spyrit.core.meas as meas    
         >>> H = torch.randn(10, 60)
         >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
