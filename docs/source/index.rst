@@ -13,12 +13,69 @@ package primarily designed for single-pixel imaging. SPyRiT is modular and may b
 Single-pixel imaging
 ==================================
 
-Single-pixel imaging allows high-quality images to be provided by a device that is only equipped with a single point detector. It is based on the acquisition of the inner products of a scene with some light patterns
+Single-pixel imaging aims to recover an unknown image :math:`x\in\Re^N` from a few noisy observations 
 
 .. math::
-   y_k = p_k^{\top}x,
+    m \approx Hx,
 
-where :math:`x \in \mathbb{R}^{N}` represents the image of the scene and :math:`p_k \in \mathbb{R}^N` represents the :math:`k`-th light pattern displayed on the spatial light modulator. Next, the image needs to be reconstructed from the sequence of measurements obtained with :math:`K` different light patterns. The case :math:`K < N` is often considered to reduce the total acquisition time.
+where :math:`H\colon  \Re^{M\times N}` is a linear measurement operator, :math:`M` is the number of measurements and :math:`N` is the number of pixels in the image.
+
+Simulation of the measurements
+-----------------------------------
+In practice, measurements are obtained by uploading a set of light patterns onto a spatial light modulator (e.g., a digital micromirror device (DMD), see \Fig{fig:principle}). Therefore, only positive patterns can be implemented. We model the actual acquisition process as 
+
+.. math::
+    y = \mathcal{N}(Ax), \label{eq:acquisition}
+
+where :math:`\mathcal{N} \colon \Re^J \to \Re^J` represents a noise operator (e.g., Poisson or Poisson-Gaussian), :math:`A \in \Re_+^{J\times N}` is the actual acquisition operator that models the (positive) DMD patterns, and :math:`J` is the number of DMD patterns. 
+
+Handling non negativity with pre-processing
+-----------------------------------
+We may preprocess the measurements before reconstruction to transform the actual model \Eq{eq:acquisition} into the target model \Eq{eq:acq-process}
+
+.. math::
+    m = By \approx Hx, \label{eq:prep}
+
+where :math:`B\colon\Re^{J}\to \Re^{M}` is the preprocessing operator chosen such that :math:`BA=H$. Note that the noise of the preprocessed measurements :math:`m=By` is not the same as that of the actual measurements :math:`y$. 
+
+Data-driven image reconstruction
+-----------------------------------
+Data-driven methods based on deep learning aim to find an estimate :math:`x^*\in \Re^N` of the unknown image :math:`x` from the preprocessed measurements :math:`By` (see \Eq{eq:prep}), using a reconstruction operator :math:`\mathcal{R}_{\theta^*} \colon \Re^M \to \Re^N$
+
+.. math::
+    \mathcal{R}_{\theta^*}(m) = x^* \approx x, 
+
+where :math:`\theta^*` represents the parameters learned during a training procedure. 
+
+Learning phase
+-----------------------------------
+In the case of supervised learning, it is assumed that a training dataset :math:`\{x^{(i)},y^{(i)}\}_{1 \le i \le I}` of :math:`I` pairs of ground truth images in :math:`\Re^N` and measurements in :math:`\Re^M` is available}. :math:`\theta^* :math:` is then obtained by solving 
+
+.. math::
+    \minimize{\theta}{\sum_{i =1}^I \mathcal{L}\left(x^{(i)},\mathcal{R}_\theta(By^{(i)})\right)},
+    \label{eq:train}
+
+where :math:`\mathcal{L}` is the training loss (e.g., squared error). In the case where only ground truth images :math:`\{x^{(i)}\}_{1 \le i \le I}` are available, the associated measurements are simulated as :math:`y^{(i)} = \op{N}(Ax^{(i)})$, :math:`1 \le i \le I$.
+
+
+Reconstruction operator
+-----------------------------------
+A simple yet efficient method consists in correcting a traditional (e.g. linear) reconstruction by a data-driven nonlinear step 
+
+.. math::
+    \label{eq:recon_direct}
+    \mathcal{R}_\theta = \mathcal{G}_\theta \circ \mathcal{R},  
+    
+where :math:`\mathcal{R}\colon\Re^{M}\to\Re^N` is a traditional hand-crafted (e.g., regularized) reconstruction operator and :math:`\mathcal{G}_\theta\colon\Re^{N}\to\Re^N` is a nonlinear neural network that acts in the image domain. 
+
+Algorithm unfolding consists in defining :math:`\mathcal{R}_\theta` from an iterative scheme
+
+.. math::
+    \mathcal{R}_\theta = \mathcal{R}_{\theta_K} \circ \hdots \circ \mathcal{R}_{\theta_1},
+    \label{eq:recon_iterative}
+
+where :math:`\mathcal{R}_{\theta_k}` can be interpreted as the computation of the :math:`k$-th iteration of the iterative scheme and :math:`\theta = \bigcup_{k} \theta_k$.
+
 
 SPyRiT's full network
 ==================================
