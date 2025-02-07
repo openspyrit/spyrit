@@ -63,7 +63,7 @@ In practice, measurements are obtained by uploading a set of light patterns onto
 
 
 .. math::
-    :label:eq_acquisition
+    :label: eq_acquisition
     
     y = \mathcal{N}(Ax)
 
@@ -74,7 +74,7 @@ Handling non negativity with pre-processing
 We may preprocess the measurements before reconstruction to transform the actual measurements into the target measurements
 
 .. math::
-    :label:eq_prep
+    :label: eq_prep
     
     m = By \approx Hx
     
@@ -95,7 +95,7 @@ Learning phase
 In the case of supervised learning, it is assumed that a training dataset :math:`\{x^{(i)},y^{(i)}\}_{1 \le i \le I}` of :math:`I` pairs of ground truth images in :math:`\mathbb{R}^N` and measurements in :math:`\mathbb{R}^M` is available}. :math:`\theta^*` is then obtained by solving 
 
 .. math::
-    :label:eq_train
+    :label: eq_train
     
     \min_{\theta}\,{\sum_{i =1}^I \mathcal{L}\left(x^{(i)},\mathcal{R}_\theta(By^{(i)})\right)},
     
@@ -108,7 +108,7 @@ Reconstruction operator
 A simple yet efficient method consists in correcting a traditional (e.g. linear) reconstruction by a data-driven nonlinear step 
 
 .. math::
-    :label:eq_recon_direct
+    :label: eq_recon_direct
     
     \mathcal{R}_\theta = \mathcal{G}_\theta \circ \mathcal{R},
     
@@ -117,7 +117,7 @@ where :math:`\mathcal{R}\colon\mathbb{R}^{M}\to\mathbb{R}^N` is a traditional ha
 Algorithm unfolding consists in defining :math:`\mathcal{R}_\theta` from an iterative scheme
 
 .. math::
-    :label:eq_pgd_no_Gamma
+    :label: eq_pgd_no_Gamma
 
     \mathcal{R}_\theta = \mathcal{R}_{\theta_K} \circ ... \circ \mathcal{R}_{\theta_1}, 
 
@@ -154,7 +154,7 @@ SPyRiT has a modular structure with the core functionality organised in the 8 su
 
 3. :mod:`spyrit.core.prep` provides preprocessing operators for the operator :math:`B` introduced in Eq. :eq:`eq_prep`. 
     
-4. :mod:`spyrit.core.nnet` provides known neural networks corresponding to :math:`\mathcal{G}` in Eq. :ref:`eq_recon_direct` or Eq.:eq:`eq_pgd_no_Gamma`.
+4. :mod:`spyrit.core.nnet` provides known neural networks corresponding to :math:`\mathcal{G}` in Eq. :eq:`eq_recon_direct` or Eq. :eq:`eq_pgd_no_Gamma`.
 
 5. :mod:`spyrit.core.recon` returns the reconstruction operator corresponding to :math:`\mathcal{R}`. 
 
@@ -175,8 +175,10 @@ Finally, :mod:`spyrit.external` provides access to `DR-UNet <https://github.com/
 
    gallery/index
 
-.. autosummary::
-   :toctree: _autosummary
-   :template: spyrit-module-template.rst
-   :recursive:
-   :caption: Contents
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   
+   spyrit.core
+   spyrit.misc
+   spyrit.external
