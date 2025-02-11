@@ -33,7 +33,7 @@ and number of channels.
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
+# Images :math:`x` for training neural networks expect values in (0,1). The images are normalized
 # using the :func:`transform_gray_norm` function. Spyrit can handle images
 # with the shape :math:`(h, w)` or :math:`(*, h, w)`, where :math:`*` represents
 # any number of additional dimensions, e.g. batch size and number of channels.
@@ -57,8 +57,8 @@ if False:
     spyritPath = os.getcwd()
     imgs_path = os.path.join(spyritPath, "images/")
 
-    # Create a transform for natural images to normalized grayscale image tensors
-    transform = transform_gray_norm(img_size=h)
+    # Grayscale images of size 64 x 64, no normalization to keep values in (0,1)
+    transform = transform_gray_norm(img_size=h, normalize=False)
 
     # Create dataset and loader (expects class folder 'images/test/')
     dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
@@ -74,7 +74,7 @@ if False:
     b, c, h, w = x.shape
 
     # plot
-    imagesc(x[0, 0, :, :], r"$x$ in [-1, 1]")
+    imagesc(x[0, 0, :, :], r"$x$ in (0, 1)")
 
     # %%
     # The measurement and noise operators
@@ -122,10 +122,8 @@ if False:
     # are always vectorized, the measurement vector is a vectorized image.
 
     from spyrit.core.meas import Linear
-    from spyrit.core.noise import NoNoise
 
     meas_op = Linear(torch.eye(h * h))
-    noise_op = NoNoise(meas_op)
 
     ###############################################################################
     # We simulate the measurement vector :math:`y` that we want to visualise as an image.
