@@ -1,5 +1,5 @@
 r"""
-01. Noise operators
+02. Noise operators
 ===================================================
 .. _tuto_pseudoinverse_linear:
 
@@ -30,15 +30,11 @@ import matplotlib.pyplot as plt
 from spyrit.misc.disp import imagesc
 from spyrit.misc.statistics import transform_gray_norm
 
-# sphinx_gallery_thumbnail_path = 'fig/tuto1.png'
-
-h = 64  # image size hxh
-i = 1  # Image index (modify to change the image)
 spyritPath = os.getcwd()
 imgs_path = os.path.join(spyritPath, "images/")
 
 # Grayscale images of size 64 x 64, no normalization to keep values in (0,1)
-transform = transform_gray_norm(img_size=h, normalize=False)
+transform = transform_gray_norm(img_size=64, normalize=False)
 
 # Create dataset and loader (expects class folder 'images/test/')
 dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
@@ -47,13 +43,12 @@ dataloader = torch.utils.data.DataLoader(dataset, batch_size=7)
 x, _ = next(iter(dataloader))
 print(f"Shape of input images: {x.shape}")
 
-# Select image
-x = x.detach()
-print(f"Shape of selected image: {x.shape}")
-b, c, h, w = x.shape
 
-# plot
-imagesc(x[1, 0, :, :], r"$x$ in (0, 1)")
+###############################################################################
+# We select the first image in the batch and plot it.
+
+i_plot = 1
+imagesc(x[i_plot, 0, :, :], r"$x$ in (0, 1)")
 
 
 # %%
@@ -128,15 +123,15 @@ y3 = noise_op(x)  # noisy measurement vector
 # plot
 f, axs = plt.subplots(1, 3, figsize=(10, 5))
 axs[0].set_title("100 photons")
-im = axs[0].imshow(y1[1, 0].reshape(h, h), cmap="gray")
+im = axs[0].imshow(y1[1, 0].reshape(64, 64), cmap="gray")
 add_colorbar(im, "bottom")
 
 axs[1].set_title("100 photons")
-im = axs[1].imshow(y2[1, 0].reshape(h, h), cmap="gray")
+im = axs[1].imshow(y2[1, 0].reshape(64, 64), cmap="gray")
 add_colorbar(im, "bottom")
 
 axs[2].set_title("1000 photons")
-im = axs[2].imshow(y3[1, 0,].reshape(h, h), cmap="gray")
+im = axs[2].imshow(y3[1, 0,].reshape(64, 64), cmap="gray")
 add_colorbar(im, "bottom")
 
 noaxis(axs)
