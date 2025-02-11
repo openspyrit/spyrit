@@ -23,23 +23,25 @@ where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a no
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We consider 3 signals of length 15 are measured with an acquisition matrix of shape (10, 15). 
+# We instantiate a measurement operator from a a 10 x 15 random matrix.
 import torch
 from spyrit.core.meas import Linear
 
-# We instantiate a measurement operator from a 10 x 15 random matrix 
 H = torch.randn(10, 15)
 meas_op = Linear(H)
 
+###############################################################################
 # We consider 3 signals of length 15
 x = torch.randn(3, 15)
 
-# This produces 3 measurements of length 10
+###############################################################################
+# We apply the operator to the batch of images, which produces 3 measurements 
+# of length 10
 y = meas_op(x)
 print(y.shape)
 
 ###############################################################################
-# We now plot the matrix vector products
+# We now plot the matrix-vector products
 
 from spyrit.misc.disp import add_colorbar, noaxis
 import matplotlib.pyplot as plt
