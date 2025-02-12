@@ -14,7 +14,7 @@ All simulations are based on :class:`spyrit.core.meas.Linear` base class that si
 where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
 
 .. important::
-    The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`).
+    The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`). Both variables are related through vectorization , i.e., :math:`x = \textsf(vec)(X)`.
 
 """
 
@@ -93,7 +93,7 @@ print(f"Shape of input images: {x.shape}")
 ###############################################################################
 # We plot the second image
 from spyrit.misc.disp import imagesc
-imagesc(x[1, 0, :, :], r"image $x$")
+imagesc(x[1, 0, :, :], r"image $X$")
 
 
 ###############################################################################

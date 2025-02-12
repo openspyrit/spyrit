@@ -16,157 +16,178 @@ These tutorials load image samples from `/images/`.
 """
 
 # %%
-# Load a batch of images
+# Simulate measurements
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# Images :math:`x` for training expect values in [-1,1]. The images are normalized
-# using the :func:`transform_gray_norm` function.
+# We load a batch of images from the `/images/` folder. Using the 
+# :func:`transform_gray_norm` function with the :attr:`normalize=False` 
+# argument returns images with values in (0,1).
+import os
+import torchvision
+import torch.nn
+from spyrit.misc.statistics import transform_gray_norm
+
+spyritPath = os.getcwd()
+imgs_path = os.path.join(spyritPath, "images/")
+
+# Grayscale images of size 32 x 32, no normalization to keep values in (0,1)
+transform = transform_gray_norm(img_size=64, normalize=False)
+
+# Create dataset and loader (expects class folder 'images/test/')
+dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=7)
+
+x, _ = next(iter(dataloader))
+print(f"Ground-truth images: {x.shape}")
+
+
+# %%
+# Linear without noise
+# -----------------------------------------------------------------------------
+
+###############################################################################
+# Hadamard matrix in "2D" with shape (64*64, 64*64) with values in {-1, 1}
+from spyrit.core.torch import walsh_matrix_2d
+
+H = walsh_matrix_2d(64)
+
+print(f"Acquisition matrix: {H.shape}", end=' ')
+print(fr"with values in {{{H.min()}, {H.max()}}}")
+
+###############################################################################
+# Linear operator, working on images with shape (64, 64). To indicate that the operator works in 2D, we use the :attr:`meas_shape` argument.
+from spyrit.core.meas import Linear
+
+meas_op = Linear(H, (64,64))
+
+###############################################################################
+# We simulate the measurement vectors with shape (7, 1, 4096)
+y = meas_op(x)
+
+print(f"Measurement vectors: {y.shape}")
+
+###############################################################################
+# We now compute the pseudo inverse solution with shape (7, 1, 64, 64)
+from spyrit.core.inverse import PseudoInverse
+
+pinv = PseudoInverse(meas_op)
+x_rec = pinv(y)
+
+print(f"Reconstructed images: {x_rec.shape}")
+
+###############################################################################
+# We plot the reconstruction
+from spyrit.misc.disp import imagesc, add_colorbar
+
+imagesc(x_rec[1,0])
+
+# %%
+# LinearSplit and Gaussian noise
+# -----------------------------------------------------------------------------
+
+###############################################################################
+# Linear operator where the positive and negative components are split, i.e. acquired separately.
+from spyrit.core.meas import LinearSplit
+
+meas_op = LinearSplit(H, (64,64))
+
+###############################################################################
+# We consider additive Gaussian noise with standard deviation 2.
+from spyrit.core.noise import Gaussian
+
+meas_op.noise_model = Gaussian(2)
+
+###############################################################################
+# We simulate the measurement vectors with shape (7, 1, 8192)
+y = meas_op(x)
+
+print(f"Measurement vectors: {y.shape}")
+
+###############################################################################
+# We preprocess measurement vectors with shape (7, 1, 4096) by computing the difference of the positive and negative components :math:`m = y_+ - y_-`. To do so, we use the :class:`spyrit.core.prep.Unsplit` class.
+
+from spyrit.core.prep import Unsplit
+
+prep = Unsplit()
+m = prep(y)
+
+print(f"Preprocessed measurement vectors: {m.shape}")
+
+###############################################################################
+# We now compute the pseudo inverse solution with shape (7, 1, 64, 64)
+from spyrit.core.inverse import PseudoInverse
+
+pinv = PseudoInverse(meas_op)
+x_rec = pinv(m)
+
+print(f"Reconstructed images: {x_rec.shape}")
+
+###############################################################################
+# We plot the reconstruction
+from spyrit.misc.disp import imagesc, add_colorbar
+
+imagesc(x_rec[1,0])
+
+#%% 
+# HadamSplit2d with x4 subsampling x4 and Poisson noise
+# -----------------------------------------------------------------------------
+
+###############################################################################
+# Hadamard transform in 2D using the dedicated :class:`spyrit.core.prep.HadamSplit2d` operator. The operator is used to simulate the acquisition of the positive and negative components of the Hadamard transform of an image. It allows for subsampling the rows the Hadamard matrix using a sampling map.
+
+from spyrit.core.meas import HadamSplit2d
+
+# Sampling map with ones in the top left corner and zeros elsewhere (low-frequency subsampling)
+sampling_map = torch.ones((64, 64))
+sampling_map[:, 64 // 2 :] = 0
+sampling_map[64 // 2 :, :] = 0
+
+# Linear operator with HadamSplit2d
+meas_op = HadamSplit2d(64, 64**2//4, order=sampling_map, reshape_output=True)
+
+###############################################################################
+# We consider additive Poisson noise with an intensity of 100 photons.
+from spyrit.core.noise import Poisson
+
+meas_op.noise_model = Poisson(100)
+
+
+###############################################################################
+# We simulate the measurement vectors with shape (7, 1, 8192)
+
+# .. note::
+#       The :class:`spyrit.core.prep.Poisson` class noise assumes that the images are in the range [0, 1] 
+y = meas_op(x)
+
+print(fr"Reference images with values in {{{x.min()}, {x.max()}}}")
+print(f"Measurement vectors: {y.shape}")
+
+###############################################################################
+# We preprocess measurement vectors with shape (7, 1, 1024) by i)computing the difference of the positive and negative components, and ii)normalizing the intensity :math:`m = (y_+ - y_-)/\alpha`. To do so, we use the :class:`spyrit.core.prep.UnsplitRescale` class.
+
+from spyrit.core.prep import UnsplitRescale
+prep = UnsplitRescale(100)   
+
+m = prep(y) # (y+ - y-)/alpha 
+print(f"Preprocessed measurement vectors: {m.shape}")
+
+###############################################################################
+# We compute the pseudo inverse solution with shape (7, 1, 64, 64). There is no need to use the :class:`spyrit.core.inverse.PseudoInverse` class as the measurement operator has a pseudo-inverse already computed.
+
+x_rec = meas_op.fast_pinv(m)  
+
+print(f"Reconstructed images: {x_rec.shape}")
+
+###############################################################################
+# We plot the reconstruction
+from spyrit.misc.disp import imagesc, add_colorbar
+
+imagesc(x_rec[1,0])
+
+
+    
 if False:
-
-    import os
-
-    import torch
-    import torchvision
-
-    import spyrit.core.torch as spytorch
-    from spyrit.misc.disp import imagesc
-    from spyrit.misc.statistics import transform_gray_norm
-
-    # sphinx_gallery_thumbnail_path = 'fig/tuto2.png'
-
-    h = 64  # image size hxh
-    i = 1  # Image index (modify to change the image)
-    spyritPath = os.getcwd()
-    imgs_path = os.path.join(spyritPath, "images/")
-
-    # Create a transform for natural images to normalized grayscale image tensors
-    transform = transform_gray_norm(img_size=h)
-
-    # Create dataset and loader (expects class folder 'images/test/')
-    dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=7)
-
-    x, _ = next(iter(dataloader))
-    print(f"Shape of input images: {x.shape}")
-
-    # Select image
-    x = x[i : i + 1, :, :, :]
-    x = x.detach().clone()
-    print(f"Shape of selected image: {x.shape}")
-    b, c, h, w = x.shape
-
-    # plot
-    imagesc(x[0, 0, :, :], r"$x$ in [-1, 1]")
-
-    # %%
-    # Define a measurement operator
-    # -----------------------------------------------------------------------------
-    # .. _hadamard_positive:
-
-    ###############################################################################
-    # We consider the case where the measurement matrix is the positive
-    # component of a Hadamard matrix, which is often used in single-pixel imaging.
-    # First, we compute a full Hadamard matrix that computes the 2D transform of an
-    # image of size :attr:`h` and takes its positive part.
-
-    F = spytorch.walsh_matrix_2d(h)
-    F = torch.max(F, torch.zeros_like(F))
-
-    ###############################################################################
-    # .. _low_frequency:
-    #
-    # Next, we subsample the rows of the measurement matrix to simulate an
-    # accelerated acquisition. For this, we use the
-    # :func:`spyrit.core.torch.sort_by_significance` function
-    # that returns an input matrix whose rows are ordered in increasing order of
-    # significance according to a given array. The array is a sampling map that
-    # indicates the location of the most significant coefficients in the
-    # transformed domain.
-    #
-    # To keep the low-frequency Hadamard coefficients, we choose a sampling map
-    # with ones in the top left corner and zeros elsewhere.
-
-    import math
-
-    und = 4  # undersampling factor
-    M = h**2 // und  # number of measurements (undersampling factor = 4)
-
-    Sampling_map = torch.zeros(h, h)
-    M_xy = math.ceil(M**0.5)
-    Sampling_map[:M_xy, :M_xy] = 1
-
-    imagesc(Sampling_map, "low-frequency sampling map")
-
-    ###############################################################################
-    # After permutation of the full Hadamard matrix, we keep only its first
-    # :attr:`M` rows
-
-    F = spytorch.sort_by_significance(F, Sampling_map, "rows", False)
-    H = F[:M, :]
-
-    print(f"Shape of the measurement matrix: {H.shape}")
-
-    ###############################################################################
-    # Then, we instantiate a :class:`spyrit.core.meas.Linear` measurement operator
-
-    from spyrit.core.meas import Linear
-
-    meas_op = Linear(H, pinv=True)
-
-    # %%
-    # Noiseless case
-    # -----------------------------------------------------------------------------
-
-    ###############################################################################
-    # In the noiseless case, we consider the :class:`spyrit.core.noise.NoNoise` noise
-    # operator
-
-    from spyrit.core.noise import NoNoise
-
-    noise = NoNoise(meas_op)
-
-    # Simulate measurements
-    y = noise(x)
-    print(f"Shape of raw measurements: {y.shape}")
-
-    ###############################################################################
-    # To display the subsampled measurement vector as an image in the transformed
-    # domain, we use the :func:`spyrit.core.torch.meas2img` function
-
-    # plot
-    y_plot = spytorch.meas2img(y, Sampling_map)
-
-    print(f"Shape of the raw measurement image: {y_plot.shape}")
-    imagesc(y_plot[0, 0, :, :], "Raw measurements (no noise)")
-
-    ###############################################################################
-    # We now compute and plot the preprocessed measurements corresponding to an
-    # image in [-1,1]. For details in the preprocessing, see :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_acquisition_operators.py>`.
-    #
-    # .. note::
-    #
-    #       Using :class:`spyrit.core.prep.DirectPoisson` with :math:`\alpha = 1`
-    #       allows to compensate for the image normalisation achieved by
-    #       :class:`spyrit.core.noise.NoNoise`.
-
-    from spyrit.core.prep import DirectPoisson
-
-    prep = DirectPoisson(1.0, meas_op)  # "Undo" the NoNoise operator
-
-    m = prep(y)
-    print(f"Shape of the preprocessed measurements: {m.shape}")
-
-    # plot
-    m_plot = spytorch.meas2img(m, Sampling_map)
-
-    print(f"Shape of the preprocessed measurement image: {m_plot.shape}")
-    imagesc(m_plot[0, 0, :, :], "Preprocessed measurements (no noise)")
-
-    # %%
-    # Pseudo inverse
-    # -----------------------------------------------------------------------------
-
     ###############################################################################
     # There are two ways to perform the pseudo inverse reconstruction from the
     # measurements :attr:`y`. The first consists of explicitly computing the
@@ -233,93 +254,3 @@ if False:
     ax2.set_title("Least-squares pseudo-inverse reconstruction")
     add_colorbar(im2, "right", size="20%")
 
-    # %%
-    # PinvNet Network
-    # -----------------------------------------------------------------------------
-
-    ###############################################################################
-    # Alternatively, we can consider the :class:`spyrit.core.recon.PinvNet` class that reconstructs an
-    # image by computing the pseudoinverse solution, which is fed to a neural
-    # networker denoiser. To compute the pseudoinverse solution only, the denoiser
-    # can be set to the identity operator
-
-    ###############################################################################
-    # .. image:: ../fig/pinvnet.png
-    #    :width: 400
-    #    :align: center
-    #    :alt: Sketch of the PinvNet architecture
-
-    from spyrit.core.recon import PinvNet
-
-    pinv_net = PinvNet(noise, prep, denoi=torch.nn.Identity())
-
-    ###############################################################################
-    # or equivalently
-    pinv_net = PinvNet(noise, prep)
-
-    ###############################################################################
-    # Then, we reconstruct the image from the measurement vector :attr:`y` using the
-    # :func:`~spyrit.core.recon.PinvNet.reconstruct` method.
-
-    x_rec = pinv_net.reconstruct(y)
-    print("Shape of the PinvNet reconstructed image:", x_rec.shape)
-
-    # plot
-    imagesc(x_rec[0, 0, :, :], "PinvNet reconstruction (no noise)", title_fontsize=20)
-
-    ###############################################################################
-    # Alternatively, the measurement vector can be simulated using the
-    # :func:`~spyrit.core.recon.PinvNet.acquire` method
-
-    y = pinv_net.acquire(x)
-    x_rec = pinv_net.reconstruct(y)
-
-    # plot
-    imagesc(x_rec[0, 0, :, :], "Another pseudoinverse reconstruction (no noise)")
-
-    ###############################################################################
-    # Note that the full module :attr:`pinv_net` both simulates noisy measurements
-    # and reconstruct them
-
-    x_rec = pinv_net(x)
-    print(f"Ground-truth image x: {x.shape}")
-    print(f"Reconstructed x_rec: {x_rec.shape}")
-
-    # plot
-    imagesc(x_rec[0, 0, :, :], "One more pseudoinverse reconstruction (no noise)")
-
-    # %%
-    # Poisson-corrupted measurement
-    # -----------------------------------------------------------------------------
-
-    ###############################################################################
-    # Here, we consider the :class:`spyrit.core.noise.Poisson` class
-    # together with a :class:`spyrit.core.prep.DirectPoisson`
-    # preprocessing operator (see :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_acquisition_operators.py>`).
-
-    alpha = 10  # maximum number of photons in the image
-
-    from spyrit.core.noise import Poisson
-    from spyrit.misc.disp import imagecomp
-
-    noise = Poisson(meas_op, alpha)
-    prep = DirectPoisson(alpha, meas_op)  # To undo the "Poisson" operator
-    pinv_net = PinvNet(noise, prep)
-
-    x_rec_1 = pinv_net(x)
-    x_rec_2 = pinv_net(x)
-    print(f"Ground-truth image x: {x.shape}")
-    print(f"Reconstructed x_rec: {x_rec.shape}")
-
-    # plot
-    x_plot_1 = x_rec_1[0, 0, :, :]
-    x_plot_1[:2, :2] = 0.0  # hide the top left "crazy pixel" that collects noise
-    x_plot_2 = x_rec_2[0, 0, :, :]
-    x_plot_2[:2, :2] = 0.0  # hide the top left "crazy pixel" that collects noise
-    imagecomp(
-        x_plot_1, x_plot_2, "Pseudoinverse reconstruction", "Noise #1", "Noise #2"
-    )
-
-    ###############################################################################
-    # As shown in the next tutorial, a denoising neural network can be trained to
-    # postprocess the pseudo inverse solution.
