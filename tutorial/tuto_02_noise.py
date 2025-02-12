@@ -1,16 +1,16 @@
 r"""
 02. Noise operators
 ===================================================
-.. _tuto_pseudoinverse_linear:
+.. _tuto_noise:
 
-This tutorial shows how to use noise operators.
+This tutorial shows how to use noise operators using the :mod:`spyrit.core.noise` submodule.
 
 .. image:: ../fig/tuto2.png
    :width: 600
    :align: center
    :alt: Reconstruction architecture sketch
 
-
+|
 """
 
 # %%
@@ -61,7 +61,7 @@ imagesc(x[i_plot, 0, :, :], r"$x$ in (0, 1)")
 # .. math::
 #       y \sim z + \mathcal{N}(0,\sigma^2),
 #
-# where where :math:`\mathcal{N}(\mu, \sigma^2)` is a Gaussian distribution with mean :math:`\mu` and variance :math:`\sigma^2`, and :math:`z` is the noiseless image. The larger :math:`\sigma`, the lower the signal-to-noise ratio.
+# where :math:`\mathcal{N}(\mu, \sigma^2)` is a Gaussian distribution with mean :math:`\mu` and variance :math:`\sigma^2`, and :math:`z` is the noiseless image. The larger :math:`\sigma`, the lower the signal-to-noise ratio.
 
 ###############################################################################
 # To add 10% Gaussian noise, we instantiate a :class:`spyrit.core.noise` 

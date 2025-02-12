@@ -1,19 +1,29 @@
 Tutorials
 =========
 
-Here you can find a series of Tutorials that will guide you through the use
-of Spyrit. It is recommended to follow them in order.
+This series of tutorials should guide you through the use of the SPyRiT pipeline. 
 
-For each tutorial, please download the corresponding Python Script (*.py*) or
-Jupyter notebook (*.ipynb*) file at the bottom of the page. The images used in
-these tutorials can be found on `this page`_ of the Spyrit GitHub.
+.. figure:: ../fig/direct_net.png
+   :width: 600
+   :align: center
+   :alt: SPyRiT pipeline
 
-Below is a diagram of the entire image processing pipeline. Each tutorial
-focuseson a specific part of the pipeline.
+|
 
-* :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_acquisition_operators.py>` focuses on the measurement operators, with or without noise
+Each tutorial focuses on a specific submodule of the full pipeline.
 
-* :ref:`Tutorial 2 <sphx_glr_gallery_tuto_02_pseudoinverse_linear.py>` explains the pseudo-inverse reconstruction process from the (possibly noisy) measurements
+* :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_acquisition_operators.py>` introduces the measurement operators.
+
+* :ref:`Tutorial 2 <sphx_glr_gallery_tuto_02_noise.py>` introduces the noise operators.
+
+* :ref:`Tutorial 3 <sphx_glr_gallery_tuto_03_pseudoinverse_linear.py>` shows pseudo-inverse reconstructions from Hadamard measurements.
+
+
+.. note::
+
+  The Python script (*.py*) or Jupyter notebook (*.ipynb*) corresponding to each tutorial can be downloaded at the bottom of the page. The images used in these files can be found on `GitHub`_.
+
+The tutorials below will gradually be updated to be compatible with SPyRiT 3 (work in progress, in the meantime see SPyRiT `2.4.0`_).
 
 * :ref:`Tutorial 3 <sphx_glr_gallery_tuto_03_pseudoinverse_cnn_linear.py>` uses a CNN to denoise the image if necessary
 
@@ -25,20 +35,13 @@ focuseson a specific part of the pipeline.
 
 * :ref:`Tutorial 7 <sphx_glr_gallery_tuto_07_drunet_split_measurements.py>` shows how to perform image reconstruction using a pretrained plug-and-play denoising network.
 
-* :ref:`Tutorial 8 <sphx_glr_gallery_tuto_08_lpgd_split_measurements.py>` shows how to perform image reconstruction using a learnt proximal gradient descent (AVAILABLE SOON).
+* :ref:`Tutorial 8 <sphx_glr_gallery_tuto_08_lpgd_split_measurements.py>` shows how to perform image reconstruction using a learnt proximal gradient descent.
 
 * :ref:`Tutorial 9 <sphx_glr_gallery_tuto_09_dynamic.py>` explains motion simulation from an image, dynamic measurements and reconstruction.
 
 * Explore :ref:`Bonus Tutorial <sphx_glr_gallery_tuto_bonus_advanced_methods_colab.py>` if you want to go deeper into Spyrit's capabilities
 
 
-.. image:: ../fig/full.png
-   :width: 800
-   :align: center
-   :alt: Principle of the image processing pipeline
+.. _GitHub: https://github.com/openspyrit/spyrit/tree/3895b5e61fb6d522cff5e8b32a36da89b807b081/tutorial/images/test
 
-|
-|
-
-
-.. _this page: https://github.com/openspyrit/spyrit/tree/3895b5e61fb6d522cff5e8b32a36da89b807b081/tutorial/images/test
+.. _2.4.0: https://spyrit.readthedocs.io/en/2.4.0/gallery/index.html

@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 SPyRiT: a Single-Pixel image Reconstruction Toolkit based on PyTorch
-#####################################
+#####################################################################
 
 SPyRiT is a `PyTorch <https://pytorch.org/>`_-based image reconstruction
 package designed for single-pixel imaging. SPyRiT is modular and may be useful for other inverse problems.
@@ -70,7 +70,7 @@ In practice, measurements are obtained by uploading a set of light patterns onto
 where :math:`\mathcal{N} \colon \mathbb{R}^J \to \mathbb{R}^J` represents a noise operator (e.g., Poisson or Poisson-Gaussian), :math:`A \in \mathbb{R}_+^{J\times N}` is the actual acquisition operator that models the (positive) DMD patterns, and :math:`J` is the number of DMD patterns. 
 
 Handling non negativity with pre-processing
------------------------------------
+----------------------------------------------------------------------
 We may preprocess the measurements before reconstruction to transform the actual measurements into the target measurements
 
 .. math::
