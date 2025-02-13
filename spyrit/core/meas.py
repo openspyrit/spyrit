@@ -609,7 +609,7 @@ class FreeformLinear(Linear):
 # =============================================================================
 class LinearSplit(Linear):
     r"""
-    Simulate linear measurements by splitting an acquisition matrix :math:`H\in \mathbb{R}^{M\times N}` that contains negative values. In pratice, only positive values can be implemented using a DMD. Therefore, we acquire
+    Simulate linear measurements by splitting an acquisition matrix :math:`H\in \mathbb{R}^{M\times N}` that contains negative values. In practice, only positive values can be implemented using a DMD. Therefore, we acquire
  
     .. math::
         y =\mathcal{N}\left(Ax\right),
