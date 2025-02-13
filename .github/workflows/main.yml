@@ -7,7 +7,8 @@ on:
     tags:
       - '*'
   pull_request:
-    branches: [ master ]
+    branches:
+      - '*'
   schedule:
     - cron: '0 0 * * 0'
   workflow_dispatch:
@@ -67,13 +68,15 @@ jobs:
     - name: Run the tests on Mac and Linux
       if: matrix.os != 'windows-latest'
       run: |
+          pip install pytest
           pip install -e .
-          python spyrit/test/run_tests.py || exit -1
+          python -m pytest --doctest-modules --ignore=tutorial --ignore=docs --ignore=spyrit/dev || exit -1
     - name: Run the tests on Windows
       if: matrix.os == 'windows-latest'
       run: |
+          pip install pytest
           pip install -e .
-          python spyrit\test\run_tests.py || exit -1
+          python -m pytest --doctest-modules --ignore=tutorial --ignore=docs --ignore=spyrit\dev || exit /b -1
 
   test_wheel:
     runs-on: ${{ matrix.os }}

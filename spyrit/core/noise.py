@@ -3,8 +3,8 @@ r"""Noise models
 .. math::
 
     y \sim \mathcal{N}\left(z;\theta\right),
-    
-where :math:`\mathcal{N}` the noise distribution, :math:`z` represents the 
+
+where :math:`\mathcal{N}` the noise distribution, :math:`z` represents the
 noiseless measurements, and :math:`\theta` represents the parameters
 of the noise distribution.
 
@@ -38,9 +38,10 @@ class Gaussian(nn.Module):
 
     Example:
         >>> noise = Gaussian(1.0)
-        >>> z = torch.tensor([1, 3, 6])
+        >>> z = torch.tensor([1., 3., 6.])
         >>> y = noise(z)
         >>> print(y)
+        tensor([...])
     """
 
     def __init__(self, sigma: float = 0.1):
@@ -73,13 +74,13 @@ class Gaussian(nn.Module):
             >>> z = torch.empty(10, 4).uniform_(1, 2)
             >>> y = noise(z)
             >>> print(y.shape)
-            >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
             torch.Size([10, 4])
-            Measurements in (0.86 , 2.09)
+            >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            Measurements in (...)
 
             >>> y = noise(z)
             >>> print(f"Measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-            Measurements in (1.01 , 1.98)
+            Measurements in (...)
         """
         return torch.normal(z, self.sigma)
         # z + self.sigma * torch.randn(z.shape, device=z.device)
@@ -107,7 +108,7 @@ class Poisson(nn.Module):
         >>> z = torch.tensor([1, 3, 6])
         >>> y = noise(z)
         >>> print(y)
-        tensor([11., 32., 57.])
+        tensor([...])
     """
 
     def __init__(self, alpha: float = 10):
@@ -135,15 +136,17 @@ class Poisson(nn.Module):
             >>> z = torch.empty(10, 4).uniform_(0, 1)
             >>> y = noise(z)
             >>> print(y.shape)
-            >>> print(f"Noiseless measurements in ({torch.min(z):.2f} , {torch.max(z):.2f})")
-            >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
             torch.Size([10, 4])
-            Noiseless measurements in (0.03 , 0.97)
-            Noisy measurements in (3.00 , 96.00)
+            >>> print(f"Noiseless measurements in ({torch.min(z):.2f} , {torch.max(z):.2f})")
+            Noiseless measurements in (...)
+            >>> print(torch.all((z >= 0) & (z <= 1)))
+            tensor(True)
+            >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            Noisy measurements in (...)
 
             >>> y = noise(z)
             >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-            Noisy measurements in (2.00 , 124.00)
+            Noisy measurements in (...)
         """
         return torch.poisson(self.alpha * z)
 
@@ -198,15 +201,15 @@ class PoissonApproxGauss(Poisson):
             >>> z = torch.empty(10, 4).uniform_(0, 1)
             >>> y = noise(z)
             >>> print(y.shape)
-            >>> print(f"Noiseless measurements in ({torch.min(z):.2f} , {torch.max(z):.2f})")
-            >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
             torch.Size([10, 4])
-            Noiseless measurements in (0.06 , 0.96)
-            Noisy measurements in (3.63 , 116.96)
+            >>> print(f"Noiseless measurements in ({torch.min(z):.2f} , {torch.max(z):.2f})")
+            Noiseless measurements in (...)
+            >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            Noisy measurements in (...)
 
             >>> y = noise(z)
             >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-            Noisy measurements in (3.25 , 110.16)
+            Noisy measurements in (...)
         """
         if torch.any(z < 0):
             raise RuntimeError("Input tensor contains negative values.")
@@ -275,15 +278,15 @@ class PoissonApproxGaussSameNoise(Poisson):
             >>> z = torch.empty(10, 4).uniform_(0, 1)
             >>> y = noise(z)
             >>> print(y.shape)
-            >>> print(f"Noiseless measurements in ({torch.min(z):.2f} , {torch.max(z):.2f})")
-            >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
             torch.Size([10, 4])
-            Noiseless measurements in (0.13 , 0.98)
-            Noisy measurements in (10.74 , 108.50)
+            >>> print(f"Noiseless measurements in ({torch.min(z):.2f} , {torch.max(z):.2f})")
+            Noiseless measurements in (...)
+            >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
+            Noisy measurements in (...)
 
             >>> y = noise(z)
             >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-            Noisy measurements in (9.95 , 103.54)
+            Noisy measurements in (...)
         """
         if torch.any(z < 0):
             raise RuntimeError("Input tensor contains negative values.")

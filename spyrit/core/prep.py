@@ -19,24 +19,24 @@ import spyrit.core.meas as meas
 # =============================================================================
 class Unsplit(nn.Module):
     r"""Preprocess measurements simulated using split measurement operator.
-    
-    Given measurements :math:`y\in\mathbb{R}^{2M}`, it computes either :math:`y_+ - y_-` or :math:`y_+ + y_-`. The positive and negative measurements :math:`y_+\in\mathbb{R}^{M}` and :math:`y_-\in\mathbb{R}^{M}` are given by 
-        
+
+    Given measurements :math:`y\in\mathbb{R}^{2M}`, it computes either :math:`y_+ - y_-` or :math:`y_+ + y_-`. The positive and negative measurements :math:`y_+\in\mathbb{R}^{M}` and :math:`y_-\in\mathbb{R}^{M}` are given by
+
     .. math::
-        y_+ = 
+        y_+ =
         \begin{bmatrix}
             y[0]\\
             y[2]\\
             y[2M-2]\\
         \end{bmatrix}
         \quad\text{and}\quad
-        y_- = 
+        y_- =
         \begin{bmatrix}
             y[1]\\
             y[3]\\
             y[2M-1]\\
         \end{bmatrix}.
-        
+
     Args:
         None
 
@@ -47,15 +47,15 @@ class Unsplit(nn.Module):
         >>> import torch
         >>> import spyrit.core.meas as meas
         >>> import spyrit.core.prep as prep
-        >>> H = torch.rand([400,32])  
-        >>> img = torch.rand([10,32])  
+        >>> H = torch.rand([400,32])
+        >>> img = torch.rand([10,32])
         >>> meas_op = meas.LinearSplit(H)
         >>> split_op = prep.Unsplit()
         >>> y = meas_op(img)
         >>> m = split_op(y)
         >>> print(y.shape)
-        >>> print(m.shape)
         torch.Size([10, 800])
+        >>> print(m.shape)
         torch.Size([10, 400])
     """
 
@@ -65,18 +65,18 @@ class Unsplit(nn.Module):
     @staticmethod
     def forward(y: torch.tensor, mode: str = "sub") -> torch.tensor:
         r"""Preprocess measurements simulated using split measurement operator.
-        
-        Given measurements :math:`y\in\mathbb{R}^{2M}`, it computes either :math:`y_+ - y_-` or :math:`y_+ + y_-`. The positive and negative measurements :math:`y_+\in\mathbb{R}^{M}` and :math:`y_-\in\mathbb{R}^{M}` are given by 
-            
+
+        Given measurements :math:`y\in\mathbb{R}^{2M}`, it computes either :math:`y_+ - y_-` or :math:`y_+ + y_-`. The positive and negative measurements :math:`y_+\in\mathbb{R}^{M}` and :math:`y_-\in\mathbb{R}^{M}` are given by
+
         .. math::
-            y_+ = 
+            y_+ =
             \begin{bmatrix}
                 y[0]\\
                 y[2]\\
                 y[2M-2]\\
             \end{bmatrix}
             \quad\text{and}\quad
-            y_- = 
+            y_- =
             \begin{bmatrix}
                 y[1]\\
                 y[3]\\
@@ -91,20 +91,20 @@ class Unsplit(nn.Module):
 
         Returns:
             :class:`torch.tensor`: Preprocessed measurements of shape :math:`(*, M)`.
-            
+
         Example:
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> import spyrit.core.prep as prep
-            >>> H = torch.rand([400,32])  
-            >>> img = torch.rand([10,32])  
+            >>> H = torch.rand([400,32])
+            >>> img = torch.rand([10,32])
             >>> meas_op = meas.LinearSplit(H)
             >>> split_op = prep.Unsplit()
             >>> y = meas_op(img)
             >>> m = split_op(y)
             >>> print(y.shape)
-            >>> print(m.shape)
             torch.Size([10, 800])
+            >>> print(m.shape)
             torch.Size([10, 400])
         """
         if mode == "sub":
@@ -118,15 +118,15 @@ class Unsplit(nn.Module):
 # =============================================================================
 class Rescale(nn.Module):
     r"""Rescale measurements as
-    
-    .. math:: 
-        
+
+    .. math::
+
         m = \frac{y}{\alpha}
 
     where :math:`y` is the input tensor and :math:`\alpha` represents some gain.
 
     .. note::
-        
+
         This rescale the input tensor from :math:`[0,\alpha]` to :math:`[0,1]`. When measurements are simulated using some gain factor (e.g., Poisson corrupted measurements), the gain is compensated for.
 
     Args:
@@ -153,9 +153,9 @@ class Rescale(nn.Module):
 
     def sigma(self, v: torch.tensor) -> torch.tensor:
         r"""Rescale the variance of the measurements
-        
-        .. math:: 
-            
+
+        .. math::
+
             \text{var}(m) = \frac{\text{var}(y)}{\alpha^2}
 
         Args:
@@ -170,9 +170,9 @@ class Rescale(nn.Module):
 # =============================================================================
 class UnsplitRescale(Rescale):
     r"""Unsplit and rescale measurements as
-    
-    .. math:: 
-        
+
+    .. math::
+
         m = \frac{y_+ - y_-}{\alpha},
 
     where :math:`y_-` and :math:`y_+` are the raw measurements and :math:`\alpha` represents their intensity.
@@ -184,13 +184,13 @@ class UnsplitRescale(Rescale):
         :attr:`\alpha` (float): Measurement intensity :math:`\alpha`.
     """
 
-    def __init__(self, alpha):
+    def __init__(self, alpha=1.0):
         super().__init__(alpha)
 
     def forward(self, y: torch.tensor) -> torch.tensor:
         r"""Unsplit and rescale measurements
-        
-        .. math:: 
+
+        .. math::
             m = \frac{y_+ - y_-}{\alpha},
 
         where :math:`y_-` :math:`y_+` are the raw measurements and :math:`\alpha` represents their intensity.
@@ -207,9 +207,9 @@ class UnsplitRescale(Rescale):
 
     def sigma(self, y: torch.tensor) -> torch.tensor:
         r"""Rescale the variance
-        
-        .. math:: 
-            
+
+        .. math::
+
             \text{var}(m) = \frac{\text{var}(y_+) + \text{var}(y_-)}{\alpha^2}
 
         Args:
@@ -226,12 +226,12 @@ class UnsplitRescale(Rescale):
 # =============================================================================
 class RescaleEstim(nn.Module):
     r"""Rescale measurements as
-    
-    .. math:: 
-        
+
+    .. math::
+
         m = \frac{y}{\alpha},
 
-    where :math:`y` is the measurement and :math:`\alpha` represents some 
+    where :math:`y` is the measurement and :math:`\alpha` represents some
     gain/intensity that needs to be estimated from :math:`y`.
 
     .. important:
@@ -247,7 +247,7 @@ class RescaleEstim(nn.Module):
 
     Attributes:
         :attr:`self.alpha` (:class:`torch.tensor`): Estimated gain/intensity.
-        
+
         :attr:`self.meas_op` (spyrit.core.meas.Linear): Measurement operator used to
         simulate the measurements.
 
@@ -259,6 +259,7 @@ class RescaleEstim(nn.Module):
         :attr:`self.pinv` (spyrit.core.inverse.PseudoInverse): Pseudo-inverse
         operator.
     """
+
     # :attr:`estim_mode` (str, optional): The method to estimate the gain value. Can
     # be either "mean" or "pinv". Defaults to "mean".
 
@@ -309,12 +310,12 @@ class RescaleEstim(nn.Module):
 
     def forward(self, y: torch.tensor) -> torch.tensor:
         r"""Rescale measurements as
-        
-        .. math:: 
-            
+
+        .. math::
+
             m = \frac{y}{\alpha},
 
-        where :math:`y` is the measurement and :math:`\alpha` represents some 
+        where :math:`y` is the measurement and :math:`\alpha` represents some
         gain/intensity that needs to be estimated from :math:`y`.
 
         Args:
@@ -330,17 +331,17 @@ class RescaleEstim(nn.Module):
 # =============================================================================
 class UnsplitRescaleEstim(RescaleEstim):
     r"""Unsplit and rescale measurements as
-    
-    .. math:: 
-        
+
+    .. math::
+
         m = \frac{y_+ - y_-}{\alpha},
 
     where :math:`y_-` and :math:`y_+` are the raw measurements and :math:`\alpha` represents a gain/intensity that needs to be estimated from :math:`y_-` and :math:`y_+`.
-    
+
     .. important:
         This class is designed for measurements acquired with splitting. For
         unsplit measurements, use :class:`RescaleEstim`.
-        
+
     Args:
         :attr:`meas_op` (spyrit.core.meas.LinearSplit): Measurement operator used to get
         the measurements :math:`y`. It should be a split measurement operator.
@@ -353,8 +354,8 @@ class UnsplitRescaleEstim(RescaleEstim):
 
     Attributes:
         :attr:`self.alpha` (:class:`torch.tensor`): Estimated gain/intensity.
-        
-        :attr:`self.meas_op` (spyrit.core.meas.LinearSplit): Measurement 
+
+        :attr:`self.meas_op` (spyrit.core.meas.LinearSplit): Measurement
         operator used to simulate the measurements.
 
         :attr:`self.estim_mode` (str): Method to estimate the gain value.
@@ -365,6 +366,7 @@ class UnsplitRescaleEstim(RescaleEstim):
         :attr:`self.pinv` (spyrit.core.inverse.PseudoInverse): Pseudo-inverse
         operator. Exists only if `estim_mode` is "pinv".
     """
+
     # The gain value :math:`alpha` to divide the measurements by is estimated in
     # two different ways: either by taking the mean of the measurements or by
     # taking the maximum value of the pseudo-inverse of the measurements.
@@ -379,11 +381,10 @@ class UnsplitRescaleEstim(RescaleEstim):
     # of the gain value.
 
     def __init__(self, meas_op, **pinv_kwargs):
-        
+
         if not isinstance(meas_op, meas.LinearSplit):
             raise ValueError("meas_op should be a LinearSplit")
         super().__init__(meas_op, **pinv_kwargs)
-        
 
     def mean_estim(self, y):
         r"""(Not tested yet) Estimate the gain from the mean of the raw measurements.
@@ -400,13 +401,12 @@ class UnsplitRescaleEstim(RescaleEstim):
         """
         if not isinstance(self.meas_op, meas.HadamSplit2d):
             Warning("Mean estimation is only exact for HadamSplit2d operators")
-            
+
         y = torch.sum(y, -1, keepdim=True)
         # take the matrix *A* because the measurements ARE split
         divisor = self.meas_op.A.sum(dim=-1, keepdim=True).expand(y.shape)
         alpha = torch.div(y, divisor)
-        return alpha    
-
+        return alpha
 
     def estim_alpha(self, y: torch.tensor) -> torch.tensor:
         r"""Estimate the gain from the raw measurements.
@@ -427,13 +427,12 @@ class UnsplitRescaleEstim(RescaleEstim):
             raise ValueError(
                 f"self.estim_mode should be either 'pinv' or 'mean' (found {self.estim_mode})"
             )
-            
 
     def forward(self, y: torch.tensor) -> torch.tensor:
         r"""Unsplit and rescale raw measurements
-        
-        .. math:: 
-            
+
+        .. math::
+
             m = \frac{y_+ - y_-}{\alpha}
 
         where :math:`y_-` :math:`y_+` are the raw measurements and :math:`\alpha` is the intensity estimated by calling :meth:`estim_alpha`.
@@ -450,17 +449,17 @@ class UnsplitRescaleEstim(RescaleEstim):
     def sigma(self, y: torch.tensor) -> torch.tensor:
         r"""Estimate the variance of raw split measurements as
 
-        .. math:: 
-            
+        .. math::
+
             \sigma^2 = \frac{y_+ + y_-}{\alpha^2}
-            
+
         where :math:`y_-` :math:`y_+` are the raw measurements.
 
         .. important::
             This function takes the raw measurments as input and must be called before :meth:`forward()`.
-            
+
         .. note::
-            
+
             alpha could be saved to avoid to recomputing it.
 
         Args:
@@ -472,7 +471,7 @@ class UnsplitRescaleEstim(RescaleEstim):
         alpha = self.estim_alpha(Unsplit.forward(y, mode="sub"))
         v = Unsplit.forward(y, mode="add")
         return v / alpha**2
-    
+
 
 # =============================================================================
 class Rerange(nn.Module):

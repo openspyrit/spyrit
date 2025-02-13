@@ -61,7 +61,7 @@ class PseudoInverse(nn.Module):
         :func:`spyrit.core.torch.regularized_pinv` when :attr:`store_pinv` is True
         or to :func:`spyrit.core.torch.resularized_lstsq` when :attr:`store_pinv`
         is False.
-    
+
     Attributes:
         :attr:`meas_op`: Measurement operator initialized as :attr:`meas_op`.
 
@@ -81,20 +81,41 @@ class PseudoInverse(nn.Module):
         only if :attr:`store_H_pinv` is True.
 
     Example 1:
-        >>> meas_op = Linear(torch.rand(32**2, 400), (32,32))
-        >>> pinv_op = PseudoInverse(meas_op, 'H1', store_H_pinv=True)
-        >>> x = pinv_op(torch.rand(85, 3, 400))
+        >>> from spyrit.core.meas import Linear
+        >>> from spyrit.core.inverse import PseudoInverse
+        >>> H = torch.randn(10, 15)
+        >>> meas_op = Linear(H)
+        >>> pinv_op = PseudoInverse(meas_op)
+        >>> x = torch.randn(3, 4, 15)
+        >>> y = meas_op(x)
+        >>> x = pinv_op(y)
         >>> print(x.shape)
-        torch.Size([85, 3, 32, 32])
+        torch.Size([3, 4, 15])
 
-    Example 2:
-        >>> h, M = 32, 400
-        >>> meas_op = HadamSplit2d(h, M)
-        >>> y = torch.rand([85, 3, 400])
-        >>> pinv_op = PseudoInverse(meas_op, 'rcond')
-        >>> x = pinv_op(y, meas_op)
+    Example 2: LinearSplit, pseudo-inverse of H (default)
+        >>> from spyrit.core.meas import LinearSplit
+        >>> from spyrit.core.inverse import PseudoInverse
+        >>> H = torch.randn(10, 15)
+        >>> meas_op = LinearSplit(H)
+        >>> pinv_op = PseudoInverse(meas_op)
+        >>> x = torch.randn(3, 4, 15)
+        >>> y = meas_op.measure_H(x)
+        >>> x = pinv_op(y)
         >>> print(x.shape)
-        torch.Size([85, 3, 32, 32])
+        torch.Size([3, 4, 15])
+
+    Example 3: LinearSplit, pseudo-inverse of A
+        >>> from spyrit.core.meas import LinearSplit
+        >>> from spyrit.core.inverse import PseudoInverse
+        >>> H = torch.randn(10, 15)
+        >>> meas_op = LinearSplit(H)
+        >>> meas_op.set_matrix_to_inverse('A')
+        >>> pinv_op = PseudoInverse(meas_op)
+        >>> x = torch.randn(3, 4, 15)
+        >>> y = meas_op(x)
+        >>> x = pinv_op(y)
+        >>> print(x.shape)
+        torch.Size([3, 4, 15])
     """
 
     def __init__(
@@ -131,48 +152,69 @@ class PseudoInverse(nn.Module):
     def forward(self, y: torch.tensor) -> torch.tensor:
         r"""Computes pseudo-inverse of measurements.
 
-        If :attr:`self.store_H_pinv` is True, computes the product of the
-        stored pseudo-inverse and the measurements.
+            If :attr:`self.store_H_pinv` is True, computes the product of the
+            stored pseudo-inverse and the measurements.
 
-        If :attr:`self.store_H_pinv` is False, computes the least squares solution
-        of the measurements. In this case, any additional keyword arguments
-        passed to the :class:`PseudoInverse` constructor (and store in
-        :attr:`self.reg_kwargs` are used here. These can include:
-            - :attr:`rcond` (float): Cutoff for small singular values. It is
-            used only when :attr:`regularization` is 'rcond'. This parameter
-            is fed directly to :func:`torch.linalg.pinv`.
-            - Any other keyword arguments that are passed to :func:`torch.linalg.lstsq`.
-            Used only when :attr:`regularization` is 'rcond'.
-            - :attr:`eta` (float): Regularization parameter. It is used only
-            when :attr:`regularization` is 'L2' or 'H1'. This parameter determines
-            the amount of regularization applied to the pseudo-inverse.
+            If :attr:`self.store_H_pinv` is False, computes the least squares solution
+            of the measurements. In this case, any additional keyword arguments
+            passed to the :class:`PseudoInverse` constructor (and store in
+            :attr:`self.reg_kwargs` are used here. These can include:
+                - :attr:`rcond` (float): Cutoff for small singular values. It is
+                used only when :attr:`regularization` is 'rcond'. This parameter
+                is fed directly to :func:`torch.linalg.pinv`.
+                - Any other keyword arguments that are passed to :func:`torch.linalg.lstsq`.
+                Used only when :attr:`regularization` is 'rcond'.
+                - :attr:`eta` (float): Regularization parameter. It is used only
+                when :attr:`regularization` is 'L2' or 'H1'. This parameter determines
+                the amount of regularization applied to the pseudo-inverse.
 
-        Args:
-            :attr:`y` (torch.tensor): Batch of measurement vectors of shape :math:`(*, M)`,
-            where :math:`*` is any number of dimensions and :math:`M` is the
-            number of measurements of the measurement operator (:attr:`meas_op.M`).
-        
-        Returns:
-            :attr:`output` (torch.tensor): Batch of reconstructed images of shape
-            :math:`(*, N)` or the image shape as defined in the measurement operator
-            (in `meas_op.meas_shape`) depending on the value of
-            :attr:`self.reshape_output`.
+            Args:
+                :attr:`y` (torch.tensor): Batch of measurement vectors of shape :math:`(*, M)`,
+                where :math:`*` is any number of dimensions and :math:`M` is the
+                number of measurements of the measurement operator (:attr:`meas_op.M`).
 
-    Example 1:
-        >>> meas_op = Linear(torch.rand(32**2, 400), (32,32))
-        >>> pinv_op = PseudoInverse(meas_op, 'H1', store_H_pinv=True)
-        >>> x = pinv_op(torch.rand(85, 3, 400))
-        >>> print(x.shape)
-        torch.Size([85, 3, 32, 32])
+            Returns:
+                :attr:`output` (torch.tensor): Batch of reconstructed images of shape
+                :math:`(*, N)` or the image shape as defined in the measurement operator
+                (in `meas_op.meas_shape`) depending on the value of
+                :attr:`self.reshape_output`.
 
-    Example 2:
-        >>> h, M = 32, 400
-        >>> meas_op = HadamSplit2d(h, M)
-        >>> y = torch.rand([85, 3, 400])
-        >>> pinv_op = PseudoInverse(meas_op, 'rcond')
-        >>> x = pinv_op(y, meas_op)
-        >>> print(x.shape)
-        torch.Size([85, 3, 32, 32])
+        Example 1:
+            >>> from spyrit.core.meas import Linear
+            >>> from spyrit.core.inverse import PseudoInverse
+            >>> H = torch.randn(10, 15)
+            >>> meas_op = Linear(H)
+            >>> pinv_op = PseudoInverse(meas_op)
+            >>> x = torch.randn(3, 4, 15)
+            >>> y = meas_op(x)
+            >>> x = pinv_op(y)
+            >>> print(x.shape)
+            torch.Size([3, 4, 15])
+
+        Example 2: LinearSplit, pseudo-inverse of H (default)
+            >>> from spyrit.core.meas import LinearSplit
+            >>> from spyrit.core.inverse import PseudoInverse
+            >>> H = torch.randn(10, 15)
+            >>> meas_op = LinearSplit(H)
+            >>> pinv_op = PseudoInverse(meas_op)
+            >>> x = torch.randn(3, 4, 15)
+            >>> y = meas_op.measure_H(x)
+            >>> x = pinv_op(y)
+            >>> print(x.shape)
+            torch.Size([3, 4, 15])
+
+        Example 3: LinearSplit, pseudo-inverse of A
+            >>> from spyrit.core.meas import LinearSplit
+            >>> from spyrit.core.inverse import PseudoInverse
+            >>> H = torch.randn(10, 15)
+            >>> meas_op = LinearSplit(H)
+            >>> meas_op.set_matrix_to_inverse('A')
+            >>> pinv_op = PseudoInverse(meas_op)
+            >>> x = torch.randn(3, 4, 15)
+            >>> y = meas_op(x)
+            >>> x = pinv_op(y)
+            >>> print(x.shape)
+            torch.Size([3, 4, 15])
         """
         if self.store_H_pinv:
             # Expand the pseudo-inverse to the batch size of y
@@ -263,6 +305,7 @@ class Tikhonov(nn.Module):
         computations.
 
     Example:
+        >>> from spyrit.core.meas import Linear
         >>> B, H, M, N = 85, 17, 32, 64
         >>> sigma = torch.rand(N, N)
         >>> gamma = torch.rand(M, M)
@@ -272,9 +315,9 @@ class Tikhonov(nn.Module):
         >>> y = torch.rand(B,H,M)
         >>> x = recon(y, gamma)
         >>> print(y.shape)
-        >>> print(x.shape)
         torch.Size([85, 17, 32])
-        torch.Size([85, 17, 64])
+        >>> print(x.shape)
+        torch.Size([85, 17, 1, 64])
     """
 
     def __init__(
@@ -290,7 +333,7 @@ class Tikhonov(nn.Module):
         self.sigma = sigma
         self.approx = approx
         self.reshape_output = reshape_output
-        self.img_shape = meas_op.img_shape
+        self.img_shape = meas_op.meas_shape
 
         A = meas_op.get_matrix_to_inverse  # get H or A
 
@@ -322,16 +365,17 @@ class Tikhonov(nn.Module):
 
         Returns:
             torch.tensor: The divided tensor. Shape :math:`(*, M)`.
-        
+
         Example:
-            >>> M, N = 400, 4096
-            >>> meas_op = Linear(torch.rand(M,N), meas_shape=(32,32))
+            >>> from spyrit.core.meas import Linear
+            >>> M, N = 32, 64
+            >>> meas_op = Linear(torch.rand([M,N]), meas_shape=(1,N))
             >>> sigma = torch.rand(N,N)
             >>> tikho = Tikhonov(meas_op, sigma, approx=False, reshape_output=True)
             >>> y = torch.rand(85, 3, M)
             >>> gamma = torch.eye(M).expand(85, 3, M, M)
             >>> print(tikho.divide(y, gamma).shape)
-            torch.Size([85, 3, 4096])
+            torch.Size([85, 3, 32])
         """
         if self.approx:
             return y / (self.sigma_meas + torch.diagonal(gamma, dim1=-2, dim2=-1))
@@ -363,34 +407,36 @@ class Tikhonov(nn.Module):
 
             :attr:`gamma` (torch.tensor): A batch of noise covariance :math:`\Gamma`
             of shape :math:`(*, M, M)`.
-        
+
         Returns:
             (torch.tensor): A batch of reconstructed images of shape :math:`(*, N)`
             or the :meth:`meas_op.unvectorize`d version of the image shape.
 
         Example 1: With reshape_output = True
-            >>> b, c, h, w = 85, 3, 32, 32
-            >>> M, N = 400, h*w
-            >>> meas_op = Linear(torch.rand(M,N), meas_shape=(h,w))
+            >>> from spyrit.core.meas import Linear
+            >>> M, N = 32, 64
+            >>> b, c, h, w = 85, 3, 8, 8
+            >>> meas_op = Linear(torch.rand([M,N]), meas_shape=(1,N))
             >>> x = torch.randn(b,c,h,w)
             >>> y = meas_op(x)
             >>> sigma = torch.rand(N,N)
             >>> tikho = Tikhonov(meas_op, sigma, approx=False, reshape_output=True)
             >>> gamma = torch.eye(M).expand(b, c, M, M)
             >>> print(tikho(y, gamma).shape)
-            torch.Size([85, 3, 32, 32])
-        
+            torch.Size([85, 3, 1, 64])
+
         Example 2: With reshape_output = False
-            >>> b, c, h, w = 13, 1, 35, 20
-            >>> M, N = 1000, h*w
-            >>> meas_op = Linear(torch.rand(M,N), meas_shape=(h,w))
+            >>> from spyrit.core.meas import Linear
+            >>> M, N = 32, 64
+            >>> b, c, h, w = 85, 3, 8, 8
+            >>> meas_op = Linear(torch.rand([M,N]), meas_shape=(1,N))
             >>> x = torch.randn(b,c,h,w)
             >>> y = meas_op(x)
             >>> sigma = torch.rand(N,N)
             >>> tikho = Tikhonov(meas_op, sigma, approx=False, reshape_output=False)
             >>> gamma = torch.eye(M).expand(b, c, M, M)
             >>> print(tikho(y, gamma).shape)
-            torch.Size([13, 1, 700])
+            torch.Size([85, 3, 64])
         """
         y = self.divide(y, gamma)
         y = torch.matmul(self.sigma_A_T, y.unsqueeze(-1)).squeeze(-1)
@@ -424,18 +470,12 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         covariance of :math:`Fx`.
 
     Args:
-        - :attr:`meas_op`: A Hadamard measurement operator (see :mod:`spyrit.core.meas.HadamSplit2d`)
+        :attr:`meas_op`: A Hadamard measurement operator (see :mod:`spyrit.core.meas.HadamSplit2d`).
 
-        - :attr:`sigma`: Measurement covariance prior with shape :math:`N` x :math:`N`
-
-        - :attr:`reshape_output`: A boolean indicating whether to reshape the
-        output to the shape of the image. Default is True.
+        :attr:`sigma`: Measurement covariance prior with shape :math:`N` x :math:`N`.
 
     Attributes:
         :attr:`meas_op`: Measurement operator initialized as :attr:`meas_op`.
-        
-        :attr:`reshape_output`: Indicates if the output is reshaped to the input
-        shape.
 
         :attr:`denoise_weights`: The learnable denoising layer initialized from
         :math:`\Sigma_1`. This layer is a :class:`nn.Parameter`.
@@ -444,9 +484,19 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         This matrix is a :class:`nn.Parameter`.
 
     Example:
-        >>> meas_op = spyrit.core.meas.HadamSplit2d(32, 400)
+        >>> from spyrit.core.meas import HadamSplit2d
+        >>> from spyrit.core.inverse import TikhonovMeasurementPriorDiag
+        >>> import torch
+
+        >>> acqu = HadamSplit2d(32, 400)
         >>> sigma = torch.rand([32*32, 32*32])
-        >>> recon_op = TikhonovMeasurementPriorDiag(meas_op, sigma)
+        >>> recon_op = TikhonovMeasurementPriorDiag(acqu, sigma)
+        >>> y = torch.rand([10, 3, 400])
+        >>> x0 = torch.rand([10, 3, 32, 32])
+        >>> var = torch.rand([10, 3, 400])
+        >>> x = recon_op(y, x0, var)
+        >>> print(x.shape)
+        torch.Size([10, 3, 32, 32])
     """
 
     def __init__(
@@ -476,20 +526,24 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         parameter.
 
         Inputs:
-            x (torch.tensor): The input tensor to be denoised.
+            x (:class:`torch.tensor`): The input tensor to be denoised.
 
-            var (torch.tensor): The variance prior.
+            var (:class:`torch.tensor`): The variance prior.
 
         Returns:
-            torch.tensor: The denoised tensor.
-        
+            :class:`torch.tensor`: The denoised tensor.
+
         Example:
-            >>> acqu = spyrit.core.meas.HadamSplit2d(32, 400)
+            >>> from spyrit.core.meas import HadamSplit2d
+            >>> from spyrit.core.inverse import TikhonovMeasurementPriorDiag
+            >>> import torch
+
+            >>> acqu = HadamSplit2d(32, 400)
             >>> sigma = torch.rand([32*32, 32*32])
             >>> recon_op = TikhonovMeasurementPriorDiag(acqu, sigma)
             >>> y = torch.rand([10, 3, 400])
             >>> var = torch.rand([10, 3, 400])
-            >>> print(recon_op.wiener_denoise(x, var).shape)
+            >>> print(recon_op.wiener_denoise(y, var).shape)
             torch.Size([10, 3, 400])
         """
         weights_squared = self.denoise_weights**2
@@ -514,41 +568,42 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 
         .. math::
             \hat{x} &= x_0 + F^{-1}\begin{bmatrix}\Sigma_1 \\ \Sigma_{21} \end{bmatrix}
-                      [\Sigma_1 + \Sigma_\alpha]^{-1} (m - GF x_0)
+                      [\Sigma_1 + \Sigma_\alpha]^{-1} (m - GF x_0).
 
         See Lemma B.0.5 of the PhD dissertation of A. Lorente Mur (2021):
         https://theses.hal.science/tel-03670825v1/file/these.pdf
 
         Args:
-            - :attr:`x` (torch.tensor): A batch of measurement vectors of shape
-            :math:`(*, M)`.
+            :attr:`x` (:class:`torch.tensor`): A batch of measurement vectors
+            :math:`m` of shape :math:`(*, M)`.
 
-            - :attr:`var` (torch.tensor): A batch of measurement noise variances
+            :attr:`var` (:class:`torch.tensor`): A batch of measurement noise variances
             :math:`\Sigma_\alpha` of shape :math:`(*, M)`.
-        
+
         Returns:
-            torch.tensor: The reconstructed image of shape :math:`(*, N)` or the
-            :meth:`meas_op.unvectorize`d version of the image shape.
-        
+            :class:`torch.tensor`: Batch of reconstructed image of shape :math:`(*, \sqrt{N}, \sqrt{N})`.
+
         Example:
-            >>> B, H, M = 85, 32, 512
-            >>> sigma = torch.rand([H**2, H**2])
-            >>> recon_op = TikhonovMeasurementPriorDiag(sigma, M)
-            >>> Ord = torch.ones((H,H))
-            >> meas = HadamSplit(M, H, Ord)
-            >>> y = torch.rand([B,M], dtype=torch.float)
-            >>> x_0 = torch.zeros((B, H**2), dtype=torch.float)
-            >>> var = torch.zeros((B, M), dtype=torch.float)
-            >>> x = recon_op.forward_no_prior(y, x_0, var, meas)
-            torch.Size([85, 1024])
+            >>> from spyrit.core.meas import HadamSplit2d
+            >>> from spyrit.core.inverse import TikhonovMeasurementPriorDiag
+            >>> import torch
+
+            >>> acqu = HadamSplit2d(32, 400)
+            >>> sigma = torch.rand([32*32, 32*32])
+            >>> recon_op = TikhonovMeasurementPriorDiag(acqu, sigma)
+            >>> y = torch.rand([10, 3, 400])
+            >>> var = torch.rand([10, 3, 400])
+            >>> x = recon_op.forward_no_prior(y, var)
+            >>> print(x.shape)
+            torch.Size([10, 3, 32, 32])
         """
         y1 = self.wiener_denoise(x, var)
         y2 = y1 @ self.comp.T
 
         y = torch.cat((y1, y2), -1)
         y = self.meas_op.fast_pinv(y)
-        if self.reshape_output:
-            y = self.meas_op.unvectorize(y)
+        # if self.reshape_output:
+        #    y = self.meas_op.unvectorize(y)
         return y
 
     def forward(
@@ -582,30 +637,37 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         https://theses.hal.science/tel-03670825v1/file/these.pdf
 
         Args:
-            - :attr:`x`: A batch of measurement vectors :math:`m`
-            - :attr:`x_0`: A batch of prior images :math:`x_0`
-            - :attr:`var`: A batch of measurement noise variances :math:`\Sigma_\alpha`
-            - :attr:`meas_op`: A measurement operator that provides :math:`GF` and :math:`F^{-1}`
+            :attr:`x` (:class:`torch.tensor`): A batch of measurement vectors
+            :math:`m` with shape :math:`(*, M)`.
 
-        Shape:
-            - :attr:`x`: :math:`(*, M)`
-            - :attr:`x_0`: :math:`(*, h, w)`
-            - :attr:`var` :math:`(*, M)`
-            - Output: :math:`(*, h, w)`
+            :attr:`x_0` (:class:`torch.tensor`): A batch of prior images
+            :math:`x_0` with shape :math:`(*, \sqrt{N}, \sqrt{N})`.
+
+            :attr:`var` (:class:`torch.tensor`): A batch of measurement noise
+            variances :math:`\Sigma_\alpha` with shape :math:`(*, M)`.
+
+            :attr:`meas_op` (:class:`torch.tensor`): A measurement operator
+            that provides :math:`GF` and :math:`F^{-1}`.
+
+        Output:
+            (:class:`torch.tensor`): A batch of images with shape :math:`(*, \sqrt{N}, \sqrt{N})`.
 
         Example:
-            >>> B, H, M = 85, 32, 512
-            >>> sigma = torch.rand([H**2, H**2])
-            >>> recon_op = TikhonovMeasurementPriorDiag(sigma, M)
-            >>> Ord = torch.ones((H,H))
-            >> meas = HadamSplit(M, H, Ord)
-            >>> y = torch.rand([B,M], dtype=torch.float)
-            >>> x_0 = torch.zeros((B, H**2), dtype=torch.float)
-            >>> var = torch.zeros((B, M), dtype=torch.float)
-            >>> x = recon_op(y, x_0, var, meas)
-            torch.Size([85, 1024])
+            >>> from spyrit.core.meas import HadamSplit2d
+            >>> from spyrit.core.inverse import TikhonovMeasurementPriorDiag
+            >>> import torch
+
+            >>> acqu = HadamSplit2d(32, 400)
+            >>> sigma = torch.rand([32*32, 32*32])
+            >>> recon_op = TikhonovMeasurementPriorDiag(acqu, sigma)
+            >>> y = torch.rand([10, 3, 400])
+            >>> x0 = torch.rand([10, 3, 32, 32])
+            >>> var = torch.rand([10, 3, 400])
+            >>> x = recon_op(y, x0, var)
+            >>> print(x.shape)
+            torch.Size([10, 3, 32, 32])
         """
         x = x - self.meas_op.forward_H(x_0)
-        x = self.forward_no_prior(x, var, self.meas_op)
+        x = self.forward_no_prior(x, var)
         x += x_0
         return x

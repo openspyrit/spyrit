@@ -18,8 +18,8 @@ This tutorial shows how to use noise operators using the :mod:`spyrit.core.noise
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We load a batch of images from the `/images/` folder. Using the 
-# :func:`transform_gray_norm` function with the :attr:`normalize=False` 
+# We load a batch of images from the `/images/` folder. Using the
+# :func:`transform_gray_norm` function with the :attr:`normalize=False`
 # argument returns images with values in (0,1).
 import os
 
@@ -64,7 +64,7 @@ imagesc(x[i_plot, 0, :, :], r"$x$ in (0, 1)")
 # where :math:`\mathcal{N}(\mu, \sigma^2)` is a Gaussian distribution with mean :math:`\mu` and variance :math:`\sigma^2`, and :math:`z` is the noiseless image. The larger :math:`\sigma`, the lower the signal-to-noise ratio.
 
 ###############################################################################
-# To add 10% Gaussian noise, we instantiate a :class:`spyrit.core.noise` 
+# To add 10% Gaussian noise, we instantiate a :class:`spyrit.core.noise`
 # operator with :attr:`sigma=0.1`.
 
 from spyrit.core.noise import Gaussian
@@ -92,7 +92,7 @@ imagesc(x_noisy[1, 0, :, :], r"2% Gaussian noise")
 # .. math::
 #       y \sim \mathcal{P}(\alpha z), \quad z \ge 0,
 #
-# where :math:`\alpha \ge 0` is a scalar value that represents the maximum 
+# where :math:`\alpha \ge 0` is a scalar value that represents the maximum
 # image intensity (in photons). The larger :math:`\alpha`, the higher the signal-to-noise ratio.
 
 ###############################################################################
@@ -131,7 +131,13 @@ im = axs[1].imshow(y2[1, 0].reshape(64, 64), cmap="gray")
 add_colorbar(im, "bottom")
 
 axs[2].set_title("1000 photons")
-im = axs[2].imshow(y3[1, 0,].reshape(64, 64), cmap="gray")
+im = axs[2].imshow(
+    y3[
+        1,
+        0,
+    ].reshape(64, 64),
+    cmap="gray",
+)
 add_colorbar(im, "bottom")
 
 noaxis(axs)

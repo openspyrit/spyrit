@@ -9,12 +9,11 @@ build-backend = "setuptools.build_meta"
 include-package-data = true
 zip-safe = false
 script-files = [
-        "tutorial/tuto_01_acquisition_operators.py",
-        "tutorial/tuto_02_pseudoinverse_linear.py",
-        "tutorial/tuto_03_pseudoinverse_cnn_linear.py",
-        "tutorial/tuto_04_train_pseudoinverse_cnn_linear.py",
-        "tutorial/tuto_05_acquisition_split_measurements.py",
-        "tutorial/tuto_06_dcnet_split_measurements.py"
+        "tutorial/tuto_01_a_acquisition_operators.py",
+        "tutorial/tuto_01_b_splitting.py",
+        "tutorial/tuto_01_c_HadamSplit2d.py",
+        "tutorial/tuto_02_noise.py",
+        "tutorial/tuto_03_pseudoinverse_linear.py"
 ]
 
 [tool.setuptools.dynamic]

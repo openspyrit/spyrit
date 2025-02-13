@@ -83,12 +83,9 @@ class Linear(nn.Module):
         >>> H = torch.rand([400, 1600])
         >>> meas_op = Linear(H)
         >>> print(meas_op)
-
-        Example 2:
-
-        >>> H = torch.rand([400, 1600])
-        >>> meas_op = Linear(H, True)
-        >>> print(meas_op)
+        Linear(
+          (noise_model): Identity()
+        )
     """
 
     def __init__(
@@ -195,8 +192,8 @@ class Linear(nn.Module):
             >>> x = torch.randn(3, 15, 4)
             >>> y = meas_op.measure(x)
             >>> print(y.shape)
-            >>> print(meas_op.meas_dims)
             torch.Size([3, 10])
+            >>> print(meas_op.meas_dims)
             torch.Size([-2, -1])
         """
         x = self.vectorize(x)
@@ -240,8 +237,8 @@ class Linear(nn.Module):
             >>> x = torch.randn(3, 15, 4)
             >>> y = meas_op(x)
             >>> print(y.shape)
-            >>> print(meas_op.meas_dims)
             torch.Size([3, 10])
+            >>> print(meas_op.meas_dims)
             torch.Size([-2, -1])
         """
         x = self.measure(x)
@@ -288,7 +285,7 @@ class Linear(nn.Module):
             >>> m = torch.randn(3, 4, 10)
             >>> x = meas_op.adjoint(m)
             >>> print(x.shape)
-            orch.Size([3, 4, 15])
+            torch.Size([3, 4, 15])
 
 
             Example 2: 3 measurements of length 10 produces 3 signals of length
@@ -324,7 +321,7 @@ class Linear(nn.Module):
 
         Output:
             :class:`torch.tensor`: A tensor whose dimensions given by :attr:`self.meas_dims` have shape :attr:`self.meas_shape`.
-            
+
         See also:
             For the opposite operation use :meth:`vectorize()`.
 
@@ -334,7 +331,7 @@ class Linear(nn.Module):
             >>> meas_op = meas.Linear(matrix, meas_shape=(12, 5), meas_dims=(-1,-3))
             >>> m = torch.randn(3, 7, 60)
             >>> print(meas_op.unvectorize(m).shape)
-            torch.Size([3, 5, 7, 12]
+            torch.Size([3, 5, 7, 12])
         """
         # unvectorize the last dimension
         input = input.reshape(*input.shape[:-1], *self.meas_shape)
@@ -355,7 +352,7 @@ class Linear(nn.Module):
 
         Output:
             :class:`torch.tensor`: A tensor of shape (:attr:`*, self.meas_shape`) where * denotes all the dimensions of the input tensor not included in :attr:`self.meas_dims`.
-            
+
         See also:
             For the opposite operation use :meth:`unvectorize()`.
 
@@ -452,14 +449,14 @@ class FreeformLinear(Linear):
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
-            >>> images = torch.rand(17, 3, 40, 40)  # b, c, h, w
-            >>> # create a (2,20) mask
-            >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
-            >>> H = torch.randn(13, 20)
-            >>> meas_op = FreeformLinear(H, mask, meas_shape=(40,40), dim=(-1,-2))
-            >>> y = meas_op.apply_mask(images)
-            >>> print(y.shape)
-            torch.Size([17, 3, 20])
+            # >>> images = torch.rand(17, 3, 40, 40)  # b, c, h, w
+            # >>> # create a (2,20) mask
+            # >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
+            # >>> H = torch.randn(13, 20)
+            # >>> meas_op = FreeformLinear(H, mask, meas_shape=(40,40), dim=(-1,-2))
+            # >>> y = meas_op.apply_mask(images)
+            # >>> print(y.shape)
+            # torch.Size([17, 3, 20])
         """
         x = torch.movedim(x, self.meas_dims, self.last_dims)
 
@@ -513,8 +510,7 @@ class FreeformLinear(Linear):
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Measure the upper half of 32x32 images
-            >>> H = torch.randn(10, 16*32)
-            >>>
+            # >>> H = torch.randn(10, 16*32)
 
         """
         super().forward(x)
@@ -594,14 +590,14 @@ class FreeformLinear(Linear):
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
-            >>> images = torch.rand(17, 3, 40, 40)  # b, c, h, w
-            >>> # create a (2,20) mask
-            >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
-            >>> H = torch.randn(13, 20)
-            >>> meas_op = FreeformLinear(H, mask, meas_shape=(40,40), dim=(-1,-2))
-            >>> y = meas_op.mask_vectorize(images)
-            >>> print(y.shape)
-            torch.Size([17, 3, 20])
+            # >>> images = torch.rand(17, 3, 40, 40)  # b, c, h, w
+            # >>> # create a (2,20) mask
+            # >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
+            # >>> H = torch.randn(13, 20)
+            # >>> meas_op = FreeformLinear(H, mask, meas_shape=(40,40), dim=(-1,-2))
+            # >>> y = meas_op.mask_vectorize(images)
+            # >>> print(y.shape)
+            # torch.Size([17, 3, 20])
         """
         return self.apply_mask(x)
 
@@ -609,13 +605,13 @@ class FreeformLinear(Linear):
 # =============================================================================
 class LinearSplit(Linear):
     r"""
-    Simulate linear measurements by splitting an acquisition matrix :math:`H\in \mathbb{R}^{M\times N}` that contains negative values. In practice, only positive values can be implemented using a DMD. Therefore, we acquire
- 
+    Simulate linear measurements by splitting an acquisition matrix :math:`H\in \mathbb{R}^{M\times N}` that contains negative values. In pratice, only positive values can be implemented using a DMD. Therefore, we acquire
+
     .. math::
         y =\mathcal{N}\left(Ax\right),
-        
+
     where :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` represents a noise operator (e.g., Gaussian), :math:`A \colon\, \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns, :math:`x \in \mathbb{R}^N` is the signal of interest., :math:`2M` is the number of DMD patterns, and :math:`N` is the dimension of the signal.
-    
+
     Given a matrix :math:`H`, we define the positive DMD patterns :math:`A` from the positive and negative components :math:`H`. In practice, the even rows of :math:`A` contain the positive components of :math:`H`, while odd rows of :math:`A` contain the negative components of :math:`H`
 
     .. math::
@@ -623,54 +619,55 @@ class LinearSplit(Linear):
             A[0::2, :] = H_{+}, \text{ with } H_{+} = \max(0,H),\\
             A[1::2, :] = H_{-}, \text{ with } H_{-} = \max(0,-H).
         \end{cases}
-    
+
     .. note::
         :math:`H_{+}` and :math:`H_{-}` are such that :math:`H_{+} - H_{-} = H`.
-    
+
     .. important::
         The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`).
 
     Args:
         :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
         with shape :math:`(M, N)`. Only real values are supported.
-        
-        :attr:`meas_shape` (tuple, optional): Shape of the underliying 
-        multi-dimensional array :math:`X`. Must be a tuple of integers 
-        :math:`(N_1, ... ,N_k)` such that :math:`\prod_k N_k = N`. If not, an 
+
+        :attr:`meas_shape` (tuple, optional): Shape of the underliying
+        multi-dimensional array :math:`X`. Must be a tuple of integers
+        :math:`(N_1, ... ,N_k)` such that :math:`\prod_k N_k = N`. If not, an
         error is raised. Defaults to None.
-        
-        :attr:`meas_dims` (tuple, optional): Dimensions of :math:`X` the 
-        acquisition matrix applies to. Must be a tuple with the same length as 
-        :attr:`meas_shape`. If not, an error is raised. Defaults to the last 
-        dimensions of the multi-dimensional array :math:`X` (e.g., `(-2,-1)` 
+
+        :attr:`meas_dims` (tuple, optional): Dimensions of :math:`X` the
+        acquisition matrix applies to. Must be a tuple with the same length as
+        :attr:`meas_shape`. If not, an error is raised. Defaults to the last
+        dimensions of the multi-dimensional array :math:`X` (e.g., `(-2,-1)`
         when `len(meas_shape)`).
-        
+
         :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. Defaults to = `torch.nn.Identity`.
-    
+
     Attributes:
-        :attr:`A` (:class:`torch.tensor`): (Learnable) positive measurement 
+        :attr:`A` (:class:`torch.tensor`): (Learnable) positive measurement
         matrix of shape :math:`(2M, N)` initialized as :math:`A`.
-        
+
         :attr:`H` (:class:`torch.tensor`): (Learnable) measurement matrix of shape
         :math:`(M, N)` initialized as :math:`H`.
-        
-        :attr:`meas_shape` (tuple): Shape of the underliying 
+
+        :attr:`meas_shape` (tuple): Shape of the underliying
         multi-dimensional array :math:`X`.
-        
-        :attr:`meas_dims` (tuple): Dimensions the acquisition matrix applies to. 
-        
-        :attr:`meas_ndim` (int): Number of dimensions the 
-        acquisition matrix applies to. This is `len(meas_dims)` 
-    
+
+        :attr:`meas_dims` (tuple): Dimensions the acquisition matrix applies to.
+
+        :attr:`meas_ndim` (int): Number of dimensions the
+        acquisition matrix applies to. This is `len(meas_dims)`
+
         :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
-    
+
         :attr:`M` (int): Number of measurements :math:`M`.
-    
+
     Examples:
+
         Example 1: (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 20.
-            
+
         >>> import torch
-        >>> import spyrit.core.meas as meas    
+        >>> import spyrit.core.meas as meas
         >>> H = torch.randn(10, 15)
         >>> meas_op = meas.LinearSplit(H)
         >>> x = torch.randn(3, 4, 15)
@@ -679,16 +676,16 @@ class LinearSplit(Linear):
         torch.Size([3, 4, 20])
 
         Example 2: 3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 20. The acquisition matrix applies to both dimensions -2 and -1.
-            
+
         >>> import torch
-        >>> import spyrit.core.meas as meas    
+        >>> import spyrit.core.meas as meas
         >>> H = torch.randn(10, 60)
         >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
         >>> x = torch.randn(3, 15, 4)
         >>> y = meas_op(x)
         >>> print(y.shape)
-        >>> print(meas_op.meas_dims)
         torch.Size([3, 20])
+        >>> print(meas_op.meas_dims)
         torch.Size([-2, -1])
     """
 
@@ -742,7 +739,7 @@ class LinearSplit(Linear):
             )
 
     def set_matrix_to_inverse(self, matrix_name: str) -> None:
-        if matrix_name in self._available_pinv_matrices.keys():
+        if matrix_name in self._available_pinv_matrices:
             self._selected_pinv_matrix = matrix_name
         else:
             raise KeyError(
@@ -750,34 +747,34 @@ class LinearSplit(Linear):
             )
 
     def measure(self, x: torch.tensor):
-        r""" Simulate noiseless measurements from matrix A.
-        
+        r"""Simulate noiseless measurements from matrix A.
+
         It acquires
-     
+
         .. math::
             y = Ax,
-            
+
         where :math:`A \in \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns, :math:`x \in \mathbb{R}^N` is the signal of interest., :math:`2M` is the number of DMD patterns, and :math:`N` is the dimension of the signal.
-        
+
         Given a matrix :math:`H \in \mathbb{R}^{M\times N}`, we define the positive DMD patterns :math:`A` from the positive and negative components of :math:`H`.
-        
+
         .. note::
-            
+
             The acquisition matrix :math:`A` is given by :attr:`self.A`.
-        
+
         Args:
             :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
             dimensions :attr:`self.meas_dims` must have shape
             shape :attr:`self.meas_shape`.
-        
+
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`y` of length :attr:`2*self.M`.
 
         Examples:
-            
+
             Example 1: (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 20.
-            
-            >>> import spyrit.core.meas as meas    
+
+            >>> import spyrit.core.meas as meas
             >>> H = torch.randn(10, 15)
             >>> meas_op = meas.LinearSplit(H)
             >>> x = torch.randn(3, 4, 15)
@@ -786,15 +783,15 @@ class LinearSplit(Linear):
             torch.Size([3, 4, 20])
 
             Example 2: 3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 20. The acquisition matrix applies to both dimensions -2 and -1.
-            
-            >>> import spyrit.core.meas as meas    
+
+            >>> import spyrit.core.meas as meas
             >>> H = torch.randn(10, 60)
             >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
             >>> x = torch.randn(3, 15, 4)
             >>> y = meas_op.measure(x)
             >>> print(y.shape)
-            >>> print(meas_op.meas_dims)
             torch.Size([3, 20])
+            >>> print(meas_op.meas_dims)
             torch.Size([-2, -1])
         """
         x = self.vectorize(x)
@@ -802,31 +799,31 @@ class LinearSplit(Linear):
         return x
 
     def measure_H(self, x: torch.tensor):
-        r""" Simulate noiseless measurements from matrix H.
-        
+        r"""Simulate noiseless measurements from matrix H.
+
         It computes
-     
+
         .. math::
             m = Hx,
-            
+
         where :math:`H \in \mathbb{R}^{M\times N}` is the acquisition matrix (that may contain negative values), :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of DMD patterns, and :math:`N` is the dimension of the signal.
-        
+
         .. note::
-            
+
             The acquisition matrix :math:`H` is given by :attr:`self.H`.
-        
+
         Args:
             :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
             dimensions :attr:`self.meas_dims` must have shape
             shape :attr:`self.meas_shape`.
-        
+
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`self.M`.
 
         Examples:
             Example 1: (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 10.
-            
-            >>> import spyrit.core.meas as meas    
+
+            >>> import spyrit.core.meas as meas
             >>> H = torch.randn(10, 15)
             >>> meas_op = meas.LinearSplit(H)
             >>> x = torch.randn(3, 4, 15)
@@ -835,15 +832,15 @@ class LinearSplit(Linear):
             torch.Size([3, 4, 10])
 
             Example 2: 3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 10. The acquisition matrix applies to both dimensions -2 and -1.
-            
-            >>> import spyrit.core.meas as meas    
+
+            >>> import spyrit.core.meas as meas
             >>> H = torch.randn(10, 60)
             >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
             >>> x = torch.randn(3, 15, 4)
             >>> y = meas_op.measure_H(x)
             >>> print(y.shape)
-            >>> print(meas_op.meas_dims)
             torch.Size([3, 10])
+            >>> print(meas_op.meas_dims)
             torch.Size([-2, -1])
         """
         x = self.vectorize(x)
@@ -852,28 +849,28 @@ class LinearSplit(Linear):
 
     def adjoint(self, y: torch.tensor, unvectorize=False):
         r"""Apply adjoint of matrix A.
-        
+
         It computes
-     
+
         .. math::
             x = A^Ty,
-            
+
         where :math:`A \in \mathbb{R}^{2M\times N}` is the acquisition matrix (that may contain negative values) and :math:`y \in \mathbb{R}^{2M}` is a measurement vector.
-        
+
         .. note::
-            
+
             The acquisition matrix :math:`A` is given by :attr:`self.A`.
-        
+
         Args:
             :attr:`y` (:class:`torch.tensor`): Measurement :math:`y` whose dimensions :attr:`self.meas_dims` must have shape :attr:`self.meas_shape`.
-        
+
         Returns:
             :class:`torch.tensor`: A batch of signals :math:`x` with shape :math:`(*, N)` where :math:`*` is the same as for :attr:`m`.
 
         Examples:
             Example 1: (3, 4) measurements of length 20 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) signals of length 15.
-            
-            >>> import spyrit.core.meas as meas    
+
+            >>> import spyrit.core.meas as meas
             >>> H = torch.randn(10, 15)
             >>> meas_op = meas.LinearSplit(H)
             >>> y = torch.randn(3, 4, 20)
@@ -882,8 +879,8 @@ class LinearSplit(Linear):
             torch.Size([3, 4, 15])
 
             Example 2: 3 measurements of length 20 are measured with an acquisition matrix of shape (10, 60). This produces 3 signals of length 60.
-            
-            >>> import spyrit.core.meas as meas    
+
+            >>> import spyrit.core.meas as meas
             >>> H = torch.randn(10, 60)
             >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
             >>> m = torch.randn(3, 20)
@@ -897,29 +894,29 @@ class LinearSplit(Linear):
         return y
 
     def adjoint_H(self, m: torch.tensor, unvectorize=False):
-        r""" Apply adjoint of matrix H.
-        
+        r"""Apply adjoint of matrix H.
+
         It computes
-     
+
         .. math::
             x = H^Tm,
-            
+
         where :math:`H \in \mathbb{R}^{M\times N}` is the acquisition matrix (that may contain negative values), :math:`m \in \mathbb{R}^M` is a measurement vector.
-        
+
         .. note::
-            
+
             The acquisition matrix :math:`H` is given by :attr:`self.H`.
-        
+
         Args:
             :attr:`m` (:class:`torch.tensor`): Measurements :math:`m` whose dimensions :attr:`self.meas_dims` must have shape :attr:`self.meas_shape`.
-        
+
         Returns:
             A batch of signals :math:`x`. If :attr:`unvectorize` is :obj:`False`, :math:`x` has shape :math:`(*, N)` where :math:`*` is the same as for :attr:`m`. If :attr:`unvectorize` is :obj:`True`, :math:`x` is reshaped such that the dimensions :attr:`self.meas_dims` have shape :attr:`self.meas_shape`.
 
         Examples:
             Example 1: (3, 4) measurements of length 10 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) signals of length 15.
-            
-            >>> import spyrit.core.meas as meas    
+
+            >>> import spyrit.core.meas as meas
             >>> H = torch.randn(10, 15)
             >>> meas_op = meas.LinearSplit(H)
             >>> m = torch.randn(3, 4, 10)
@@ -928,15 +925,15 @@ class LinearSplit(Linear):
             torch.Size([3, 4, 15])
 
             Example 2: 3 measurements of length 10 are measured with an acquisition matrix of shape (10, 60). This produces 3 signals of length 60.
-            
-            >>> import spyrit.core.meas as meas    
+
+            >>> import spyrit.core.meas as meas
             >>> H = torch.randn(10, 60)
             >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
             >>> m = torch.randn(3, 10)
             >>> x = meas_op.adjoint_H(m)
             >>> print(x.shape)
             torch.Size([3, 60])
-            
+
             Using unvectorize=True produces 3 signals of length (15, 4)
 
             >>> x = meas_op.adjoint_H(m, unvectorize=True)
@@ -946,34 +943,34 @@ class LinearSplit(Linear):
         return super().adjoint(m, unvectorize=unvectorize)
 
     def forward(self, x: torch.tensor):
-        r""" Simulate noisy measurements from matrix A.
-        
+        r"""Simulate noisy measurements from matrix A.
+
         It computes
-     
+
         .. math::
             y =\mathcal{N}\left(Ax\right),
-            
+
         where :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` represents a noise operator (e.g., Gaussian), where :math:`A \in \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns, :math:`x \in \mathbb{R}^N` is the signal of interest., :math:`2M` is the number of DMD patterns, and :math:`N` is the dimension of the signal.
-        
+
         Given a matrix :math:`H \in \mathbb{R}^{M\times N}`, we define the positive DMD patterns :math:`A` from the positive and negative components of :math:`H`.
-        
+
         .. note::
-            
+
             The acquisition matrix :math:`A` is given by :attr:`self.A`.
-        
+
         Args:
             :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
             dimensions :attr:`self.meas_dims` must have shape
             shape :attr:`self.meas_shape`.
-        
+
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`y` of length :attr:`2*self.M`.
 
         Examples:
-            
+
             Example 1: (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 20.
-            
-            >>> import spyrit.core.meas as meas    
+
+            >>> import spyrit.core.meas as meas
             >>> H = torch.randn(10, 15)
             >>> meas_op = meas.LinearSplit(H)
             >>> x = torch.randn(3, 4, 15)
@@ -982,15 +979,15 @@ class LinearSplit(Linear):
             torch.Size([3, 4, 20])
 
             Example 2: 3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 20. The acquisition matrix applies to both dimensions -2 and -1.
-            
-            >>> import spyrit.core.meas as meas    
+
+            >>> import spyrit.core.meas as meas
             >>> H = torch.randn(10, 60)
             >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
             >>> x = torch.randn(3, 15, 4)
             >>> y = meas_op(x)
             >>> print(y.shape)
-            >>> print(meas_op.meas_dims)
             torch.Size([3, 20])
+            >>> print(meas_op.meas_dims)
             torch.Size([-2, -1])
         """
         x = self.measure(x)
@@ -998,31 +995,31 @@ class LinearSplit(Linear):
         return x
 
     def forward_H(self, x: torch.tensor):
-        r""" Simulate noisy measurements from matrix H.
-        
+        r"""Simulate noisy measurements from matrix H.
+
         It computes
-     
+
         .. math::
             m =\mathcal{N}\left(Hx\right),
 
         where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H \in \mathbb{R}^{M\times N}` is the acquisition matrix (that may contain negative values), :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of DMD patterns, and :math:`N` is the dimension of the signal.
-        
+
         .. note::
-            
+
             The acquisition matrix :math:`H` is given by :attr:`self.H`.
-        
+
         Args:
             :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
             dimensions :attr:`self.meas_dims` must have shape
             shape :attr:`self.meas_shape`.
-        
+
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`self.M`.
 
         Examples:
             Example 1: (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 10.
-            
-            >>> import spyrit.core.meas as meas    
+
+            >>> import spyrit.core.meas as meas
             >>> H = torch.randn(10, 15)
             >>> meas_op = meas.LinearSplit(H)
             >>> x = torch.randn(3, 4, 15)
@@ -1031,15 +1028,15 @@ class LinearSplit(Linear):
             torch.Size([3, 4, 10])
 
             Example 2: 3 signals of length (15, 4) are measured with an acquisition matrix of shape (10, 60). This produces 3 measurements of length 10. The acquisition matrix applies to both dimensions -2 and -1.
-            
-            >>> import spyrit.core.meas as meas    
+
+            >>> import spyrit.core.meas as meas
             >>> H = torch.randn(10, 60)
             >>> meas_op = meas.LinearSplit(H, meas_shape=(15, 4))
             >>> x = torch.randn(3, 15, 4)
             >>> y = meas_op.forward_H(x)
             >>> print(y.shape)
-            >>> print(meas_op.meas_dims)
             torch.Size([3, 10])
+            >>> print(meas_op.meas_dims)
             torch.Size([-2, -1])
         """
         x = self.measure_H(x)
@@ -1049,47 +1046,45 @@ class LinearSplit(Linear):
 
 # =============================================================================
 class HadamSplit2d(LinearSplit):
-    r""" Simulate 2D Hadamard split acquisitions.
-    
+    r"""Simulate 2D Hadamard split acquisitions.
+
     Considering the acquisition of :math:`2M` square DMD patterns of size :math:`h`, it computes
- 
+
     .. math::
         y =\mathcal{N}\left(\mathcal{S}\left(AXA^T\right)\right),
-        
-    where :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` represents a noise operator (e.g., Gaussian), :math:`\mathcal{S} \colon\, \mathbb{R}^{2h\times 2h} \to \mathbb{R}^{2M}` is a subsampling operator, :math:`A \in \mathbb{R}_+^{2h\times h}` is the acquisition matrix that contains the positive and negative components of a Hadamard matrix, :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image. 
-    
-    
+
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` represents a noise operator (e.g., Gaussian), :math:`\mathcal{S} \colon\, \mathbb{R}^{2h\times 2h} \to \mathbb{R}^{2M}` is a subsampling operator, :math:`A \in \mathbb{R}_+^{2h\times h}` is the acquisition matrix that contains the positive and negative components of a Hadamard matrix, :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image.
+
+
     1. The matrix :math:`A` is obtained by splitting a Hadamard matrix :math:`H\in\mathbb{R}^{h\times h}` such that :math:`A[0::2, :] = H_{+}` and :math:`A[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.
-    
+
     .. note::
-        
+
         :math:`H_{+} - H_{-} = H`.
 
     2. The subsampling operator keeps the pixels that correspond to the :math:`M` largest values in the order matrix :math:`O\in\mathbb{R}^{h^2 \times h^2}`.
-    
+
     .. note::
-      
+
         Subsampling applies to :math:`H_{+}XH_{+}^T` and :math:`H_{-}XH_{-}^T` the same way, independently.
-        
+
     .. note::
             The operator :math:`\mathcal{S}` returns a vector. In the case :math:`M=h^2` (no subsampling), :math:`\mathcal{S}` is the vectorization operator.
 
     Args:
         :attr:`h` (int): Image size :math:`h`. Must be a power of 2.
-        
-        :attr:`M` (int): Number of measurements for subsampling. 
 
         :attr:`order` (:class:`torch.tensor`, optional): Order matrix :math:`O` that defines the measurements to keep. The first component of :math:`y` will correspond to the index where :attr:`order` is the highest.
 
         :attr:`fast` (bool, optional): Whether to use the fast Hadamard transform
         algorithm. If False, it uses matrix-vector products. Defaults to True.
-        
+
         :attr:`reshape_output` (bool, optional): Whether reshape the output of adjoint and pinv methods to images. If False, output are vectors.
 
         noise_model (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
         Defaults to `torch.nn.Identity()`.
 
-        dtype (:class:`torch.dtype`, optional): Data type of the measurement 
+        dtype (:class:`torch.dtype`, optional): Data type of the measurement
         matrix. Defaults to `torch.float32`.
 
         device (:obj:`torch.device`, optional): Device of the measurement matrix.
@@ -1101,7 +1096,7 @@ class HadamSplit2d(LinearSplit):
         put as `order`.
 
     Attributes:
-        
+
         :attr:`H` (:class:`torch.tensor`): The 2D measurement matrix given by :math:`H\otimes H`.
 
         :attr:`A` (:class:`torch.tensor`): The 2D acquisition matrix given by :math:`A\otimes A`.
@@ -1128,10 +1123,11 @@ class HadamSplit2d(LinearSplit):
 
     Example:
         >>> import spyrit.core.meas as meas
+        >>> h = 32
         >>> meas_op = meas.HadamSplit2d(h, 400)
         >>> print(meas_op.H1d.shape)
-        >>> print(meas_op.M)
         torch.Size([32, 32])
+        >>> print(meas_op.M)
         400
     """
 
@@ -1161,9 +1157,9 @@ class HadamSplit2d(LinearSplit):
             dtype=dtype,
             device=device,
         )
-        
+
         if order is None:
-            order = torch.ones(h,h)
+            order = torch.ones(h, h)
         # 1D version of H
         # H1d = spytorch.walsh_matrix(h).to(dtype=dtype, device=device)
         # self.H1d = nn.Parameter(H1d, requires_grad=False)
@@ -1244,25 +1240,25 @@ class HadamSplit2d(LinearSplit):
 
     def measure(self, x: torch.tensor) -> torch.tensor:
         r"""Simulate noiseless measurements from matrix A.
-        
+
         It computes
-     
+
         .. math::
             y =\mathcal{S}\left(AXA^T\right),
-            
+
         where :math:`\mathcal{S} \colon\, \mathbb{R}^{2h\times 2h} \to \mathbb{R}^{2M}` is the subsampling operator, :math:`A \colon\, \mathbb{R}_+^{2h\times h}` is the acquisition matrix that contains the positive and negative component of 2D Hadamard patterns, :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image, :math:`2M` is the number of DMD patterns, and :math:`h` is the image size.
-        
+
         Args:
             :attr:`x` (:class:`torch.tensor`): Image :math:`X` whose
             dimensions :attr:`self.meas_dims` must have shape
             shape :attr:`self.meas_shape`.
-        
+
         Returns:
             Measurement vector :math:`y \in \mathbb{R}^{2M}`.
 
         Examples:
             Example 1: No subsampling
-                
+
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> h = 32
@@ -1271,10 +1267,10 @@ class HadamSplit2d(LinearSplit):
             >>> x = torch.empty(10, h, h).uniform_(0, 1)
             >>> y = meas_op.measure(x)
             >>> print(y.shape)
-            torch.Size([10, 1024])
-            
+            torch.Size([10, 2048])
+
             Example 2: With subsampling
-                
+
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> h = 32
@@ -1292,25 +1288,25 @@ class HadamSplit2d(LinearSplit):
 
     def measure_H(self, x: torch.tensor):
         r"""Simulate noiseless measurements from matrix H.
-        
+
         It computes
-     
+
         .. math::
             m =\mathcal{S}\left(HXH^T\right),
-            
+
         where :math:`\mathcal{S} \colon\, \mathbb{R}^{h\times h} \to \mathbb{R}^{M}` is the subsampling operator, :math:`H \colon\, \mathbb{R}^{h\times h}` is the Hadamard matrix, :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image.
-        
+
         Args:
             :attr:`x` (:class:`torch.tensor`): Image :math:`X` whose
             dimensions :attr:`self.meas_dims` must have shape
             shape :attr:`self.meas_shape`.
-        
+
         Returns:
-            Measurement vector :math:`m \in \mathbb{R}^{M}`. 
+            Measurement vector :math:`m \in \mathbb{R}^{M}`.
 
         Examples:
             Example 1: No subsampling
-                
+
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> h = 32
@@ -1319,9 +1315,9 @@ class HadamSplit2d(LinearSplit):
             >>> y = meas_op.measure(x)
             >>> print(y.shape)
             torch.Size([2048])
-            
+
             Example 2: With subsampling
-                
+
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> h = 32
@@ -1338,10 +1334,10 @@ class HadamSplit2d(LinearSplit):
 
     def adjoint_H(self, m: torch.tensor, unvectorize=False) -> torch.tensor:
         r"""Apply the adjoint of matrix H.
-        
+
         Args:
             :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` length is :attr:`self.M`.
-            
+
             :attr:`unvectorize` (bool): whether to apply a :meth:`unvectorize`
             operation at the end of the computation.
 
@@ -1358,7 +1354,7 @@ class HadamSplit2d(LinearSplit):
             >>> x = meas_op.adjoint_H(m)
             >>> print(x.shape)
             torch.Size([10, 1024])
-            
+
             Example 2: With subsampling
             >>> import torch
             >>> import spyrit.core.meas as meas
@@ -1376,16 +1372,16 @@ class HadamSplit2d(LinearSplit):
             return super().adjoint_H(m, unvectorize)
 
     def fast_measure(self, x: torch.tensor) -> torch.tensor:
-        r""" Simulate noiseless measurements from matrix A. """
+        r"""Simulate noiseless measurements from matrix A."""
         Hx = self.fast_measure_H(x)
-        x_sum = Hx[..., None, 0] # indexing while keeping the original shape
+        x_sum = Hx[..., None, 0]  # indexing while keeping the original shape
         y_pos, y_neg = (x_sum + Hx) / 2, (x_sum - Hx) / 2
         new_shape = y_pos.shape[:-1] + (2 * self.M,)
         y = torch.stack([y_pos, y_neg], -1).reshape(new_shape)
         return y
 
     def fast_measure_H(self, x: torch.tensor) -> torch.tensor:
-        r""" Simulate noiseless measurements from matrix H. """
+        r"""Simulate noiseless measurements from matrix H."""
         x = spytorch.mult_2d_separable(self.H1d, x)
         x = self.vectorize(x)
         x = x.index_select(dim=-1, index=self.indices)
@@ -1397,21 +1393,22 @@ class HadamSplit2d(LinearSplit):
 
         Args:
             :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` of length :attr:`self.M`.
-                
+
             :attr:`vectorize` (bool): Whether to apply the :meth:`vectorize` method
             after computation of the pseudo inverse.
 
         Returns:
             :class:`torch.tensor`: Vectorized image :math:`x` of length :attr:`self.N`.
-            
+
         .. note::
             We use the separability of the 2D Hadamard transform. Only multiplications
             with the "1D" Hadamard matrix (i.e., :attr:`self.H1d`) are required. If
             the number of measurements is smaller than the number of pixels,
             the measurement vector is zero-padded.
-            
+
         Examples:
             Example 1: No subsampling
+
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> h = 32
@@ -1419,9 +1416,10 @@ class HadamSplit2d(LinearSplit):
             >>> m = torch.empty(10, h*h).uniform_(0, 1)
             >>> x = meas_op.fast_pinv(m)
             >>> print(x.shape)
-            torch.Size([10, 1024])
-            
+            torch.Size([10, 32, 32])
+
             Example 2: With subsampling
+
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> h, M = 32, 49
@@ -1429,17 +1427,18 @@ class HadamSplit2d(LinearSplit):
             >>> m = torch.empty(8, 2, M).uniform_(0, 1)
             >>> x = meas_op.fast_pinv(m)
             >>> print(x.shape)
-            torch.Size([8, 2, 1024])
-            
-            Example 3: Output images, not vectors
+            torch.Size([8, 2, 32, 32])
+
+            Example 3: Output are vectors, not images
+
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> h, M = 32, 49
-            >>> meas_op = meas.HadamSplit2d(h, M, reshape_output=True)
+            >>> meas_op = meas.HadamSplit2d(h, M)
             >>> m = torch.empty(8, 2, M).uniform_(0, 1)
-            >>> x = meas_op.fast_pinv(m)
+            >>> x = meas_op.fast_pinv(m, vectorize=True)
             >>> print(x.shape)
-            torch.Size([8, 2, 32, 32])
+            torch.Size([8, 2, 1024])
         """
         if self.N != self.M:
             m = torch.cat(
@@ -1449,13 +1448,13 @@ class HadamSplit2d(LinearSplit):
         m = self.reindex(m, "cols", False)
         m = self.unvectorize(m)
         m = spytorch.mult_2d_separable(self.H1d, m) / self.N
-        
+
         if vectorize:
             m = self.vectorize(m)
         return m
 
     def fast_H_pinv(self) -> torch.tensor:
-        r""" Return the pseudo inverse of the matrix H"""
+        r"""Return the pseudo inverse of the matrix H"""
         return self.H.T / self.N
 
 
@@ -1990,18 +1989,18 @@ class DynamicLinear(Linear):
         versions of the attributes, be sure to include the suffix `_static`.
 
     Example:
-        >>> H_static = torch.rand([400, 1600])
-        >>> meas_op = DynamicLinear(H_static)
-        >>> print(meas_op)
-        DynamicLinear(
-          (M): 400
-          (N): 1600
-          (H.shape): torch.Size([400, 1600])
-          (meas_shape): (40, 40)
-          (H_dyn): False
-          (img_shape): (40, 40)
-          (H_pinv): False
-        )
+        # >>> H_static = torch.rand([400, 1600])
+        # >>> meas_op = DynamicLinear(H_static)
+        # >>> print(meas_op)
+        # DynamicLinear(
+        #   (M): 400
+        #   (N): 1600
+        #   (H.shape): torch.Size([400, 1600])
+        #   (meas_shape): (40, 40)
+        #   (H_dyn): False
+        #   (img_shape): (40, 40)
+        #   (H_pinv): False
+        # )
 
     Reference:
 
@@ -2345,12 +2344,12 @@ class DynamicLinear(Linear):
             `c` the number of channels, and `M` the number of measurements.
 
         Example:
-            >>> x = torch.rand([10, 400, 3, 40, 40])
-            >>> H = torch.rand([400, 1600])
-            >>> meas_op = DynamicLinear(H)
-            >>> y = meas_op(x)
-            >>> print(y.shape)
-            torch.Size([10, 3, 400])
+            # >>> x = torch.rand([10, 400, 3, 40, 40])
+            # >>> H = torch.rand([400, 1600])
+            # >>> meas_op = DynamicLinear(H)
+            # >>> y = meas_op(x)
+            # >>> print(y.shape)
+            # torch.Size([10, 3, 400])
         """
         return self._dynamic_forward_with_op(x, self.H_static)
 

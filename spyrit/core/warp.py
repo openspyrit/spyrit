@@ -77,7 +77,7 @@ class DeformationField(nn.Module):
         >>> u = torch.tensor([[[[ 1, -1], [ 1, 1]], [[-1, -1], [-1, 1]]]])
         >>> field = DeformationField(u)
         >>> print(field.field)
-        tensor([[[[ 1, -1], [ 1, 1]], [[-1, -1], [-1, 1]]]])
+        tensor(...)
         >>> print(field.field.shape)
         torch.Size([1, 2, 2, 2])
 
@@ -85,7 +85,7 @@ class DeformationField(nn.Module):
         >>> u = torch.tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]]])
         >>> field = DeformationField(u)
         >>> print(field.field)
-        tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]])
+        tensor(...)
     """
 
     def __init__(self, field: torch.tensor):
@@ -211,13 +211,13 @@ class DeformationField(nn.Module):
         Example 1: Rotating a 2x2 B&W image by 90 degrees counter-clockwise, using one
         frame
 
-        >>> v = torch.tensor([[[[ 1., -1.], [ 1., 1.]],
-                               [[-1., -1.], [-1., 1.]]]])
+        >>> v = torch.tensor([[[[ 1., -1.], [ 1., 1.]], [[-1., -1.], [-1., 1.]]]])
         >>> field = DeformationField(v)
         >>> image = torch.tensor([0., 0.3, 0.7, 1.]).view(1, 1, 2, 2)
         >>> deformed_image = field(image, 0, 1)
         >>> print(deformed_image)
-        tensor([[[[0.3000, 1.0000], [0.0000, 0.7000]]]])
+        tensor([[[[[0.3000, 1.0000],
+                   [0.0000, 0.7000]]]]])
         """
 
         if img.ndim == 3:
@@ -457,7 +457,8 @@ class AffineDeformationField(DeformationField):
     Example 1: Progressive zooming **in**
         >>> def u(t):
         ...     return torch.tensor([[1-t/10, 0, 0], [0, 1-t/10, 0], [0, 0, 1]])
-        >>> field = AffineDeformationField(u)
+        >>> t = torch.tensor([[[[ 1, -1], [ 1, 1]], [[-1, -1], [-1, 1]]]])
+        >>> field = AffineDeformationField(u, t, (32, 32))
 
     Example 2: Rotation of an image **counter-clockwise**, at a frequency of 1Hz
         >>> import numpy as np
@@ -467,7 +468,8 @@ class AffineDeformationField(DeformationField):
         ...     return np.cos(2*np.pi*t)
         >>> def u(t):
         ...     return torch.tensor([[c(t), s(t), 0], [-s(t), c(t), 0], [0, 0, 1]])
-        >>> field = AffineDeformationField(u)
+        >>> t = torch.tensor([[[[ 1, -1], [ 1, 1]], [[-1, -1], [-1, 1]]]])
+        >>> field = AffineDeformationField(u, t, (32, 32))
     """
 
     def __init__(
@@ -600,7 +602,7 @@ class ElasticDeformation(DeformationField):
     .. note::
         The parameters :attr:`alpha`, :attr:`sigma`, and :attr:`n_interpolation`
         are defined at initialization and cannot be changed after instantiation.
-    
+
     Args:
         alpha (float): Magnitude of displacements. This argument is passed to
         the constructor of :class:`torchvision.transforms.v2.ElasticTransform`.
@@ -648,7 +650,6 @@ class ElasticDeformation(DeformationField):
     def __init__(
         self, alpha, sigma, img_shape, n_frames, n_interpolation, dtype=torch.float32
     ):
-        
 
         super().__init__(None)
 
