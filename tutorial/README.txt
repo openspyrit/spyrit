@@ -12,11 +12,13 @@ This series of tutorials should guide you through the use of the SPyRiT pipeline
 
 Each tutorial focuses on a specific submodule of the full pipeline.
 
-* :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_acquisition_operators.py>` introduces the measurement operators.
+* :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_a_acquisition_operators.py>` introduces the basics of measurement operators.
+
+* :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_b_splitting.py>` introduces the splitting of measurement operators.
 
 * :ref:`Tutorial 2 <sphx_glr_gallery_tuto_02_noise.py>` introduces the noise operators.
 
-* :ref:`Tutorial 3 <sphx_glr_gallery_tuto_03_pseudoinverse_linear.py>` shows pseudo-inverse reconstructions from Hadamard measurements.
+* :ref:`Tutorial 3 <sphx_glr_gallery_tuto_03_pseudoinverse_linear.py>` demonstrates pseudo-inverse reconstructions from Hadamard measurements.
 
 
 .. note::
