@@ -20,16 +20,16 @@ In practice, only positive values can be implemented using a digital micromirror
     
 where :math:`A \colon\, \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`2M` is the number of DMD patterns, and :math:`N` is the dimension of the signal.
 
-Given a matrix :math:`H`, we define the positive DMD patterns :math:`A` from the positive and negative components :math:`H`. In practice, the even rows of :math:`A` contain the positive components of :math:`H`, while odd rows of :math:`A` contain the negative components of :math:`H`.
+.. important::
+    The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`). Both variables are related through vectorization , i.e., :math:`x = \texttt{vec}(X)`.
+
+Given a matrix :math:`H` with negative values, we define the positive DMD patterns :math:`A` from the positive and negative components :math:`H`. In practice, the even rows of :math:`A` contain the positive components of :math:`H`, while odd rows of :math:`A` contain the negative components of :math:`H`.
 
     .. math::
         \begin{cases}
             A[0::2, :] = H_{+}, \text{ with } H_{+} = \max(0,H),\\
             A[1::2, :] = H_{-}, \text{ with } H_{-} = \max(0,-H).
         \end{cases}
-
-.. important::
-    The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`). Both variables are related through vectorization , i.e., :math:`x = \texttt{vec}(X)`.
 
 """
 
@@ -153,7 +153,7 @@ y_noise = meas_op(x)
 y_nonoise = meas_op.measure(x)
 
 #####################################################################
-# The :meth:`spyrit.core.LinearSplit.measure_H` method simulates noiseless measurements using the matrix H.
+# The :meth:`spyrit.core.LinearSplit.measure_H` method simulates noiseless measurements using the matrix H, i.e., :math:`m = Hx`.
 m_nonoise = meas_op.measure_H(x)
 
 #####################################################################
