@@ -453,6 +453,19 @@ class DCNet(_PrebuiltFullNet):
         :math:`h` and :math:`w` the height and width of the images.
 
         :attr:`output`: Reconstructed images with shape :math:`(b,c,h,w)`.
+    
+    Example 1:
+        >>> acqu = spyrit.core.meas.HadamSplit2d(64)
+        >>> prep = spyrit.core.prep.Rescale(1.0)
+        >>> sigma = torch.ones(64, 64)
+        >>> dcnet = DCNet(acqu, prep, sigma, device=torch.device("cuda"))
+    
+    Example 2:
+        >>> noise_model = spyrit.core.noise.Poisson(100)
+        >>> acqu = spyrit.core.meas.HadamSplit2d(64, noise_model=noise_model)
+        >>> prep = spyrit.core.prep.Rescale(100)
+        >>> sigma = torch.ones(64, 64)
+        >>> dcnet = DCNet(acqu, prep, sigma, device=torch.device("cuda"))
     """
 
     def __init__(
@@ -496,6 +509,16 @@ class DCNet(_PrebuiltFullNet):
 
         Returns:
             torch.tensor: Reconstructed images. Have shape :math:`(b,c,h,w)`
+        
+        Example:
+            >>> acqu = spyrit.core.meas.HadamSplit2d(64)
+            >>> prep = spyrit.core.prep.Rescale(1.0)
+            >>> sigma = torch.ones(64, 64)
+            >>> dcnet = DCNet(acqu, prep, sigma, device=torch.device("cuda"))
+            >>> y = torch.randn(10, 1, 4096)
+            >>> z = dcnet.reconstruct(y)
+            >>> print(z.shape)
+            torch.Size([10, 1, 64, 64])
         """
         y = self.reconstruct_pinv(y)
         y = self.denoi(y)
@@ -513,6 +536,16 @@ class DCNet(_PrebuiltFullNet):
 
         Returns:
             torch.tensor: Reconstructed images. Have shape :math:`(b,c,h,w)`
+        
+        Example:
+            >>> acqu = spyrit.core.meas.HadamSplit2d(64)
+            >>> prep = spyrit.core.prep.Rescale(1.0)
+            >>> sigma = torch.ones(64, 64)
+            >>> dcnet = DCNet(acqu, prep, sigma, device=torch.device("cuda"))
+            >>> y = torch.randn(10, 1, 4096)
+            >>> z = dcnet.reconstruct_pinv(y)
+            >>> print(z.shape)
+            torch.Size([10, 1, 64, 64])
         """
         # estimate the variance of the measurements
         var_noi = self.prep.sigma(y)
