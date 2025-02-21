@@ -181,6 +181,9 @@ class _PrebuiltFullNet(FullNet):
     The inverse operator is not added as an attribute because its name
     changes depending on the network. It is added as an attribute in the
     child classes.
+
+    .. note::
+        For more details, see the :class:`FullNet` class.
     """
 
     def __init__(
@@ -231,11 +234,45 @@ class _PrebuiltFullNet(FullNet):
 
 # =============================================================================
 class PositiveParameters(nn.Module):
+    r"""Module that stores a signed tensor and returns its absolute value.
+
+    This module is used to store the step size of the LearnedPGD network. The
+    step size must be positive, so it is stored as a signed tensor and its
+    absolute value is returned when the module is called.
+
+    Args:
+        params (array_like): Signed array-like object. It is used to construct
+        a new tensor.
+
+        requires_grad (bool): If True, the tensor requires gradient. Default is True.
+    
+    Attributes:
+        :attr:`params` (torch.tensor): Signed tensor.
+
+    Methods:
+        :meth:`forward`: Returns the absolute value of the signed tensor.
+    
+    Example:
+        >>> values = [-1, 2, -3, 4]
+        >>> pos_params = PositiveParameters(values)
+        >>> print(pos_params.params)
+        tensor([-1,  2, -3,  4])
+        >>> print(pos_params())
+        tensor([1, 2, 3, 4])
+    """
     def __init__(self, params, requires_grad=True):
         super(PositiveParameters, self).__init__()
         self.params = torch.tensor(params, requires_grad=requires_grad)
 
     def forward(self):
+        r"""Returns the absolute value of the stored signed tensor.
+        
+        Example:
+            >>> values = [-1, 2, -3, 4]
+            >>> pos_params = PositiveParameters(values)
+            >>> print(pos_params())
+            tensor([1, 2, 3, 4])
+        """
         return torch.abs(self.params)
 
 
