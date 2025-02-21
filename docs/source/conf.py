@@ -129,7 +129,9 @@ def skip_member_handler(app, what, name, obj, skip, options):
     ]
     if name in always_document:
         return None
-    if name in dir(torch.nn.Module):
+    if name in dir(torch.nn.Module):  # used for most of the classes in spyrit
+        return True
+    if name in dir(torch.nn.Sequential):  # used for FullNet and child classes
         return True
     return None
 
