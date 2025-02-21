@@ -1124,8 +1124,10 @@ def fwalsh2_S_torch(X, ind=True):  # not validated!
 
     Args:
         :attr:`X` (torch.tensor):  input image with shape `(*, n, n)`. `n`**2
-                                    should be a power of two.
+        should be a power of two.
+        
         :attr:`ind` (bool, optional): True for sequency (default)
+        
         :attr:`ind` (list, optional): permutation indices.
 
     Returns:
@@ -1154,6 +1156,57 @@ def fwalsh2_S_torch(X, ind=True):  # not validated!
     s = fwalsh_S_torch(x, ind)
     S = walsh2_S_fold_torch(s)
     return S
+
+def ifwalsh_S_torch(s, ind=True):
+    r"""Inverse Fast Walsh S-transform of x
+
+    Args:
+        :attr:`x` (torch.tensor):  input signal with shape :attr:`(*, n)`, 
+        where n+1 should be a power of two.
+
+        :attr:`ind` (bool, optional): True for sequency (default)
+
+        :attr:`ind` (list, optional): permutation indices. This is faster than True
+        when repeating the sequency-ordered transform
+        multilple times.
+                            
+    Returns:
+        torch.tensor: -by-n S-transformed signal
+
+    Examples:
+        Example 1: Inverse Walsh-ordered S-transform of a signal of length 7
+
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import torch
+        >>> x = torch.tensor([12., 9, 9, 16, 4, 5, 9])
+        >>> s = wh.ifwalsh_S_torch(x)
+        >>> print(s)
+        tensor([12.,  9.,  9., 16.,  4.,  5.,  9.])
+        
+        
+        Example 2: Check the inverse of the direct transform of a signal of length 7
+
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import torch
+        >>> x = torch.tensor([12., 9, 9, 16, 4, 5, 9])
+        >>> s = wh.fwalsh_S_torch(wh.ifwalsh_S_torch(x))
+        >>> print(s-x)
+        tensor([0., 0., 0., 0., 0., 0., 0.])
+        
+        Example 3: Inverse Walsh-ordered S-transform of 2 signals of length 7
+
+        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import torch
+        >>> x = torch.tensor([[1, 3, 0, -1, 7, 5, 1],[12., 9, 9, 16, 4, 5, 9]])
+        >>> s = wh.ifwalsh_S_torch(x)
+        >>> print(s)
+        tensor([0., 0., 0., 0., 0., 0., 0.])
+
+    """
+    n = s.shape[-1]
+    x = -2 / (n + 1) * fwalsh_G_torch(s, ind)
+
+    return x
 
 
 def walsh2_S_fold_torch(x):
