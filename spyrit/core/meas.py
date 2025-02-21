@@ -2005,7 +2005,8 @@ class DynamicLinear(Linear):
         )
 
     Reference:
-    .. _MICCAI24:
+
+    .. _MICCAI24::
         [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
         Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
         without Warping the Patterns. 2024. hal-04533981
