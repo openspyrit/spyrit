@@ -570,7 +570,7 @@ class TikhoNet(_PrebuiltFullNet):
     directly from the :class:`TikhoNet` constructor.
 
     Args:
-        :attr:`noise` (spyrit.core.noise): Acquisition operator (see :mod:`~spyrit.core.meas`)
+        :attr:`acqu` (spyrit.core.meas): Acquisition operator (see :mod:`~spyrit.core.meas`)
 
         :attr:`prep` (spyrit.core.prep): Preprocessing operator (see :mod:`~spyrit.core.prep`)
 
@@ -609,6 +609,28 @@ class TikhoNet(_PrebuiltFullNet):
         :attr:`input` (torch.tensor): Ground-truth images with shape :math:`(b,c,h,w)`.
 
         :attr:`output` (torch.tensor): Reconstructed images with shape :math:`(b,c,h,w)`.
+    
+    Example 1:
+        >>> noise = spyrit.core.noise.Poisson(100)
+        >>> acqu = spyrit.core.meas.HadamSplit2d(64, noise_model=noise)
+        >>> prep = spyrit.core.prep.Rescale(100)
+        >>> sigma = torch.ones(64, 64)
+        >>> tikho = TikhoNet(acqu, prep, sigma, device=torch.device("cuda"))
+        >>> x = torch.rand(10, 1, 64, 64)
+        >>> z = tikho(x)
+        >>> print(z.shape)
+        torch.Size([10, 1, 64, 64])
+    
+    Example 2:
+        >>> noise = spyrit.core.noise.Gaussian(1.0)
+        >>> acqu = spyrit.core.meas.HadamSplit2d(64, noise_model=noise)
+        >>> prep = spyrit.core.prep.Rescale(1.0)
+        >>> sigma = torch.ones(64, 64)
+        >>> tikho = TikhoNet(acqu, prep, sigma, approx=True, reshape_output=False)
+        >>> x = torch.rand(10, 1, 64, 64)
+        >>> z = tikho(x)
+        >>> print(z.shape)
+        torch.Size([10, 1, 4096])
     """
 
     def __init__(
@@ -653,7 +675,20 @@ class TikhoNet(_PrebuiltFullNet):
             :attr:`y`: raw measurement vectors. Have shape :math:`(b, c, m)`
 
         Returns:
-            torch.tensor: Reconstructed images. Have shape :math:`(b,c,h,w)`
+            torch.tensor: Reconstructed images. Have shape :math:`(b,c,h,w)` if
+            :attr:`reshape_output` is True in the :attr:`kwargs` dictionary (default)
+            or :math:`(b,c,hw)` otherwise.
+        
+        Example:
+            >>> acqu = spyrit.core.meas.HadamSplit2d(64)
+            >>> prep = spyrit.core.prep.Rescale(1)
+            >>> sigma = torch.ones(64, 64)
+            >>> tikho = TikhoNet(acqu, prep, sigma)
+            >>> x = torch.rand(10, 1, 64, 64)
+            >>> y = acqu(x)
+            >>> z = tikho.reconstruct(y)
+            >>> print(z.shape)
+            torch.Size([10, 1, 64, 64])
         """
         y = self.reconstruct_pinv(y)
         y = self.denoi(y)
@@ -673,7 +708,20 @@ class TikhoNet(_PrebuiltFullNet):
             :attr:`y`: raw measurement vectors. Have shape :math:`(b, c, m)`
 
         Returns:
-            torch.tensor: Reconstructed images. Have shape :math:`(b,c,h,w)`
+            torch.tensor: Reconstructed images. Have shape :math:`(b,c,h,w)` if
+            :attr:`reshape_output` is True in the :attr:`kwargs` dictionary (default)
+            or :math:`(b,c,hw)` otherwise.
+        
+        Example:
+            >>> acqu = spyrit.core.meas.HadamSplit2d(64)
+            >>> prep = spyrit.core.prep.Rescale(1)
+            >>> sigma = torch.ones(64, 64)
+            >>> tikho = TikhoNet(acqu, prep, sigma)
+            >>> x = torch.rand(10, 1, 64, 64)
+            >>> y = acqu(x)
+            >>> z = tikho.reconstruct_pinv(y)
+            >>> print(z.shape)
+            torch.Size([10, 1, 64, 64])
         """
         # covariance of measurements BEFORE preprocessing
         cov_meas = self.prep.sigma(y)
