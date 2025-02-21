@@ -1128,10 +1128,7 @@ class HadamSplit2d(LinearSplit):
         :attr:`indices` (:class:`torch.tensor`): Indices used to reorder the measurement vector. It is used by the method :meth:`reindex()`.
 
     Example:
-        >>> import torch
         >>> import spyrit.core.meas as meas
-        >>> h = 32
-        >>> Ord = torch.randn(h, h)
         >>> meas_op = meas.HadamSplit2d(h, 400)
         >>> print(meas_op.H1d.shape)
         >>> print(meas_op.M)
