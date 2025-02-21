@@ -479,6 +479,15 @@ class TikhonovMeasurementPriorDiag(nn.Module):
 
         Returns:
             torch.tensor: The denoised tensor.
+        
+        Example:
+            >>> acqu = spyrit.core.meas.HadamSplit2d(32, 400)
+            >>> sigma = torch.rand([32*32, 32*32])
+            >>> recon_op = TikhonovMeasurementPriorDiag(acqu, sigma)
+            >>> y = torch.rand([10, 3, 400])
+            >>> var = torch.rand([10, 3, 400])
+            >>> print(recon_op.wiener_denoise(x, var).shape)
+            torch.Size([10, 3, 400])
         """
         weights_squared = self.denoise_weights**2
         return torch.mul((weights_squared / (weights_squared + var)), x)
@@ -517,6 +526,18 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         Returns:
             torch.tensor: The reconstructed image of shape :math:`(*, N)` or the
             :meth:`meas_op.unvectorize`d version of the image shape.
+        
+        Example:
+            >>> B, H, M = 85, 32, 512
+            >>> sigma = torch.rand([H**2, H**2])
+            >>> recon_op = TikhonovMeasurementPriorDiag(sigma, M)
+            >>> Ord = torch.ones((H,H))
+            >> meas = HadamSplit(M, H, Ord)
+            >>> y = torch.rand([B,M], dtype=torch.float)
+            >>> x_0 = torch.zeros((B, H**2), dtype=torch.float)
+            >>> var = torch.zeros((B, M), dtype=torch.float)
+            >>> x = recon_op.forward_no_prior(y, x_0, var, meas)
+            torch.Size([85, 1024])
         """
         y1 = self.wiener_denoise(x, var)
         y2 = y1 @ self.comp.T
