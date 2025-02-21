@@ -40,6 +40,14 @@ class FullNet(nn.Sequential):
         acqu_modules (nn.Sequential): Measurement modules.
 
         recon_modules (nn.Sequential): Reconstruction modules.
+    
+    Example:
+        >>> acqu1 = lambda x: x*2
+        >>> acqu2 = lambda x: x - 10
+        >>> acqu = nn.Sequential(acqu1, acqu2)
+        >>> recon1 = lambda x: (x + 10) / 2
+        >>> recon = nn.Sequential(recon1)
+        >>> net = FullNet(acqu, recon)
     """
 
     def __init__(
@@ -85,6 +93,18 @@ class FullNet(nn.Sequential):
         Returns:
             torch.tensor: output tensor. Its shape depends on the output of the
             reconstruction modules.
+        
+        Example:
+            >>> acqu1 = lambda x: x*2
+            >>> acqu2 = lambda x: x - 10
+            >>> acqu = nn.Sequential(acqu1, acqu2)
+            >>> recon1 = lambda x: (x + 10) / 2
+            >>> recon = nn.Sequential(recon1)
+            >>> net = FullNet(acqu, recon)
+            >>> x = torch.tensor(5.0)
+            >>> y = net(x)
+            >>> print(y)
+            tensor(5.0000)
         """
         x = self.acquire(x)  # use custom measurement operator
         x = self.reconstruct(x)  # use custom reconstruction operator
@@ -105,6 +125,18 @@ class FullNet(nn.Sequential):
         Returns:
             torch.tensor: Output tensor. Its shape depends on the output of the
             measurement modules.
+        
+        Example:
+            >>> acqu1 = lambda x: x*2
+            >>> acqu2 = lambda x: x - 10
+            >>> acqu = nn.Sequential(acqu1, acqu2)
+            >>> recon1 = lambda x: (x + 10) / 2
+            >>> recon = nn.Sequential(recon1)
+            >>> net = FullNet(acqu, recon)
+            >>> x = torch.tensor(5.0)
+            >>> z = net.acquire(x)
+            >>> print(z)
+            tensor(0.0000)
         """
         return self.acqu_modules(x)
 
@@ -122,6 +154,18 @@ class FullNet(nn.Sequential):
         Returns:
             torch.tensor: Output tensor. Its shape depends on the output of the
             reconstruction modules.
+        
+        Example:
+            >>> acqu1 = lambda x: x*2
+            >>> acqu2 = lambda x: x - 10
+            >>> acqu = nn.Sequential(acqu1, acqu2)
+            >>> recon1 = lambda x: (x + 10) / 2
+            >>> recon = nn.Sequential(recon1)
+            >>> net = FullNet(acqu, recon)
+            >>> y = torch.tensor(0.0)
+            >>> z = net.reconstruct(y)
+            >>> print(z)
+            tensor(5.0000)
         """
         return self.recon_modules(y)
 
