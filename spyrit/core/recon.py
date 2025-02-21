@@ -327,6 +327,17 @@ class PinvNet(_PrebuiltFullNet):
         :math:`h` and :math:`w` the height and width of the images.
 
         :attr:`output`: Reconstructed images with shape :math:`(b,c,h,w)`.
+    
+    Example:
+        >>> acqu = spyrit.core.meas.HadamSplit2d(64)
+        >>> prep = spyrit.core.prep.Rescale(1.0)
+        >>> pinv = PinvNet(acqu, prep, device=torch.device("cuda"))
+
+    Example with a regularized pseudo inverse:
+        >>> noise_model = spyrit.core.noise.Poisson(100)
+        >>> acqu = spyrit.core.meas.HadamSplit2d(64, noise_model=noise_model)
+        >>> prep = spyrit.core.prep.Rescale(100)
+        >>> pinv = PinvNet(acqu, prep, use_fast_pinv=False, store_H_pinv=True, regularization='H1', eta=1e-6)
     """
 
     def __init__(
@@ -378,6 +389,16 @@ class PinvNet(_PrebuiltFullNet):
         Returns:
             torch.tensor: Output tensor. Its shape depends on the output of the
             reconstruction modules.
+        
+        Example:
+            >>> acqu = spyrit.core.meas.HadamSplit2d(64)
+            >>> prep = spyrit.core.prep.Rescale(1.0)
+            >>> pinv = PinvNet(acqu, prep, device=torch.device("cuda"))
+            >>> x = torch.rand(10, 1, 64, 64)
+            >>> y = pinv.acquire(x)
+            >>> z = pinv.reconstruct_pinv(y)
+            >>> print(z.shape)
+            torch.Size([10, 1, 64, 64])
         """
         y = self.prep(y)
         y = self.pinv(y)
