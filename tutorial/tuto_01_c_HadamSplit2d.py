@@ -35,9 +35,7 @@ We define the positive DMD patterns :math:`A` from the positive and negative com
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We load a batch of images from the :attr:`/images/` folder. Using the 
-# :func:`spyrit.misc.statistics.transform_gray_norm` function with the :attr:`normalize=False` 
-# argument returns images with values in (0,1).
+# We load a batch of images from the :attr:`/images/` folder with values in (0,1).
 import os
 import torchvision
 import torch.nn
@@ -50,8 +48,8 @@ from spyrit.misc.statistics import transform_gray_norm
 spyritPath = os.getcwd()
 imgs_path = os.path.join(spyritPath, "images/")
 
-# Grayscale images of size 64 x 64, no normalization to keep values in (0,1)
-transform = transform_gray_norm(img_size=64)#, normalize=False)
+# Grayscale images of size 64 x 64, values in (-1,1)
+transform = transform_gray_norm(img_size=64)
 
 # Create dataset and loader (expects class folder 'images/test/')
 dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
