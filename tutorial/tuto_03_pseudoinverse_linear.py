@@ -44,10 +44,6 @@ print(f"Ground-truth images: {x.shape}")
 # Linear measurements without noise
 # -----------------------------------------------------------------------------
 
-#####################################################################
-# We simulate the noisy measurement vectors
-y = meas_op(x)
-
 ###############################################################################
 # We consider a Hadamard matrix in "2D". The matrix has a shape of (64*64, 64*64)and values in {-1, 1}.
 from spyrit.core.torch import walsh_matrix_2d
