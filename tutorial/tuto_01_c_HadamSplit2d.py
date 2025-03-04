@@ -96,7 +96,7 @@ y_neg = y[:,:,1::2]
 
 f, axs = plt.subplots(1, 3, figsize=(10, 5))
 axs[0].set_title(r"$H_+XH_+^\top$")
-im = axs[2].imshow(y_pos[1, 0].reshape(64, 64), cmap="gray")
+im = axs[0].imshow(y_pos[1, 0].reshape(64, 64), cmap="gray")
 add_colorbar(im, "bottom")
 
 axs[1].set_title(r"$H_-XH_-^\top$")
@@ -116,7 +116,7 @@ noaxis(axs)
 # ----------------------------------------------------------------------
 
 ######################################################################
-# To reduce the acquisition time, only a few of the measurement can be acquired. In thise case, we consider simulate:
+# To reduce the acquisition time, only a few of the measurement can be acquired. In thise case, we simulate:
 #
 # .. math::
 #    y = \mathcal{S}\left(AXA^T\right),
