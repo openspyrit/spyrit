@@ -125,6 +125,9 @@ class PseudoInverse(nn.Module):
                     self.meas_op.get_matrix_to_inverse, regularization, **reg_kwargs
                 )
 
+        if type(meas_op) is meas.HadamSplit2d:
+            self.reshape_output = False
+
     def forward(self, y: torch.tensor) -> torch.tensor:
         r"""Computes pseudo-inverse of measurements.
 
@@ -450,7 +453,7 @@ class TikhonovMeasurementPriorDiag(nn.Module):
         self,
         meas_op: meas.HadamSplit2d,
         sigma: torch.tensor,
-        reshape_output: bool = True,
+        reshape_output: bool = False,
     ):
         super().__init__()
 
