@@ -667,7 +667,6 @@ class LinearSplit(Linear):
         :attr:`M` (int): Number of measurements :math:`M`.
     
     Examples:
-    
         Example 1: (3, 4) signals of length 15 are measured with an acquisition matrix of shape (10, 15). This produces (3, 4) measurements of length 20.
             
         >>> import torch
@@ -893,8 +892,8 @@ class LinearSplit(Linear):
             torch.Size([3, 60])
         """
         y = torch.einsum("mn,...m->...n", self.A, y)
-        if unvectorize:
-            m = self.unvectorize(m)
+        # if unvectorize:
+        #     m = self.unvectorize(m)
         return y
 
     def adjoint_H(self, m: torch.tensor, unvectorize=False):
@@ -1052,35 +1051,35 @@ class LinearSplit(Linear):
 class HadamSplit2d(LinearSplit):
     r""" Simulate 2D Hadamard split acquisitions.
     
-    It acquires
+    Considering the acquisition of :math:`2M` square DMD patterns of size :math:`h`, it computes
  
     .. math::
         y =\mathcal{N}\left(\mathcal{S}\left(AXA^T\right)\right),
         
-    where :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` represents a noise operator (e.g., Gaussian), :math:`\mathcal{S} \colon\, \mathbb{R}^{2h\times 2h} \to \mathbb{R}^{2M}` is a subsampling operator, :math:`A \colon\, \mathbb{R}_+^{2h\times h}` is the acquisition matrix that contains the positive and negative component of 2D Hadamard patterns, :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image, :math:`2M` is the number of DMD patterns, and :math:`h` is the image size.
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` represents a noise operator (e.g., Gaussian), :math:`\mathcal{S} \colon\, \mathbb{R}^{2h\times 2h} \to \mathbb{R}^{2M}` is a subsampling operator, :math:`A \in \mathbb{R}_+^{2h\times h}` is the acquisition matrix that contains the positive and negative components of a Hadamard matrix, :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image. 
     
-    .. note::
-        The subsampling operator :math:`\mathcal{S}` also vectorizes the Hadamard transformed image. In the case :math:`M=N`, we have :math:`\mathcal{S}=\textsf{vec}` where :math:`\textsf{vec}` denotes vectorization.
     
-    * The matrix :math:`A` is obtained by splitting a Hadamard matrix :math:`H\in\mathbb{R}^{N}` such that :math:`A[0::2, :] = H_{+}` and :math:`A[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.
+    1. The matrix :math:`A` is obtained by splitting a Hadamard matrix :math:`H\in\mathbb{R}^{h\times h}` such that :math:`A[0::2, :] = H_{+}` and :math:`A[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.
     
     .. note::
         
         :math:`H_{+} - H_{-} = H`.
 
-    * Subsampling is obtained by retaining the components of :math:`AXA^T` that correspond to the :math:`M` largest values of an order matrix :math:`O\in\mathbb{R}^{N\times N}`.
+    2. The subsampling operator keeps the pixels that correspond to the :math:`M` largest values in the order matrix :math:`O\in\mathbb{R}^{h^2 \times h^2}`.
     
     .. note::
       
         Subsampling applies to :math:`H_{+}XH_{+}^T` and :math:`H_{-}XH_{-}^T` the same way, independently.
+        
+    .. note::
+            The operator :math:`\mathcal{S}` returns a vector. In the case :math:`M=h^2` (no subsampling), :math:`\mathcal{S}` is the vectorization operator.
 
     Args:
         :attr:`h` (int): Image size :math:`h`. Must be a power of 2.
         
         :attr:`M` (int): Number of measurements for subsampling. 
 
-        :attr:`order` (:class:`torch.tensor`, optional): Order matrix :math:`O` used to reorder the measurement vector by decreasing values. The first component of 
-        :math:`y` will correspond to the highest value in :attr:`order`.
+        :attr:`order` (:class:`torch.tensor`, optional): Order matrix :math:`O` that defines the measurements to keep. The first component of :math:`y` will correspond to the index where :attr:`order` is the highest.
 
         :attr:`fast` (bool, optional): Whether to use the fast Hadamard transform
         algorithm. If False, it uses matrix-vector products. Defaults to True.

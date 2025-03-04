@@ -1,80 +1,7 @@
-r"""
-05. Acquisition operators (advanced) - Split measurements and subsampling
-=========================================================================
+#%%
 
-.. _tuto_acquisition_split_measurements:
-
-This tutorial is an extension of the Tutorials :ref:`01 <tuto_acquisition_operators>` and :ref:`02 <tuto_pseudoinverse_linear>` where:
-
-* we introduce split measurements to handle a Hadamard measurements,
-
-* we discuss subsampling for accelerated acquisitions.
-"""
-
-# %%
-# Load a batch of images
-# -----------------------------------------------------------------------------
-
-###############################################################################
-# Images :math:`x` for training neural networks expect values in [-1,1]. The images are normalized
-# using the :func:`transform_gray_norm` function.
 if False:
-
-    import os
-
-    import torch
-    import torchvision
-    import matplotlib.pyplot as plt
-
-    import spyrit.core.torch as spytorch
-    from spyrit.misc.disp import imagesc
-    from spyrit.misc.statistics import transform_gray_norm
-
-    h = 64  # image size hxh
-    i = 1  # Image index (modify to change the image)
-    spyritPath = os.getcwd()
-    imgs_path = os.path.join(spyritPath, "images/")
-
-    # Create a transform for natural images to normalized grayscale image tensors
-    transform = transform_gray_norm(img_size=h)
-
-    # Create dataset and loader (expects class folder 'images/test/')
-    dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=7)
-
-    x, _ = next(iter(dataloader))
-    print(f"Shape of input images: {x.shape}")
-
-    # Select image
-    x = x[i : i + 1, :, :, :]
-    x = x.detach().clone()
-    print(f"Shape of selected image: {x.shape}")
-    b, c, h, w = x.shape
-
-    # plot
-    imagesc(x[0, 0, :, :], r"$x$ in [-1, 1]")
-
-    # %%
-    # The measurement and noise operators
-    # -----------------------------------------------------------------------------
-
-    ###############################################################################
-    # Noise operators are defined in the :mod:`~spyrit.core.noise` module. A noise
-    # operator computes the following three steps sequentially:
-    #
-    # 1. Normalization of the image :math:`x` with values in [-1,1] to get an
-    #    image :math:`\tilde{x}=\frac{x+1}{2}` in [0,1], as it is required for measurement simulation
-    #
-    # 2. Application of the measurement model, i.e., computation of :math:`P\tilde{x}`
-    #
-    # 3. Application of the noise model
-    #
-    # .. math::
-    #       y \sim \texttt{Noise}(P\tilde{x}) = \texttt{Noise}\left(\frac{P(x+1)}{2}\right).
-    #
-    # The normalization is useful when considering distributions such
-    # as the Poisson distribution that are defined on positive values.
-
+    
     # %%
     # Split measurement operator and no noise
     # -----------------------------------------------------------------------------
@@ -94,92 +21,7 @@ if False:
     # is obtained by splitting the matrix :math:`H` as :math:`H = H_{+}-H_{-}` where
     # :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.
 
-    # %%
-    # Subsampling
-    # ----------------------------------------------------------------------
-
-    ######################################################################
-    # Subsampling is done by retaining the first :math:`M` rows of a permuted Hadamard matrix :math:`H=GF`, where :math:`G` is a subsampled permutation matrix with shape :math:`(M,N)` and :math:`F` is a "full" Hadamard matrix with shape :math:`(N,N)`.
-
-    ######################################################################
-    # We consider two subsampling strategies:
-    #
-    # * "Naive subsampling" by retaining only the first :math:`M` rows of the measurement matrix.
-    #
-    # * "Variance subsampling" by retaining only the first :math:`M` rows of a permuted measurement matrix where the first rows corresponds to the coefficients with largest variance and the last ones to the coefficients that are close to constant. The motivation is that almost constant coefficients are less informative than the others. This can be supported by principal component analysis, which states that preserving the components with largest variance leads to the best linear predictor.
-
-    ###############################################################################
-    # First, we download the covariance matrix from our warehouse and load it. The covariance matrix
-    # has been computed from `ImageNet 2012 dataset <https://www.image-net.org/challenges/LSVRC/2012/>`_.
-
-    from spyrit.misc.load_data import download_girder
-
-    # api Rest url of the warehouse
-    url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
-    dataId = "672207cbf03a54733161e95d"  # for reconstruction (imageNet, 64)
-    data_folder = "./stat/"
-    cov_name = "Cov_64x64.pt"
-    # download the covariance matrix and get the file path
-    file_abs_path = download_girder(url, dataId, data_folder, cov_name)
-
-    try:
-        # Load covariance matrix for "variance subsampling"
-        Cov = torch.load(file_abs_path, weights_only=True)
-        print(f"Cov matrix {cov_name} loaded")
-    except:
-        # Set to the identity if not found for "naive subsampling"
-        Cov = torch.eye(h * h)
-        print(f"Cov matrix {cov_name} not found! Set to the identity")
-
-    ###############################################################################
-    # The permutation matrix is defined from a sampling matrix with shape :math:`(\sqrt{N},\sqrt{N})` (see the :mod:`~spyrit.misc.sampling` submodule).
-
-    ###############################################################################
-    # We compute the sampling matrix for the "naive" subsampling
-    from spyrit.misc.disp import add_colorbar, noaxis
-
-    M = h**2 // 4  # number of measurements (here, 1/4 of the pixels)
-    Ord_nai = spytorch.Cov2Var(torch.eye(h * h))
-
-    ###############################################################################
-    # And for the "variance" subsampling
-    Ord_var = spytorch.Cov2Var(Cov)
-
-    ###############################################################################
-    # Further insight on the two strategies can be gained by plotting the masks corresponding to the sampling matrices.
-
-    # sphinx_gallery_thumbnail_number = 2
-
-    mask_basis = torch.zeros(h * h)
-    mask_basis[:M] = 1
-
-    # Mask for "naive subsampling"
-    mask_nai = spytorch.sort_by_significance(mask_basis, Ord_nai, axis="cols")
-    mask_nai = mask_nai.reshape(h, h)
-
-    # Mask for "variance subsampling"
-    mask_var = spytorch.sort_by_significance(mask_basis, Ord_var, axis="cols")
-    mask_var = mask_var.reshape(h, h)
-
-    # Plot the masks
-    f, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
-    im1 = ax1.imshow(mask_nai, vmin=0, vmax=1)
-    ax1.set_title("Mask \n'naive subsampling'", fontsize=20)
-    noaxis(ax1)
-    add_colorbar(im1, "bottom", size="20%")
-
-    im2 = ax2.imshow(mask_var, vmin=0, vmax=1)
-    ax2.set_title("Mask \n'variance subsampling'", fontsize=20)
-    noaxis(ax2)
-    add_colorbar(im2, "bottom", size="20%")
-
-    plt.show()
-
-    ###############################################################################
-    # .. note::
-    #   Note that in this tutorial the covariance matrix is used only for choosing
-    # the subsampling strategy. Although the covariance matrix can be also exploited
-    # to improve the reconstruction, this will be considered in a future tutorial.
+    
 
     # %%
     # Measurement and noise operators
@@ -210,14 +52,14 @@ if False:
 
     # "Naive subsampling"
     # Measurement and noise operators
-    meas_nai_op = HadamSplit(M, h, Ord_nai)
+    meas_nai_op = HadamSplit(M, h, Ord_naive)
     noise_nai_op = Poisson(meas_nai_op, alpha)
 
     # Measurement operator
     y_nai = noise_nai_op(x)  # a noisy measurement vector
 
     # "Variance subsampling"
-    meas_var_op = HadamSplit(M, h, Ord_var)
+    meas_var_op = HadamSplit(M, h, Ord_variance)
     noise_var_op = Poisson(meas_var_op, alpha)
     y_var = noise_var_op(x)  # a noisy measurement vector
 
@@ -295,9 +137,9 @@ if False:
     # We can now plot the three measurement vectors
 
     # Plot the three measurement vectors
-    m_plot = spytorch.meas2img(m_nai_nonoise, Ord_nai)
-    m_plot2 = spytorch.meas2img(m_nai, Ord_nai)
-    m_plot3 = spytorch.meas2img(m_var, Ord_var)
+    m_plot = meas2img(m_nai_nonoise, Ord_naive)
+    m_plot2 = meas2img(m_nai, Ord_naive)
+    m_plot3 = spytorch.meas2img(m_var, Ord_variance)
 
     m_plot_max = m_plot[0, 0, :, :].max()
     m_plot_min = m_plot[0, 0, :, :].min()
@@ -376,5 +218,3 @@ if False:
     #
     #       Another way to further improve results is to include a nonlinear post-processing step,
     #       which we will consider in a future tutorial.
-
-    # %%

@@ -16,6 +16,8 @@ Each tutorial focuses on a specific submodule of the full pipeline.
 
 * :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_b_splitting.py>`.b introduces the splitting of measurement operators.
 
+* :ref:`Tutorial 1 <sphx_glr_gallery_tuto_01_c_HadamSplit2d.py>`.c introduces the 2d Hadamard transform with subsampling.
+
 * :ref:`Tutorial 2 <sphx_glr_gallery_tuto_02_noise.py>` introduces the noise operators.
 
 * :ref:`Tutorial 3 <sphx_glr_gallery_tuto_03_pseudoinverse_linear.py>` demonstrates pseudo-inverse reconstructions from Hadamard measurements.

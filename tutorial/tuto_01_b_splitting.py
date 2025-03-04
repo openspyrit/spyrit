@@ -142,7 +142,7 @@ meas_op.noise_model = Gaussian(2)
 
 #####################################################################
 # .. note::
-#   To lean more about noise models, please refer to the :ref:`tuto_noise` tutorial.
+#   To learn more about noise models, please refer to :ref:`tutorial 2 <sphx_glr_gallery_tuto_02_noise.py>`.
 
 #####################################################################
 # We simulate the noisy measurement vectors

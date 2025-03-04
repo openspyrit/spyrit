@@ -44,6 +44,10 @@ print(f"Ground-truth images: {x.shape}")
 # Linear measurements without noise
 # -----------------------------------------------------------------------------
 
+#####################################################################
+# We simulate the noisy measurement vectors
+y = meas_op(x)
+
 ###############################################################################
 # We consider a Hadamard matrix in "2D". The matrix has a shape of (64*64, 64*64)and values in {-1, 1}.
 from spyrit.core.torch import walsh_matrix_2d
@@ -167,7 +171,7 @@ print(fr"Reference images with values in {{{x.min()}, {x.max()}}}")
 print(f"Measurement vectors: {y.shape}")
 
 ###############################################################################
-# We preprocess measurement vectors by i) computing the difference of the positive and negative components, and ii) normalizing the intensity. To do so, we use the :class:`spyrit.core.prep.UnsplitRescale` class. The Preprocessed measurements have a shape of (7, 1, 1024).
+# We preprocess measurement vectors by i) computing the difference of the positive and negative components, and ii) normalizing the intensity. To do so, we use the :class:`spyrit.core.prep.UnsplitRescale` class. The preprocessed measurements have a shape of (7, 1, 1024).
 
 from spyrit.core.prep import UnsplitRescale
 prep = UnsplitRescale(100)   
@@ -176,11 +180,15 @@ m = prep(y) # (y+ - y-)/alpha
 print(f"Preprocessed measurement vectors: {m.shape}")
 
 ###############################################################################
-# We compute the pseudo inverse solution. There is no need to use the :class:`spyrit.core.inverse.PseudoInverse` class as the measurement operator has a pseudo-inverse already computed. The pseudo-inverse solutions have a shape of (7, 1, 64, 64).
+# We compute the pseudo inverse solution, which has a shape of (7, 1, 64, 64).
 
 x_rec = meas_op.fast_pinv(m)  
 
 print(f"Reconstructed images: {x_rec.shape}")
+
+###############################################################################
+# .. note::
+#   There is no need to use the :class:`spyrit.core.inverse.PseudoInverse` class here, as the :class:`spyrit.core.meas.HadamSplit2d` class includes a method that returns the pseudo inverse solution. 
 
 ###############################################################################
 # We plot the reconstruction
