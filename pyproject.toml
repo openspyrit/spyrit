@@ -31,7 +31,6 @@ description = "Toolbox for deep image reconstruction"
 license = {file = "LICENSE.md"}
 classifiers = [
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -51,4 +50,4 @@ dependencies = [
         "imageio",
         "astropy",
 ]
-requires-python = ">=3.6"
+requires-python = ">=3.9"
