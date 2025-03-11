@@ -79,6 +79,7 @@ print(f"Reconstructed images: {x_rec.shape}")
 from spyrit.misc.disp import imagesc, add_colorbar
 
 imagesc(x_rec[1, 0])
+# sphinx_gallery_thumbnail_number = 1
 
 ###############################################################################
 # .. note::

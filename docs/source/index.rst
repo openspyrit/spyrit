@@ -57,6 +57,10 @@ The list of contributors can be found `here <https://github.com/openspyrit/spyri
 
    gallery/index
 
+
+Contents
+========
+
 .. autosummary::
    :toctree: _autosummary
    :template: spyrit-module-template.rst

@@ -73,6 +73,7 @@ noise_op = Gaussian(sigma=0.1)
 x_noisy = noise_op(x)
 
 imagesc(x_noisy[1, 0, :, :], r"10% Gaussian noise")
+# sphinx_gallery_thumbnail_number = 2
 
 ###############################################################################
 # To add 2% Gaussian noise, we update the class attribute :attr:`sigma`.

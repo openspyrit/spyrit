@@ -95,6 +95,7 @@ add_colorbar(im)
 noaxis(ax1)
 noaxis(ax2)
 noaxis(ax3)
+# sphinx_gallery_thumbnail_number = 1
 
 ###############################################################################
 # We can verify numerically that H = H_pos - H_neg

@@ -112,6 +112,7 @@ im = axs[2].imshow(m[1, 0].reshape(64, 64), cmap="gray")
 add_colorbar(im, "bottom")
 
 noaxis(axs)
+# sphinx_gallery_thumbnail_number = 2
 
 
 # %%
