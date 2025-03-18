@@ -302,7 +302,7 @@ def fwht(x, order=True, dim=-1):
         >>> print(y_np)
         [14 -8 -8 18 -4 -2 -6  4]
         >>> print(y_torch)
-        tensor([14, -8, -8, 18, -4, -2, -6,  4])
+        tensor([14, -8, -8, 18, -4, -2, -6,  4]...)
 
         Example 5: Computation times for a signal of length 2**12
 
