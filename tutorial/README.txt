@@ -1,7 +1,7 @@
 Tutorials
 =========
 
-This series of tutorials should guide you through the use of the SPyRiT pipeline. 
+This series of tutorials should guide you through the use of the SPyRiT pipeline.
 
 .. figure:: ../fig/direct_net.png
    :width: 600

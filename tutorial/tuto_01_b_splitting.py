@@ -14,10 +14,10 @@ This tutorial shows how to simulate linear measurements by splitting an acquisit
 |
 
 In practice, only positive values can be implemented using a digital micromirror device (DMD). Therefore, we acquire
- 
+
 .. math::
     y =Ax,
-    
+
 where :math:`A \colon\, \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`2M` is the number of DMD patterns, and :math:`N` is the dimension of the signal.
 
 .. important::
@@ -50,7 +50,7 @@ meas_op = LinearSplit(H)
 x = torch.randn(3, 15)
 
 ###############################################################################
-# We apply the operator to the batch of images, which produces 3 measurements 
+# We apply the operator to the batch of images, which produces 3 measurements
 # of length 10*2 = 20.
 y = meas_op(x)
 print(y.shape)
@@ -67,14 +67,14 @@ print(y.shape)
 # We plot the positive and negative components of H that are concatenated in the matrix A.
 
 A = meas_op.A
-H_pos = meas_op.A[::2,:]    # Even rows
-H_neg = meas_op.A[1::2,:]   # Odd rows
+H_pos = meas_op.A[::2, :]  # Even rows
+H_neg = meas_op.A[1::2, :]  # Odd rows
 
 from spyrit.misc.disp import add_colorbar, noaxis
 import matplotlib.pyplot as plt
 
 fig = plt.figure(figsize=(10, 5))
-gs = fig.add_gridspec(2,2)
+gs = fig.add_gridspec(2, 2)
 
 ax1 = fig.add_subplot(gs[:, 0])
 ax2 = fig.add_subplot(gs[0, 1])
@@ -95,6 +95,7 @@ add_colorbar(im)
 noaxis(ax1)
 noaxis(ax2)
 noaxis(ax3)
+# sphinx_gallery_thumbnail_number = 1
 
 ###############################################################################
 # We can verify numerically that H = H_pos - H_neg
@@ -102,7 +103,7 @@ noaxis(ax3)
 H = meas_op.H
 diff = torch.linalg.norm(H - (H_pos - H_neg))
 
-print(f'|| H - (H_pos - H_neg) || = {diff}')
+print(f"|| H - (H_pos - H_neg) || = {diff}")
 
 ###############################################################################
 # We now plot the matrix-vector products between A and x.
@@ -131,13 +132,14 @@ noaxis(axs)
 #
 # .. math::
 #   y =\mathcal{N}\left(Ax\right),
-#    
-# where :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` represents a noise operator (e.g., Gaussian). By default, no noise is applied to the measurement, i.e., :math:`\mathcal{N}` is the identity. We can consider noise by setting the :attr:`noise_model` attribute of the :class:`spyrit.core.meas.LinearSplit` class. 
+#
+# where :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` represents a noise operator (e.g., Gaussian). By default, no noise is applied to the measurement, i.e., :math:`\mathcal{N}` is the identity. We can consider noise by setting the :attr:`noise_model` attribute of the :class:`spyrit.core.meas.LinearSplit` class.
 
 #####################################################################
 # For instance, we can consider additive Gaussian noise with standard deviation 2.
 
 from spyrit.core.noise import Gaussian
+
 meas_op.noise_model = Gaussian(2)
 
 #####################################################################

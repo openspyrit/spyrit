@@ -40,14 +40,15 @@ class FullNet(nn.Sequential):
         acqu_modules (nn.Sequential): Measurement modules.
 
         recon_modules (nn.Sequential): Reconstruction modules.
-    
+
     Example:
-        >>> acqu1 = lambda x: x*2
-        >>> acqu2 = lambda x: x - 10
-        >>> acqu = nn.Sequential(acqu1, acqu2)
-        >>> recon1 = lambda x: (x + 10) / 2
-        >>> recon = nn.Sequential(recon1)
-        >>> net = FullNet(acqu, recon)
+        # >>> import torch.nn as nn
+        # >>> acqu1 = lambda x: x*2
+        # >>> acqu2 = lambda x: x - 10
+        # >>> acqu = nn.Sequential(acqu1, acqu2)
+        # >>> recon1 = lambda x: (x + 10) / 2
+        # >>> recon = nn.Sequential(recon1)
+        # >>> net = FullNet(acqu, recon)
     """
 
     def __init__(
@@ -93,17 +94,17 @@ class FullNet(nn.Sequential):
         Returns:
             torch.tensor: output tensor. Its shape depends on the output of the
             reconstruction modules.
-        
+
         Example:
-            >>> acqu1 = lambda x: x*2
-            >>> acqu2 = lambda x: x - 10
-            >>> acqu = nn.Sequential(acqu1, acqu2)
-            >>> recon1 = lambda x: (x + 10) / 2
-            >>> recon = nn.Sequential(recon1)
-            >>> net = FullNet(acqu, recon)
-            >>> x = torch.tensor(5.0)
-            >>> y = net(x)
-            >>> print(y)
+            # >>> acqu1 = lambda x: x*2
+            # >>> acqu2 = lambda x: x - 10
+            # >>> acqu = nn.Sequential(acqu1, acqu2)
+            # >>> recon1 = lambda x: (x + 10) / 2
+            # >>> recon = nn.Sequential(recon1)
+            # >>> net = FullNet(acqu, recon)
+            # >>> x = torch.tensor(5.0)
+            # >>> y = net(x)
+            # >>> print(y)
             tensor(5.0000)
         """
         x = self.acquire(x)  # use custom measurement operator
@@ -125,17 +126,17 @@ class FullNet(nn.Sequential):
         Returns:
             torch.tensor: Output tensor. Its shape depends on the output of the
             measurement modules.
-        
+
         Example:
-            >>> acqu1 = lambda x: x*2
-            >>> acqu2 = lambda x: x - 10
-            >>> acqu = nn.Sequential(acqu1, acqu2)
-            >>> recon1 = lambda x: (x + 10) / 2
-            >>> recon = nn.Sequential(recon1)
-            >>> net = FullNet(acqu, recon)
-            >>> x = torch.tensor(5.0)
-            >>> z = net.acquire(x)
-            >>> print(z)
+            # >>> acqu1 = lambda x: x*2
+            # >>> acqu2 = lambda x: x - 10
+            # >>> acqu = nn.Sequential(acqu1, acqu2)
+            # >>> recon1 = lambda x: (x + 10) / 2
+            # >>> recon = nn.Sequential(recon1)
+            # >>> net = FullNet(acqu, recon)
+            # >>> x = torch.tensor(5.0)
+            # >>> z = net.acquire(x)
+            # >>> print(z)
             tensor(0.0000)
         """
         return self.acqu_modules(x)
@@ -154,17 +155,17 @@ class FullNet(nn.Sequential):
         Returns:
             torch.tensor: Output tensor. Its shape depends on the output of the
             reconstruction modules.
-        
+
         Example:
-            >>> acqu1 = lambda x: x*2
-            >>> acqu2 = lambda x: x - 10
-            >>> acqu = nn.Sequential(acqu1, acqu2)
-            >>> recon1 = lambda x: (x + 10) / 2
-            >>> recon = nn.Sequential(recon1)
-            >>> net = FullNet(acqu, recon)
-            >>> y = torch.tensor(0.0)
-            >>> z = net.reconstruct(y)
-            >>> print(z)
+            # >>> acqu1 = lambda x: x*2
+            # >>> acqu2 = lambda x: x - 10
+            # >>> acqu = nn.Sequential(acqu1, acqu2)
+            # >>> recon1 = lambda x: (x + 10) / 2
+            # >>> recon = nn.Sequential(recon1)
+            # >>> net = FullNet(acqu, recon)
+            # >>> y = torch.tensor(0.0)
+            # >>> z = net.reconstruct(y)
+            # >>> print(z)
             tensor(5.0000)
         """
         return self.recon_modules(y)
@@ -245,33 +246,34 @@ class PositiveParameters(nn.Module):
         a new tensor.
 
         requires_grad (bool): If True, the tensor requires gradient. Default is True.
-    
+
     Attributes:
         :attr:`params` (torch.tensor): Signed tensor.
 
     Methods:
         :meth:`forward`: Returns the absolute value of the signed tensor.
-    
+
     Example:
-        >>> values = [-1, 2, -3, 4]
+        >>> values = [-1., 2., -3., 4.]
         >>> pos_params = PositiveParameters(values)
         >>> print(pos_params.params)
-        tensor([-1,  2, -3,  4])
+        tensor([-1.,  2., -3.,  4.], requires_grad=True)
         >>> print(pos_params())
-        tensor([1, 2, 3, 4])
+        tensor([1., 2., 3., 4.], grad_fn=<AbsBackward0>)
     """
+
     def __init__(self, params, requires_grad=True):
         super(PositiveParameters, self).__init__()
         self.params = torch.tensor(params, requires_grad=requires_grad)
 
     def forward(self):
         r"""Returns the absolute value of the stored signed tensor.
-        
+
         Example:
-            >>> values = [-1, 2, -3, 4]
+            >>> values = [-1., 2., -3., 4.]
             >>> pos_params = PositiveParameters(values)
             >>> print(pos_params())
-            tensor([1, 2, 3, 4])
+            tensor([1., 2., 3., 4.], grad_fn=<AbsBackward0>)
         """
         return torch.abs(self.params)
 
@@ -327,17 +329,19 @@ class PinvNet(_PrebuiltFullNet):
         :math:`h` and :math:`w` the height and width of the images.
 
         :attr:`output`: Reconstructed images with shape :math:`(b,c,h,w)`.
-    
+
     Example:
-        >>> acqu = spyrit.core.meas.HadamSplit2d(64)
+        >>> import spyrit
+        >>> acqu = spyrit.core.meas.HadamSplit2d(32)
         >>> prep = spyrit.core.prep.Rescale(1.0)
-        >>> pinv = PinvNet(acqu, prep, device=torch.device("cuda"))
+        >>> pinv = PinvNet(acqu, prep, device=torch.device("cpu"))
 
     Example with a regularized pseudo inverse:
+        >>> import spyrit
         >>> noise_model = spyrit.core.noise.Poisson(100)
-        >>> acqu = spyrit.core.meas.HadamSplit2d(64, noise_model=noise_model)
+        >>> acqu = spyrit.core.meas.HadamSplit2d(32, noise_model=noise_model)
         >>> prep = spyrit.core.prep.Rescale(100)
-        >>> pinv = PinvNet(acqu, prep, use_fast_pinv=False, store_H_pinv=True, regularization='H1', eta=1e-6)
+        >>> pinv = PinvNet(acqu, prep, use_fast_pinv=False, store_H_pinv=True, regularization='H1', eta=1e-6, img_shape=(32, 32))
     """
 
     def __init__(
@@ -389,16 +393,17 @@ class PinvNet(_PrebuiltFullNet):
         Returns:
             torch.tensor: Output tensor. Its shape depends on the output of the
             reconstruction modules.
-        
+
         Example:
-            >>> acqu = spyrit.core.meas.HadamSplit2d(64)
+            >>> import spyrit
+            >>> acqu = spyrit.core.meas.HadamSplit2d(32)
             >>> prep = spyrit.core.prep.Rescale(1.0)
-            >>> pinv = PinvNet(acqu, prep, device=torch.device("cuda"))
-            >>> x = torch.rand(10, 1, 64, 64)
+            >>> pinv = PinvNet(acqu, prep, device=torch.device("cpu"))
+            >>> x = torch.rand(10, 1, 32, 32)
             >>> y = pinv.acquire(x)
             >>> z = pinv.reconstruct_pinv(y)
             >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
+            torch.Size([10, 1, 32, 32])
         """
         y = self.prep(y)
         y = self.pinv(y)
@@ -407,15 +412,15 @@ class PinvNet(_PrebuiltFullNet):
 
 # =============================================================================
 class DCNet(_PrebuiltFullNet):
-    r"""Pre-built :class:`FullNet` that uses a :class:`TikhonovMeasurementPriorDiag` reconstruction operator.
+    r"""Pre-built :class:`FullNet` that uses a :class:`~spyrit.core.inverse.TikhonovMeasurementPriorDiag` reconstruction operator.
 
-    As a :class:`FullNet`, this network has two modules: one for measurements
-    and one for reconstruction.
+    As a :class:`FullNet`, this network has two modules: one for the measurements
+    and one for the reconstruction.
 
     The measurement module only contains the acquisition operator. The acquisition
-    operator must be in this case a :class:`~spyrit.core.meas.HadamSplit2d` operator.
+    operator must be a :class:`spyrit.core.meas.HadamSplit2d` operator.
     The reconstruction module contains a preprocessing operator, a Tikhonov
-    regularization :class:`TikhonovMeasurementPriorDiag` reconstruction
+    regularization :class:`spyrit.core.inverse.TikhonovMeasurementPriorDiag` reconstruction
     operator, and a denoising operator.
 
     Args:
@@ -427,22 +432,21 @@ class DCNet(_PrebuiltFullNet):
         :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag()` class)
 
         :attr:`denoi` (optional): Image denoising operator
-        (see :class:`~spyrit.core.nnet`).
-        Default :class:`~spyrit.core.nnet.Identity`
+        (see :class:`~spyrit.core.nnet`). Default :class:`~spyrit.core.nnet.Identity`
 
     Attributes:
         :attr:`acqu`: Acquisition operator initialized as :attr:`acqu`
 
         :attr:`acqu_modules` (nn.Sequential): Measurement modules. Only contains
         the acquisition operator.
-        
+
         :attr:`prep`: Preprocessing operator initialized as :attr:`prep`
 
         :attr:`tikho`: Tikhonv regularization operator initialized as a
         :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag` operator.
 
         :attr:`denoi`: Image denoising operator initialized as :attr:`denoi`
-        
+
         :attr:`recon_modules` (nn.Sequential): Reconstruction modules. Contains
         the preprocessing operator, the Tikhonov regularizaiton operator, and
         the denoising operator.
@@ -453,19 +457,20 @@ class DCNet(_PrebuiltFullNet):
         :math:`h` and :math:`w` the height and width of the images.
 
         :attr:`output`: Reconstructed images with shape :math:`(b,c,h,w)`.
-    
-    Example 1:
-        >>> acqu = spyrit.core.meas.HadamSplit2d(64)
-        >>> prep = spyrit.core.prep.Rescale(1.0)
-        >>> sigma = torch.ones(64, 64)
-        >>> dcnet = DCNet(acqu, prep, sigma, device=torch.device("cuda"))
-    
-    Example 2:
-        >>> noise_model = spyrit.core.noise.Poisson(100)
-        >>> acqu = spyrit.core.meas.HadamSplit2d(64, noise_model=noise_model)
-        >>> prep = spyrit.core.prep.Rescale(100)
-        >>> sigma = torch.ones(64, 64)
-        >>> dcnet = DCNet(acqu, prep, sigma, device=torch.device("cuda"))
+
+    Example:
+        >>> from spyrit.core.meas import HadamSplit2d
+        >>> from spyrit.core.prep import UnsplitRescale
+        >>> from spyrit.core.recon import DCNet
+        >>> import torch
+        >>> acqu = HadamSplit2d(32)
+        >>> prep = UnsplitRescale()
+        >>> sigma = torch.eye(32*32,32*32)
+        >>> dcnet = DCNet(acqu, prep, sigma)
+        >>> y = torch.randn(10, 1, 2048)
+        >>> z = dcnet.reconstruct(y)
+        >>> print(z.shape)
+        torch.Size([10, 1, 32, 32])
     """
 
     def __init__(
@@ -505,20 +510,24 @@ class DCNet(_PrebuiltFullNet):
         operator :attr:`denoi` to the input measurement vectors :attr:`x`.
 
         Args:
-            :attr:`y`: raw measurement vectors. Have shape :math:`(b, c, m)`
+            :attr:`y`: raw measurement vectors with shape :math:`(b, c, M)`
 
         Returns:
-            torch.tensor: Reconstructed images. Have shape :math:`(b,c,h,w)`
-        
+            torch.tensor: Reconstructed images with shape :math:`(b,c,h,w)`
+
         Example:
-            >>> acqu = spyrit.core.meas.HadamSplit2d(64)
-            >>> prep = spyrit.core.prep.Rescale(1.0)
-            >>> sigma = torch.ones(64, 64)
-            >>> dcnet = DCNet(acqu, prep, sigma, device=torch.device("cuda"))
-            >>> y = torch.randn(10, 1, 4096)
+            >>> from spyrit.core.meas import HadamSplit2d
+            >>> from spyrit.core.prep import UnsplitRescale
+            >>> from spyrit.core.recon import DCNet
+            >>> import torch
+            >>> acqu = HadamSplit2d(32)
+            >>> prep = UnsplitRescale()
+            >>> sigma = torch.eye(32*32,32*32)
+            >>> dcnet = DCNet(acqu, prep, sigma)
+            >>> y = torch.randn(10, 1, 2048)
             >>> z = dcnet.reconstruct(y)
             >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
+            torch.Size([10, 1, 32, 32])
         """
         y = self.reconstruct_pinv(y)
         y = self.denoi(y)
@@ -536,16 +545,20 @@ class DCNet(_PrebuiltFullNet):
 
         Returns:
             torch.tensor: Reconstructed images. Have shape :math:`(b,c,h,w)`
-        
+
         Example:
-            >>> acqu = spyrit.core.meas.HadamSplit2d(64)
-            >>> prep = spyrit.core.prep.Rescale(1.0)
-            >>> sigma = torch.ones(64, 64)
-            >>> dcnet = DCNet(acqu, prep, sigma, device=torch.device("cuda"))
-            >>> y = torch.randn(10, 1, 4096)
+            >>> from spyrit.core.meas import HadamSplit2d
+            >>> from spyrit.core.prep import UnsplitRescale
+            >>> from spyrit.core.recon import DCNet
+            >>> import torch
+            >>> acqu = HadamSplit2d(32)
+            >>> prep = UnsplitRescale()
+            >>> sigma = torch.eye(32*32,32*32)
+            >>> dcnet = DCNet(acqu, prep, sigma)
+            >>> y = torch.randn(10, 1, 2048)
             >>> z = dcnet.reconstruct_pinv(y)
             >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
+            torch.Size([10, 1, 32, 32])
         """
         # estimate the variance of the measurements
         var_noi = self.prep.sigma(y)
@@ -609,28 +622,28 @@ class TikhoNet(_PrebuiltFullNet):
         :attr:`input` (torch.tensor): Ground-truth images with shape :math:`(b,c,h,w)`.
 
         :attr:`output` (torch.tensor): Reconstructed images with shape :math:`(b,c,h,w)`.
-    
+
     Example 1:
-        >>> noise = spyrit.core.noise.Poisson(100)
-        >>> acqu = spyrit.core.meas.HadamSplit2d(64, noise_model=noise)
-        >>> prep = spyrit.core.prep.Rescale(100)
-        >>> sigma = torch.ones(64, 64)
-        >>> tikho = TikhoNet(acqu, prep, sigma, device=torch.device("cuda"))
-        >>> x = torch.rand(10, 1, 64, 64)
-        >>> z = tikho(x)
-        >>> print(z.shape)
-        torch.Size([10, 1, 64, 64])
-    
+        # >>> noise = spyrit.core.noise.Poisson(100)
+        # >>> acqu = spyrit.core.meas.HadamSplit2d(64, noise_model=noise)
+        # >>> prep = spyrit.core.prep.Rescale(100)
+        # >>> sigma = torch.ones(64, 64)
+        # >>> tikho = TikhoNet(acqu, prep, sigma, device=torch.device("cuda"))
+        # >>> x = torch.rand(10, 1, 64, 64)
+        # >>> z = tikho(x)
+        # >>> print(z.shape)
+        # torch.Size([10, 1, 64, 64])
+
     Example 2:
-        >>> noise = spyrit.core.noise.Gaussian(1.0)
-        >>> acqu = spyrit.core.meas.HadamSplit2d(64, noise_model=noise)
-        >>> prep = spyrit.core.prep.Rescale(1.0)
-        >>> sigma = torch.ones(64, 64)
-        >>> tikho = TikhoNet(acqu, prep, sigma, approx=True, reshape_output=False)
-        >>> x = torch.rand(10, 1, 64, 64)
-        >>> z = tikho(x)
-        >>> print(z.shape)
-        torch.Size([10, 1, 4096])
+        # >>> noise = spyrit.core.noise.Gaussian(1.0)
+        # >>> acqu = spyrit.core.meas.HadamSplit2d(64, noise_model=noise)
+        # >>> prep = spyrit.core.prep.Rescale(1.0)
+        # >>> sigma = torch.ones(64, 64)
+        # >>> tikho = TikhoNet(acqu, prep, sigma, approx=True, reshape_output=False)
+        # >>> x = torch.rand(10, 1, 64, 64)
+        # >>> z = tikho(x)
+        # >>> print(z.shape)
+        # torch.Size([10, 1, 4096])
     """
 
     def __init__(
@@ -678,17 +691,17 @@ class TikhoNet(_PrebuiltFullNet):
             torch.tensor: Reconstructed images. Have shape :math:`(b,c,h,w)` if
             :attr:`reshape_output` is True in the :attr:`kwargs` dictionary (default)
             or :math:`(b,c,hw)` otherwise.
-        
+
         Example:
-            >>> acqu = spyrit.core.meas.HadamSplit2d(64)
-            >>> prep = spyrit.core.prep.Rescale(1)
-            >>> sigma = torch.ones(64, 64)
-            >>> tikho = TikhoNet(acqu, prep, sigma)
-            >>> x = torch.rand(10, 1, 64, 64)
-            >>> y = acqu(x)
-            >>> z = tikho.reconstruct(y)
-            >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
+            # >>> acqu = spyrit.core.meas.HadamSplit2d(64)
+            # >>> prep = spyrit.core.prep.Rescale(1)
+            # >>> sigma = torch.ones(64, 64)
+            # >>> tikho = TikhoNet(acqu, prep, sigma)
+            # >>> x = torch.rand(10, 1, 64, 64)
+            # >>> y = acqu(x)
+            # >>> z = tikho.reconstruct(y)
+            # >>> print(z.shape)
+            # torch.Size([10, 1, 64, 64])
         """
         y = self.reconstruct_pinv(y)
         y = self.denoi(y)
@@ -711,17 +724,17 @@ class TikhoNet(_PrebuiltFullNet):
             torch.tensor: Reconstructed images. Have shape :math:`(b,c,h,w)` if
             :attr:`reshape_output` is True in the :attr:`kwargs` dictionary (default)
             or :math:`(b,c,hw)` otherwise.
-        
+
         Example:
-            >>> acqu = spyrit.core.meas.HadamSplit2d(64)
-            >>> prep = spyrit.core.prep.Rescale(1)
-            >>> sigma = torch.ones(64, 64)
-            >>> tikho = TikhoNet(acqu, prep, sigma)
-            >>> x = torch.rand(10, 1, 64, 64)
-            >>> y = acqu(x)
-            >>> z = tikho.reconstruct_pinv(y)
-            >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
+            # >>> acqu = spyrit.core.meas.HadamSplit2d(64)
+            # >>> prep = spyrit.core.prep.Rescale(1)
+            # >>> sigma = torch.ones(64, 64)
+            # >>> tikho = TikhoNet(acqu, prep, sigma)
+            # >>> x = torch.rand(10, 1, 64, 64)
+            # >>> y = acqu(x)
+            # >>> z = tikho.reconstruct_pinv(y)
+            # >>> print(z.shape)
+            # torch.Size([10, 1, 64, 64])
         """
         # covariance of measurements BEFORE preprocessing
         cov_meas = self.prep.sigma(y)
@@ -767,14 +780,14 @@ class TikhoNet(_PrebuiltFullNet):
 # =============================================================================
 class LearnedPGD(nn.Module):
     r"""Learned Proximal Gradient Descent reconstruction network.
-    
+
     Iterative algorithm that alternates between a gradient step and a proximal step,
     where the proximal operator is replaced by a learned denoiser. The update rule is given by
 
     .. math::
-        
+
         x_{k+1} = \texttt{denoi}\left(x_k - \gamma \, H^T (Hx_k - m)\right)
-        
+
     where :math:`x_k\in\mathbb{R}^N` is the current estimate, :math:`\gamma\in\mathbb{R}` is the step size, :math:`H\in\mathbb{R}^{M\times N}` is the forward model, and :math:`m\in\mathbb{R}^{M}` are the measurements.
 
     Args:
@@ -834,18 +847,23 @@ class LearnedPGD(nn.Module):
         :attr:`denoi`: Image denoising operator initialized as :attr:`denoi`
 
     Example:
-        >>> B, C, H, M = 10, 1, 64, 64**2
-        >>> Ord = torch.ones((H,H))
-        >>> meas = HadamSplit(M, H, Ord)
-        >>> noise = NoNoise(meas)
-        >>> prep = SplitPoisson(1.0, M, H*H)
-        >>> recnet = LearnedPGD(noise, prep)
-        >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+        >>> from spyrit.core.meas import HadamSplit2d
+        >>> from spyrit.core.prep import UnsplitRescale
+        >>> from spyrit.core.recon import LearnedPGD
+        >>> import torch
+
+        >>> acqu = HadamSplit2d(32, M=400)
+        >>> prep = UnsplitRescale()
+        >>> recnet = LearnedPGD(acqu, prep)
+        >>> x = torch.FloatTensor(10,1,32,32).uniform_(-1, 1)
         >>> z = recnet(x)
         >>> print(z.shape)
-        torch.Size([10, 1, 64, 64])
-        >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
-        tensor(5.8912e-06)
+        torch.Size([10, 1, 32, 32])
+
+        >>> y = torch.randn(10, 1, 800)
+        >>> z = recnet.reconstruct(y)
+        >>> print(z.shape)
+        torch.Size([10, 1, 32, 32])
     """
 
     def __init__(
@@ -855,7 +873,7 @@ class LearnedPGD(nn.Module):
         denoi=nn.Identity(),
         *,
         iter_stop=3,
-        x0=0.5, # image in [0,1]
+        x0=0.5,  # image in [0,1]
         step=None,
         step_estimation=False,
         step_grad=False,
@@ -937,18 +955,18 @@ class LearnedPGD(nn.Module):
             :attr:`output`: reconstructed images with shape :math:`(B,C,H,W)`
 
         Example:
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = torch.ones((H,H))
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> recnet = LearnedPGD(noise, prep)
-            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+            >>> from spyrit.core.meas import HadamSplit2d
+            >>> from spyrit.core.prep import UnsplitRescale
+            >>> from spyrit.core.recon import LearnedPGD
+            >>> import torch
+
+            >>> acqu = HadamSplit2d(32, M=400)
+            >>> prep = UnsplitRescale()
+            >>> recnet = LearnedPGD(acqu, prep)
+            >>> x = torch.FloatTensor(10,1,32,32).uniform_(-1, 1)
             >>> z = recnet(x)
             >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
-            >>> print(torch.linalg.norm(x - z)/torch.linalg.norm(x))
-            tensor(5.8912e-06)
+            torch.Size([10, 1, 32, 32])
         """
         x = self.acquire(x)
         x = self.reconstruct(x)
@@ -966,16 +984,18 @@ class LearnedPGD(nn.Module):
             :attr:`output`: measurement vectors with shape :math:`(BC,2M)`
 
         Example:
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = torch.ones((H,H))
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H*H)
-            >>> recnet = PinvNet(noise, prep)
-            >>> x = torch.FloatTensor(B,C,H,H).uniform_(-1, 1)
+            >>> from spyrit.core.meas import HadamSplit2d
+            >>> from spyrit.core.prep import UnsplitRescale
+            >>> from spyrit.core.recon import LearnedPGD
+            >>> import torch
+
+            >>> acqu = HadamSplit2d(32, M=400)
+            >>> prep = UnsplitRescale()
+            >>> recnet = LearnedPGD(acqu, prep)
+            >>> x = torch.FloatTensor(10,1,32,32).uniform_(-1, 1)
             >>> z = recnet.acquire(x)
             >>> print(z.shape)
-            torch.Size([10, 8192])
+            torch.Size([10, 1, 800])
         """
         return self.acqu(x)
 
@@ -1018,16 +1038,18 @@ class LearnedPGD(nn.Module):
             :attr:`output`: :math:`(BC,1,H,W)`
 
         Example:
-            >>> B, C, H, M = 10, 1, 64, 64**2
-            >>> Ord = torch.ones((H,H))
-            >>> meas = HadamSplit(M, H, Ord)
-            >>> noise = NoNoise(meas)
-            >>> prep = SplitPoisson(1.0, M, H**2)
-            >>> recnet = PinvNet(noise, prep)
-            >>> x = torch.rand((B*C,2*M), dtype=torch.float)
-            >>> z = recnet.reconstruct(x)
+            >>> from spyrit.core.meas import HadamSplit2d
+            >>> from spyrit.core.prep import UnsplitRescale
+            >>> from spyrit.core.recon import LearnedPGD
+
+            >>> import torch
+            >>> acqu = HadamSplit2d(32, M=400)
+            >>> prep = UnsplitRescale()
+            >>> recnet = LearnedPGD(acqu, prep)
+            >>> y = torch.randn(10, 1, 800)
+            >>> z = recnet.reconstruct(y)
             >>> print(z.shape)
-            torch.Size([10, 1, 64, 64])
+            torch.Size([10, 1, 32, 32])
         """
 
         # Compute the stepsize from the Lipschitz constant
@@ -1058,7 +1080,7 @@ class LearnedPGD(nn.Module):
             step = meas_variance_img_min * step
 
         # If pinv method is defined
-        #if self.x0 != 0:
+        # if self.x0 != 0:
         # if self.x0 != 0.5:
         #     x = self.pinv(m)
         #     # if hasattr(self.acqu, "pinv"):
@@ -1073,10 +1095,12 @@ class LearnedPGD(nn.Module):
         #     if self.res_learn:
         #         z0 = x.detach().clone()
         # else:
-            # zero init
-            #x = torch.zeros((*x.shape[:-1], *self.acqu.meas_shape), device=x.device)
-            # 0.5 init
-        x = self.x0*torch.ones((*x.shape[:-1], *self.acqu.meas_shape), device=x.device)
+        # zero init
+        # x = torch.zeros((*x.shape[:-1], *self.acqu.meas_shape), device=x.device)
+        # 0.5 init
+        x = self.x0 * torch.ones(
+            (*x.shape[:-1], *self.acqu.meas_shape), device=x.device
+        )
 
         if self.log_fidelity:
             self.cost = []

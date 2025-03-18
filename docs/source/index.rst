@@ -45,26 +45,28 @@ The list of contributors can be found `here <https://github.com/openspyrit/spyri
 .. toctree::
    :maxdepth: 2
    :hidden:
-   
+
    single_pixel
    organisation
 
 
 .. toctree::
-   :maxdepth: 2 
+   :maxdepth: 2
    :caption: Tutorials
    :hidden:
-   
+
    gallery/index
+
+
+Contents
+========
 
 .. autosummary::
    :toctree: _autosummary
    :template: spyrit-module-template.rst
    :recursive:
    :caption: Contents
-   
+
    spyrit.core
    spyrit.misc
    spyrit.external
-   
-   

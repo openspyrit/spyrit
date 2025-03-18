@@ -14,11 +14,11 @@ This tutorial shows how to simulate measurements that correspond to the 2D Hadam
 |
 
 In practice, only positive values can be implemented using a digital micromirror device (DMD). Therefore, we acquire
- 
+
 .. math::
     y = \texttt{vec}\left(AXA^T\right),
-    
-where :math:`A \in \mathbb{R}_+^{2h\times h}` is the acquisition matrix that contains the positive and negative components of a Hadamard matrix and :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image. 
+
+where :math:`A \in \mathbb{R}_+^{2h\times h}` is the acquisition matrix that contains the positive and negative components of a Hadamard matrix and :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image.
 
 We define the positive DMD patterns :math:`A` from the positive and negative components a Hadamard matrix :math:`H`. In practice, the even rows of :math:`A` contain the positive components of :math:`H`, while odd rows of :math:`A` contain the negative components of :math:`H`.
 
@@ -31,7 +31,7 @@ We define the positive DMD patterns :math:`A` from the positive and negative com
 """
 
 # %%
-# Loads images 
+# Loads images
 # -----------------------------------------------------------------------------
 
 ###############################################################################
@@ -87,10 +87,10 @@ print(m.shape)
 ######################################################################
 # We plot the components of the positive and negative Hadamard transform that are concatenated in the measurement vector :math:`y` as well as the measurement vector :math:`m`.
 
-from spyrit.misc.disp import  add_colorbar, noaxis
+from spyrit.misc.disp import add_colorbar, noaxis
 
-y_pos = y[:,:,0::2]
-y_neg = y[:,:,1::2] 
+y_pos = y[:, :, 0::2]
+y_neg = y[:, :, 1::2]
 
 f, axs = plt.subplots(1, 3, figsize=(10, 5))
 axs[0].set_title(r"$H_+XH_+^\top$")
@@ -98,7 +98,13 @@ im = axs[0].imshow(y_pos[1, 0].reshape(64, 64), cmap="gray")
 add_colorbar(im, "bottom")
 
 axs[1].set_title(r"$H_-XH_-^\top$")
-im = axs[1].imshow(y_neg[1, 0,].reshape(64, 64), cmap="gray")
+im = axs[1].imshow(
+    y_neg[
+        1,
+        0,
+    ].reshape(64, 64),
+    cmap="gray",
+)
 add_colorbar(im, "bottom")
 
 axs[2].set_title(r"$HXH^\top$")
@@ -106,7 +112,7 @@ im = axs[2].imshow(m[1, 0].reshape(64, 64), cmap="gray")
 add_colorbar(im, "bottom")
 
 noaxis(axs)
-
+# sphinx_gallery_thumbnail_number = 2
 
 
 # %%
@@ -118,8 +124,8 @@ noaxis(axs)
 #
 # .. math::
 #    y = \mathcal{S}\left(AXA^T\right),
-# 
-# where :math:`\mathcal{S} \colon\, \mathbb{R}^{2h\times 2h} \to \mathbb{R}^{2M}` is a subsampling operator and :math:`2M < 2h` represents the number of DMD patterns that are displayed on the DMD. 
+#
+# where :math:`\mathcal{S} \colon\, \mathbb{R}^{2h\times 2h} \to \mathbb{R}^{2M}` is a subsampling operator and :math:`2M < 2h` represents the number of DMD patterns that are displayed on the DMD.
 
 ######################################################################
 # The subsampling operator :math:`\mathcal{S}` is defined by an order matrix :math:`O\in\mathbb{R}^{h\times h}` that ranks the measurements by decreasing significance, before retaining only the first :math:`M`.
@@ -127,24 +133,24 @@ noaxis(axs)
 ######################################################################
 # .. note::
 #   This process applies to both :math:`H_{+}XH_{+}^T` and :math:`H_{-}XH_{-}^T` the same way, independently.
-#  
+#
 # We consider two subsampling strategies:
 #
 # * The "naive" subsampling, which uses the linear (row-major) indexing order. This is the default subsampling strategy.
 #
 # * The variance subsampling, which sorts the Hadamard coefficient by decreasing variance. The motivation is that low variance coefficients are less informative than the others. This can be supported by principal component analysis, which states that preserving the components with largest variance leads to the best linear predictor.
 
-#%%
+# %%
 # Naive subsampling
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ###############################################################################
 # The order matrix corresponding to the "naive" subsampling is given by linear values.
-Ord_naive = torch.arange(64*64, 0, step=-1).reshape(64,64)
+Ord_naive = torch.arange(64 * 64, 0, step=-1).reshape(64, 64)
 print(Ord_naive)
 
 
-#%%
+# %%
 # Variance subsampling
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -171,20 +177,21 @@ try:
     print(f"Cov matrix {cov_name} loaded")
 except:
     # Set to the identity if not found for "naive subsampling"
-    Cov = torch.eye(64*64)
+    Cov = torch.eye(64 * 64)
     print(f"Cov matrix {cov_name} not found! Set to the identity")
 
 ######################################################################
 # Then, we extract the variance from the covariance matrix. The variance matrix has a size
 # of (64, 64).
 from spyrit.core.torch import Cov2Var
+
 Ord_variance = Cov2Var(Cov)
 
 ######################################################################
 # .. note::
 #   In this tutorial, the covariance matrix is used to define the subsampling strategy. As explained in another tutorial, the covariance matrix can also be used to reconstruct the image from the measurements.
 
-#%%
+# %%
 # Comparison of the two subsampling strategies
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -197,8 +204,8 @@ Ord_variance = Cov2Var(Cov)
 # We build the masks using the function :func:`spyrit.core.torch.sort_by_significance` and reshape them to the image size.
 from spyrit.core.torch import sort_by_significance
 
-M = 64*64 // 4
-mask_basis = torch.zeros(64*64)
+M = 64 * 64 // 4
+mask_basis = torch.zeros(64 * 64)
 mask_basis[:M] = 1
 
 # Mask for the naive subsampling
@@ -253,7 +260,7 @@ m_var_plot = meas2img(m_var, Ord_variance)
 print(f"Shape of measurements: {m_nai_plot.shape}")
 
 ###############################################################################
-# We finally plot the measurements corresponding to one image in the batch. 
+# We finally plot the measurements corresponding to one image in the batch.
 f, ax = plt.subplots(1, 2, figsize=(10, 5))
 im = ax[0].imshow(m_nai_plot[i_plot, 0, :, :], cmap="gray")
 ax[0].set_title("Measurements \n 'Naive' subsampling", fontsize=20)
@@ -274,8 +281,8 @@ print(f"Shape of split measurements: {y_var.shape}")
 
 ###############################################################################
 # We separate the positive and negative components of the split measurements.
-y_var_pos = y_var[...,::2]    # Even rows
-y_var_neg = y_var[...,1::2]   # Odd rows
+y_var_pos = y_var[..., ::2]  # Even rows
+y_var_neg = y_var[..., 1::2]  # Odd rows
 
 print(f"Shape of the positive component: {y_var_pos.shape}")
 print(f"Shape of the negative component: {y_var_neg.shape}")
@@ -289,7 +296,7 @@ print(f"Shape of the positive component: {m_plot_1.shape}")
 print(f"Shape of the negative component: {m_plot_2.shape}")
 
 ###############################################################################
-# We finally plot the measurements corresponding to one image in the batch 
+# We finally plot the measurements corresponding to one image in the batch
 f, ax = plt.subplots(1, 2, figsize=(10, 5))
 im = ax[0].imshow(m_plot_1[i_plot, 0, :, :], cmap="gray")
 ax[0].set_title(r"$\mathcal{S}\left(H_+XH_+^\top\right)$", fontsize=20)

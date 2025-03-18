@@ -26,7 +26,7 @@ where :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in
 """
 
 # %%
-# 1D Measurements 
+# 1D Measurements
 # -----------------------------------------------------------------------------
 
 ###############################################################################
@@ -42,7 +42,7 @@ meas_op = Linear(H)
 x = torch.randn(3, 15)
 
 ###############################################################################
-# We apply the operator to the batch of images, which produces 3 measurements 
+# We apply the operator to the batch of images, which produces 3 measurements
 # of length 10
 m = meas_op(x)
 print(m.shape)
@@ -67,14 +67,15 @@ im = axs[2].imshow(m.T, cmap="gray")
 add_colorbar(im, "bottom")
 
 noaxis(axs)
+# sphinx_gallery_thumbnail_number = 1
 
 # %%
-# 2D Measurements 
+# 2D Measurements
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We load a batch of images from the :attr:`/images/` folder. Using the 
-# :func:`transform_gray_norm` function with the :attr:`normalize=False` 
+# We load a batch of images from the :attr:`/images/` folder. Using the
+# :func:`transform_gray_norm` function with the :attr:`normalize=False`
 # argument returns images with values in (0,1).
 import os
 import torchvision
@@ -94,18 +95,19 @@ x, _ = next(iter(dataloader))
 
 ###############################################################################
 # We crop the batch to get image of shape (9, 25).
-x = x[:,:,:9,:25]
+x = x[:, :, :9, :25]
 print(f"Shape of input images: {x.shape}")
 
 ###############################################################################
 # We plot the second image.
 from spyrit.misc.disp import imagesc
+
 imagesc(x[1, 0, :, :], "Image X")
 
 
 ###############################################################################
 # We instantiate a measurement operator from a random matrix with shape (10, 9*25). To indicate that the operator works in 2D, we use the :attr:`meas_shape` argument.
-H = torch.randn(10, 9*25)
+H = torch.randn(10, 9 * 25)
 meas_op = Linear(H, meas_shape=(9, 25))
 
 ###############################################################################
@@ -119,12 +121,12 @@ print(m.shape)
 
 ###############################################################################
 # We first select the second image and the second measurement vector in the batch.
-x_plot = x[1,0,:,:]
+x_plot = x[1, 0, :, :]
 m_plot = m[1]
 
 ###############################################################################
 # Then we vectorize the image to get a 1D array of length 9*25.
-x_plot = x_plot.reshape(1,-1)
+x_plot = x_plot.reshape(1, -1)
 
 print(f"Vectorised image with shape: {x_plot.shape}")
 
@@ -137,14 +139,14 @@ import matplotlib.pyplot as plt
 f, axs = plt.subplots(1, 3)
 axs[0].set_title("Forward matrix H")
 im = axs[0].imshow(H, cmap="gray")
-#add_colorbar(im, "bottom")
+# add_colorbar(im, "bottom")
 
 axs[1].set_title("x = vec(X)")
 im = axs[1].imshow(x_plot.mT, cmap="gray")
-#add_colorbar(im, "bottom")
+# add_colorbar(im, "bottom")
 
 axs[2].set_title("Measurements m")
 im = axs[2].imshow(m_plot.mT, cmap="gray")
-#add_colorbar(im, "bottom")
+# add_colorbar(im, "bottom")
 
 noaxis(axs)

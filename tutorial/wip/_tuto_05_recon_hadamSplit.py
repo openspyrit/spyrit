@@ -1,7 +1,7 @@
-#%%
+# %%
 
 if False:
-    
+
     # %%
     # Split measurement operator and no noise
     # -----------------------------------------------------------------------------
@@ -20,8 +20,6 @@ if False:
     # image and :math:`M \le N` the number of measurements. The matrix :math:`P`
     # is obtained by splitting the matrix :math:`H` as :math:`H = H_{+}-H_{-}` where
     # :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.
-
-    
 
     # %%
     # Measurement and noise operators

@@ -268,7 +268,7 @@ def reindex(
 
     Example:
         >>> values = np.array([[10, 20, 30], [100, 200, 300]])
-        >>> indices =  np.array(2, 0, 1])
+        >>> indices =  np.array([2, 0, 1])
         >>> reindex(values, indices, axis="cols")
         array([[ 20,  30,  10],
                [200, 300, 100]])

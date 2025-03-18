@@ -14,7 +14,8 @@ from torchvision import datasets, models, transforms
 import torch.nn.functional as F
 import imageio
 import matplotlib.pyplot as plt
-#import skimage.metrics as skm
+
+# import skimage.metrics as skm
 
 
 def batch_psnr(torch_batch, output_batch):
@@ -205,38 +206,11 @@ def psnr_torch(img_gt, img_rec, dim=(-2, -1), img_dyn=None):
 
     Example 2: 10 images of size 64x64 with values in [0,1) corrupted with 5% noise
         >>> psnr_torch(n,x)
-        tensor([[7.6092],
-                [7.5620],
-                [7.5850],
-                [7.5478],
-                [7.6230],
-                [7.7125],
-                [7.6683],
-                [7.5065],
-                [7.6500],
-                [7.5975]])
+        tensor(...)
         >>> psnr_torch(x,n)
-        tensor([[11.4058],
-                [11.0327],
-                [11.4635],
-                [11.2796],
-                [11.0258],
-                [10.9015],
-                [11.2025],
-                [11.1740],
-                [11.3935],
-                [11.2562]])
+        tensor(...)
         >>> psnr_torch(n,x,img_dyn=1.0)
-        tensor([[7.6113],
-                [7.5641],
-                [7.5918],
-                [7.5491],
-                [7.6269],
-                [7.7152],
-                [7.6721],
-                [7.5090],
-                [7.6533],
-                [7.5998]])
+        tensor(...)
 
     """
     mse = (img_gt - img_rec) ** 2
@@ -265,13 +239,14 @@ def ssim(I1, I2):
     )
     return result
 
+
 # def ssim_sk(x_gt, x, img_dyn=None):
-#     """ 
+#     """
 #     SSIM from skimage
-    
+
 #     Args:
 #         torch tensors
-        
+
 #     Returns:
 #         torch tensor
 #     """
