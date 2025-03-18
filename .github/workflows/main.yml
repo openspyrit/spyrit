@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.9, "3.10", "3.11", "3.12"]
+        python-version: [3.9]
 
     steps:
     - name: Checkout github repo
@@ -44,7 +44,7 @@ jobs:
     - name: Upload wheels
       uses: actions/upload-artifact@v4
       with:
-        name: dist-${{ matrix.os }}-${{ matrix.python-version }}
+        name: dist
         path: dist/
 
   test_install:
@@ -100,7 +100,7 @@ jobs:
         architecture: 'x64'
     - uses: actions/download-artifact@v4
       with:
-        pattern: dist-*
+        pattern: dist*
         merge-multiple: true
         path: dist/
     - name: Run tests on Mac and Linux
@@ -126,7 +126,7 @@ jobs:
       run: git submodule update --init --recursive
     - uses: actions/download-artifact@v4
       with:
-        pattern: dist-*
+        pattern: dist*
         merge-multiple: true
         path: dist/
     - name: Publish to PyPI
