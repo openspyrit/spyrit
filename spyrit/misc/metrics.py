@@ -28,6 +28,16 @@ def batch_psnr(torch_batch, output_batch):
         list_psnr.append(psnr(img, img_out))
     return list_psnr
 
+def batch_psnr_(torch_batch, output_batch, r=2):
+    list_psnr = []
+    for i in range(torch_batch.shape[0]):
+        img = torch_batch[i, 0, :, :]
+        img_out = output_batch[i, 0, :, :]
+        img = img.cpu().detach().numpy()
+        img_out = img_out.cpu().detach().numpy()
+        list_psnr.append(psnr_(img, img_out, r=r))
+    return list_psnr
+
 
 def batch_ssim(torch_batch, output_batch):
     list_ssim = []

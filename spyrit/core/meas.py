@@ -2253,7 +2253,11 @@ class DynamicLinear(Linear):
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
 
         else:
-            det = motion.det()
+            # motion_inverse_approx = self.approx_inv_deform(motion)  ## WRONG, TOO COARSE APPROXIMATION
+            # def_field needs to be passed as the inverse deform now
+
+            det = self.calc_det(def_field)
+
 
             meas_pattern = meas_pattern.reshape(
                 meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1]
@@ -2283,6 +2287,52 @@ class DynamicLinear(Linear):
             )
 
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
+
+    def calc_det(self, def_field):
+        # def_field of shape (n_frames, img_shape[0], img_shape[1], 2) in range [0, h-1] x [0, w-1]
+        v1, v2 = def_field[:, :, :, 0], def_field[:, :, :, 1]
+        n_frames = def_field.shape[0]
+
+        # def opérateur gradient (differences finies non normalisées)
+        L = lambda u: torch.stack(
+            [
+                torch.cat(
+                    [torch.diff(u, dim=1), torch.ones(n_frames, 1, u.shape[2])], dim=1
+                ),
+                torch.cat(
+                    [torch.diff(u, dim=2), torch.ones(n_frames, u.shape[1], 1)], dim=2
+                ),
+            ],
+            dim=3,
+        )
+
+        dx_v1 = L(v1)[..., 1]
+        dx_v2 = L(v2)[..., 1]
+        dy_v1 = L(v1)[..., 0]
+        dy_v2 = L(v2)[..., 0]
+
+        det = (
+            dx_v1 * dy_v2 - dx_v2 * dy_v1
+        )  # shape is (n_frames, img_shape[0], img_shape[1])
+
+        return det
+
+    def approx_inv_deform(self, def_field):
+        _, height, width, _ = def_field.field.shape
+        dtype = def_field.field.dtype
+
+        interval_1, interval_2 = (
+            torch.linspace(0, width - 1, width, dtype=dtype) / width * 2 - 1,
+            torch.linspace(0, height - 1, height, dtype=dtype) / height * 2 - 1,
+        )
+        x1, x2 = torch.meshgrid(interval_1, interval_2, indexing="xy")
+        identity = torch.stack((x1, x2), axis=2).unsqueeze(0)
+
+        elem_def_field = def_field.field - identity
+
+        def_field_inverse = DeformationField(identity - elem_def_field)
+
+        return def_field_inverse
 
     def build_H_dyn_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
         """Computes the pseudo-inverse of the dynamic measurement matrix
