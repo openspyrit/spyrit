@@ -2258,7 +2258,6 @@ class DynamicLinear(Linear):
 
             det = self.calc_det(def_field)
 
-
             meas_pattern = meas_pattern.reshape(
                 meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1]
             )
