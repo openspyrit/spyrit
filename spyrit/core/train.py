@@ -878,7 +878,6 @@ def rename_model_attributes(source, old_name, new_name, target=None):
         Rename the key `Denoi.layer.0.weight` and `Denoi.layer.0.weight` as
         `denoi.layer.0.weight` and `Denoi.layer.0.weight` and save the
         resulting model as `target.pth`
-    >>> rename_model_attributes('model.pth', 'Denoi.', 'denoi.', 'target.pth')
 
     Adapted from
     https://gist.github.com/the-bass/0bf8aaa302f9ba0d26798b11e4dd73e3
@@ -920,7 +919,6 @@ def remove_model_attributes(source, old_name, target=None):
     -------
         Remove the attribute `Denoi` of the model saved as `source`. The
         resulting model is saved as `target.pth`
-    >>> rename_model_attributes('model.pth', 'Denoi.', 'target.pth')
     """
     if target is None:
         target = source

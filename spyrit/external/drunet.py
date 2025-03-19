@@ -142,10 +142,14 @@ class DRUNet(UNetRes):
 
         :attr:`upsample_mode` (str): upsample mode
 
+        :attr:`normalize` (bool): Normalize to (-1,1). Defaults to True.
+
     Input / Output:
         :attr:`x`: input images with shape (:math:`B`, :attr:`n_channels`, :math:`H`, :math:`W`).
 
         :attr:`output`: denoised images with shape (:math:`B`, :attr:`n_channels`, :math:`H`, :math:`W`).
+
+        :attr:`normalize` (bool): Normalize to (-1,1) if True.
 
     Attributes:
         :attr:`noise_level` (tensor): noise level tensor with shape :math:`(1)`.
@@ -164,11 +168,13 @@ class DRUNet(UNetRes):
         act_mode="R",
         downsample_mode="strideconv",
         upsample_mode="convtranspose",
+        normalize=True,
     ):
         super(DRUNet, self).__init__(
             n_channels + 1, n_channels, nc, nb, act_mode, downsample_mode, upsample_mode
         )
         self.register_buffer("noise_level", torch.FloatTensor([noise_level / 255.0]))
+        self.normalize = normalize
 
     def forward(self, x):
         # Image domain denoising
@@ -191,7 +197,8 @@ class DRUNet(UNetRes):
         """
 
         b, c, h, w = x.shape
-        x = 0.5 * (x + 1)
+        if self.normalize:
+            x = 0.5 * (x + 1)
         x = torch.cat((x, self.noise_level.expand(b, 1, h, w)), dim=1)
         return x
 

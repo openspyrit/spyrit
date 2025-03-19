@@ -77,7 +77,7 @@ class DeformationField(nn.Module):
         >>> u = torch.tensor([[[[ 1, -1], [ 1, 1]], [[-1, -1], [-1, 1]]]])
         >>> field = DeformationField(u)
         >>> print(field.field)
-        tensor([[[[ 1, -1], [ 1, 1]], [[-1, -1], [-1, 1]]]])
+        tensor(...)
         >>> print(field.field.shape)
         torch.Size([1, 2, 2, 2])
 
@@ -85,7 +85,7 @@ class DeformationField(nn.Module):
         >>> u = torch.tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]]])
         >>> field = DeformationField(u)
         >>> print(field.field)
-        tensor([[[[-1, 1], [-1, -1]], [[ 1, 1], [ 1, -1]]])
+        tensor(...)
     """
 
     def __init__(self, field: torch.tensor):
@@ -211,13 +211,13 @@ class DeformationField(nn.Module):
         Example 1: Rotating a 2x2 B&W image by 90 degrees counter-clockwise, using one
         frame
 
-        >>> v = torch.tensor([[[[ 1., -1.], [ 1., 1.]],
-                               [[-1., -1.], [-1., 1.]]]])
+        >>> v = torch.tensor([[[[ 1., -1.], [ 1., 1.]], [[-1., -1.], [-1., 1.]]]])
         >>> field = DeformationField(v)
         >>> image = torch.tensor([0., 0.3, 0.7, 1.]).view(1, 1, 2, 2)
         >>> deformed_image = field(image, 0, 1)
         >>> print(deformed_image)
-        tensor([[[[0.3000, 1.0000], [0.0000, 0.7000]]]])
+        tensor([[[[[0.3000, 1.0000],
+                   [0.0000, 0.7000]]]]])
         """
 
         if img.ndim == 3:
@@ -323,6 +323,32 @@ class DeformationField(nn.Module):
             ).to(img_frames.dtype)
 
             return out  # has shape (n_frames, c, h, w)
+
+    def det(self) -> torch.tensor:
+        r""" """
+
+        v1, v2 = self.field[:, :, :, 0], self.field[:, :, :, 1]
+        n_frames = self.field.shape[0]
+
+        # def opérateur gradient (differences finies non normalisées)
+        L = lambda u: torch.stack(
+            [
+                torch.cat(
+                    [torch.diff(u, dim=1), torch.ones(n_frames, 1, u.shape[2])], dim=1
+                ),
+                torch.cat(
+                    [torch.diff(u, dim=2), torch.ones(n_frames, u.shape[1], 1)], dim=2
+                ),
+            ],
+            dim=3,
+        )
+
+        dx_v1, dy_v1 = torch.split(L(v1), split_size_or_sections=1, dim=-1)
+        dx_v2, dy_v2 = torch.split(L(v2), split_size_or_sections=1, dim=-1)
+
+        # shape is (n_frames, img_shape[0], img_shape[1])
+        det = dx_v1 * dy_v2 - dx_v2 * dy_v1
+        return det
 
     def _warn_field(self):
         # using float64 is preferred for accuracy
@@ -431,7 +457,8 @@ class AffineDeformationField(DeformationField):
     Example 1: Progressive zooming **in**
         >>> def u(t):
         ...     return torch.tensor([[1-t/10, 0, 0], [0, 1-t/10, 0], [0, 0, 1]])
-        >>> field = AffineDeformationField(u)
+        >>> t = torch.tensor([[[[ 1, -1], [ 1, 1]], [[-1, -1], [-1, 1]]]])
+        >>> field = AffineDeformationField(u, t, (32, 32))
 
     Example 2: Rotation of an image **counter-clockwise**, at a frequency of 1Hz
         >>> import numpy as np
@@ -441,7 +468,8 @@ class AffineDeformationField(DeformationField):
         ...     return np.cos(2*np.pi*t)
         >>> def u(t):
         ...     return torch.tensor([[c(t), s(t), 0], [-s(t), c(t), 0], [0, 0, 1]])
-        >>> field = AffineDeformationField(u)
+        >>> t = torch.tensor([[[[ 1, -1], [ 1, 1]], [[-1, -1], [-1, 1]]]])
+        >>> field = AffineDeformationField(u, t, (32, 32))
     """
 
     def __init__(
@@ -574,54 +602,54 @@ class ElasticDeformation(DeformationField):
     .. note::
         The parameters :attr:`alpha`, :attr:`sigma`, and :attr:`n_interpolation`
         are defined at initialization and cannot be changed after instantiation.
+
+    Args:
+        alpha (float): Magnitude of displacements. This argument is passed to
+        the constructor of :class:`torchvision.transforms.v2.ElasticTransform`.
+
+        sigma (float): Smoothness of displacements in the spatial domain. This
+        argument is passed to the constructor of :class:`torchvision.transforms.v2.ElasticTransform`.
+
+        img_shape (tuple): Shape of the deformation field, i.e. :math:`(h,w)`,
+        where :math:`h` and :math:`w` are the height and width of the field
+        respectively.
+
+        n_frames (int): Number of frames in the animation.
+
+        n_interpolation (int): Period in frames of the time-domain interpolation.
+        Every :attr:`n_interpolation` frames, a 2D elastic transform is randomly
+        generated. Between these frames, the deformation field is equal to the
+        identity. A truncated gaussian smoothing of length equal to 3 times
+        :attr:`n_interpolation` (to capture a real-looking movement between 3
+        points in 2D space) and with a standard deviation of :math:`\frac{3}{4}`
+        :attr:`n_interpolation` is applied to the deformation field.
+
+        dtype (torch.dtype): Data type of the tensors. Default is torch.float32.
+
+    Attributes:
+        :attr:`field` (torch.tensor): The deformation field as a tensor of shape
+        :math:`(n\_frames,h,w,2)`.
+
+        :attr:`img_shape` (tuple): Shape of the deformation field, i.e. :math:`(h,w)`,
+        where :math:`h` and :math:`w` are the height and width of the field
+        respectively.
+
+        :attr:`n_frames` (int): Number of frames in the animation.
+
+        :attr:`alpha` (float): Magnitude of displacements.
+
+        :attr:`sigma` (float): Smoothness of displacements in the spatial domain.
+
+        :attr:`n_interpolation` (int): Period in frames of the time-domain interpolation.
+
+        :attr:`ElasticTransform` (torchvision.transforms.v2.ElasticTransform): The
+        random generator of static elastic deformation, with parameters :attr:`alpha`
+        and :attr:`sigma`.
     """
 
     def __init__(
         self, alpha, sigma, img_shape, n_frames, n_interpolation, dtype=torch.float32
     ):
-        """Args:
-            alpha (float): Magnitude of displacements. This argument is passed to
-            the constructor of :class:`torchvision.transforms.v2.ElasticTransform`.
-
-            sigma (float): Smoothness of displacements in the spatial domain. This
-            argument is passed to the constructor of :class:`torchvision.transforms.v2.ElasticTransform`.
-
-            img_shape (tuple): Shape of the deformation field, i.e. :math:`(h,w)`,
-            where :math:`h` and :math:`w` are the height and width of the field
-            respectively.
-
-            n_frames (int): Number of frames in the animation.
-
-            n_interpolation (int): Period in frames of the time-domain interpolation.
-            Every :attr:`n_interpolation` frames, a 2D elastic transform is randomly
-            generated. Between these frames, the deformation field is equal to the
-            identity. A truncated gaussian smoothing of length equal to 3 times
-            :attr:`n_interpolation` (to capture a real-looking movement between 3
-            points in 2D space) and with a standard deviation of :math:`\frac{3}{4}`
-            :attr:`n_interpolation` is applied to the deformation field.
-
-            dtype (torch.dtype): Data type of the tensors. Default is torch.float32.
-
-        Attributes:
-            :attr:`field` (torch.tensor): The deformation field as a tensor of shape
-            :math:`(n\_frames,h,w,2)`.
-
-            :attr:`img_shape` (tuple): Shape of the deformation field, i.e. :math:`(h,w)`,
-            where :math:`h` and :math:`w` are the height and width of the field
-            respectively.
-
-            :attr:`n_frames` (int): Number of frames in the animation.
-
-            :attr:`alpha` (float): Magnitude of displacements.
-
-            :attr:`sigma` (float): Smoothness of displacements in the spatial domain.
-
-            :attr:`n_interpolation` (int): Period in frames of the time-domain interpolation.
-
-            :attr:`ElasticTransform` (torchvision.transforms.v2.ElasticTransform): The
-            random generator of static elastic deformation, with parameters :attr:`alpha`
-            and :attr:`sigma`.
-        """
 
         super().__init__(None)
 

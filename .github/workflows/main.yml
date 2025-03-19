@@ -7,7 +7,8 @@ on:
     tags:
       - '*'
   pull_request:
-    branches: [ master ]
+    branches:
+      - '*'
   schedule:
     - cron: '0 0 * * 0'
   workflow_dispatch:
@@ -19,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.8, 3.9, "3.10", "3.11"]
+        python-version: [3.9]
 
     steps:
     - name: Checkout github repo
@@ -43,7 +44,7 @@ jobs:
     - name: Upload wheels
       uses: actions/upload-artifact@v4
       with:
-        name: dist-${{ matrix.os }}-${{ matrix.python-version }}
+        name: dist
         path: dist/
 
   test_install:
@@ -51,8 +52,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13]
-        python-version: [3.8, 3.9, "3.10", "3.11"]
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
+        python-version: [3.9, "3.10", "3.11", "3.12"]
+        exclude:
+          - os: macos-13
+            python-version: '3.10'
+          - os: macos-13
+            python-version: '3.11'
+          - os: macos-13
+            python-version: '3.12'
+          - os: macos-14
+            python-version: 3.9
+          - os: macos-14
+            python-version: '3.10'
 
     steps:
     - name: Checkout github repo
@@ -67,13 +79,16 @@ jobs:
     - name: Run the tests on Mac and Linux
       if: matrix.os != 'windows-latest'
       run: |
+          pip install pytest
           pip install -e .
-          python spyrit/test/run_tests.py || exit -1
+          python -m pytest --doctest-modules --ignore=tutorial --ignore=docs --ignore=spyrit/dev || exit -1
     - name: Run the tests on Windows
       if: matrix.os == 'windows-latest'
+      shell: cmd
       run: |
+          pip install pytest
           pip install -e .
-          python spyrit\test\run_tests.py || exit -1
+          python -m pytest --doctest-modules --ignore=tutorial --ignore=docs --ignore=spyrit\dev || exit /b -1
 
   test_wheel:
     runs-on: ${{ matrix.os }}
@@ -82,7 +97,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-13]
-        python-version: [3.8, 3.9, "3.10", "3.11"]
+        python-version: [3.9, "3.10", "3.11", "3.12"]
 
     steps:
     - name: Checkout github repo
@@ -96,7 +111,7 @@ jobs:
         architecture: 'x64'
     - uses: actions/download-artifact@v4
       with:
-        pattern: dist-*
+        pattern: dist*
         merge-multiple: true
         path: dist/
     - name: Run tests on Mac and Linux
@@ -104,8 +119,6 @@ jobs:
       run: |
           cd dist
           pip install spyrit-*.whl
-          cd ..
-          python spyrit/test/run_tests.py || exit -1
     - name: Run the tests on Windows
       if: matrix.os == 'windows-latest'
       run: |
@@ -113,8 +126,6 @@ jobs:
           $package=dir -Path . -Filter spyrit*.whl | %{$_.FullName}
           echo $package
           pip install $package
-          cd ..
-          python spyrit\test\run_tests.py || exit -1
 
   publish_wheel:
     runs-on: ubuntu-latest
@@ -126,7 +137,7 @@ jobs:
       run: git submodule update --init --recursive
     - uses: actions/download-artifact@v4
       with:
-        pattern: dist-*
+        pattern: dist*
         merge-multiple: true
         path: dist/
     - name: Publish to PyPI

@@ -73,10 +73,11 @@ def meas2img2(meas: np.ndarray, Mat: np.ndarray) -> np.ndarray:
         In meas2img, the batch dimension comes first: (B, M) instead of (M, B).
 
     Args:
-        meas : `np.ndarray` with shape :math:`(M,B)`
-            Set of :math:`B` measurement vectors of lenth :math:`M \le N^2`.
-        Mat : `np.ndarray` with shape :math:`(N,N)`
-            Sampling matrix, where high values indicate high significance.
+        meas : `np.ndarray` with shape :math:`(M,B)`. Set of :math:`B`
+        measurement vectors of length :math:`M \le N^2`.
+
+        Mat : `np.ndarray` with shape :math:`(N,N)`. Sampling matrix, where
+        high values indicate high significance.
 
     Returns:
         Img : `np.ndarray` with shape :math:`(N,N,B)`
@@ -267,7 +268,7 @@ def reindex(
 
     Example:
         >>> values = np.array([[10, 20, 30], [100, 200, 300]])
-        >>> indices =  np.array(2, 0, 1])
+        >>> indices =  np.array([2, 0, 1])
         >>> reindex(values, indices, axis="cols")
         array([[ 20,  30,  10],
                [200, 300, 100]])

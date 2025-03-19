@@ -15,13 +15,12 @@ import torch.nn as nn
 import torchvision
 
 import spyrit.misc.walsh_hadamard as wh
+import spyrit.core.warp as warp
 
 
 # =============================================================================
 # Walsh / Hadamard -related functions
 # =============================================================================
-
-
 def assert_power_of_2(n, raise_error=True):
     r"""Asserts that n is a power of 2.
 
@@ -38,11 +37,9 @@ def assert_power_of_2(n, raise_error=True):
         bool: True if n is a power of 2, False otherwise.
 
     Example:
-
-    .. runblock:: pycon
-
-        >>> import os
-        >>> print(os.getcwd())
+        >>> from spyrit.core import torch
+        >>> torch.assert_power_of_2(64)
+        True
     """
     if n < 1:
         if raise_error:
@@ -56,22 +53,29 @@ def assert_power_of_2(n, raise_error=True):
 
 
 def sequency_perm(X, ind=None):
-    r"""Permute the last dimension of a tensor to get sequency order
+    r"""Permute the last dimension of a tensor. By defaults this allows the sequency order to be obtained from the natural order.
 
     Args:
-        :attr:`X` (torch.tensor): -by-n input matrix
+        :attr:`X` (torch.tensor): input of shape (*,n)
 
-        :attr:`ind` : index list of length n
+        :attr:`ind` : list of index length n. Defaults to indices to get sequency order.
 
     Returns:
-        torch.tensor: -by-n input matrix
+        torch.tensor: output of shape (*,n).
+
+    Note:
+        Same as :func:`spyrit.misc.walsh_hadamard.sequency_perm()` for torch tensors.
 
     Example :
-        >>> import spyrit.misc.walsh_hadamard as wh
+        >>> import torch
+        >>> import spyrit.core.torch as st
         >>> x = torch.tensor([1, 3, 0, -1, 7, 5, 1, -2])
         >>> x = x[None, None, :]
-        >>> x = wh.sequency_perm_torch(x)
+        >>> x = st.sequency_perm(x)
         >>> print(x)
+        tensor([[[ 1,  7,  1,  0, -1, -2,  5,  3]]])
+        >>> print(x.shape)
+        torch.Size([1, 1, 8])
     """
     if ind is None:
         ind = wh.sequency_perm_ind(X.shape[-1])
@@ -81,18 +85,16 @@ def sequency_perm(X, ind=None):
 
 
 def walsh_matrix(n):
-    r"""Returns a 1D Walsh-ordered Hadamard transform matrix of size
-    :math:`n \times n`.
+    r"""Returns a 1D Walsh-ordered Hadamard.
 
     Args:
-        n (int): Order of the Hadamard matrix. Must be a power of two.
+        :attr:`n` (:obj:`int`): Order of the transform :math:`n`, which must be a power of two.
 
     Raises:
-        ValueError: If n is not a positive integer or if n is not a power of 2.
+        ValueError: If :attr:`n` is not a positive integer that is a power of 2.
 
     Returns:
-        torch.tensor: A n-by-n matrix representing the Walsh-ordered Hadamard
-        matrix.
+        torch.tensor:  Matrix :math:`H` with shape :math:`(n,n)`.
     """
     assert_power_of_2(n, raise_error=True)
 
@@ -120,33 +122,130 @@ def walsh_matrix(n):
     return recursive_walsh(n)
 
 
-def walsh2_matrix(n):
-    r"""Returns Walsh-ordered Hadamard matrix in 2D.
+def walsh_matrix_2d(n):
+    r"""2D Walsh-ordered Hadamard matrix.
+
+    This is the matrix :math:`A\in\mathbb{R}^{n^2 \times n^2}` such that :math:`Ax` represents the 2D Hadamard transform of the vectorised image :math:`x`.
 
     Args:
-        n (int): Order of the matrix, which must be a power of two.
+        :attr:`n` (:obj:`int`): Order of the transform :math:`n`, which must be a power of two.
 
     Raises:
-        ValueError: If n is not a positive integer or if n is not a power of 2.
+        ValueError: If :attr:`n` is not a positive integer that is a power of 2.
 
     Returns:
-        torch.tensor: A n*n-by-n*n matrix representing the 2D Walsh-ordered
-        Hadamard matrix.
+        :class:`torch.Tensor`: Matrix :math:`A` with shape :math:`(n^2,n^2)`.
     """
     H1d = walsh_matrix(n)
     return torch.kron(H1d, H1d)
 
 
 def walsh2_torch(img, H=None):
-    r"""Deprecated function. Use `fwht_2d` instead."""
-    raise NotImplementedError("This function is deprecated. Use `fwht_2d` instead.")
+    # r"""Deprecated function. Use `fwht_2d` instead."""
+    # raise NotImplementedError("This function is deprecated. Use `fwht_2d` instead.")
+    r"""Return 2D Walsh-ordered Hadamard transform of an image
+
+    This applies the 1D transform :math:`H \in \mathbb{R}^{n \times n}` to the rows and to the columns of batches of images :math:`X\in \mathbb{R}^{n \times n}`
+
+    .. math::
+
+        Y = H X H^T.
+
+    Args:
+        :attr:`img` (:class:`torch.tensor`): Batch of images :math:`X` with shape :math:`(*,n,n)`.
+
+        :attr:`H` (:class:`torch.tensor`, optional): 1D Walsh-ordered Hadamard matrix with shape :math:`(n,n)`.
+
+    Returns:
+        :class:`torch.tensor`: Transformed image :math:`Y` with shape :math:`(*, n, n)` where :math:`*` is the same number as for :attr:`img`.
+
+    See Also:
+        :func:`~spyrit.core.torch.fwht_2d` implements the same transform with a different algorithm.
+
+    Example:
+        Example 1: Basic example
+
+        >>> img = torch.randn(256, 1, 64, 64)
+        >>> had = walsh2_torch(img)
+
+        Example 2: Same on CPU
+
+        >>> img = torch.randn(256, 1, 64, 64)
+        >>> img = img.to(device='cpu')
+        >>> had = walsh2_torch(img)
+        >>> print(had.device)
+        cpu
+
+        Example 3: On GPU using :class:`torch.float64`
+
+        >>> img = torch.randn(256, 1, 64, 64)
+        >>> img = img.to(device='cpu', dtype=torch.float64)
+        >>> had = walsh2_torch(img)
+        >>> print(had.device,'+',had.dtype)
+        cpu + torch.float64
+
+    """
+    if H is None:
+        H = walsh_matrix(img.shape[-1])
+
+    H = H.to(device=img.device, dtype=img.dtype)  # move in if?
+
+    return mult_2d_separable(H, img)
+
+
+def mult_1d(H: torch.tensor, x: torch.tensor, dim: int = -1) -> torch.tensor:
+    r"""Multiply a matrix to batches of (1D) vectors.
+
+    This computes matrix-vector products to a batch of vectors :math:`x`.
+
+    Args:
+        H (torch.tensor): Matrix with shape :math:`(a,b)`. The matrix :math:`H` multiplies to one of the dimensions of the batch of vectors.
+
+        x (torch.tensor): Batch of vectors. The :attr:`dim`-th dimension of the tensor
+        must have length :math:`b`.
+
+        dim (int, optional): The dimension along which multiplication applies.
+        Default is -1.
+
+    Returns:
+        torch.tensor: Transformed tensor. Has the same shape as the input tensor
+        except for the :attr:`dim`-th dimension which has :math:`a` elements.
+    """
+    if dim != -1 and dim != x.ndim - 1:
+        x = torch.moveaxis(x, dim, -1)
+    x = torch.einsum("ij,...j->...i", H, x)
+    if dim != -1 and dim != x.ndim - 1:
+        x = torch.moveaxis(x, -1, dim)
+    return x
+
+
+def mult_2d_separable(H: torch.tensor, x: torch.tensor) -> torch.tensor:
+    r"""Applies separable transform to batches of (2D) images.
+
+    This applies the same transform :math:`H` to the rows and columns of a batch of images :math:`X`
+
+    .. math::
+
+        Y = H X H^T.
+
+    Args:
+        H (:class:`torch.tensor`): Matrix :math:`H` with shape :math:`(a, b)`.
+
+        x (:class:`torch.tensor`): Input tensor to transform with shape
+        :math:`(*, b, b)` where :math:`*` represents any number of batch dimensions.
+
+    Returns:
+        :class:`torch.tensor`: Transformed image :math:`Y` with shape :math:`(*, a, a)` where :math:`*` is the same number of batch dimensions as the input tensor.
+    """
+    x = H @ x @ H.T
+    return x
 
 
 def fwht(x, order=True, dim=-1):
-    """Fast Walsh-Hadamard transform of x
+    r"""Fast Walsh-Hadamard transform of x
 
     Args:
-        x (np.ndarray): -by-n input signal, where n is a power of two.
+        x (torch.tensor): *-by-n input signal, where n is a power of two.
 
         order (bool or list, optional): True for sequency order (default), False
         for natural order. When order is a list, it defines the permutation
@@ -156,10 +255,10 @@ def fwht(x, order=True, dim=-1):
         Default is -1.
 
     Returns:
-        np.ndarray: n-by-1 transformed signal
+        torch.tensor: *-by-n transformed signal
 
-    Example 1:
-        Fast sequency-ordered (i.e., Walsh) Hadamard transform
+    Example:
+        Example 1: Fast sequency-ordered (i.e., Walsh) Hadamard transform
 
         >>> import torch
         >>> import spyrit.core.torch as st
@@ -169,8 +268,7 @@ def fwht(x, order=True, dim=-1):
         >>> print(y)
         tensor([[14, -8, -8, 18, -4, -2, -6,  4]])
 
-    Example 2:
-        Fast Hadamard transform
+        Example 2: Fast Hadamard transform
 
         >>> import torch
         >>> import spyrit.core.torch as st
@@ -180,8 +278,7 @@ def fwht(x, order=True, dim=-1):
         >>> print(y)
         tensor([[14,  4, 18, -4, -8, -6, -8, -2]])
 
-    Example 3:
-        Permuted fast Hadamard transform
+        Example 3: Permuted fast Hadamard transform
 
         >>> import numpy as np
         >>> import torch
@@ -192,8 +289,7 @@ def fwht(x, order=True, dim=-1):
         >>> print(y)
         tensor([ 4, 14, -4, 18, -2, -8, -6, -8])
 
-    Example 4:
-        Comparison with the numpy transform
+        Example 4: Comparison with the numpy transform
 
         >>> import numpy as np
         >>> import spyrit.misc.walsh_hadamard as wh
@@ -201,15 +297,14 @@ def fwht(x, order=True, dim=-1):
         >>> import spyrit.core.torch as st
         >>> x = np.array([1, 3, 0, -1, 7, 5, 1, -2])
         >>> y_np = wh.fwht(x)
-        >>> x_torch = torch.from_numpy(x).to(torch.device('cuda:0'))
+        >>> x_torch = torch.from_numpy(x).to(torch.device('cpu'))
         >>> y_torch = st.fwht(x_torch)
         >>> print(y_np)
-        >>> print(y_torch)
         [14 -8 -8 18 -4 -2 -6  4]
-        tensor([14, -8, -8, 18, -4, -2, -6,  4], device='cuda:0')
+        >>> print(y_torch)
+        tensor([14, -8, -8, 18, -4, -2, -6,  4]...)
 
-    Example 5:
-        Computation times for a signal of length 2**12
+        Example 5: Computation times for a signal of length 2**12
 
         >>> import timeit
         >>> import numpy as np
@@ -219,50 +314,38 @@ def fwht(x, order=True, dim=-1):
         >>> x = np.random.rand(2**12)
         >>> t = timeit.timeit(lambda: wh.fwht(x,False), number=2000)
         >>> print(f"Fast Hadamard transform numpy CPU (2000x): {t:.4f} seconds")
+        Fast Hadamard transform numpy CPU (2000x): ... seconds
         >>> x_torch = torch.from_numpy(x)
         >>> t = timeit.timeit(lambda: st.fwht(x_torch,False), number=2000)
         >>> print(f"Fast Hadamard transform pytorch CPU (2000x): {t:.4f} seconds")
-        >>> x_torch = torch.from_numpy(x).to(torch.device('cuda:0'))
-        >>> t = timeit.timeit(lambda: st.fwht(x_torch,False), number=2000)
-        >>> print(f"Fast Hadamard transform pytorch GPU (2000x): {t:.4f} seconds")
-        Fast Hadamard transform numpy CPU (2000x): 1.0778 seconds
-        Fast Hadamard transform pytorch CPU (2000x): 1.1554 seconds
-        Fast Hadamard transform pytorch GPU (2000x): 1.8277 seconds
+        Fast Hadamard transform pytorch CPU (2000x): ... seconds
 
-    Example 6:
-        CPU vs GPU: Computation times for 512 signals of length 2**12
+        Example 6: CPU vs GPU: Computation times for 512 signals of length 2**12
 
         >>> import timeit
         >>> import torch
         >>> import spyrit.core.torch as st
         >>> x_cpu = torch.rand(512,2**12)
         >>> t = timeit.timeit(lambda: st.fwht(x_cpu,False), number=50)
-        >>> print(f"Fast Hadamard transform pytorch CPU (10x): {t:.4f} seconds")
-        >>> x_gpu = x_cpu.to(torch.device('cuda:0'))
-        >>> t = timeit.timeit(lambda: st.fwht(x_gpu,False), number=50)
-        >>> print(f"Fast Hadamard transform pytorch GPU (10x): {t:.4f} seconds")
-        Fast Hadamard transform pytorch CPU (50x): 2.2351 seconds
-        Fast Hadamard transform pytorch GPU (50x): 0.0680 seconds
+        >>> print(f"Fast Hadamard transform pytorch CPU (50x): {t:.4f} seconds")
+        Fast Hadamard transform pytorch CPU (50x): ... seconds
 
-    Example 7:
-        Repeating the Walsh-ordered transform using input indices is faster
+        Example 7: Repeating the Walsh-ordered transform using input indices is faster
 
         >>> import timeit
         >>> import torch
         >>> import spyrit.core.torch as st
-        >>> x = torch.rand(256,2**12).to(torch.device('cuda:0'))
+        >>> x = torch.rand(256,2**12).to(torch.device('cpu'))
         >>> t = timeit.timeit(lambda: st.fwht(x), number=100)
         >>> print(f"No indices as inputs (100x): {t:.3f} seconds")
-        >>> ind = st.sequency_perm_ind(x.shape[-1])
+        No indices as inputs (100x): ... seconds
+        >>> ind = st.sequency_perm(x).shape[-1]
         >>> t = timeit.timeit(lambda: st.fwht(x,ind), number=100)
         >>> print(f"With indices as inputs (100x): {t:.3f} seconds")
-        No indices as inputs (100x): 0.461 seconds
-        With indices as inputs (100x): 0.731 seconds
+        With indices as inputs (100x): ... seconds
     """
-
-    if dim != -1:
+    if dim != -1 and dim != x.ndim - 1:
         x = torch.moveaxis(x, dim, -1)
-
     original_shape = x.shape
 
     # create batch if x is 1D
@@ -273,21 +356,21 @@ def fwht(x, order=True, dim=-1):
     assert_power_of_2(d, raise_error=True)
 
     h = 2
-
-    while h <= d:
-
-        x = x.reshape(*batch, d // h, h)
-        half1, half2 = torch.split(x, h // 2, dim=-1)
-
-        # do we want sequency-ordered transform ?
-        # two lines below not from Amit Portnoy
-        if order == True:
+    # put the "if" statement here to avoid repeating "if"s in the loop
+    if order == True:
+        while h <= d:
+            x = x.reshape(*batch, d // h, h)
+            half1, half2 = torch.split(x, h // 2, dim=-1)
             half2[..., 1::2] *= -1  # not from Amit Portnoy
             x = torch.stack((half1 + half2, half1 - half2), dim=-1)  # not from AP
-        else:
-            x = torch.cat((half1 + half2, half1 - half2), axis=-1)
+            h *= 2
 
-        h *= 2
+    else:
+        while h <= d:
+            x = x.reshape(*batch, d // h, h)
+            half1, half2 = torch.split(x, h // 2, dim=-1)
+            x = torch.cat((half1 + half2, half1 - half2), axis=-1)
+            h *= 2
 
     x = x.reshape(original_shape)
     # ---------------------------------------
@@ -297,14 +380,36 @@ def fwht(x, order=True, dim=-1):
     if type(order) == list:
         x = sequency_perm(x, order)
 
-    if dim != -1:
+    if dim != -1 and dim != x.ndim - 1:
         x = torch.moveaxis(x, -1, dim)
 
     return x
 
 
+def ifwht(x, order=True, dim=-1):
+    r"""Inverse fast Walsh-Hadamard transform of x
+
+    Args:
+        x (torch.tensor): *-by-n input signal, where n is a power of two.
+
+        order (bool, optional): True for sequency (default), False for natural.
+        If a list, it defines the permutation indices to use. Default is True.
+
+        dim (int, optional): The dimension along which to apply the transform.
+        Default is -1.
+
+    Returns:
+        torch.tensor: *-by-n transformed signal
+    """
+    if type(order) == list:
+        raise NotImplementedError(
+            "Inverse transform not implemented yet for arbitrary order"
+        )
+    return fwht(x, order, dim) / x.shape[dim]
+
+
 def fwht_2d(x, order=True):
-    """Returns the fast Walsh-Hadamard transform of a 2D tensor.
+    r"""Returns the fast Walsh-Hadamard transform of a 2D tensor.
 
     This function uses the fast Walsh-Hadamard transform for 1D signals. It is
     optimized for the natural order (with `order = False`) and the sequency
@@ -329,6 +434,37 @@ def fwht_2d(x, order=True):
         torch.tensor: 2D Walsh-Hadamard transformed tensor.
     """
     return fwht(fwht(x, order, dim=-1), order, dim=-2)
+
+
+def ifwht_2d(x, order=True):
+    r"""Returns the inverse fast Walsh-Hadamard transform of a 2D tensor.
+
+    This function uses the inverse fast Walsh-Hadamard transform for 1D signals.
+    It is optimized for the natural order (with `order = False`) and the sequency
+    order (with `order = True`). In case a list is provided in :attr:`order`,
+    it performs a permutation using the indices provided in the list. The inverse
+    fast Walsh-Hadamard transform is applied along the last two dimensions of the
+    input tensor.
+
+    Args:
+        x (torch.tensor): input tensor to transform. Must have shape
+        :math:`(*, h, w)` where :math:`h` and :math:`w` are the height and width
+        of the image and should be powers of two. :math:`*` represents zero or
+        more batch dimensions.
+
+        order (bool or list, optional): Whether to use the sequency/Walsh ordering
+        (True) or the natural ordering (False). If a list, it defines the permutation
+        indices to use. Default is True.
+
+    Raises:
+        ValueError: If either of the last two dimensions of the input tensor is
+        not a power of two.
+
+    Returns:
+        torch.tensor: 2D inverse Walsh-Hadamard transformed tensor. Has the same
+        shape as the input tensor.
+    """
+    return ifwht(ifwht(x, order, dim=-1), order, dim=-2)
 
 
 def meas2img(meas: torch.tensor, Ord: torch.tensor) -> torch.tensor:
@@ -542,9 +678,7 @@ def reindex(  # previously sort_by_indices
 ) -> torch.tensor:
     """Sorts a tensor along a specified axis using the indices tensor.
 
-    The indices tensor contains the new indices of the elements in the values
-    tensor. `values[0]` will be placed at the index `indices[0]`, `values[1]`
-    at `indices[1]`, and so on.
+    The indices tensor contains the new indices of the elements in the values tensor. :attr:`values[0]` will be placed at the index :attr:`indices[0]` :attr:`values[1]` at :attr:`indices[1]`, and so on.
 
     Using the inverse permutation allows to revert the permutation: in this
     case, it is the element at index `indices[0]` that will be placed at the
@@ -790,3 +924,209 @@ def center_pad(
     if reshape:
         img_padded = img_padded.reshape(*img_shape[:-1], -1)
     return img_padded
+
+
+# =============================================================================
+# Linear Algebra
+# =============================================================================
+
+
+def regularized_pinv(A: torch.tensor, regularization: str, **kwargs) -> torch.tensor:
+    """Returns a regularized pseudo-inverse of a tensor.
+
+    The regularizations supported are:
+
+        - "rcond": Uses the function :func:`torch.linalg.pinv`. Additional
+            arguments can be passed to this function through the `args` and
+            `kwargs` parameters, such as the `rcond` parameter.
+
+        - "L2": Uses the L2 regularization method. The regularization parameter
+            `eta` must be passed as a keyword argument. It controls the amount
+            of regularization applied to the pseudo-inverse.
+
+        - "H1": Uses the H1 regularization method. The regularization parameters
+            `eta` and `img_shape` must be passed as keyword arguments. The
+            `eta` parameter controls the amount of regularization applied to the
+            pseudo-inverse, and the `img_shape` parameter is the shape of the
+            image to which the pseudo-inverse will be applied. This is used to
+            compute the finite difference operator.
+
+    .. note::
+        The H1 regularization method is only implemented for application to 2D
+        images (i.e., `image_shape` must be 2D).
+
+    Args:
+        A (torch.tensor): input 2D matrix to compute the pseudo-inverse. Must
+        be 2D.
+
+        regularization (str): Regularization method to use. Supported methods
+        are "rcond", "L2", and "H1".
+
+        **kwargs: Additional keyword arguments to pass to the regularization
+        method. Must include the regularization parameter `eta` when using the
+        "L2" and "H1" regularization methods, and the image shape `img_shape`
+        when using the "H1" regularization method.
+
+    Raises:
+        NotImplementedError: If the regularization method is not supported.
+
+    Returns:
+        torch.tensor: The regularized pseudo-inverse of the input tensor.
+    """
+
+    if regularization == "rcond":
+        pinv = torch.linalg.pinv(A, **kwargs)
+
+    elif regularization == "L2":
+        eta = kwargs.get("eta")
+        pinv = (
+            torch.linalg.inv(A.T @ A + eta * torch.eye(A.shape[1], device=A.device))
+            @ A.T
+        )
+
+    elif regularization == "H1":
+        eta = kwargs.get("eta")
+        img_shape = kwargs.get("img_shape")
+        Dx, Dy = neumann_boundary(img_shape)
+        D2 = (Dx.T @ Dx + Dy.T @ Dy).to(A.device)
+        pinv = torch.linalg.inv(A.T @ A + eta * D2) @ A.T
+
+    else:
+        raise NotImplementedError(
+            f"Regularization method {regularization} not implemented. Currently supported methods are 'rcond', 'L2', and 'H1'."
+        )
+
+    return pinv
+
+
+def regularized_lstsq(A: torch.tensor, y: torch.tensor, regularization: str, **kwargs):
+    """Batched regularized least squares solution of a system of equations.
+
+    It solves the linear system of equations :math:`Ax = y` using a regularized
+    least squares method. The regularizations supported are:
+
+        - "rcond": Uses the function :func:`torch.linalg.lstsq`. Additional
+            arguments can be passed to this function through the `kwargs`
+            parameters, such as `rcond` or `driver`. They are given to the
+            function :func:`torch.linalg.lstsq`.
+
+        - "L2": Uses the L2 regularization method. The regularization parameter
+            `eta` must be passed as a keyword argument. It controls the amount
+            of regularization applied to the least squares solution.
+
+        - "H1": Uses the H1 regularization method. The regularization parameter
+            `eta` must be passed as a keyword argument. It controls the amount
+            of regularization applied to the least squares solution. This method
+            is only implemented for 2D images.
+
+    .. note:
+        To speed up computation, you may provide the value of the finite
+        difference matrices `D2` as a keyword argument. If not provided, the
+        function will compute them using the keyword-provided image shape.
+
+    Args:
+        A (torch.tensor): Left-hand side tensor of shape :math:`(m, n)`, where
+        * is any number of batch dimensions.
+
+        y (torch.tensor): Right-hand side tensor of shape :math:`(*, m)`, where
+        * is any number of batch dimensions.
+
+        regularization (str): Regularization method to use. Supported methods
+        are "rcond", "L2", and "H1".
+
+        **kwargs: Additional keyword arguments to pass to the regularization
+        method. Must include the regularization parameter `eta` when using
+        the "L2" and "H1" regularization methods. Other keyword arguments
+        include `rcond` and `driver` for the "rcond" method, as well as 'D2'
+        (the finite difference matrices) for the "H1" and "L2" methods.
+
+    Returns:
+        torch.tensor: The regularized least squares solution of shape
+        :math:`(*, n)`.
+    """
+    m, n = A.shape
+    batches = y.shape[:-1]
+
+    if regularization == "rcond":
+        lhs = A.expand(*batches, m, n)
+        rhs = y.unsqueeze(-1)
+        x = torch.linalg.lstsq(lhs, rhs, **kwargs).solution
+        x = x.squeeze(-1)
+
+    elif regularization == "L2":
+        eta = kwargs.get("eta")
+        D2 = kwargs.get("D2", eta * torch.eye(A.shape[1], device=A.device))
+        lhs = (A.T @ A + eta * D2).expand(*batches, m, n)
+        rhs = torch.matmul(y, A)
+        x = torch.linalg.solve(lhs, rhs)
+
+    elif regularization == "H1":
+        eta = kwargs.get("eta")
+        img_shape = kwargs.get("img_shape")
+        D2 = kwargs.get("D2", None)
+        if D2 is None:
+            Dx, Dy = neumann_boundary(img_shape)
+            D2 = (Dx.T @ Dx + Dy.T @ Dy).to(A.device)
+        lhs = (A.T @ A + eta * D2).expand(*batches, m, n)
+        rhs = torch.matmul(y, A)
+        x = torch.linalg.solve(lhs, rhs)
+
+    else:
+        raise NotImplementedError(
+            f"Regularization method {regularization} not implemented. Currently supported methods are 'rcond', 'L2', and 'H1'."
+        )
+
+    return x
+
+
+# =============================================================================
+# Dynamic Handling
+# =============================================================================
+
+
+# def H_dyn_no_warping(
+#     H: torch.tensor,
+#     deformation_field: warp.DeformationField,
+#     mode: str = "bilinear",
+#     warping: bool = False,
+# ) -> torch.tensor:
+#     pass
+
+
+# def H_dyn_warping(
+#     H: torch.tensor,
+#     deformation_field: warp.DeformationField,
+#     mode: str = "bilinear",
+# ) -> torch.tensor:
+#     r""" """
+
+#     det = deformation_field.det()
+
+#     meas_pattern = meas_pattern.reshape(
+#         meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1]
+#     )
+#     meas_pattern_ext = torch.zeros(
+#         (meas_pattern.shape[0], 1, self.img_shape[0], self.img_shape[1])
+#     )
+#     amp_max_h = (self.img_shape[0] - self.meas_shape[0]) // 2
+#     amp_max_w = (self.img_shape[1] - self.meas_shape[1]) // 2
+#     meas_pattern_ext[
+#         :,
+#         :,
+#         amp_max_h : self.meas_shape[0] + amp_max_h,
+#         amp_max_w : self.meas_shape[1] + amp_max_w,
+#     ] = meas_pattern
+#     meas_pattern_ext = meas_pattern_ext.to(dtype=motion.field.dtype)
+
+#     H_dyn = nn.functional.grid_sample(
+#         meas_pattern_ext,
+#         motion.field,
+#         mode=mode,
+#         padding_mode="zeros",
+#         align_corners=True,
+#     )
+#     H_dyn = det.reshape((meas_pattern.shape[0], -1)) * H_dyn.reshape(
+#         (meas_pattern.shape[0], -1)
+#     )
+
+#     self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)

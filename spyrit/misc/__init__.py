@@ -6,9 +6,13 @@
 
 """Contains miscellaneous Numpy / Pytorch functions useful for spyrit.core."""
 
-# from .disp import *
-# from .metrics import *
-# from .wlash_hadamard import *
-# from .data_visualisation import *
-# from .matrix_tool import *
-# from .pattern_choice import *
+# from . import color
+# from . import data_visualisation
+# from . import disp
+# from . import examples
+# from . import matrix_tools
+# from . import metrics
+# from . import pattern_choice
+# from . import sampling
+# from . import statistics
+# from . import walsh_hadamard

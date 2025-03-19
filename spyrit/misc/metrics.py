@@ -15,6 +15,8 @@ import torch.nn.functional as F
 import imageio
 import matplotlib.pyplot as plt
 
+# import skimage.metrics as skm
+
 
 def batch_psnr(torch_batch, output_batch):
     list_psnr = []
@@ -24,6 +26,17 @@ def batch_psnr(torch_batch, output_batch):
         img = img.cpu().detach().numpy()
         img_out = img_out.cpu().detach().numpy()
         list_psnr.append(psnr(img, img_out))
+    return list_psnr
+
+
+def batch_psnr_(torch_batch, output_batch, r=2):
+    list_psnr = []
+    for i in range(torch_batch.shape[0]):
+        img = torch_batch[i, 0, :, :]
+        img_out = output_batch[i, 0, :, :]
+        img = img.cpu().detach().numpy()
+        img_out = img_out.cpu().detach().numpy()
+        list_psnr.append(psnr_(img, img_out, r=r))
     return list_psnr
 
 
@@ -169,6 +182,57 @@ def psnr_(img1, img2, r=2):
     return Psnr
 
 
+def psnr_torch(img_gt, img_rec, dim=(-2, -1), img_dyn=None):
+    r"""
+    Computes the Peak Signal-to-Noise Ratio (PSNR) between two images.
+
+    .. math::
+
+        \text{PSNR} = 20 \, \log_{10} \left( \frac{\text{d}}{\sqrt{\text{MSE}}} \right), \\
+        \text{MSE} = \frac{1}{L}\sum_{\ell=1}^L \|I_\ell - \tilde{I}_\ell\|^2_2,
+
+    where :math:`d` is the image dynamic and :math:`\{I_\ell\}` (resp. :math:`\{\tilde{I}_\ell\}`) is the set of ground truth (resp. reconstructed) images.
+
+    Args:
+        :attr:`img_gt`: Tensor containing the *ground-truth* image.
+
+        :attr:`img_rec`: Tensor containing the reconstructed image.
+
+        :attr:`dim`: Dimensions where the squared error is computed. Defaults to the last two dimensions.
+
+        :attr:`img_dyn`: Image dynamic range (e.g., 1.0 for normalized images, 255 for 8-bit images). When :attr:`img_dyn` is `None`, the dynamic range is computed from the ground-truth image.
+
+    Returns:
+        PSNR value.
+
+    .. note::
+        :attr:`psnr_torch(img_gt, img_rec)` is different from  :attr:`psnr_torch(img_rec, img_gt)`. The first expression assumes :attr:`img_gt` is the ground truth while the second assumes that this is :attr:`img_rec`. This leads to different dynamic ranges.
+
+    Example 1: 10 images of size 64x64 with values in [0,1) corrupted with 5% noise
+        >>> x = torch.rand(10,1,64,64)
+        >>> n = x + 0.05*torch.randn(x.shape)
+        >>> out = psnr_torch(x,n)
+        >>> print(out.shape)
+        torch.Size([10, 1])
+
+    Example 2: 10 images of size 64x64 with values in [0,1) corrupted with 5% noise
+        >>> psnr_torch(n,x)
+        tensor(...)
+        >>> psnr_torch(x,n)
+        tensor(...)
+        >>> psnr_torch(n,x,img_dyn=1.0)
+        tensor(...)
+
+    """
+    mse = (img_gt - img_rec) ** 2
+    mse = torch.mean(mse, dim=dim)
+
+    if img_dyn is None:
+        img_dyn = torch.amax(img_gt, dim=dim) - torch.amin(img_gt, dim=dim)
+
+    return 10 * torch.log10(img_dyn**2 / mse)
+
+
 def ssim(I1, I2):
     """
     Computes the ssim between two images I1 and I2
@@ -185,6 +249,25 @@ def ssim(I1, I2):
         (mu1**2 + mu2**2 + c1) * (s1**2 + s2**2 + c2)
     )
     return result
+
+
+# def ssim_sk(x_gt, x, img_dyn=None):
+#     """
+#     SSIM from skimage
+
+#     Args:
+#         torch tensors
+
+#     Returns:
+#         torch tensor
+#     """
+#     if not isinstance(x, np.ndarray):
+#         x = x.cpu().detach().numpy().squeeze()
+#         x_gt = x_gt.cpu().detach().numpy().squeeze()
+#     ssim_val = np.zeros(x.shape[0])
+#     for i in range(x.shape[0]):
+#         ssim_val[i] = skm.structural_similarity(x_gt[i], x[i], data_range=img_dyn)
+#     return torch.tensor(ssim_val)
 
 
 def batch_psnr_vid(input_batch, output_batch):

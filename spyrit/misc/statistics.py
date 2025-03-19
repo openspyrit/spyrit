@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 
 import spyrit.misc.walsh_hadamard as wh
 import spyrit.core.torch as spytorch
+import spyrit.misc.metrics as sm
 
 
 # %% data loaders
@@ -122,7 +123,13 @@ def data_loaders_imagenet(
 
 
 def data_loaders_ImageNet(
-    train_root, val_root=None, img_size=64, batch_size=512, seed=7, shuffle=False
+    train_root,
+    val_root=None,
+    img_size=64,
+    batch_size=512,
+    seed=7,
+    shuffle=False,
+    normalize=True,
 ):
     """
     Args:
@@ -143,7 +150,11 @@ def data_loaders_ImageNet(
                 size=(img_size, img_size), pad_if_needed=True, padding_mode="edge"
             ),
             torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.5], [0.5]),
+            (
+                torchvision.transforms.Normalize([0.5], [0.5])
+                if normalize
+                else torch.nn.Identity()
+            ),
         ]
     )
 
@@ -188,7 +199,7 @@ class CenterCrop:
             return inputs
 
 
-def transform_gray_norm(img_size):
+def transform_gray_norm(img_size, normalize=True):
     """
     Args:
         img_size=int, image size
@@ -206,7 +217,11 @@ def transform_gray_norm(img_size):
             # torchvision.transforms.CenterCrop(img_size),
             CenterCrop(img_size),
             torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.5], [0.5]),
+            (
+                torchvision.transforms.Normalize([0.5], [0.5])
+                if normalize
+                else torch.nn.Identity()
+            ),
         ]
     )
     return transform
@@ -245,6 +260,172 @@ def data_loaders_stl10(
     return dataloaders
 
 
+def stat_psnr(
+    model,
+    dataloader,
+    device,
+    n_loop=1,
+    num_batchs=None,
+    img_dyn=None,
+):
+    """
+    nloop > 1 is relevant for dataloaders with random crops such as that
+    provided by data_loaders_ImageNet
+
+    """
+    # Get dimensions and estimate total number of images in the dataset
+    inputs, _ = next(iter(dataloader))
+    (b, c, nx, ny) = inputs.shape
+
+    if num_batchs is None:
+        tot_num = len(dataloader) * b
+    else:
+        tot_num = num_batchs * b
+
+    # just in case...
+    model.eval()
+
+    # Init
+    n = 0
+    mean = torch.tensor([0.0], device=device)
+
+    # Pass 1: Compute Mean
+    for i in range(n_loop):
+        for jj, (inputs, _) in enumerate(dataloader):
+            if num_batchs is not None and jj >= num_batchs:
+                break
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+
+            psnr_batch = sm.psnr_torch(inputs, outputs, img_dyn=img_dyn)
+
+            # remove infinite values and NaNs
+            valid_mask = torch.isfinite(psnr_batch)
+            psnr_batch = psnr_batch[valid_mask]
+
+            mean += torch.sum(psnr_batch)
+
+            # print
+            n = n + inputs.shape[0]
+            print(f"Mean:  {n} / (less than) {tot_num*n_loop} images", end="\n")
+        # print("", end="\n")
+
+    mean = mean / n
+    mean = torch.squeeze(mean)
+
+    # Pass 2: Variance
+    n = 0
+    var = torch.tensor([0.0], device=device)
+    for i in range(n_loop):
+        for jj, (inputs, _) in enumerate(dataloader):
+            if num_batchs is not None and jj >= num_batchs:
+                break
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+            psnr_batch = sm.psnr_torch(inputs, outputs, img_dyn=img_dyn)
+            psnr_batch = (psnr_batch - mean) ** 2
+
+            # remove infinite values and NaNs
+            valid_mask = torch.isfinite(psnr_batch)
+            psnr_batch = psnr_batch[valid_mask]
+
+            var += torch.sum(psnr_batch)
+
+            # print
+            n = n + inputs.shape[0]
+            print(f"var:  {n} / (less than) {tot_num*n_loop} images", end="\n")
+        # print("", end="\n")
+
+    var = var / (n - 1)
+    var = torch.squeeze(var)
+
+    return mean, var
+
+
+def stat_ssim(
+    model,
+    dataloader,
+    device,
+    n_loop=1,
+    num_batchs=None,
+    img_dyn=None,
+):
+    """
+    nloop > 1 is relevant for dataloaders with random crops such as that
+    provided by data_loaders_ImageNet
+
+    Returns:
+        torch.tensor on cpu
+
+        torch.tensor on cpu
+
+    """
+    # Get dimensions and estimate total number of images in the dataset
+    inputs, _ = next(iter(dataloader))
+    (b, c, nx, ny) = inputs.shape
+    tot_num = len(dataloader) * b
+
+    # just in case...
+    model.eval()
+
+    # Init
+    n = 0
+    mean = torch.tensor([0.0], device=device)
+
+    # Pass 1: Compute Mean
+    for i in range(n_loop):
+        for jj, (inputs, _) in enumerate(dataloader):
+            if num_batchs is not None and jj >= num_batchs:
+                break
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+
+            batch = sm.ssim_sk(inputs, outputs, img_dyn=img_dyn)
+
+            # remove infinite values and NaNs
+            valid_mask = torch.isfinite(batch)
+            batch = batch[valid_mask]
+
+            mean += torch.sum(batch)
+
+            # print
+            n = n + inputs.shape[0]
+            print(f"Mean:  {n} / (less than) {tot_num*n_loop} images", end="\n")
+        # print("", end="\n")
+
+    mean = mean / n
+    mean = torch.squeeze(mean)
+    mean = mean.to(device="cpu")
+
+    # Pass 2: Variance
+    n = 0
+    var = torch.tensor([0.0], device=device)
+    for i in range(n_loop):
+        for jj, (inputs, _) in enumerate(dataloader):
+            if num_batchs is not None and jj >= num_batchs:
+                break
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+            batch = sm.ssim_sk(inputs, outputs, img_dyn=img_dyn)
+            batch = (batch - mean) ** 2
+
+            # remove infinite values and NaNs
+            valid_mask = torch.isfinite(batch)
+            batch = batch[valid_mask]
+
+            var += torch.sum(batch)
+
+            # print
+            n = n + inputs.shape[0]
+            print(f"var:  {n} / (less than) {tot_num*n_loop} images", end="\n")
+        # print("", end="\n")
+
+    var = var / (n - 1)
+    var = torch.squeeze(var)
+
+    return mean, var
+
+
 # %% Walsh Hadamard domain
 def stat_walsh_ImageNet(
     stat_root=Path("./stats/"),
@@ -259,11 +440,11 @@ def stat_walsh_ImageNet(
         :attr:`data_root` needs to have all images in a subfolder
 
     Example:
-        >>> from pathlib import Path
-        >>> from spyrit.misc.statistics import stat_walsh_ImageNet
-        >>> data_root =  Path('../data/ILSVRC2012_v10102019')
-        >>> stat_root =  Path('../stat/ILSVRC2012_v10102019')
-        >>> stat_walsh_ImageNet(stat_root = stat_root, data_root = data_root, img_size = 32, batch_size = 1024)
+        # >>> from pathlib import Path
+        # >>> from spyrit.misc.statistics import stat_walsh_ImageNet
+        # >>> data_root =  Path('../data/ILSVRC2012_v10102019')
+        # >>> stat_root =  Path('../stat/ILSVRC2012_v10102019')
+        # >>> stat_walsh_ImageNet(stat_root = stat_root, data_root = data_root, img_size = 32, batch_size = 1024)
 
     """
 
@@ -292,10 +473,10 @@ def stat_walsh_stl10(
         test*.bin, train*.bin and unlabeled_X.bin files.
 
     Example:
-        >>> data_root =  Path('../datasets/')
-        >>> stat_root =  Path('../stat/stl10')
-        >>> from spyrit.misc.statistics import stat_walsh_stl10
-        >>> stat_walsh_stl10(stat_root = stat_root, data_root = data_root)
+        # >>> data_root =  Path('../datasets/')
+        # >>> stat_root =  Path('../stat/stl10')
+        # >>> from spyrit.misc.statistics import stat_walsh_stl10
+        # >>> stat_walsh_stl10(stat_root = stat_root, data_root = data_root)
 
     """
     dataloaders = data_loaders_stl10(
@@ -518,8 +699,8 @@ def stat_fwalsh_S_stl10(
         torch.tensor: S-transformed signal with shape `(*, n, n)`
 
     Examples:
-        >>> import spyrit.misc.statistics as st
-        >>> st.stat_fwalsh_S_stl10()
+        # >>> import spyrit.misc.statistics as st
+        # >>> st.stat_fwalsh_S_stl10()
 
     """
 
