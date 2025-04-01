@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-""" Walsh-ordered Hadamard tranforms.
+"""Walsh-ordered Hadamard tranforms.
 
 Longer description of this module.
 

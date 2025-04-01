@@ -28,6 +28,7 @@ def batch_psnr(torch_batch, output_batch):
         list_psnr.append(psnr(img, img_out))
     return list_psnr
 
+
 def batch_psnr_(torch_batch, output_batch, r=2):
     list_psnr = []
     for i in range(torch_batch.shape[0]):
