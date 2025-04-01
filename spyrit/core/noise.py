@@ -150,6 +150,7 @@ class Poisson(nn.Module):
         """
         return torch.poisson(self.alpha * z)
 
+
 # =============================================================================
 class PoissonGaussian(nn.Module):
     r"""Simulate measurements corrupted by Poisson noise
@@ -163,20 +164,20 @@ class PoissonGaussian(nn.Module):
 
     Args:
         :attr:`alpha` (:class:`float`): Intensity :math:`\alpha`. Defaults to 10.
-        
+
         :attr:`sigma` (:class:`float`): Dark noise :math:`\sigma`. Defaults to 1.
-        
+
         :attr:`mu` (:class:`float`): Dark current :math:`\mu`. Defaults to 0.
-        
+
         :attr:`g` (:class:`float`): Gain :math:`g`. Defaults to 1.
 
     Attributes:
-        :attr:`alpha` (:class:`float`): Intensity :math:`\alpha`. 
-        
-        :attr:`sigma` (:class:`float`): Dark noise :math:`\sigma`. 
-        
+        :attr:`alpha` (:class:`float`): Intensity :math:`\alpha`.
+
+        :attr:`sigma` (:class:`float`): Dark noise :math:`\sigma`.
+
         :attr:`mu` (:class:`float`): Dark current :math:`\mu`.
-        
+
         :attr:`g` (:class:`float`): Gain :math:`g`.
 
     Example:
@@ -189,10 +190,9 @@ class PoissonGaussian(nn.Module):
         tensor([...])
     """
 
-    def __init__(self, alpha:float=10.0, 
-                         sigma:float=1.0, 
-                         mu:float=0.0, 
-                         g:float=1.0):
+    def __init__(
+        self, alpha: float = 10.0, sigma: float = 1.0, mu: float = 0.0, g: float = 1.0
+    ):
         super().__init__()
         self.alpha = alpha
         self.sigma = sigma
@@ -225,9 +225,10 @@ class PoissonGaussian(nn.Module):
             Noisy measurements in (...)
 
         """
-        gauss = self.mu + self.sigma*torch.randn_like(z)
+        gauss = self.mu + self.sigma * torch.randn_like(z)
         poiss = self.g * torch.poisson(self.alpha * z)
         return poiss + gauss
+
 
 # =============================================================================
 class PoissonApproxGauss(Poisson):
