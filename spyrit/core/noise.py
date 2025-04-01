@@ -222,7 +222,6 @@ class PoissonGaussian(nn.Module):
             >>> print(f"Noiseless measurements in ({torch.min(z):.2f} , {torch.max(z):.2f})")
             Noiseless measurements in (...)
             >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
-            torch.Size([10, 4])
             Noisy measurements in (...)
 
         """
