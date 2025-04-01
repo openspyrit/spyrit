@@ -218,10 +218,11 @@ class PoissonGaussian(nn.Module):
             >>> z = torch.empty(10, 4).uniform_(0, 1)
             >>> y = noise(z)
             >>> print(y.shape)
+            torch.Size([10, 4])
             >>> print(f"Noiseless measurements in ({torch.min(z):.2f} , {torch.max(z):.2f})")
+            Noiseless measurements in (...)
             >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
             torch.Size([10, 4])
-            Noiseless measurements in (...)
             Noisy measurements in (...)
 
         """
