@@ -182,7 +182,7 @@ def psnr_(img1, img2, r=2):
     return Psnr
 
 
-def psnr_torch(img_gt, img_rec, dim=(-2, -1), img_dyn=None):
+def psnr_torch(img_gt, img_rec, mask=None, dim=(-2, -1), img_dyn=None):
     r"""
     Computes the Peak Signal-to-Noise Ratio (PSNR) between two images.
 
@@ -198,9 +198,11 @@ def psnr_torch(img_gt, img_rec, dim=(-2, -1), img_dyn=None):
 
         :attr:`img_rec`: Tensor containing the reconstructed image.
 
-        :attr:`dim`: Dimensions where the squared error is computed. Defaults to the last two dimensions.
+        :attr:`mask`: Mask where the squared error is computed. Defaults  :attr:`None`, i.e., no mask is considered.
 
-        :attr:`img_dyn`: Image dynamic range (e.g., 1.0 for normalized images, 255 for 8-bit images). When :attr:`img_dyn` is `None`, the dynamic range is computed from the ground-truth image.
+        :attr:`dim`: Dimensions where the squared error is computed. If mask is :attr:`None`, defaults to :attr:`-1` (i.e., the last dimension). Othewise defaults to :attr:`(-2,-1)` (i.e., the last two dimensions).
+
+        :attr:`img_dyn`: Image dynamic range (e.g., 1.0 for normalized images, 255 for 8-bit images). When :attr:`img_dyn` is  :attr:`None`, the dynamic range is computed from the ground-truth image.
 
     Returns:
         PSNR value.
@@ -224,6 +226,12 @@ def psnr_torch(img_gt, img_rec, dim=(-2, -1), img_dyn=None):
         tensor(...)
 
     """
+    if mask is not None:
+        dim = -1
+        img_gt = img_gt[mask > 0]
+        img_rec = img_rec[mask > 0]
+        print("mask")
+
     mse = (img_gt - img_rec) ** 2
     mse = torch.mean(mse, dim=dim)
 

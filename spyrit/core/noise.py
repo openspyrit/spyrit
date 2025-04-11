@@ -98,7 +98,7 @@ class Poisson(nn.Module):
     The class is constructed from the intensity :math:`\alpha`.
 
     Args:
-        :attr:`alpha` (:class:`float`): The intensity of the measurements. Defaults to 10.
+        :attr:`alpha` (:class:`float`): The intensity of the measurements. Defaults to 1.
 
     Attributes:
         :attr:`alpha` (:class:`float`): Intensity of the measurements.
@@ -111,7 +111,7 @@ class Poisson(nn.Module):
         tensor([...])
     """
 
-    def __init__(self, alpha: float = 10):
+    def __init__(self, alpha: float = 1.0):
         super().__init__()
         self.alpha = alpha
 
@@ -163,7 +163,7 @@ class PoissonGaussian(nn.Module):
     The class is constructed from the gain :math:`g`, the intensity :math:`\alpha`, the dark current :math:`\mu`, and the dark noise :math:`\sigma`.
 
     Args:
-        :attr:`alpha` (:class:`float`): Intensity :math:`\alpha`. Defaults to 10.
+        :attr:`alpha` (:class:`float`): Intensity :math:`\alpha`. Defaults to 1.
 
         :attr:`sigma` (:class:`float`): Dark noise :math:`\sigma`. Defaults to 1.
 
@@ -191,7 +191,7 @@ class PoissonGaussian(nn.Module):
     """
 
     def __init__(
-        self, alpha: float = 10.0, sigma: float = 1.0, mu: float = 0.0, g: float = 1.0
+        self, alpha: float = 1.0, sigma: float = 1.0, mu: float = 0.0, g: float = 1.0
     ):
         super().__init__()
         self.alpha = alpha
@@ -244,14 +244,14 @@ class PoissonApproxGauss(Poisson):
     This is an approximation of :math:`y \sim \mathcal{P}\left(\alpha z\right)`, where :math:`\mathcal{P}` is the Poisson distribution. Computing the Gaussian approximation is faster than the original Poisson model.
 
     Args:
-        :attr:`alpha` (:class:`float`): The intensity of the measurements. Defaults to 10.
+        :attr:`alpha` (:class:`float`): The intensity of the measurements. Defaults to 1.
 
     Attributes:
         :attr:`alpha` (:class:`float`): Intensity of the measurements.
 
     """
 
-    def __init__(self, alpha: float = 10):
+    def __init__(self, alpha: float = 1.0):
         super().__init__(alpha)
 
     def forward(self, z: torch.tensor) -> torch.tensor:
@@ -316,13 +316,13 @@ class PoissonApproxGaussSameNoise(Poisson):
         first dimensions of the input tensor.
 
     Args:
-        :attr:`alpha` (:class:`float`): The intensity of the measurements. Defaults to 10.
+        :attr:`alpha` (:class:`float`): The intensity of the measurements. Defaults to 1.
 
     Attributes:
         :attr:`alpha` (:class:`float`): Intensity of the measurements.
     """
 
-    def __init__(self, alpha: float = 10):
+    def __init__(self, alpha: float = 1.0):
         super().__init__(alpha)
 
     def forward(self, z: torch.tensor) -> torch.tensor:
