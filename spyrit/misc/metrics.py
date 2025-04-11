@@ -197,7 +197,7 @@ def psnr_torch(img_gt, img_rec, mask=None, dim=(-2, -1), img_dyn=None):
         :attr:`img_gt`: Tensor containing the *ground-truth* image.
 
         :attr:`img_rec`: Tensor containing the reconstructed image.
-        
+
         :attr:`mask`: Mask where the squared error is computed. Defaults  :attr:`None`, i.e., no mask is considered.
 
         :attr:`dim`: Dimensions where the squared error is computed. If mask is :attr:`None`, defaults to :attr:`-1` (i.e., the last dimension). Othewise defaults to :attr:`(-2,-1)` (i.e., the last two dimensions).
@@ -228,13 +228,13 @@ def psnr_torch(img_gt, img_rec, mask=None, dim=(-2, -1), img_dyn=None):
     """
     if mask is not None:
         dim = -1
-        img_gt = img_gt[mask>0]
-        img_rec = img_rec[mask>0]
-        print('mask')
-        
+        img_gt = img_gt[mask > 0]
+        img_rec = img_rec[mask > 0]
+        print("mask")
+
     mse = (img_gt - img_rec) ** 2
     mse = torch.mean(mse, dim=dim)
-        
+
     if img_dyn is None:
         img_dyn = torch.amax(img_gt, dim=dim) - torch.amin(img_gt, dim=dim)
 
