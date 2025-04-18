@@ -625,7 +625,7 @@ class FreeformLinear(Linear):
             >>> meas_op = FreeformLinear(H, meas_shape=(40,40), index_mask=mask)
             >>> x = torch.randn(17, 3, 20)
             >>> print(meas_op.unvectorize(x).shape)
-            torch.Size([3, 5, 40, 40])
+            torch.Size([17, 3, 40, 40])
         """
 
         if self.mask_type == "index":
@@ -1392,7 +1392,7 @@ class FreeformLinearSplit(LinearSplit):
             >>> meas_op = FreeformLinearSplit(H, meas_shape=(40,40), index_mask=mask)
             >>> x = torch.randn(17, 3, 20)
             >>> print(meas_op.unvectorize(x).shape)
-            torch.Size([3, 5, 40, 40])
+            torch.Size([17, 3, 40, 40])
         """
 
         if self.mask_type == "index":
