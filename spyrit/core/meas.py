@@ -375,12 +375,12 @@ class Linear(nn.Module):
 # =============================================================================
 class FreeformLinear(Linear):
     r"""Simulate measurements in a region of interest
-    
+
     .. math::
         m =\mathcal{N}\left(H\tilde{x}\right), \quad \text{where }\tilde{x} = \text{mask}(x)
 
     where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
-    
+
     Args:
         :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
         with shape :math:`(M, N)`. Only real values are supported.
@@ -395,22 +395,22 @@ class FreeformLinear(Linear):
         :attr:`meas_shape`. If not, an error is raised. Defaults to the last
         dimensions of the multi-dimensional array :math:`X` (e.g., `(-2,-1)`
         when `len(meas_shape)`).
-        
-        :attr:`index_masked` (:class:`torch.tensor`): Indices of :math:`X` 
-        where measurement applies. This is a tensor with shape shape 
+
+        :attr:`index_masked` (:class:`torch.tensor`): Indices of :math:`X`
+        where measurement applies. This is a tensor with shape shape
         :math:`(2, N)`.
 
         :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. Defaults to = :obj:`torch.nn.Identity`.
-    
+
     .. note::
-        
+
         Only tested for measurements in 2D using mask indices.
-    
+
     Example: Select one every second point on the diagonal of a batch of images
-        >>> images = torch.rand(17, 3, 40, 40)  
+        >>> images = torch.rand(17, 3, 40, 40)
         >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
         >>> H = torch.randn(13, 20)
-        >>> meas_op = FreeformLinear(H, meas_shape=(40,40), index_mask=mask) 
+        >>> meas_op = FreeformLinear(H, meas_shape=(40,40), index_mask=mask)
         >>> x_masked = meas_op(images)
         >>> print(x_masked.shape)
         torch.Size([17, 3, 13])
@@ -430,8 +430,8 @@ class FreeformLinear(Linear):
     ):
         super().__init__(
             H,
-            H.shape[-1],    # meas_shape,
-            -1,             # meas_dims
+            H.shape[-1],  # meas_shape,
+            -1,  # meas_dims
             noise_model=noise_model,
             dtype=dtype,
             device=device,
@@ -457,7 +457,7 @@ class FreeformLinear(Linear):
             self.meas_dims = torch.Size(meas_dims)
             self.meas_ndim = len(self.meas_dims)
             self.last_dims = tuple(range(-self.meas_ndim, 0))  # for permutations
-            
+
         else:
             if bool_mask is not None:
                 self.bool_mask = bool_mask
@@ -465,7 +465,7 @@ class FreeformLinear(Linear):
                 self.meas_shape = bool_mask.shape
             else:
                 raise ValueError("Either index_mask or bool_mask must be specified.")
-        
+
         # check mask dimensions in the case of index mask
         if self.mask_type == "index":
             if index_mask.ndim != 2:
@@ -485,7 +485,6 @@ class FreeformLinear(Linear):
                 raise ValueError("bool_mask must have the same shape as meas_shape.")
 
     def vectorize(self, x: torch.tensor) -> torch.tensor:
-    
         r"""Appplies the saved mask to the input tensor, where the masked
         dimensions are collapsed into one.
 
@@ -504,10 +503,10 @@ class FreeformLinear(Linear):
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
-            >>> images = torch.rand(17, 3, 40, 40)  
+            >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
             >>> H = torch.randn(13, 20)
-            >>> meas_op = FreeformLinear(H, meas_shape=(40,40), index_mask=mask) 
+            >>> meas_op = FreeformLinear(H, meas_shape=(40,40), index_mask=mask)
             >>> x_masked = meas_op.vectorize(images)
             >>> print(x_masked.shape)
             torch.Size([17, 3, 20])
@@ -544,19 +543,19 @@ class FreeformLinear(Linear):
         Returns:
             :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
-            
+
         Example: Select one every second point on the diagonal of a batch of images
-            >>> images = torch.rand(17, 3, 40, 40)  
+            >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
             >>> H = torch.randn(13, 20)
-            >>> meas_op = FreeformLinear(H, meas_shape=(40,40), index_mask=mask) 
+            >>> meas_op = FreeformLinear(H, meas_shape=(40,40), index_mask=mask)
             >>> x_masked = meas_op.measure(images)
             >>> print(x_masked.shape)
             torch.Size([17, 3, 13])
         """
         x = self.vectorize(x)
         return torch.einsum("mn,...n->...m", self.H, x)
-    
+
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Simulate measurements.
 
@@ -573,14 +572,14 @@ class FreeformLinear(Linear):
         Returns:
             :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
-            
+
         Example: Select one every second point on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinear
             >>> import torch
-            >>> images = torch.rand(17, 3, 40, 40)  
+            >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
             >>> H = torch.randn(13, 20)
-            >>> meas_op = FreeformLinear(H, meas_shape=(40,40), index_mask=mask) 
+            >>> meas_op = FreeformLinear(H, meas_shape=(40,40), index_mask=mask)
             >>> x_masked = meas_op(images)
             >>> print(x_masked.shape)
             torch.Size([17, 3, 13])
@@ -588,7 +587,6 @@ class FreeformLinear(Linear):
         x = self.measure(x)
         x = self.noise_model(x)
         return x
-
 
     def unvectorize(self, x: torch.tensor, fill_value: Any = 0) -> torch.tensor:
         r"""Unflatten the last dimension of a tensor to the measurement shape at
@@ -614,12 +612,12 @@ class FreeformLinear(Linear):
         Returns:
             :class:`torch.tensor`: A tensor where the dimensions indexed by `self.meas_dims`
             match the measurement shape `self.meas_shape`.
-        
+
         See also:
             For the opposite operation use :meth:`vectorize()`.
 
         Example:
-            >>> images = torch.rand(17, 3, 40, 40)  
+            >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
             >>> H = torch.randn(13, 20)
             >>> meas_op = FreeformLinear(H, meas_shape=(40,40), index_mask=mask)
@@ -637,7 +635,7 @@ class FreeformLinear(Linear):
                 device=x.device,
             )
             output[(..., *self.index_mask)] = x
-            
+
         # not tested yet
         elif self.mask_type == "bool":
             # create a new tensor with an intermediate shape
@@ -656,6 +654,7 @@ class FreeformLinear(Linear):
             )
 
         return torch.movedim(output, self.last_dims, self.meas_dims)
+
 
 # =============================================================================
 class LinearSplit(Linear):
@@ -1098,17 +1097,18 @@ class LinearSplit(Linear):
         x = self.noise_model(x)
         return x
 
+
 # =============================================================================
 class FreeformLinearSplit(LinearSplit):
     r"""Simulate noiseless measurements
-    
+
     Example: Select one every second point on the diagonal of a batch of images
         >>> from spyrit.core.meas import FreeformLinearSplit
         >>> import torch
-        >>> images = torch.rand(17, 3, 40, 40)  
+        >>> images = torch.rand(17, 3, 40, 40)
         >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
         >>> H = torch.randn(13, 20)
-        >>> meas_op = FreeformLinearSplit(H, meas_shape=(40,40), index_mask=mask) 
+        >>> meas_op = FreeformLinearSplit(H, meas_shape=(40,40), index_mask=mask)
         >>> x_masked = meas_op(images)
         >>> print(x_masked.shape)
         torch.Size([17, 3, 26])
@@ -1128,8 +1128,8 @@ class FreeformLinearSplit(LinearSplit):
     ):
         super().__init__(
             H,
-            H.shape[-1],    # meas_shape,
-            -1,             # meas_dims
+            H.shape[-1],  # meas_shape,
+            -1,  # meas_dims
             noise_model=noise_model,
             dtype=dtype,
             device=device,
@@ -1155,7 +1155,7 @@ class FreeformLinearSplit(LinearSplit):
             self.meas_dims = torch.Size(meas_dims)
             self.meas_ndim = len(self.meas_dims)
             self.last_dims = tuple(range(-self.meas_ndim, 0))  # for permutations
-            
+
         else:
             if bool_mask is not None:
                 self.bool_mask = bool_mask
@@ -1163,7 +1163,7 @@ class FreeformLinearSplit(LinearSplit):
                 self.meas_shape = bool_mask.shape
             else:
                 raise ValueError("Either index_mask or bool_mask must be specified.")
-        
+
         # check mask dimensions in the case of index mask
         if self.mask_type == "index":
             if index_mask.ndim != 2:
@@ -1183,7 +1183,6 @@ class FreeformLinearSplit(LinearSplit):
                 raise ValueError("bool_mask must have the same shape as meas_shape.")
 
     def vectorize(self, x: torch.tensor) -> torch.tensor:
-    
         r"""Appplies the saved mask to the input tensor, where the masked
         dimensions are collapsed into one.
 
@@ -1204,10 +1203,10 @@ class FreeformLinearSplit(LinearSplit):
         Example: Select one every second point on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
-            >>> images = torch.rand(17, 3, 40, 40)  
+            >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
             >>> H = torch.randn(13, 20)
-            >>> meas_op = FreeformLinearSplit(H, meas_shape=(40,40), index_mask=mask) 
+            >>> meas_op = FreeformLinearSplit(H, meas_shape=(40,40), index_mask=mask)
             >>> x_masked = meas_op.vectorize(images)
             >>> print(x_masked.shape)
             torch.Size([17, 3, 20])
@@ -1244,21 +1243,21 @@ class FreeformLinearSplit(LinearSplit):
         Returns:
             :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
-            
+
         Example: Select one every second point on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
-            >>> images = torch.rand(17, 3, 40, 40)  
+            >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
             >>> H = torch.randn(13, 20)
-            >>> meas_op = FreeformLinearSplit(H, meas_shape=(40,40), index_mask=mask) 
+            >>> meas_op = FreeformLinearSplit(H, meas_shape=(40,40), index_mask=mask)
             >>> x_masked = meas_op.measure(images)
             >>> print(x_masked.shape)
             torch.Size([17, 3, 26])
         """
         x = self.vectorize(x)
         return torch.einsum("mn,...n->...m", self.A, x)
-    
+
     def measure_H(self, x: torch.tensor) -> torch.tensor:
         r"""Simulate measurements from signal/image.
 
@@ -1275,21 +1274,21 @@ class FreeformLinearSplit(LinearSplit):
         Returns:
             :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
-            
+
         Example: Select one every second point on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
-            >>> images = torch.rand(17, 3, 40, 40)  
+            >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
             >>> H = torch.randn(13, 20)
-            >>> meas_op = FreeformLinearSplit(H, meas_shape=(40,40), index_mask=mask) 
+            >>> meas_op = FreeformLinearSplit(H, meas_shape=(40,40), index_mask=mask)
             >>> x_masked = meas_op.measure_H(images)
             >>> print(x_masked.shape)
             torch.Size([17, 3, 13])
         """
         x = self.vectorize(x)
         return torch.einsum("mn,...n->...m", self.H, x)
-    
+
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Simulate measurements.
 
@@ -1306,14 +1305,14 @@ class FreeformLinearSplit(LinearSplit):
         Returns:
             :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
-            
+
         Example: Select one every second point on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
-            >>> images = torch.rand(17, 3, 40, 40)  
+            >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
             >>> H = torch.randn(13, 20)
-            >>> meas_op = FreeformLinearSplit(H, meas_shape=(40,40), index_mask=mask) 
+            >>> meas_op = FreeformLinearSplit(H, meas_shape=(40,40), index_mask=mask)
             >>> x_masked = meas_op(images)
             >>> print(x_masked.shape)
             torch.Size([17, 3, 26])
@@ -1321,7 +1320,7 @@ class FreeformLinearSplit(LinearSplit):
         x = self.measure(x)
         x = self.noise_model(x)
         return x
-    
+
     def forward_H(self, x: torch.tensor) -> torch.tensor:
         r"""Simulate measurements.
 
@@ -1338,14 +1337,14 @@ class FreeformLinearSplit(LinearSplit):
         Returns:
             :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
-            
+
         Example: Select one every second point on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
-            >>> images = torch.rand(17, 3, 40, 40)  
+            >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
             >>> H = torch.randn(13, 20)
-            >>> meas_op = FreeformLinearSplit(H, meas_shape=(40,40), index_mask=mask) 
+            >>> meas_op = FreeformLinearSplit(H, meas_shape=(40,40), index_mask=mask)
             >>> x_masked = meas_op.forward_H(images)
             >>> print(x_masked.shape)
             torch.Size([17, 3, 13])
@@ -1353,7 +1352,6 @@ class FreeformLinearSplit(LinearSplit):
         x = self.measure_H(x)
         x = self.noise_model(x)
         return x
-
 
     def unvectorize(self, x: torch.tensor, fill_value: Any = 0) -> torch.tensor:
         r"""Unflatten the last dimension of a tensor to the measurement shape at
@@ -1379,14 +1377,14 @@ class FreeformLinearSplit(LinearSplit):
         Returns:
             :class:`torch.tensor`: A tensor where the dimensions indexed by `self.meas_dims`
             match the measurement shape `self.meas_shape`.
-        
+
         See also:
             For the opposite operation use :meth:`vectorize()`.
 
         Example:
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
-            >>> images = torch.rand(17, 3, 40, 40)  
+            >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
             >>> H = torch.randn(13, 20)
             >>> meas_op = FreeformLinearSplit(H, meas_shape=(40,40), index_mask=mask)
@@ -1404,7 +1402,7 @@ class FreeformLinearSplit(LinearSplit):
                 device=x.device,
             )
             output[(..., *self.index_mask)] = x
-            
+
         # not tested yet
         elif self.mask_type == "bool":
             # create a new tensor with an intermediate shape
@@ -1423,6 +1421,7 @@ class FreeformLinearSplit(LinearSplit):
             )
 
         return torch.movedim(output, self.last_dims, self.meas_dims)
+
 
 # =============================================================================
 class HadamSplit2d(LinearSplit):
