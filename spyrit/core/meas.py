@@ -379,7 +379,7 @@ class FreeformLinear(Linear):
     .. math::
         m =\mathcal{N}\left(Hx\right), \quad \text{where }x = \text{mask}(\tilde{x})
 
-    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal in the region of interest, :math:`M` is the number of measurements, :math:`N` is the number of pixels in the region of interest, :math:`\text{mask} \colon\, \mathbb{R}^\tilde{N} \to \mathbb{R}^N` represents the masking operation, :math:`\tilde{x} \in \mathbb{R}^\tilde{N}` is the full signal, and :math:`\tilde{N}\ge N` is the dimension of the full signal :math:`\tilde{x}`. 
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal in the region of interest, :math:`M` is the number of measurements, :math:`N` is the number of pixels in the region of interest, :math:`\text{mask} \colon\, \mathbb{R}^\tilde{N} \to \mathbb{R}^N` represents the masking operation, :math:`\tilde{x} \in \mathbb{R}^\tilde{N}` is the full signal, and :math:`\tilde{N}\ge N` is the dimension of the full signal :math:`\tilde{x}`.
 
     Args:
         :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
