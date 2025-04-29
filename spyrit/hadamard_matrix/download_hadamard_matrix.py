@@ -2,6 +2,7 @@ import numpy as np
 import requests
 import os
 import glob
+import importlib.util
 
 
 def download_from_girder():
@@ -54,6 +55,7 @@ def read_text_file_from_url(url):
     content = response.text
     return content
 
+
 def download_from_sloane():
     from selenium import webdriver
     from selenium.webdriver.common.by import By
@@ -70,7 +72,7 @@ def download_from_sloane():
     links = driver.find_elements(By.XPATH, "//a[contains(@href, 'had.')]")
 
     # Extract the URLs
-    hadamard_urls = set([link.get_attribute('href') for link in links])
+    hadamard_urls = set([link.get_attribute("href") for link in links])
 
     # Print the URLs
     for url in hadamard_urls:
@@ -81,7 +83,7 @@ def download_from_sloane():
         lines = file_content.splitlines()
 
         # Print the content of the file
-        if '+' in file_content or '0' in file_content or '-1' in file_content:
+        if "+" in file_content or "0" in file_content or "-1" in file_content:
             if len(lines) > 1:
                 size = len(lines[1])
             else:
@@ -92,9 +94,9 @@ def download_from_sloane():
                     line = line.replace("-1", "0")
                     tmp = []
                     for e in line:
-                        if e == '+' or e == '1':
+                        if e == "+" or e == "1":
                             tmp += [1]
-                        elif e == '-' or e == '0':
+                        elif e == "-" or e == "0":
                             tmp += [0]
                         elif e == " ":
                             pass
@@ -120,11 +122,11 @@ def download_from_sloane():
                 np.savez_compressed(name + ".npz", np_array)
         else:
             print("no ok for " + url)
-        #print(file_content)
+        # print(file_content)
 
     # Close the WebDriver
     driver.quit()
 
+
 if __name__ == "__main__":
     download_from_sloane()
-
