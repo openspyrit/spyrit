@@ -1,10 +1,61 @@
 import numpy as np
 import requests
+import os
+import importlib.util
+
+
+def download_from_girder():
+    """
+    Download Hadamard matrices from the Girder repository into hadamard_matrix folder.
+    """
+
+    spec = importlib.util.find_spec("spyrit")
+    package_path = spec.submodule_search_locations[0]
+    hadamard_matrix_path = os.path.join(package_path, "hadamard_matrix")
+    if os.path.isfile(os.path.join(hadamard_matrix_path, "had.20.1.npz")):
+        return
+    print("Downloading Hadamard matrices from Girder repository...")
+    print(
+        "The matrices were downloaded from http://neilsloane.com/hadamard/ Sloane et al."
+    )
+    import girder_client
+
+    gc = girder_client.GirderClient(
+        apiUrl="https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
+    )
+
+    collection_id = "66796d3cbaa5a90007058946"
+    folder_id = "6800c6891240141f6aa53845"
+    limit = 50  # Number of items to retrieve per request
+    offset = 0  # Starting point
+
+    while True:
+        items = gc.get(
+            "item",
+            parameters={
+                "parentType": "collection",
+                "parentId": collection_id,
+                "folderId": folder_id,
+                "limit": limit,
+                "offset": offset,
+            },
+        )
+        if not items:
+            break
+        for item in items:
+            files = gc.get(f'item/{item["_id"]}/files')
+            for file in files:
+                gc.downloadFile(
+                    file["_id"], os.path.join(hadamard_matrix_path, file["name"])
+                )
+        offset += limit
+
 
 def read_text_file_from_url(url):
     response = requests.get(url)
     content = response.text
     return content
+
 
 def download_from_sloane():
     from selenium import webdriver
@@ -22,7 +73,7 @@ def download_from_sloane():
     links = driver.find_elements(By.XPATH, "//a[contains(@href, 'had.')]")
 
     # Extract the URLs
-    hadamard_urls = set([link.get_attribute('href') for link in links])
+    hadamard_urls = set([link.get_attribute("href") for link in links])
 
     # Print the URLs
     for url in hadamard_urls:
@@ -33,7 +84,7 @@ def download_from_sloane():
         lines = file_content.splitlines()
 
         # Print the content of the file
-        if '+' in file_content or '0' in file_content or '-1' in file_content:
+        if "+" in file_content or "0" in file_content or "-1" in file_content:
             if len(lines) > 1:
                 size = len(lines[1])
             else:
@@ -44,9 +95,9 @@ def download_from_sloane():
                     line = line.replace("-1", "0")
                     tmp = []
                     for e in line:
-                        if e == '+' or e == '1':
+                        if e == "+" or e == "1":
                             tmp += [1]
-                        elif e == '-' or e == '0':
+                        elif e == "-" or e == "0":
                             tmp += [0]
                         elif e == " ":
                             pass
@@ -54,15 +105,15 @@ def download_from_sloane():
                             print("Error during reading of " + url)
                     array += [tmp]
             np_array = np.array(array, dtype=bool)
-            name = url.split('/')[-1][:-4]
-            np.savez_compressed(name + '.npz', np_array)
+            name = url.split("/")[-1][:-4]
+            np.savez_compressed(name + ".npz", np_array)
         else:
             print("no ok for " + url)
-        #print(file_content)
+        # print(file_content)
 
     # Close the WebDriver
     driver.quit()
 
+
 if __name__ == "__main__":
     download_from_sloane()
-

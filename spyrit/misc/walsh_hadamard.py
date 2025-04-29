@@ -29,6 +29,9 @@ __deprecated__ = False
 __license__ = "GPLv3"
 __maintainer__ = "developer"
 __status__ = "Development"
+
+import os.path
+
 # __version__ = "0.0.1"
 
 import warnings
@@ -39,6 +42,8 @@ import numpy as np
 
 import spyrit.core.torch as spytorch
 from sympy.combinatorics.graycode import GrayCode
+
+import spyrit.hadamard_matrix.download_hadamard_matrix
 
 
 # ------------------------------------------------------------------------------
@@ -1394,3 +1399,42 @@ def walsh2_torch(im, H=None):
     raise NotImplementedError(
         "This function is deprecated. Please call spyrit.core.torch.fwht_2d instead."
     )
+
+
+def check_downloaded_hadamard_matrix():
+    """Check if the Hadamard matrix files are downloaded.
+
+    Returns:
+        str: Path to the folder containing the Hadamard matrix files.
+    """
+    spyrit.hadamard_matrix.download_hadamard_matrix.download_from_girder()
+    folder = os.path.join(os.path.dirname(__file__), "..", "hadamard_matrix")
+    return folder
+
+
+def load_matrix(order, name=""):
+    """Load the Walsh-Hadamard matrix from a file
+
+    Args:
+        order (int): Order of the matrix.
+        name (str): Name of the hadamard matrix file of order `order`.
+
+    Returns:
+        np.ndarray: Walsh-Hadamard matrix.
+
+    Example 1:
+        >>> had = load_matrix(order=28, name="296")
+        >>> had = load_matrix(order=4)
+        >>> print(had)
+        [[ True  True  True  True]
+         [ True False  True False]
+         [ True  True False False]
+         [ True False False  True]]
+    """
+    folder = check_downloaded_hadamard_matrix()
+    if not name == "":
+        name = "." + str(name)
+    file = os.path.join(folder, "had." + str(order) + name + ".npz")
+    if not os.path.isfile(file):
+        raise FileNotFoundError(f"File {file} not found. Please download it first.")
+    return np.load(file)["arr_0"]
