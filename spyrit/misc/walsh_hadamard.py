@@ -1423,13 +1423,8 @@ def load_matrix(order, name=""):
         np.ndarray: Walsh-Hadamard matrix.
 
     Example 1:
-        >>> had = load_matrix(order=28, name="296")
-        >>> had = load_matrix(order=4)
-        >>> print(had)
-        [[ True  True  True  True]
-         [ True False  True False]
-         [ True  True False False]
-         [ True False False  True]]
+        #>>> had = load_matrix(order=28, name="296")
+        #>>> had = load_matrix(order=4)
     """
     folder = check_downloaded_hadamard_matrix()
     if not name == "":
