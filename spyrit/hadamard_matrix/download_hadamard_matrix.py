@@ -11,7 +11,9 @@ def download_from_girder():
     """
 
     hadamard_matrix_path = os.path.dirname(__file__)
-    if os.path.isfile(os.path.join(hadamard_matrix_path, "had.20.1.npz")):
+    if os.path.isfile(
+        os.path.join(hadamard_matrix_path, "had.236.sage.cooper-wallis.npz")
+    ):
         return
     print("Downloading Hadamard matrices from Girder repository...")
     print(

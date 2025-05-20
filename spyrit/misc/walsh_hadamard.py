@@ -40,6 +40,7 @@ import math
 import torch
 import numpy as np
 import re
+import glob
 
 import spyrit.core.torch as spytorch
 from sympy.combinatorics.graycode import GrayCode
@@ -1413,7 +1414,7 @@ def check_downloaded_hadamard_matrix():
     return folder
 
 
-def load_matrix(order, name=""):
+def load_matrix(order, name="sage"):
     """Load the Walsh-Hadamard matrix from a file
 
     Args:
@@ -1444,9 +1445,9 @@ def load_matrix(order, name=""):
             raise FileNotFoundError(f"File {file} not found. Please download it first.")
     else:
         name = "." + str(name)
-    file = os.path.join(folder, "had." + str(order) + name + ".npz")
-    if not os.path.isfile(file):
-        raise FileNotFoundError(f"File {file} not found. Please download it first.")
+        file = os.path.join(folder, "had." + str(order) + name + ".npz")
+        if not os.path.isfile(file):
+            raise FileNotFoundError(f"File {file} not found. Please download it first.")
     arr = np.load(file)["arr_0"]
     converted_had = np.where(arr, 1, -1)
     return converted_had
