@@ -1,5 +1,53 @@
 import numpy as np
 import requests
+import os
+import glob
+
+
+def download_from_girder():
+    """
+    Download Hadamard matrices from the Girder repository into hadamard_matrix folder.
+    """
+
+    hadamard_matrix_path = os.path.dirname(__file__)
+    if os.path.isfile(os.path.join(hadamard_matrix_path, "had.20.1.npz")):
+        return
+    print("Downloading Hadamard matrices from Girder repository...")
+    print(
+        "The matrices were downloaded from http://neilsloane.com/hadamard/ Sloane et al."
+    )
+    import girder_client
+
+    gc = girder_client.GirderClient(
+        apiUrl="https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
+    )
+
+    collection_id = "66796d3cbaa5a90007058946"
+    folder_id = "6800c6891240141f6aa53845"
+    limit = 50  # Number of items to retrieve per request
+    offset = 0  # Starting point
+
+    while True:
+        items = gc.get(
+            "item",
+            parameters={
+                "parentType": "collection",
+                "parentId": collection_id,
+                "folderId": folder_id,
+                "limit": limit,
+                "offset": offset,
+            },
+        )
+        if not items:
+            break
+        for item in items:
+            files = gc.get(f'item/{item["_id"]}/files')
+            for file in files:
+                gc.downloadFile(
+                    file["_id"], os.path.join(hadamard_matrix_path, file["name"])
+                )
+        offset += limit
+
 
 def read_text_file_from_url(url):
     response = requests.get(url)
@@ -54,8 +102,22 @@ def download_from_sloane():
                             print("Error during reading of " + url)
                     array += [tmp]
             np_array = np.array(array, dtype=bool)
-            name = url.split('/')[-1][:-4]
-            np.savez_compressed(name + '.npz', np_array)
+
+            name = url.split("/")[-1][:-4]
+            order = int(name.split(".")[1])
+
+            # Check if the file already exists
+            files = glob.glob("had." + str(order) + "*.npz")
+            already_saved = False
+            for file in files:
+                b = np.load(file)
+                if np.all(np_array == b):
+                    already_saved = True
+                if already_saved:
+                    break
+
+            if not already_saved:
+                np.savez_compressed(name + ".npz", np_array)
         else:
             print("no ok for " + url)
         #print(file_content)
