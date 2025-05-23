@@ -51,5 +51,6 @@ dependencies = [
         "astropy",
         "requests",
         "tqdm",
+        "girder-client",
 ]
 requires-python = ">=3.9"
