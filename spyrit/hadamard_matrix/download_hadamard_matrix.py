@@ -3,6 +3,7 @@ import requests
 import os
 import glob
 import importlib.util
+import tqdm
 
 
 def download_from_girder():
@@ -15,7 +16,7 @@ def download_from_girder():
         os.path.join(hadamard_matrix_path, "had.236.sage.cooper-wallis.npz")
     ):
         return
-    print("Downloading Hadamard matrices from Girder repository...")
+    print("Downloading Hadamard matrices (>2300) from Girder repository...")
     print(
         "The matrices were downloaded from http://neilsloane.com/hadamard/ Sloane et al."
     )
@@ -29,6 +30,7 @@ def download_from_girder():
     folder_id = "6800c6891240141f6aa53845"
     limit = 50  # Number of items to retrieve per request
     offset = 0  # Starting point
+    pbar = tqdm.tqdm(total=0)
 
     while True:
         items = gc.get(
@@ -43,13 +45,17 @@ def download_from_girder():
         )
         if not items:
             break
+        pbar.total += len(items)
+        pbar.refresh()
         for item in items:
             files = gc.get(f'item/{item["_id"]}/files')
             for file in files:
+                pbar.update(1)
                 gc.downloadFile(
                     file["_id"], os.path.join(hadamard_matrix_path, file["name"])
                 )
         offset += limit
+    pbar.close()
 
 
 def read_text_file_from_url(url):

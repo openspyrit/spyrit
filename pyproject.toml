@@ -50,5 +50,6 @@ dependencies = [
         "imageio",
         "astropy",
         "requests",
+        "tqdm",
 ]
 requires-python = ">=3.9"
