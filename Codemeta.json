@@ -1,0 +1,26 @@
+{
+    "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+    "type": "SoftwareSourceCode",
+    "applicationCategory": "Single-pixel imaging",
+    "codeRepository": "https://github.com/openspyrit/spyrit",
+    "dateCreated": "2020-12-10",
+    "datePublished": "2021-03-11",
+    "description": "SPyRiT is a PyTorch-based deep image reconstruction package primarily designed for single-pixel imaging.",
+    "keywords": [
+        "Single-pixel imaging",
+        "pytorch"
+    ],
+    "license": "https://spdx.org/licenses/LGPL-3.0",
+    "name": "SPyRiT",
+    "operatingSystem": [
+        "Linux",
+        "Windows",
+        "MacOS"
+    ],
+    "programmingLanguage": "Python 3",
+    "contIntegration": "https://github.com/openspyrit/spyrit/actions",
+    "codemeta:continuousIntegration": {
+        "id": "https://github.com/openspyrit/spyrit/actions"
+    },
+    "issueTracker": "https://github.com/openspyrit/spyrit/issues"
+}
