@@ -2989,3 +2989,32 @@ class DynamicLinear(Linear):
         # we pass the whole F matrix to the constructor
         # super().__init__(F, Ord, (h, h), img_shape)
         # self._M = M
+
+
+# =============================================================================
+# Split Functions (written here to avoid duplicates in static & dynamic)
+# =============================================================================
+def _split_device(self: Union[LinearSplit, DynamicLinearSplit]) -> torch.device:
+    """Returns the device the object is stored on.
+     
+    If 2 different devices are found for H and A, it returns an error.
+    """
+    if self.H.device == self.A.device:
+        return self.H.device
+    else:
+        raise RuntimeError(
+            f"device undefined, H and A are on different device (found {self.H.device} and {self.A.device} respectively)"
+        )
+
+
+def _split_dtype(self: Union[LinearSplit, DynamicLinearSplit]) -> torch.dtype:
+    """Returns the dtype the matrices are stored with.
+     
+    If 2 different dtypes are found for H and A, it returns an error.
+    """
+    if self.H.dtype == self.A.dtype:
+        return self.H.dtype
+    else:
+        raise RuntimeError(
+            f"dtype undefined, H and A are of different dtype (found {self.H.dtype} and {self.A.dtype} respectively)"
+        )
