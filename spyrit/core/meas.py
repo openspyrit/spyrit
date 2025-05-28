@@ -155,6 +155,14 @@ class Linear(nn.Module):
     def get_matrix_to_inverse(self) -> torch.tensor:
         return getattr(self, self._selected_pinv_matrix)
 
+    def set_matrix_to_inverse(self, matrix_name: str) -> None:
+        if matrix_name in self._available_pinv_matrices:
+            self._selected_pinv_matrix = matrix_name
+        else:
+            raise KeyError(
+                f"Matrix {matrix_name} not available for pinv. Available matrices: {self._available_pinv_matrices.keys()}"
+            )
+
     def measure(self, x: torch.tensor) -> torch.tensor:
         r"""Simulate noiseless measurements
 
@@ -776,29 +784,11 @@ class LinearSplit(Linear):
 
     @property
     def device(self) -> torch.device:
-        if self.H.device == self.A.device:
-            return self.H.device
-        else:
-            raise RuntimeError(
-                f"device undefined, H and A are on different device (found {self.H.device} and {self.A.device} respectively)"
-            )
+        return _split_device(self)
 
     @property
     def dtype(self) -> torch.dtype:
-        if self.H.dtype == self.A.dtype:
-            return self.H.dtype
-        else:
-            raise RuntimeError(
-                f"dtype undefined, H and A are of different dtype (found {self.H.dtype} and {self.A.dtype} respectively)"
-            )
-
-    def set_matrix_to_inverse(self, matrix_name: str) -> None:
-        if matrix_name in self._available_pinv_matrices:
-            self._selected_pinv_matrix = matrix_name
-        else:
-            raise KeyError(
-                f"Matrix {matrix_name} not available for pinv. Available matrices: {self._available_pinv_matrices.keys()}"
-            )
+        return _split_dtype(self)
 
     def measure(self, x: torch.tensor):
         r"""Simulate noiseless measurements from matrix A.
