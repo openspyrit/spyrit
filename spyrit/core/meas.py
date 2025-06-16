@@ -2202,8 +2202,8 @@ class DynamicLinear(Linear):
             device=device,
         )
 
-        self.white_acq = white_acq
         self.time_dim = time_dim
+        self.white_acq = white_acq
         if self.time_dim in self.meas_dims:
             raise RuntimeError(
                 f"The time dimension must not be in the measurement dimensions. Found {self.time_dim} in {self.meas_dims}."
