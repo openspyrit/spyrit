@@ -7,13 +7,13 @@ simulate measurements of still images, and three are dynamic, i.e. they are used
 to simulate measurements of moving objects, represented as a sequence of images.
  The inheritance tree is as follows::
 
-      Linear          DynamicLinear
+      Linear   --->   DynamicLinear
         |                   |
         V                   V
     LinearSplit     DynamicLinearSplit
         |                   |
         V                   V
-    HadamSplit      DynamicHadamSplit
+    HadamSplit2d    DynamicHadamSplit2d
 
 """
 
@@ -2676,355 +2676,376 @@ class DynamicLinear(Linear):
             )
         return ans.to(self.device)
 
-        # # =============================================================================
-        # class DynamicLinearSplit(DynamicLinear):
-        #     # =========================================================================
-        #     r"""
-        #     Simulates the measurement of a moving object using a splitted operator
-        #     :math:`y = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix} \cdot x(t)`.
-
-        #     Computes linear measurements :math:`y` from incoming images: :math:`y = Px`,
-        #     where :math:`P` is a linear operator (matrix) and :math:`x` is a batch of
-        #     vectorized images representing a motion picture.
-
-        #     The matrix :math:`P` contains only positive values and is obtained by
-        #     splitting a measurement matrix :math:`H` such that
-        #     :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
-        #     `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
-        #     :math:`H_{-} = \max(0,-H)`.
-
-        #     The class is constructed from the :math:`M` by :math:`N` matrix :math:`H`,
-        #     where :math:`N` represents the number of pixels in the image and
-        #     :math:`M` the number of measurements. Therefore, the shape of :math:`P` is
-        #     :math:`(2M, N)`.
-
-        #     Args:
-        #         :attr:`H` (torch.tensor): measurement matrix (linear operator) with
-        #         shape :math:`(M, N)` where :math:`M` is the number of measurements and
-        #         :math:`N` the number of pixels in the image. Only real values are supported.
-
-        #         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
-        #         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
-        #         will correspond to the highest value in :math:`Ord`. Must contain
-        #         :math:`M` values. If some values repeat, the order is kept. Defaults to
-        #         None.
-
-        #         :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
-        #         Must be a tuple of two integers representing the height and width of the
-        #         patterns. If not specified, the shape is suppposed to be a square image.
-        #         If not, an error is raised. Defaults to None.
-
-        #         :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
-        #         of two integers representing the height and width of the image. If not
-        #         specified, the shape is taken as equal to `meas_shape`. Setting this
-        #         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
-
-        # :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
-        # detector inhomogeneities. Must have the same shape as the measurement patterns.
-
-        # Attributes:
-        #     :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
-        #     of shape :math:`(M,N)` initialized as :math:`H`.
-
-        #         :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of
-        #         shape :math:`(2M, N)` such that `P[0::2, :] = H_{+}` and `P[1::2, :] = H_{-}`.
-
-        #         :attr:`M` (int): Number of measurements performed by the linear operator.
-
-        #         :attr:`N` (int): Number of pixels in the image.
-
-        #         :attr:`h` (int): Measurement pattern height.
-
-        #         :attr:`w` (int): Measurement pattern width.
-
-        #         :attr:`meas_shape` (tuple): Shape of the measurement patterns
-        #         (height, width). Is equal to `(self.h, self.w)`.
-
-        #         :attr:`img_h` (int): Image height.
-
-        #         :attr:`img_w` (int): Image width.
-
-        #         :attr:`img_shape` (tuple): Shape of the image (height, width). Is equal
-        #         to `(self.img_h, self.img_w)`.
-
-        #         :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H`.
-        #         Must be set using the method :meth:`build_H_dyn` before being accessed.
-
-        #         :attr:`H` (torch.tensor): Alias for :attr:`H_dyn`.
-
-        #         :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
-        #         matrix :math:`H_{dyn}^\dagger`. Must be set using the method
-        #         :meth:`build_H_dyn_pinv` before being accessed.
-
-        #         :attr:`H_pinv` (torch.tensor): Alias for :attr:`H_dyn_pinv`.
-
-        #     .. warning::
-        #         For each call, there must be **exactly** as many images in :math:`x` as
-        #         there are measurements in the linear operator :math:`P`.
-
-        #     Example:
-        #         >>> H = torch.rand([400,1600])
-        #         >>> meas_op = DynamicLinearSplit(H)
-        #         >>> print(meas_op)
-        #         DynamicLinearSplit(
-        #           (M): 400
-        #           (N): 1600
-        #           (H.shape): torch.Size([400, 1600])
-        #           (meas_shape): (40, 40)
-        #           (H_dyn): False
-        #           (img_shape): (40, 40)
-        #           (H_pinv): False
-        #           (P.shape): torch.Size([800, 1600])
-        #         )
-
-        #     Reference:
-        #     .. _MICCAI24:
-        #         [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
-        #         Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
-        #         without Warping the Patterns. 2024. hal-04533981
-        #     """
-
-        # def __init__(
-        #     self,
-        #     H: torch.tensor,
-        #     Ord: torch.tensor = None,
-        #     meas_shape: tuple = None,  # (height, width)
-        #     img_shape: tuple = None,  # (height, width)
-        #     white_acq: torch.tensor = None,
-        # ):
-        #     # call constructor of DynamicLinear
-        #     super().__init__(H, Ord, meas_shape, img_shape)
-        #     self._set_P(self.H_static)
-
-        #     @property  # override _Base definition
-        #     def operator(self) -> torch.tensor:
-        #         return self.P
-
-        #     def forward(self, x: torch.tensor) -> torch.tensor:
-        #         r"""
-        #         Simulates the measurement of a motion picture :math:`y = P \cdot x(t)`.
-
-        #         The output :math:`y` is computed as :math:`y = Px`, where :math:`P` is
-        #         the measurement matrix and :math:`x` is a batch of images.
-
-        #         The matrix :math:`P` contains only positive values and is obtained by
-        #         splitting a measurement matrix :math:`H` such that
-        #         :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
-        #         `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
-        #         :math:`H_{-} = \max(0,-H)`.
-
-        #         If you want to measure with the original matrix :math:`H`, use the
-        #         method :meth:`forward_H`.
-
-        #         Args:
-        #             :attr:`x`: Batch of images of shape :math:`(*, t, c, h, w)` where *
-        #             denotes any dimension (e.g. the batch size), :math:`t` the number of
-        #             frames, :math:`c` the number of channels, and :math:`h`, :math:`w`
-        #             the height and width of the images.
-
-        #         Output:
-        #             :math:`y`: Linear measurements of the input images. It has shape
-        #             :math:`(*, c, 2M)` where * denotes any number of dimensions, :math:`c`
-        #             the number of channels, and :math:`M` the number of measurements.
-
-        #         .. important::
-        #             There must be as many images as there are measurements in the split
-        #             linear operator, i.e. :math:`t = 2M`.
-
-        #         Shape:
-        #             :math:`x`: :math:`(*, t, c, h, w)`
-
-        #             :math:`P` has a shape of :math:`(2M, N)` where :math:`M` is the
-        #             number of measurements as defined by the first dimension of :math:`H`
-        #             and :math:`N` is the number of pixels in the image.
-
-        #             :math:`output`: :math:`(*, c, 2M)` or :math:`(*, c, t)`
-
-        #         Example:
-        #             >>> x = torch.rand([10, 800, 3, 40, 40])
-        #             >>> H = torch.rand([400, 1600])
-        #             >>> meas_op = DynamicLinearSplit(H)
-        #             >>> y = meas_op(x)
-        #             >>> print(y.shape)
-        #             torch.Size([10, 3, 800])
-        #         """
-        #         return self._dynamic_forward_with_op(x, self.P)
-
-        #     def forward_H(self, x: torch.tensor) -> torch.tensor:
-        #         r"""
-        #         Simulates the measurement of a motion picture :math:`y = H \cdot x(t)`.
-
-        #         The output :math:`y` is computed as :math:`y = Hx`, where :math:`H` is
-        #         the measurement matrix and :math:`x` is a batch of images.
-
-        #         The matrix :math:`H` can contain positive and negative values and is
-        #         given by the user at initialization. If you want to measure with the
-        #         splitted matrix :math:`P`, use the method :meth:`forward`.
-
-        #         Args:
-        #             :attr:`x`: Batch of images of shape :math:`(*, t, c, h, w)` where *
-        #             denotes any dimension (e.g. the batch size), :math:`t` the number of
-        #             frames, :math:`c` the number of channels, and :math:`h`, :math:`w`
-        #             the height and width of the images.
-
-        #         Output:
-        #             :math:`y`: Linear measurements of the input images. It has shape
-        #             :math:`(*, c, M)` where * denotes any number of dimensions, :math:`c`
-        #             the number of channels, and :math:`M` the number of measurements.
-
-        #         .. important::
-        #             There must be as many images as there are measurements in the original
-        #             linear operator, i.e. :math:`t = M`.
-
-        #         Shape:
-        #             :math:`x`: :math:`(*, t, c, h, w)`
-
-        #             :math:`H` has a shape of :math:`(M, N)` where :math:`M` is the
-        #             number of measurements and :math:`N` is the number of pixels in the
-        #             image.
-
-        #             :math:`output`: :math:`(*, c, M)`
-
-        #         Example:
-        #             >>> x = torch.rand([10, 400, 3, 40, 40])
-        #             >>> H = torch.rand([400, 1600])
-        #             >>> meas_op = LinearDynamicSplit(H)
-        #             >>> y = meas_op.forward_H(x)
-        #             >>> print(y.shape)
-        #             torch.Size([10, 3, 400])
-        #         """
-        #         return super().forward(x)
-
-        #     def _set_Ord(self, Ord: torch.tensor) -> None:
-        #         """Set the order matrix used to sort the rows of H."""
-        #         super()._set_Ord(Ord)
-        #         # update P
-        #         self._set_P(self.H_static)
-
-        # # =============================================================================
-        # class DynamicHadamSplit(DynamicLinearSplit):
-        #     # =========================================================================
-        #     r"""
-        #     Simulates the measurement of a moving object using a splitted operator
-        #     :math:`y = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix} \cdot x(t)` with
-        #     :math:`H` a Hadamard matrix.
-
-        #     Computes linear measurements from incoming images: :math:`y = Px`,
-        #     where :math:`P` is a linear operator (matrix) with positive entries and
-        #     :math:`x` is a batch of vectorized images representing a motion picture.
-
-        #     The matrix :math:`P` contains only positive values and is obtained by
-        #     splitting a Hadamard-based matrix :math:`H` such that
-        #     :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
-        #     `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
-        #     :math:`H_{-} = \max(0,-H)`.
-
-        #     :math:`H` is obtained by selecting a re-ordered subsample of :math:`M` rows
-        #     of a "full" Hadamard matrix :math:`F` with shape :math:`(N^2, N^2)`.
-        #     :math:`N` must be a power of 2.
-
-        #     Args:
-        #         :attr:`M` (int): Number of measurements. If :math:`M < h^2`, the
-        #         measurement matrix :math:`H` is cropped to :math:`M` rows.
-
-        #         :attr:`h` (int): Measurement pattern height, must be a power of 2. The
-        #         image is assumed to be square, so the number of pixels in the image is
-        #         :math:`N = h^2`.
-
-        #         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
-        #         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
-        #         will correspond to the highest value in :math:`Ord`. Must contain
-        #         :math:`M` values. If some values repeat, the order is kept. Defaults to
-        #         None.
-
-        #         :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
-        #         of two integers representing the height and width of the image. If not
-        #         specified, the shape is taken as equal to `meas_shape`. Setting this
-        #         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
-
-        #         :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
-        #         detector inhomogeneities. Must have the same shape as the measurement patterns.
-
-        #     Attributes:
-        #         :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
-        #         of shape :math:`(M,N)` initialized as :math:`H`.
-
-        #         :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of
-        #         shape :math:`(2M, N)` such that `P[0::2, :] = H_{+}` and `P[1::2, :] = H_{-}`.
-
-        #         :attr:`M` (int): Number of measurements performed by the linear operator.
-
-        #         :attr:`N` (int): Number of pixels in the image.
-
-        #         :attr:`h` (int): Measurement pattern height.
-
-        #         :attr:`w` (int): Measurement pattern width.
-
-        #         :attr:`meas_shape` (tuple): Shape of the measurement patterns
-        #         (height, width). Is equal to `(self.h, self.w)`.
-
-        #         :attr:`img_h` (int): Image height.
-
-        #         :attr:`img_w` (int): Image width.
-
-        #         :attr:`img_shape` (tuple): Shape of the image (height, width). Is equal
-        #         to `(self.img_h, self.img_w)`.
-
-        #         :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H`.
-        #         Must be set using the method :meth:`build_H_dyn` before being accessed.
-
-        #         :attr:`H` (torch.tensor): Alias for :attr:`H_dyn`.
-
-        #         :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
-        #         matrix :math:`H_{dyn}^\dagger`. Must be set using the method
-        #         :meth:`build_H_dyn_pinv` before being accessed.
-
-        #         :attr:`H_pinv` (torch.tensor): Alias for :attr:`H_dyn_pinv`.
-
-        #     .. note::
-        #         The computation of a Hadamard transform :math:`Fx` benefits a fast
-        #         algorithm, as well as the computation of inverse Hadamard transforms.
-
-        #     .. note::
-        #         :math:`H = H_{+} - H_{-}`
-
-        #     Example:
-        #         >>> Ord = torch.rand([32,32])
-        #         >>> meas_op = HadamSplitDynamic(400, 32, Ord)
-        #         >>> print(meas_op)
-        #         DynamicHadamSplit(
-        #           (M): 400
-        #           (N): 1024
-        #           (H.shape): torch.Size([400, 1024])
-        #           (meas_shape): (32, 32)
-        #           (H_dyn): False
-        #           (img_shape): (32, 32)
-        #           (H_pinv): False
-        #           (P.shape): torch.Size([800, 1024])
-        #         )
-
-        #     Reference:
-        #     .. _MICCAI24:
-        #         [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
-        #         Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
-        #         without Warping the Patterns. 2024. hal-04533981
-        #     """
-
-        # def __init__(
-        #     self,
-        #     M: int,
-        #     h: int,
-        #     Ord: torch.tensor = None,
-        #     img_shape: tuple = None,  # (height, width)
-        #     white_acq: torch.tensor = None,
-        # ):
-
-        #         F = spytorch.walsh_matrix_2d(h)
-        #         # empty = torch.empty(h**2, h**2)  # just to get the shape
-
-        # we pass the whole F matrix to the constructor
-        # super().__init__(F, Ord, (h, h), img_shape)
-        # self._M = M
+
+# =============================================================================
+class DynamicLinearSplit(DynamicLinear):
+    # =========================================================================
+    r"""
+    Simulates the measurement of a moving object using a splitted operator
+    :math:`y = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix} \cdot x(t)`.
+
+    Computes linear measurements :math:`y` from incoming images: :math:`y = Px`,
+    where :math:`P` is a linear operator (matrix) and :math:`x` is a batch of
+    vectorized images representing a motion picture.
+
+    The matrix :math:`P` contains only positive values and is obtained by
+    splitting a measurement matrix :math:`H` such that
+    :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
+    `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
+    :math:`H_{-} = \max(0,-H)`.
+
+    The class is constructed from the :math:`M` by :math:`N` matrix :math:`H`,
+    where :math:`N` represents the number of pixels in the image and
+    :math:`M` the number of measurements. Therefore, the shape of :math:`P` is
+    :math:`(2M, N)`.
+
+    Args:
+        :attr:`H` (torch.tensor): measurement matrix (linear operator) with
+        shape :math:`(M, N)` where :math:`M` is the number of measurements and
+        :math:`N` the number of pixels in the image. Only real values are supported.
+
+        :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
+        rows of the measurement matrix :math:`H`. The first new row of :math:`H`
+        will correspond to the highest value in :math:`Ord`. Must contain
+        :math:`M` values. If some values repeat, the order is kept. Defaults to
+        None.
+
+        :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
+        Must be a tuple of two integers representing the height and width of the
+        patterns. If not specified, the shape is suppposed to be a square image.
+        If not, an error is raised. Defaults to None.
+
+        :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
+        of two integers representing the height and width of the image. If not
+        specified, the shape is taken as equal to `meas_shape`. Setting this
+        value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
+
+:attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
+detector inhomogeneities. Must have the same shape as the measurement patterns.
+
+Attributes:
+    :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
+    of shape :math:`(M,N)` initialized as :math:`H`.
+
+        :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of
+        shape :math:`(2M, N)` such that `P[0::2, :] = H_{+}` and `P[1::2, :] = H_{-}`.
+
+        :attr:`M` (int): Number of measurements performed by the linear operator.
+
+        :attr:`N` (int): Number of pixels in the image.
+
+        :attr:`h` (int): Measurement pattern height.
+
+        :attr:`w` (int): Measurement pattern width.
+
+        :attr:`meas_shape` (tuple): Shape of the measurement patterns
+        (height, width). Is equal to `(self.h, self.w)`.
+
+        :attr:`img_h` (int): Image height.
+
+        :attr:`img_w` (int): Image width.
+
+        :attr:`img_shape` (tuple): Shape of the image (height, width). Is equal
+        to `(self.img_h, self.img_w)`.
+
+        :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H`.
+        Must be set using the method :meth:`build_H_dyn` before being accessed.
+
+        :attr:`H` (torch.tensor): Alias for :attr:`H_dyn`.
+
+        :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
+        matrix :math:`H_{dyn}^\dagger`. Must be set using the method
+        :meth:`build_H_dyn_pinv` before being accessed.
+
+        :attr:`H_pinv` (torch.tensor): Alias for :attr:`H_dyn_pinv`.
+
+    .. warning::
+        For each call, there must be **exactly** as many images in :math:`x` as
+        there are measurements in the linear operator :math:`P`.
+
+    Example:
+        >>> H = torch.rand([400,1600])
+        >>> meas_op = DynamicLinearSplit(H)
+        >>> print(meas_op)
+        DynamicLinearSplit(
+            (M): 400
+            (N): 1600
+            (H.shape): torch.Size([400, 1600])
+            (meas_shape): (40, 40)
+            (H_dyn): False
+            (img_shape): (40, 40)
+            (H_pinv): False
+            (P.shape): torch.Size([800, 1600])
+        )
+
+    Reference:
+    .. _MICCAI24:
+        [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
+        Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
+        without Warping the Patterns. 2024. hal-04533981
+    """
+
+    def __init__(
+        self,
+        H: torch.tensor,
+        time_dim: int,
+        meas_shape: Union[int, torch.Size, Iterable[int]] = None,
+        meas_dims: Union[int, torch.Size, Iterable[int]] = None,
+        *,
+        noise_model: nn.Module = nn.Identity(),
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu"),
+        white_acq: torch.tensor = None,
+    ):
+        # call constructor of DynamicLinear
+        super().__init__(
+            H, time_dim, meas_shape, meas_dims, noise_model=noise_model,
+            dtype=dtype, device=device, white_acq=white_acq
+        )
+                
+        # split positive and negative components
+        pos, neg = nn.functional.relu(self.H), nn.functional.relu(-self.H)
+        A = torch.cat([pos, neg], 1).reshape(2 * self.M, self.N)
+        # A is built from self.H which is cast to device and dtype
+        self.A = nn.Parameter(A, requires_grad=False)
+
+        # define the available matrices for reconstruction
+        self._available_pinv_matrices = ["H_dyn", "A_dyn"]
+        self._selected_pinv_matrix = "H_dyn"  # select default here
+
+    @property
+    def device(self) -> torch.device:
+        return _split_device(self)
+
+    @property
+    def dtype(self) -> torch.dtype:
+        return _split_dtype(self)
+    
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r"""
+        Simulates the measurement of a motion picture :math:`y = P \cdot x(t)`.
+
+        The output :math:`y` is computed as :math:`y = Px`, where :math:`P` is
+        the measurement matrix and :math:`x` is a batch of images.
+
+        The matrix :math:`P` contains only positive values and is obtained by
+        splitting a measurement matrix :math:`H` such that
+        :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
+        `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
+        :math:`H_{-} = \max(0,-H)`.
+
+        If you want to measure with the original matrix :math:`H`, use the
+        method :meth:`forward_H`.
+
+        Args:
+            :attr:`x`: Batch of images of shape :math:`(*, t, c, h, w)` where *
+            denotes any dimension (e.g. the batch size), :math:`t` the number of
+            frames, :math:`c` the number of channels, and :math:`h`, :math:`w`
+            the height and width of the images.
+
+        Output:
+            :math:`y`: Linear measurements of the input images. It has shape
+            :math:`(*, c, 2M)` where * denotes any number of dimensions, :math:`c`
+            the number of channels, and :math:`M` the number of measurements.
+
+        .. important::
+            There must be as many images as there are measurements in the split
+            linear operator, i.e. :math:`t = 2M`.
+
+        Shape:
+            :math:`x`: :math:`(*, t, c, h, w)`
+
+            :math:`P` has a shape of :math:`(2M, N)` where :math:`M` is the
+            number of measurements as defined by the first dimension of :math:`H`
+            and :math:`N` is the number of pixels in the image.
+
+            :math:`output`: :math:`(*, c, 2M)` or :math:`(*, c, t)`
+
+        Example:
+            >>> x = torch.rand([10, 800, 3, 40, 40])
+            >>> H = torch.rand([400, 1600])
+            >>> meas_op = DynamicLinearSplit(H)
+            >>> y = meas_op(x)
+            >>> print(y.shape)
+            torch.Size([10, 3, 800])
+        """
+        return self._dynamic_forward_with_op(x, self.P)
+
+    def forward_H(self, x: torch.tensor) -> torch.tensor:
+        r"""
+        Simulates the measurement of a motion picture :math:`y = H \cdot x(t)`.
+
+        The output :math:`y` is computed as :math:`y = Hx`, where :math:`H` is
+        the measurement matrix and :math:`x` is a batch of images.
+
+        The matrix :math:`H` can contain positive and negative values and is
+        given by the user at initialization. If you want to measure with the
+        splitted matrix :math:`P`, use the method :meth:`forward`.
+
+        Args:
+            :attr:`x`: Batch of images of shape :math:`(*, t, c, h, w)` where *
+            denotes any dimension (e.g. the batch size), :math:`t` the number of
+            frames, :math:`c` the number of channels, and :math:`h`, :math:`w`
+            the height and width of the images.
+
+        Output:
+            :math:`y`: Linear measurements of the input images. It has shape
+            :math:`(*, c, M)` where * denotes any number of dimensions, :math:`c`
+            the number of channels, and :math:`M` the number of measurements.
+
+        .. important::
+            There must be as many images as there are measurements in the original
+            linear operator, i.e. :math:`t = M`.
+
+        Shape:
+            :math:`x`: :math:`(*, t, c, h, w)`
+
+            :math:`H` has a shape of :math:`(M, N)` where :math:`M` is the
+            number of measurements and :math:`N` is the number of pixels in the
+            image.
+
+            :math:`output`: :math:`(*, c, M)`
+
+        Example:
+            >>> x = torch.rand([10, 400, 3, 40, 40])
+            >>> H = torch.rand([400, 1600])
+            >>> meas_op = LinearDynamicSplit(H)
+            >>> y = meas_op.forward_H(x)
+            >>> print(y.shape)
+            torch.Size([10, 3, 400])
+        """
+        return super().forward(x)
+
+    def _set_Ord(self, Ord: torch.tensor) -> None:
+        """Set the order matrix used to sort the rows of H."""
+        super()._set_Ord(Ord)
+        # update P
+        self._set_P(self.H_static)
+
+    # # =============================================================================
+    # class DynamicHadamSplit(DynamicLinearSplit):
+    #     # =========================================================================
+    #     r"""
+    #     Simulates the measurement of a moving object using a splitted operator
+    #     :math:`y = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix} \cdot x(t)` with
+    #     :math:`H` a Hadamard matrix.
+
+    #     Computes linear measurements from incoming images: :math:`y = Px`,
+    #     where :math:`P` is a linear operator (matrix) with positive entries and
+    #     :math:`x` is a batch of vectorized images representing a motion picture.
+
+    #     The matrix :math:`P` contains only positive values and is obtained by
+    #     splitting a Hadamard-based matrix :math:`H` such that
+    #     :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
+    #     `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
+    #     :math:`H_{-} = \max(0,-H)`.
+
+    #     :math:`H` is obtained by selecting a re-ordered subsample of :math:`M` rows
+    #     of a "full" Hadamard matrix :math:`F` with shape :math:`(N^2, N^2)`.
+    #     :math:`N` must be a power of 2.
+
+    #     Args:
+    #         :attr:`M` (int): Number of measurements. If :math:`M < h^2`, the
+    #         measurement matrix :math:`H` is cropped to :math:`M` rows.
+
+    #         :attr:`h` (int): Measurement pattern height, must be a power of 2. The
+    #         image is assumed to be square, so the number of pixels in the image is
+    #         :math:`N = h^2`.
+
+    #         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
+    #         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
+    #         will correspond to the highest value in :math:`Ord`. Must contain
+    #         :math:`M` values. If some values repeat, the order is kept. Defaults to
+    #         None.
+
+    #         :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
+    #         of two integers representing the height and width of the image. If not
+    #         specified, the shape is taken as equal to `meas_shape`. Setting this
+    #         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
+
+    #         :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
+    #         detector inhomogeneities. Must have the same shape as the measurement patterns.
+
+    #     Attributes:
+    #         :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
+    #         of shape :math:`(M,N)` initialized as :math:`H`.
+
+    #         :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of
+    #         shape :math:`(2M, N)` such that `P[0::2, :] = H_{+}` and `P[1::2, :] = H_{-}`.
+
+    #         :attr:`M` (int): Number of measurements performed by the linear operator.
+
+    #         :attr:`N` (int): Number of pixels in the image.
+
+    #         :attr:`h` (int): Measurement pattern height.
+
+    #         :attr:`w` (int): Measurement pattern width.
+
+    #         :attr:`meas_shape` (tuple): Shape of the measurement patterns
+    #         (height, width). Is equal to `(self.h, self.w)`.
+
+    #         :attr:`img_h` (int): Image height.
+
+    #         :attr:`img_w` (int): Image width.
+
+    #         :attr:`img_shape` (tuple): Shape of the image (height, width). Is equal
+    #         to `(self.img_h, self.img_w)`.
+
+    #         :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H`.
+    #         Must be set using the method :meth:`build_H_dyn` before being accessed.
+
+    #         :attr:`H` (torch.tensor): Alias for :attr:`H_dyn`.
+
+    #         :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
+    #         matrix :math:`H_{dyn}^\dagger`. Must be set using the method
+    #         :meth:`build_H_dyn_pinv` before being accessed.
+
+    #         :attr:`H_pinv` (torch.tensor): Alias for :attr:`H_dyn_pinv`.
+
+    #     .. note::
+    #         The computation of a Hadamard transform :math:`Fx` benefits a fast
+    #         algorithm, as well as the computation of inverse Hadamard transforms.
+
+    #     .. note::
+    #         :math:`H = H_{+} - H_{-}`
+
+    #     Example:
+    #         >>> Ord = torch.rand([32,32])
+    #         >>> meas_op = HadamSplitDynamic(400, 32, Ord)
+    #         >>> print(meas_op)
+    #         DynamicHadamSplit(
+    #           (M): 400
+    #           (N): 1024
+    #           (H.shape): torch.Size([400, 1024])
+    #           (meas_shape): (32, 32)
+    #           (H_dyn): False
+    #           (img_shape): (32, 32)
+    #           (H_pinv): False
+    #           (P.shape): torch.Size([800, 1024])
+    #         )
+
+    #     Reference:
+    #     .. _MICCAI24:
+    #         [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
+    #         Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
+    #         without Warping the Patterns. 2024. hal-04533981
+    #     """
+
+    # def __init__(
+    #     self,
+    #     M: int,
+    #     h: int,
+    #     Ord: torch.tensor = None,
+    #     img_shape: tuple = None,  # (height, width)
+    #     white_acq: torch.tensor = None,
+    # ):
+
+    #         F = spytorch.walsh_matrix_2d(h)
+    #         # empty = torch.empty(h**2, h**2)  # just to get the shape
+
+    # # we pass the whole F matrix to the constructor
+    # super().__init__(F, Ord, (h, h), img_shape)
+    # self._M = M
 
 
 # =============================================================================
