@@ -2623,6 +2623,20 @@ class DynamicLinear(Linear):
         x = spytorch.center_crop(x, self.meas_shape)
         return self._static_forward_with_op(x, self.H_dyn)
 
+    def dynamic_vectorize(self, input:torch.tensor) -> torch.tensor:
+        r"""Flattens across the measured dimensions, brings the flattened
+        dimension to the and, and brings the time dimension to the second-to-last
+        position."""
+        # concatenate time and measurement dimensions
+        time_and_meas_dims = torch.Size(self.time_dim, self.meas_dims)
+        time_and_last_dims = torch.Size(list(range(-len(self.meas_shape)-1, 0)))
+        # move only if necessary
+        if time_and_meas_dims != time_and_last_dims:
+            input = torch.movedim(input, time_and_meas_dims, time_and_last_dims)
+        # flatten the last measured dimensions
+        input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
+        return input
+
     def _spline(self, dx, mode):
         """
         Returns a 2D row-like tensor containing the values of dx evaluated at
