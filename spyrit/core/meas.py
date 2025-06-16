@@ -2217,6 +2217,38 @@ class DynamicLinear(Linear):
     def recon_mode(self) -> str:
         """Interpolation mode used for reconstruction."""
         return self._recon_mode
+    
+    def measure(self, x):
+        r"""Simulate noiseless measurements
+        
+        Args:
+            :attr:`x` (:class:`torch.tensor`): a tensor whose time dimension
+            matches with `self.time_dim`, and measured dimensions match with
+            `self.meas_dims`. All other dimensions (`*`) are batches.
+        
+        Returns:
+            :class:`torch.tensor`: A tensor of shape `(*, M)`, where `*`
+            corresponds to the previously mentioned batch dimensions, and
+            `M` is the number of measurements (also the number of frames) 
+        """
+        # vectorize with the time dimension being the second-to-last dimension
+        x = self.dynamic_vectorize(x)
+        # here index m is the number of mesurements
+        # it is also the number of frames ie. time dimension
+        x = torch.einsum("mn,...mn->...m", self.H, x)
+        return x
+    
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulates noisy dynamic measurements.
+        
+        .. important::
+            Docstring to be completed. 
+        """
+        # same code as static / super method can be used
+        # but explicit code is more clear
+        x = self.measure(x)
+        x = self.noise_model(x)
+        return x
 
     def build_H_dyn(
         self,
