@@ -2606,7 +2606,7 @@ class DynamicLinear(Linear):
         return self._dynamic_forward_with_op(x, self.H_static)
 
     def forward_H_dyn(self, x: torch.tensor) -> torch.tensor:
-        """Simulates the acquisition of measurements using the dynamic measurement matrix H_dyn.
+        r"""Simulates the acquisition of measurements using the dynamic measurement matrix H_dyn.
 
         This supposes the dynamic measurement matrix H_dyn has been set using the
         method build_H_dyn(). An error will be raised if H_dyn has not been set yet.
