@@ -1011,8 +1011,10 @@ def walsh2_S_matrix(n):
     Returns:
         S (np.ndarray): (n*n-1)-by-(n*n-1) matrix
 
-    Example 1:
+    Example:
+        >>> from spyrit.misc.walsh_hadamard import walsh2_S_matrix
         >>> S = walsh2_S_matrix(4)
+        (15, 15)
     """
 
     H = walsh_matrix_2d(n)
