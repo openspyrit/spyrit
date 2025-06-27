@@ -471,17 +471,17 @@ def meas2img(meas: torch.tensor, Ord: torch.tensor) -> torch.tensor:
     r"""Returns measurement image from a single measurement tensor or from a
     batch of measurement tensors.
 
-    This function is particularly useful when the number of measurements is less 
+    This function is particularly useful when the number of measurements is less
     than the number of pixels in the image, i.e., for undersampled acquisition.
 
     Args:
-        :attr:`meas` (:obj:`torch.tensor`): Measurement vector with shape 
-        :math:`(*, M)` where :math:`*` is any dimension (e.g. the batch size, 
+        :attr:`meas` (:obj:`torch.tensor`): Measurement vector with shape
+        :math:`(*, M)` where :math:`*` is any dimension (e.g. the batch size,
         channel, etc) and :math:`M` is the length of the measurement vector.
 
-        :attr:`Ord` (:obj:`torch.tensor`): Sampling map with shape 
-        :math:`(N,N)`, where high values indicate high significance. The 
-        sampling map determines the order of the measurements. It must be the 
+        :attr:`Ord` (:obj:`torch.tensor`): Sampling map with shape
+        :math:`(N,N)`, where high values indicate high significance. The
+        sampling map determines the order of the measurements. It must be the
         same sampling as that used for generating the measurement vector.
 
     Returns:

@@ -42,6 +42,7 @@ print(f"Ground-truth images: {x.shape}")
 ###############################################################################
 # We plot the second image in the batch
 from spyrit.misc.disp import imagesc
+
 imagesc(x[1, 0, :, :], "x[1, 0, :, :]")
 
 # %%
@@ -49,39 +50,39 @@ imagesc(x[1, 0, :, :], "x[1, 0, :, :]")
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We choose the acquisition matrix as the positive component of a Hadamard 
+# We choose the acquisition matrix as the positive component of a Hadamard
 # matrix in "2D". This is a (0,1) matrix with shape of (64*64, 64*64).
 from spyrit.core.torch import walsh_matrix_2d
 
 H = walsh_matrix_2d(64)
-H = torch.where(H>0, 1.0, 0.0)
+H = torch.where(H > 0, 1.0, 0.0)
 
 print(f"Acquisition matrix: {H.shape}", end=" ")
 print(rf"with values in {{{H.min()}, {H.max()}}}")
 
 ###############################################################################
-# We subsample the measurement operator by a factor four, keeping only the 
+# We subsample the measurement operator by a factor four, keeping only the
 # low-frequency components
 
 Sampling_square = torch.zeros(64, 64)
-Sampling_square[:32,:32] = 1
+Sampling_square[:32, :32] = 1
 
 imagesc(Sampling_square, "Sampling map")
 
 ###############################################################################
-# We use spyrit.core.torch.sort_by_significance() to permutate the rows of H. 
+# We use spyrit.core.torch.sort_by_significance() to permutate the rows of H.
 # Then, we keep the first 1024 rows.
 
 from spyrit.core.torch import sort_by_significance
 
-H = sort_by_significance(H, Sampling_square, 'rows', False)
-H = H[:32*32, :]
+H = sort_by_significance(H, Sampling_square, "rows", False)
+H = H[: 32 * 32, :]
 
 print(f"Shape of the measurement matrix: {H.shape}")
 
 ###############################################################################
-# We instantiate a :class:`spyrit.core.meas.Linear` operator. To indicate that 
-# the operator works in 2D, on images with shape (64, 64), we use the 
+# We instantiate a :class:`spyrit.core.meas.Linear` operator. To indicate that
+# the operator works in 2D, on images with shape (64, 64), we use the
 # :attr:`meas_shape` argument.
 
 from spyrit.core.meas import Linear
@@ -113,7 +114,7 @@ imagesc(m_plot[0, 0, :, :], "Measurements (reshaped)")
 
 ###############################################################################
 # The :class:`spyrit.core.recon.PinvNet` class reconstructs an
-# image by computing the pseudoinverse solution. By default, the 
+# image by computing the pseudoinverse solution. By default, the
 # torch.linalg.lstsq solver is used
 
 from spyrit.core.recon import PinvNet
@@ -121,8 +122,8 @@ from spyrit.core.recon import PinvNet
 pinv_net = PinvNet(meas_op)
 
 ###############################################################################
-# We use the :func:`~spyrit.core.recon.PinvNet.reconstruct` method to 
-# reconstruct the images from the measurement vectors :attr:`y` 
+# We use the :func:`~spyrit.core.recon.PinvNet.reconstruct` method to
+# reconstruct the images from the measurement vectors :attr:`y`
 
 x_rec = pinv_net.reconstruct(y)
 
@@ -130,7 +131,7 @@ imagesc(x_rec[1, 0, :, :], "Pseudo Inverse")
 
 ###############################################################################
 # Alternatively, the pseudo-inverse of the acquition matrix is computed and stored. This
-# option becomes efficient when a large number of reconstructions are performed 
+# option becomes efficient when a large number of reconstructions are performed
 # (e.g., during training). To do so, we used set 'store_H_pinv' to 'True'.
 
 pinv_net_2 = PinvNet(meas_op, store_H_pinv=True)
@@ -151,12 +152,12 @@ print(f"Shape: {pinv_net_2.pinv.pinv.shape}")
 
 ###############################################################################
 # Reconstruction artefacts can be removed by post processing the pseudo inverse
-# solution using a denoising neural network.     
+# solution using a denoising neural network.
 
 ###############################################################################
-# In the following, we select a 
+# In the following, we select a
 # small CNN using the :class:`spyrit.core.nnet.ConvNet` class, but it can be
-# replaced by any other neural network (e.g., a UNet 
+# replaced by any other neural network (e.g., a UNet
 # from :class:`spyrit.core.nnet.Unet`).
 
 ###############################################################################
@@ -172,8 +173,8 @@ data_name = "tuto3_pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sd
 model_cnn_path = download_girder(url, dataID, local_folder, data_name)
 
 ###############################################################################
-# The CNN was trained with spyrit 2.4 assuming images with values in the 
-# range (-1,1), while our images have values in the range (0,1). This can be 
+# The CNN was trained with spyrit 2.4 assuming images with values in the
+# range (-1,1), while our images have values in the range (0,1). This can be
 # compensated for using :class:`spyrit.core.prep.Rerange`.
 
 from spyrit.core.prep import Rerange
@@ -182,11 +183,7 @@ from spyrit.core.nnet import ConvNet
 
 rerange = Rerange((0, 1), (-1, 1))
 denoiser = OrderedDict(
-    {
-     "rerange": rerange, 
-     "denoi": ConvNet(), 
-     "rerange_inv": rerange.inverse()
-     }
+    {"rerange": rerange, "denoi": ConvNet(), "rerange_inv": rerange.inverse()}
 )
 denoiser = torch.nn.Sequential(denoiser)
 
@@ -194,6 +191,7 @@ denoiser = torch.nn.Sequential(denoiser)
 # We load the denoiser and send it to GPU, if available.
 
 from spyrit.core.train import load_net
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 load_net(model_cnn_path, denoiser, device, False)
 
@@ -201,7 +199,7 @@ load_net(model_cnn_path, denoiser, device, False)
 # We create a PinvNet with a postprocessing denoising step
 
 pinv_net = PinvNet(meas_op, denoi=denoiser, device=device)
- 
+
 ###############################################################################
 # We reconstruct the image using PinvNet
 
@@ -212,7 +210,7 @@ with torch.no_grad():
     x_rec_cnn = pinv_net.reconstruct(y)
 
 ###############################################################################
-# We finally plot the plot results 
+# We finally plot the plot results
 
 import matplotlib.pyplot as plt
 from spyrit.misc.disp import add_colorbar, noaxis

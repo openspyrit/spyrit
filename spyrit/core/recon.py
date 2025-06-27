@@ -296,10 +296,10 @@ class PinvNet(_PrebuiltFullNet):
     Args:
         :attr:`acqu` (:mod:`spyrit.core.meas`): Acquisition operator
 
-        :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator. 
+        :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator.
         Defaults to no preprocesing (i.e., :class:`~spyrit.core.prep.Identity`).
 
-        :attr:`denoi` (:obj:`torch.nn.Module`, optional): Image denoising 
+        :attr:`denoi` (:obj:`torch.nn.Module`, optional): Image denoising
         operator. Defaults to no denoising (i.e., to :class:`~torch.nn.Identity`).
 
         **pinv_kwargs: Optional keyword arguments passed to the pseudo inverse
@@ -347,8 +347,8 @@ class PinvNet(_PrebuiltFullNet):
     def __init__(
         self,
         acqu: meas.Linear,
-        prep  = prep.Identity(),        # I.e., defaults to no preprocesing.
-        denoi = nn.Identity(),          # I.e., defaults to no denosing.
+        prep=prep.Identity(),  # I.e., defaults to no preprocesing.
+        denoi=nn.Identity(),  # I.e., defaults to no denosing.
         *,
         device: torch.device = torch.device("cpu"),
         **pinv_kwargs,
