@@ -22,14 +22,13 @@ Each tutorial focuses on a specific submodule of the full pipeline.
 
 * :ref:`Tutorial 3 <sphx_glr_gallery_tuto_03_pseudoinverse_linear.py>` demonstrates pseudo-inverse reconstructions from Hadamard measurements.
 
+* :ref:`Tutorial 4 <sphx_glr_gallery_tuto_04_pseudoinverse_cnn_linear.py>` introduces data-driven post-processing reconstruction.
 
 .. note::
 
   The Python script (*.py*) or Jupyter notebook (*.ipynb*) corresponding to each tutorial can be downloaded at the bottom of the page. The images used in these files can be found on `GitHub`_.
 
 The tutorials below will gradually be updated to be compatible with SPyRiT 3 (work in progress, in the meantime see SPyRiT `2.4.0`_).
-
-* :ref:`Tutorial 3 <sphx_glr_gallery_tuto_03_pseudoinverse_cnn_linear.py>` uses a CNN to denoise the image if necessary
 
 * :ref:`Tutorial 4 <sphx_glr_gallery_tuto_04_train_pseudoinverse_cnn_linear.py>` is used to train the CNN introduced in Tutorial 3
 

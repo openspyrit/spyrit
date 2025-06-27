@@ -447,12 +447,12 @@ def ifwht_2d(x, order=True):
     input tensor.
 
     Args:
-        x (torch.tensor): input tensor to transform. Must have shape
+        :attr:`x` (:obj:`torch.tensor`): input tensor to transform. Must have shape
         :math:`(*, h, w)` where :math:`h` and :math:`w` are the height and width
         of the image and should be powers of two. :math:`*` represents zero or
         more batch dimensions.
 
-        order (bool or list, optional): Whether to use the sequency/Walsh ordering
+        :attr:`order` (bool or list, optional): Whether to use the sequency/Walsh ordering
         (True) or the natural ordering (False). If a list, it defines the permutation
         indices to use. Default is True.
 
@@ -461,7 +461,7 @@ def ifwht_2d(x, order=True):
         not a power of two.
 
     Returns:
-        torch.tensor: 2D inverse Walsh-Hadamard transformed tensor. Has the same
+        :obj:`torch.tensor`: 2D inverse Walsh-Hadamard transformed tensor. Has the same
         shape as the input tensor.
     """
     return ifwht(ifwht(x, order, dim=-1), order, dim=-2)
@@ -471,21 +471,21 @@ def meas2img(meas: torch.tensor, Ord: torch.tensor) -> torch.tensor:
     r"""Returns measurement image from a single measurement tensor or from a
     batch of measurement tensors.
 
-    This function is particulatly useful if the
-    number of measurements is less than the number of pixels in the image, i.e.
-    the image is undersampled.
+    This function is particularly useful when the number of measurements is less
+    than the number of pixels in the image, i.e., for undersampled acquisition.
 
     Args:
-        meas : `torch.tensor` with shape :math:`(*, M)` where
-        :math:`*` is any dimension (e.g. the batch size, channel, etc) and
-        :math:`M` is the length of the measurement vector.
+        :attr:`meas` (:obj:`torch.tensor`): Measurement vector with shape
+        :math:`(*, M)` where :math:`*` is any dimension (e.g. the batch size,
+        channel, etc) and :math:`M` is the length of the measurement vector.
 
-        Ord : `torch.tensor` with shape :math:`(N,N)`. Sampling order matrix, where
-        high values indicate high significance. This matrix determines the order
-        of the measurements. It must be the matrix used when generating the measurement vector.
+        :attr:`Ord` (:obj:`torch.tensor`): Sampling map with shape
+        :math:`(N,N)`, where high values indicate high significance. The
+        sampling map determines the order of the measurements. It must be the
+        same sampling as that used for generating the measurement vector.
 
     Returns:
-        Img : `torch.tensor` with shape :math:`(*, N,N)`. batch of N-by-N
+        :obj:`torch.tensor` with shape :math:`(*, N,N)`. batch of N-by-N
         measurement images.
     """
     out_shape = *meas.shape[:-1], Ord.numel()

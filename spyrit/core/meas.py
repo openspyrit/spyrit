@@ -1465,13 +1465,13 @@ class HadamSplit2d(LinearSplit):
 
         :attr:`reshape_output` (bool, optional): Whether reshape the output of adjoint and pinv methods to images. If False, output are vectors.
 
-        noise_model (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
         Defaults to `torch.nn.Identity()`.
 
-        dtype (:class:`torch.dtype`, optional): Data type of the measurement
+        :attr:`dtype` (:class:`torch.dtype`, optional): Data type of the measurement
         matrix. Defaults to `torch.float32`.
 
-        device (:obj:`torch.device`, optional): Device of the measurement matrix.
+        :attr:`device` (:obj:`torch.device`, optional): Device of the measurement matrix.
         Defaults to `torch.device("cpu")`.
 
     .. note:

@@ -91,17 +91,21 @@ class Poisson(nn.Module):
     r"""Simulate measurements corrupted by Poisson noise
 
     .. math::
-        y \sim \mathcal{P}\left(\alpha z\right), \quad \text{with }z\ge 0
+        y \sim g \mathcal{P}\left(\alpha z\right), \quad \text{with }z\ge 0
 
     where :math:`\mathcal{P}` is the Poisson distribution and :math:`\alpha` represents the intensity of the noiseless measurements :math:`z`.
 
-    The class is constructed from the intensity :math:`\alpha`.
+    The class is constructed from the gain :math:`g` and the intensity :math:`\alpha`.
 
     Args:
         :attr:`alpha` (:class:`float`): The intensity of the measurements. Defaults to 1.
 
+        :attr:`g` (:class:`float`): Gain :math:`g`. Defaults to 1.
+
     Attributes:
         :attr:`alpha` (:class:`float`): Intensity of the measurements.
+
+        :attr:`g` (:class:`float`): Gain :math:`g`.
 
     Example:
         >>> noise = Poisson(10.0)
@@ -111,9 +115,10 @@ class Poisson(nn.Module):
         tensor([...])
     """
 
-    def __init__(self, alpha: float = 1.0):
+    def __init__(self, alpha: float = 1.0, g: float = 1.0):
         super().__init__()
         self.alpha = alpha
+        self.g = g
 
     def forward(self, z: torch.tensor) -> torch.tensor:
         r"""Corrupt measurement by Poisson noise
@@ -148,7 +153,7 @@ class Poisson(nn.Module):
             >>> print(f"Noisy measurements in ({torch.min(y):.2f} , {torch.max(y):.2f})")
             Noisy measurements in (...)
         """
-        return torch.poisson(self.alpha * z)
+        return self.g * torch.poisson(self.alpha * z)
 
 
 # =============================================================================

@@ -45,7 +45,7 @@ print(f"Ground-truth images: {x.shape}")
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We consider a Hadamard matrix in "2D". The matrix has a shape of (64*64, 64*64)and values in {-1, 1}.
+# We consider a Hadamard matrix in "2D". The matrix has a shape of (64*64, 64*64) and values in {-1, 1}.
 from spyrit.core.torch import walsh_matrix_2d
 
 H = walsh_matrix_2d(64)
@@ -60,7 +60,7 @@ from spyrit.core.meas import Linear
 meas_op = Linear(H, (64, 64))
 
 ###############################################################################
-# We simulate the measurement vectors, which have a shape of (7, 1, 4096).
+# We simulate the measurement vectors, which has a shape of (7, 1, 4096).
 y = meas_op(x)
 
 print(f"Measurement vectors: {y.shape}")
@@ -83,7 +83,7 @@ imagesc(x_rec[1, 0])
 
 ###############################################################################
 # .. note::
-#   The measurement operator is chosen as a Hadamard matrix with positive but this matrix can be replaced by any other matrix.
+#   The measurement operator is chosen as a Hadamard matrix but any other matrix can be used as well.
 
 # %%
 # LinearSplit measurements with Gaussian noise
@@ -128,7 +128,7 @@ print(f"Reconstructed images: {x_rec.shape}")
 
 ###############################################################################
 # We plot the reconstruction
-from spyrit.misc.disp import imagesc, add_colorbar
+from spyrit.misc.disp import imagesc
 
 imagesc(x_rec[1, 0])
 

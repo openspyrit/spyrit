@@ -294,29 +294,30 @@ class PinvNet(_PrebuiltFullNet):
     directly from the :class:`PinvNet` constructor.
 
     Args:
-        acqu (spyrit.core.meas): Acquisition operator (see :mod:`~spyrit.core.meas`)
+        :attr:`acqu` (:mod:`spyrit.core.meas`): Acquisition operator
 
-        prep (spyrit.core.prep): Preprocessing operator (see :mod:`~spyrit.core.prep`)
+        :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator.
+        Defaults to no preprocesing (i.e., :class:`~spyrit.core.prep.Identity`).
 
-        denoi (torch.nn.Module, optional): Image denoising operator. Default
-        is :class:`~torch.nn.Identity`.
+        :attr:`denoi` (:obj:`torch.nn.Module`, optional): Image denoising
+        operator. Defaults to no denoising (i.e., to :class:`~torch.nn.Identity`).
 
         **pinv_kwargs: Optional keyword arguments passed to the pseudo inverse
-        operator (see :class:`~spyrit.core.inverse.PseudoInverse`).
+        operator (see :class:`spyrit.core.inverse.PseudoInverse`).
 
     Attributes:
-        :attr:`acqu` (spyrit.core.meas): Acquisition operator.
+        :attr:`acqu` (:mod:`spyrit.core.meas`): Acquisition operator.
 
-        :attr:`acqu_modules` (nn.Sequential): Measurement modules. Only contains
+        :attr:`acqu_modules` (:obj:`torch.nn.Sequential`): Measurement modules. Only contains
         the acquisition operator.
 
-        :attr:`prep` (spyrit.core.prep): Preprocessing operator.
+        :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator.
 
-        :attr:`inv` (spyrit.core.inverse.PseudoInverse): Pseudo inverse operator.
+        :attr:`pinv` (:class:`spyrit.core.inverse.PseudoInverse`): Pseudo inverse operator.
 
-        :attr:`denoi` (torch.nn.Module): Image denoising operator.
+        :attr:`denoi` (:obj:`torch.nn.Module`): Image denoising operator.
 
-        :attr:`recon_modules` (nn.Sequential): Reconstruction modules. Contains
+        :attr:`recon_modules` (:obj:`torch.nn.Sequential`): Reconstruction modules. Contains
         the preprocessing operator, the pseudo inverse operator, and the denoising
         operator.
 
@@ -331,24 +332,23 @@ class PinvNet(_PrebuiltFullNet):
         :attr:`output`: Reconstructed images with shape :math:`(b,c,h,w)`.
 
     Example:
-        >>> import spyrit
-        >>> acqu = spyrit.core.meas.HadamSplit2d(32)
-        >>> prep = spyrit.core.prep.Rescale(1.0)
-        >>> pinv = PinvNet(acqu, prep, device=torch.device("cpu"))
+        >>> import spyrit.core.meas as meas
+        >>> import spyrit.core.recon as recon
+        >>> acqu = meas.HadamSplit2d(32)
+        >>> pinv = recon.PinvNet(acqu)
 
     Example with a regularized pseudo inverse:
-        >>> import spyrit
-        >>> noise_model = spyrit.core.noise.Poisson(100)
-        >>> acqu = spyrit.core.meas.HadamSplit2d(32, noise_model=noise_model)
-        >>> prep = spyrit.core.prep.Rescale(100)
-        >>> pinv = PinvNet(acqu, prep, use_fast_pinv=False, store_H_pinv=True, regularization='H1', eta=1e-6, img_shape=(32, 32))
+        >>> import spyrit.core.meas as meas
+        >>> import spyrit.core.recon as recon
+        >>> acqu = meas.HadamSplit2d(32)
+        >>> pinv = recon.PinvNet(acqu, use_fast_pinv=False, store_H_pinv=True, regularization='H1', eta=1e-6, img_shape=(32, 32))
     """
 
     def __init__(
         self,
         acqu: meas.Linear,
-        prep,
-        denoi=nn.Identity(),
+        prep=prep.Identity(),  # I.e., defaults to no preprocesing.
+        denoi=nn.Identity(),  # I.e., defaults to no denosing.
         *,
         device: torch.device = torch.device("cpu"),
         **pinv_kwargs,
