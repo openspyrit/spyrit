@@ -2588,47 +2588,6 @@ class DynamicLinear(Linear):
             ) from e
         self.H_dyn_pinv = self._build_pinv(H_dyn, reg, eta)
 
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        r"""
-        Simulates the measurement of a motion picture :math:`y = H \cdot x(t)`.
-
-        The output :math:`y` is computed as :math:`y = Hx`, where :math:`H` is
-        the measurement matrix and :math:`x` is a batch of images.
-
-        Args:
-            :math:`x`: Batch of images of shape :math:`(*, t, c, h, w)`. `*`
-            denotes any dimension (e.g. the batch size), `t` the number of frames,
-            `c` the number of channels, and `h`, `w` the height and width of the
-            images.
-
-        Output:
-            :math:`y`: Linear measurements of the input images. It has shape
-            :math:`(*, c, M)` where * denotes any number of dimensions, `c` the
-            number of channels, and `M` the number of measurements.
-
-        .. warning::
-            There must be **exactly** as many images as there are measurements
-            in the linear operator used to initialize the class, i.e.
-            `t = M`.
-
-        Shape:
-            :math:`x`: :math:`(*, t, c, h, w)`, where * denotes the batch size,
-            `t` the number of frames, `c` the number of channels, and `h`, `w`
-            the height and width of the images.
-
-            :math:`output`: :math:`(*, c, M)`, where * denotes the batch size,
-            `c` the number of channels, and `M` the number of measurements.
-
-        Example:
-            # >>> x = torch.rand([10, 400, 3, 40, 40])
-            # >>> H = torch.rand([400, 1600])
-            # >>> meas_op = DynamicLinear(H)
-            # >>> y = meas_op(x)
-            # >>> print(y.shape)
-            # torch.Size([10, 3, 400])
-        """
-        return self._dynamic_forward_with_op(x, self.H_static)
-
     def forward_H_dyn(self, x: torch.tensor) -> torch.tensor:
         r"""Simulates the acquisition of measurements using the dynamic measurement matrix H_dyn.
 
