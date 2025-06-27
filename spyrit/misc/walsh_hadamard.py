@@ -1021,6 +1021,7 @@ def walsh2_S_matrix(n):
     Example:
         >>> from spyrit.misc.walsh_hadamard import walsh2_S_matrix
         >>> S = walsh2_S_matrix(4)
+        >>> print(S.shape)
         (15, 15)
     """
 
