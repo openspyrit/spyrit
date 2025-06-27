@@ -3,7 +3,6 @@ Inverse methods for inverse problems.
 """
 
 from typing import Union
-from typing import Union
 
 import torch
 import torch.nn as nn
@@ -14,17 +13,14 @@ import spyrit.core.torch as spytorch
 
 # =============================================================================
 class PseudoInverse(nn.Module):
-    r"""Moore-Penrose pseudoinverse.
+    r"""Pseudoinverse.
 
-    This allows to solve the linear problem :math:`Ax = B`, by either
-    computing the least-squares solution of the equation, or by
-    computing the pseudo-inverse matrix of :math:`A`. This behavior
-    is defined by the keyword parameter :attr:`store_H_pinv`.
+    Solves the linear problem :math:`Ax = B`, either by
+    calling a linear solver or by computing the pseudo-inverse matrix of 
+    :math:`A`. This behavior is defined by the attribute :attr:`store_H_pinv`.
 
-    This class can also handle regularization in the computation of
-    the least-squares solution or the matrix pseudo-inverse. The
-    available regularization methods are `rcond` (which truncates the
-    matrix's SVD below a certain threshold), `L2` and `H1`.
+    This class allows for regularization. Available regularizations
+    are `rcond` (truncation of the singular values), `L2` and `H1`.
 
     .. note::
         When :attr:`store_H_pinv` is `True`, additional parameters (such as
@@ -34,15 +30,15 @@ class PseudoInverse(nn.Module):
     .. note::
         When :attr:`store_pinv` is `False`, additional parameters (such as
         regularization parameters) can be passed as keyword arguments to the
-        forward method of this class.
+        forward method.
 
     Args:
-        :attr:`meas_op`: Measurement operator. See :mod:`spyrit.core.meas`.
+        :attr:`meas_op` (:mod:`spyrit.core.meas`): Measurement operator.
 
-        :attr:`regularization` (str): Regularization method. Can be 'rcond',
-        'L2', or 'H1'. Default: 'rcond'.
+        :attr:`regularization` (str): Regularization methods among 'rcond',
+        'L2', or 'H1'. Defaults to 'rcond'.
 
-    Keyword Args:
+    Attributes:
         :attr:`store_H_pinv` (bool): If False, the least squares solution
         is computed at each forward pass using the function :func:`torch.linalg.lstsq`.
         If True, computes and stores at initialization the pseudo-inverse
@@ -57,10 +53,14 @@ class PseudoInverse(nn.Module):
         :attr:`reshape_output` (bool): If True, reshapes the output to the shape
         of the image using :meth:`meas_op.unvectorize`. Default: True.
 
-        :attr:`reg_kwargs`: Additional keyword arguments that are passed to
-        :func:`spyrit.core.torch.regularized_pinv` when :attr:`store_pinv` is True
-        or to :func:`spyrit.core.torch.resularized_lstsq` when :attr:`store_pinv`
-        is False.
+        :attr:`reg_kwargs`: Additional keyword arguments that are passed to:
+            
+            - :func:`spyrit.core.torch.regularized_pinv` when :attr:`store_pinv`
+              is True.
+            
+            - :func:`spyrit.core.torch.resularized_lstsq` when :attr:`store_pinv`
+              is False. Here, 'driver' is set to 'gels' by default 
+              (see :func:`torch.linalg.lstsq`).
 
     Attributes:
         :attr:`meas_op`: Measurement operator initialized as :attr:`meas_op`.
@@ -73,11 +73,10 @@ class PseudoInverse(nn.Module):
 
         :attr:`reshape_output`: Indicates if the output is reshaped.
 
-        :attr:`reg_kwargs`: Additional keyword arguments passed to the
-        :func:`spyrit.core.torch.regularized_pinv` or :func:`torch.linalg.lstsq`
-        functions.
+        :attr:`reg_kwargs`: Additional keyword arguments passed to either
+        :func:`spyrit.core.torch.regularized_pinv` or :func:`torch.linalg.lstsq`.
 
-        :attr:`pinv`: The pseudo-inverse of the measurement matrix. It is computed
+        :attr:`pinv`: The pseudo-inverse of the measurement matrix. Computed
         only if :attr:`store_H_pinv` is True.
 
     Example 1:
@@ -135,6 +134,12 @@ class PseudoInverse(nn.Module):
         self.store_H_pinv = store_H_pinv
         self.use_fast_pinv = use_fast_pinv
         self.reshape_output = reshape_output
+        
+        # only for torch.linalg.lstsq
+        if not self.store_H_pinv:
+            defaultKwargs = {'driver': 'gels'}
+            reg_kwargs = defaultKwargs | reg_kwargs
+        
         self.reg_kwargs = reg_kwargs
 
         if self.store_H_pinv:
