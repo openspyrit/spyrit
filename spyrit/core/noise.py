@@ -99,12 +99,12 @@ class Poisson(nn.Module):
 
     Args:
         :attr:`alpha` (:class:`float`): The intensity of the measurements. Defaults to 1.
-        
+
         :attr:`g` (:class:`float`): Gain :math:`g`. Defaults to 1.
 
     Attributes:
         :attr:`alpha` (:class:`float`): Intensity of the measurements.
-        
+
         :attr:`g` (:class:`float`): Gain :math:`g`.
 
     Example:

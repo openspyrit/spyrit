@@ -16,7 +16,7 @@ class PseudoInverse(nn.Module):
     r"""Pseudoinverse.
 
     Solves the linear problem :math:`Ax = B`, either by
-    calling a linear solver or by computing the pseudo-inverse matrix of 
+    calling a linear solver or by computing the pseudo-inverse matrix of
     :math:`A`. This behavior is defined by the attribute :attr:`store_H_pinv`.
 
     This class allows for regularization. Available regularizations
@@ -54,12 +54,12 @@ class PseudoInverse(nn.Module):
         of the image using :meth:`meas_op.unvectorize`. Default: True.
 
         :attr:`reg_kwargs`: Additional keyword arguments that are passed to:
-            
+
             - :func:`spyrit.core.torch.regularized_pinv` when :attr:`store_pinv`
               is True.
-            
+
             - :func:`spyrit.core.torch.resularized_lstsq` when :attr:`store_pinv`
-              is False. Here, 'driver' is set to 'gels' by default 
+              is False. Here, 'driver' is set to 'gels' by default
               (see :func:`torch.linalg.lstsq`).
 
     Attributes:
@@ -134,12 +134,12 @@ class PseudoInverse(nn.Module):
         self.store_H_pinv = store_H_pinv
         self.use_fast_pinv = use_fast_pinv
         self.reshape_output = reshape_output
-        
+
         # only for torch.linalg.lstsq
         if not self.store_H_pinv:
-            defaultKwargs = {'driver': 'gels'}
+            defaultKwargs = {"driver": "gels"}
             reg_kwargs = defaultKwargs | reg_kwargs
-        
+
         self.reg_kwargs = reg_kwargs
 
         if self.store_H_pinv:

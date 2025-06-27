@@ -15,10 +15,10 @@ import torch.nn as nn
 import spyrit.core.inverse as inverse
 import spyrit.core.meas as meas
 
+
 # =============================================================================
 class Identity(nn.Module):
-    r"""No preprocessing
-    """
+    r"""No preprocessing"""
 
     def __init__(self):
         super().__init__()
@@ -51,7 +51,8 @@ class Identity(nn.Module):
         Returns:
             :class:`torch.tensor`: Variance of :math:`m`. Same as input.
         """
-        return v    
+        return v
+
 
 # =============================================================================
 class Unsplit(nn.Module):
