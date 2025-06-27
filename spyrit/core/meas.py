@@ -2531,6 +2531,19 @@ class DynamicLinear(Linear):
         return det
 
     def approx_inv_deform(self, def_field):
+        r"""Computes an approximation of the inverse deformation field.
+        
+        The approximation works for small (compared to a pixel) deformations
+        and is equivalent to using 1/(1+x) ~ 1-x for x close to 0.
+        
+        Args:
+            def_field (torch.tensor): Input deformation field, of shape
+            (t, h, w, 2)
+        
+        Returns:
+            torch.tensor: Approximate inverse of the input deformation
+            field =, has shape (t, h, w, 2)
+        """
         _, height, width, _ = def_field.field.shape
         dtype = def_field.field.dtype
 
