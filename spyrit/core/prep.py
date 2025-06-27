@@ -15,6 +15,43 @@ import torch.nn as nn
 import spyrit.core.inverse as inverse
 import spyrit.core.meas as meas
 
+# =============================================================================
+class Identity(nn.Module):
+    r"""No preprocessing
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, y: torch.tensor) -> torch.tensor:
+        r"""Preprocessed measurements
+
+        .. math::
+
+            m = y
+
+        Args:
+            :attr:`y` (:class:`torch.tensor`): Raw measurements :math:`y` with arbitrary shape.
+
+        Returns:
+            :class:`torch.tensor`: Preprocessed measurements :math:`m`. Same as :math:`y`.
+        """
+        return y
+
+    def sigma(self, v: torch.tensor) -> torch.tensor:
+        r"""Variance of the preprocessed measurements
+
+        .. math::
+
+            \text{var}(m) =\text{var}(y)
+
+        Args:
+            :attr:`v` (:class:`torch.tensor`): Variance of :math:`y` with arbitrary shape.
+
+        Returns:
+            :class:`torch.tensor`: Variance of :math:`m`. Same as input.
+        """
+        return v    
 
 # =============================================================================
 class Unsplit(nn.Module):
@@ -130,13 +167,13 @@ class Rescale(nn.Module):
         This rescale the input tensor from :math:`[0,\alpha]` to :math:`[0,1]`. When measurements are simulated using some gain factor (e.g., Poisson corrupted measurements), the gain is compensated for.
 
     Args:
-        :attr:`alpha` (float): Gain :math:`\alpha`.
+        :attr:`alpha` (float): Gain :math:`\alpha`. Defaults to 1.
 
     Attributes:
         :attr:`alpha`  (float): Gain :math:`\alpha`.
     """
 
-    def __init__(self, alpha):
+    def __init__(self, alpha=1.0):
         super().__init__()
         self.alpha = alpha
 
