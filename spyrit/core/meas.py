@@ -2491,6 +2491,17 @@ class DynamicLinear(Linear):
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
 
     def calc_det(self, def_field):
+        r"""Computes the determinant of the deformation field. It is used for the 'warping the patterns'
+        method.
+
+        Args:
+            :attr:`def_field` (:class:`torch.tensor`): a tensor of shape
+            (t, h, w, 2), where t, h, w can be any dimensions.
+
+        Returns:
+            :class:`torch.tensor`: The determinant for each frame of the
+            deformation field, it has shape (t, h, w).        
+        """
         # def_field of shape (n_frames, img_shape[0], img_shape[1], 2) in range [0, h-1] x [0, w-1]
         v1, v2 = def_field[:, :, :, 0], def_field[:, :, :, 1]
         n_frames = def_field.shape[0]
