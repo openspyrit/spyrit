@@ -2232,7 +2232,7 @@ class DynamicLinear(Linear):
             `M` is the number of measurements (also the number of frames) 
         """
         # vectorize with the time dimension being the second-to-last dimension
-        x = self.dynamic_vectorize(x)
+        x = self.vectorize(x)
         # here index m is the number of mesurements
         # it is also the number of frames ie. time dimension
         x = torch.einsum("mn,...mn->...m", self.H, x)
@@ -2606,7 +2606,7 @@ class DynamicLinear(Linear):
         x = spytorch.center_crop(x, self.meas_shape)
         return self._static_forward_with_op(x, self.H_dyn)
 
-    def dynamic_vectorize(self, input:torch.tensor) -> torch.tensor:
+    def vectorize(self, input:torch.tensor) -> torch.tensor:
         r"""Flattens across the measured dimensions, brings the flattened
         dimension to the and, and brings the time dimension to the second-to-last
         position."""
@@ -2618,6 +2618,23 @@ class DynamicLinear(Linear):
             input = torch.movedim(input, time_and_meas_dims, time_and_last_dims)
         # flatten the last measured dimensions
         input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
+        return input
+
+    def unvectorize(self, input:torch.tensor) -> torch.tensor:
+        r"""Unflattens an input tensor, does the inverse operation of
+        :meth:`vectorize`
+        
+        .. important::
+            To be completed
+        """
+        # unflatten the last dimension
+        input = input.reshape(*input.shape[: -1], *self.meas_shape)
+        # compare the dimensions
+        time_and_meas_dims = torch.Size(self.time_dim, self.meas_dims)
+        time_and_last_dims = torch.Size(list(range(-len(self.meas_shape)-1, 0)))
+        # move dimensions if necessary
+        if time_and_meas_dims != time_and_last_dims:
+            input = torch.movedim(input, time_and_last_dims, time_and_meas_dims)
         return input
 
     def _spline(self, dx, mode):
