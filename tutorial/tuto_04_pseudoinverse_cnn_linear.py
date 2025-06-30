@@ -1,7 +1,7 @@
 r"""
-04. Pseudoinverse solution + CNN denoising
+04.a Pseudoinverse + CNN
 ==========================================
-.. _tuto_pseudoinverse_cnn_linear:
+.. _tuto_04_pseudoinverse_cnn_linear:
 
 This tutorial shows how to simulate measurements and perform image reconstruction using the :class:`~spyrit.core.recon.PinvNet` class of the :mod:`spyrit.core.recon` submodule.
 
