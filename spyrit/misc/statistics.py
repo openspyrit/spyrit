@@ -228,8 +228,9 @@ def transform_gray_norm(img_size, normalize=True):
 
 
 def data_loaders_stl10(
-    data_root, img_size=64, batch_size=512, seed=7, shuffle=False, download=True
-):
+                        data_root, img_size=64, batch_size=512, seed=7, 
+                        shuffle=False, download=True,
+                        normalize=True):
     """
     Args:
         shuffle=True to shuffle train set only (test set not shuffled)
@@ -239,7 +240,7 @@ def data_loaders_stl10(
     converted into grayscale images.
 
     """
-    transform = transform_gray_norm(img_size)
+    transform = transform_gray_norm(img_size, normalize=normalize)
 
     trainset = torchvision.datasets.STL10(
         root=data_root, split="train+unlabeled", download=download, transform=transform
