@@ -2699,6 +2699,10 @@ class DynamicLinearSplit(DynamicLinear):
     :math:`M` the number of measurements. Therefore, the shape of :math:`P` is
     :math:`(2M, N)`.
 
+    .. note::
+        It is possible to reconstruct the image using either the unsplit matrix
+        or the splitted one. This cas be changed
+
     Args:
         :attr:`H` (torch.tensor): measurement matrix (linear operator) with
         shape :math:`(M, N)` where :math:`M` is the number of measurements and
@@ -2720,12 +2724,12 @@ class DynamicLinearSplit(DynamicLinear):
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
 
-:attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
-detector inhomogeneities. Must have the same shape as the measurement patterns.
+        :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
+        detector inhomogeneities. Must have the same shape as the measurement patterns.
 
-Attributes:
-    :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
-    of shape :math:`(M,N)` initialized as :math:`H`.
+    Attributes:
+        :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
+        of shape :math:`(M,N)` initialized as :math:`H`.
 
         :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of
         shape :math:`(2M, N)` such that `P[0::2, :] = H_{+}` and `P[1::2, :] = H_{-}`.
@@ -2806,6 +2810,7 @@ Attributes:
         # split positive and negative components
         pos, neg = nn.functional.relu(self.H), nn.functional.relu(-self.H)
         A = torch.cat([pos, neg], 1).reshape(2 * self.M, self.N)
+        
         # A is built from self.H which is cast to device and dtype
         self.A = nn.Parameter(A, requires_grad=False)
 
