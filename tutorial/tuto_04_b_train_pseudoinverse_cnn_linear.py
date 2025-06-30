@@ -174,7 +174,7 @@ data_root = Path("./data/")  # path to data folder (where the dataset is stored)
 batch_size = 750
 
 # Dataloader for STL-10 dataset
-mode_run = True
+mode_run = False
 if mode_run:
     dataloaders = data_loaders_stl10(
         data_root,
@@ -275,7 +275,7 @@ else:
 #       reconstructed images at different iterations :attr:`tb_freq`.
 
 # %%
-# Save the network and training history
+# Save CNN and training history
 # -----------------------------------------------------------------------------
 
 ###############################################################################
@@ -304,6 +304,9 @@ if checkpoint_interval:
     Path(model_root/(title+".pth")).mkdir(parents=True, exist_ok=True)
 
 save_net(model_root/(title+".pth"), pinv_net)
+
+# !!!!! Check !!!!!!!!
+save_net(model_root/(title+"_light.pth"), pinv_net.denoi)
 
 # Save training history
 import pickle
