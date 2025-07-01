@@ -1,7 +1,7 @@
 r"""
-04. Pseudoinverse solution + CNN denoising
+04.a Pseudoinverse + CNN
 ==========================================
-.. _tuto_pseudoinverse_cnn_linear:
+.. _tuto_04_pseudoinverse_cnn_linear:
 
 This tutorial shows how to simulate measurements and perform image reconstruction using the :class:`~spyrit.core.recon.PinvNet` class of the :mod:`spyrit.core.recon` submodule.
 
@@ -130,9 +130,10 @@ x_rec = pinv_net.reconstruct(y)
 imagesc(x_rec[1, 0, :, :], "Pseudo Inverse")
 
 ###############################################################################
-# Alternatively, the pseudo-inverse of the acquition matrix is computed and stored. This
-# option becomes efficient when a large number of reconstructions are performed
-# (e.g., during training). To do so, we used set 'store_H_pinv' to 'True'.
+# Alternatively, the pseudo-inverse of the acquition matrix is computed and
+# stored. This option becomes efficient when a large number of reconstructions
+# are performed (e.g., during training). To do so, we used set 'store_H_pinv'
+# to 'True'.
 
 pinv_net_2 = PinvNet(meas_op, store_H_pinv=True)
 x_rec_2 = pinv_net.reconstruct(y)
@@ -153,8 +154,6 @@ print(f"Shape: {pinv_net_2.pinv.pinv.shape}")
 ###############################################################################
 # Reconstruction artefacts can be removed by post processing the pseudo inverse
 # solution using a denoising neural network.
-
-###############################################################################
 # In the following, we select a
 # small CNN using the :class:`spyrit.core.nnet.ConvNet` class, but it can be
 # replaced by any other neural network (e.g., a UNet
@@ -166,26 +165,19 @@ print(f"Shape: {pinv_net_2.pinv.pinv.shape}")
 from spyrit.misc.load_data import download_girder
 
 url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
-dataID = "67221889f03a54733161e963"  # unique ID of the file
-local_folder = "./model/"
-data_name = "tuto3_pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07_light.pth"
+dataID = "68639a2af39e1d2884b09abf"  # unique ID of the file
+model_folder = "./model/"
 
-model_cnn_path = download_girder(url, dataID, local_folder, data_name)
+model_cnn_path = download_girder(url, dataID, model_folder)
 
 ###############################################################################
-# The CNN was trained with spyrit 2.4 assuming images with values in the
-# range (-1,1), while our images have values in the range (0,1). This can be
-# compensated for using :class:`spyrit.core.prep.Rerange`.
+# The CNN should be placed in an ordered dictionary and passed to a
+# :class:`nn.Sequential`.
 
-from spyrit.core.prep import Rerange
 from typing import OrderedDict
 from spyrit.core.nnet import ConvNet
 
-rerange = Rerange((0, 1), (-1, 1))
-denoiser = OrderedDict(
-    {"rerange": rerange, "denoi": ConvNet(), "rerange_inv": rerange.inverse()}
-)
-denoiser = torch.nn.Sequential(denoiser)
+denoiser = torch.nn.Sequential(OrderedDict({"denoi": ConvNet()}))
 
 ###############################################################################
 # We load the denoiser and send it to GPU, if available.
@@ -194,6 +186,7 @@ from spyrit.core.train import load_net
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 load_net(model_cnn_path, denoiser, device, False)
+
 
 ###############################################################################
 # We create a PinvNet with a postprocessing denoising step
@@ -236,9 +229,44 @@ plt.show()
 
 ###############################################################################
 # We show the best result again (tutorial thumbnail purpose)
+# sphinx_gallery_thumbnail_number = 7
 
-# Plot
 imagesc(x_rec_cnn.cpu()[1, 0, :, :], "Pinv + CNN", title_fontsize=20)
 
 ###############################################################################
-# In the next tutorial, we will show how to train PinvNet + CNN denoiser.
+# .. note::
+#
+#   In the :ref:`next tutorial <tuto_4b_train_pseudoinverse_cnn_linear>`, we will
+#   show how to train PinvNet + CNN denoiser.
+
+# %%
+# Compatibility between spyrit 2 and spyrit 3
+# -----------------------------------------------------------------------------
+
+#########################################################################
+# SPyRiT 2.4 trains neural networks for images with values in the
+# range (-1,1), while SPyRiT 3 assumes images with values in the range (0,1).
+# This can be compensated for using :class:`spyrit.core.prep.Rerange`.
+
+from spyrit.core.prep import Rerange
+
+rerange = Rerange((0, 1), (-1, 1))
+denoiser = OrderedDict(
+    {"rerange": rerange, "denoi": ConvNet(), "rerange_inv": rerange.inverse()}
+)
+denoiser = torch.nn.Sequential(denoiser)
+
+
+###############################################################################
+# We load a spyrit 2.4 denoiser and show the reconstruction
+
+dataID = "67221889f03a54733161e963"  # unique ID of the file
+model_cnn_path = download_girder(url, dataID, model_folder)
+load_net(model_cnn_path, denoiser, device, False)
+
+pinv_net = PinvNet(meas_op, denoi=denoiser, device=device)
+
+with torch.no_grad():
+    x_rec_cnn = pinv_net.reconstruct(y)
+
+imagesc(x_rec_cnn.cpu()[1, 0, :, :], "Pinv + CNN (v2.4)", title_fontsize=20)
