@@ -1,5 +1,5 @@
 r"""
-04.b Training of (pseudoinverse + CNN) 
+04.b Training of (pseudoinverse + CNN)
 ================================================
 .. _tuto_4b_train_pseudoinverse_cnn_linear:
 
@@ -60,7 +60,7 @@ meas_op = Linear(H, (64, 64), device=device)
 #####################################################################
 # .. note::
 #
-#   The linear measurement operator is chosen as the positive part of a 
+#   The linear measurement operator is chosen as the positive part of a
 #   subsampled Hadamard matrix, but any other matrix can be used.
 
 
@@ -89,7 +89,7 @@ denoiser = torch.nn.Sequential(OrderedDict({"denoi": ConvNet()}))
 
 
 ###############################################################################
-# We instantiate a :class:`spyrit.core.recon.PinvNet` with the CNN as an 
+# We instantiate a :class:`spyrit.core.recon.PinvNet` with the CNN as an
 # image-domain post processing
 
 from spyrit.core.recon import PinvNet
@@ -100,9 +100,9 @@ pinv_net = PinvNet(meas_op, denoi=denoiser, device=device, store_H_pinv=True)
 #####################################################################
 # .. important::
 #
-#   We use :attr:`store_H_pinv=True` to compute and store the pseudo inverse 
-#   matrix. This will be *much* faster that using a solver (default option) when a 
-#   large number of pseudoinverse solutions will have to be computed during training.    
+#   We use :attr:`store_H_pinv=True` to compute and store the pseudo inverse
+#   matrix. This will be *much* faster that using a solver (default option) when a
+#   large number of pseudoinverse solutions will have to be computed during training.
 
 # %%
 # Dataloader for training
@@ -110,7 +110,7 @@ pinv_net = PinvNet(meas_op, denoi=denoiser, device=device, store_H_pinv=True)
 # We now consider the STL10 dataset and use the
 # the :attr:`normalize=False` argument to keep images with values in (0,1).
 #
-# Set :attr:`mode_run=True` in the the script below to download the STL10 
+# Set :attr:`mode_run=True` in the the script below to download the STL10
 # dataset and train the CNN. Otherwise, the CNN paramameters will be downloaded.
 
 #import torch.nn
@@ -147,7 +147,7 @@ if mode_run:
 
 ###############################################################################
 # We define a loss function (mean squared error), an optimizer (Adam)
-# and a scheduler. The scheduler decreases the learning rate by a factor of 
+# and a scheduler. The scheduler decreases the learning rate by a factor of
 # :attr:`gamma` every :attr:`step_size` epochs.
 
 from spyrit.core.train import Weight_Decay_Loss
@@ -160,8 +160,7 @@ gamma = 0.5
 loss = torch.nn.MSELoss()
 criterion = Weight_Decay_Loss(loss)
 optimizer = torch.optim.Adam(pinv_net.parameters(), lr=lr)
-scheduler = torch.optim.lr_scheduler.StepLR(
-                                optimizer, step_size=step_size, gamma=gamma)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 
 # %%
 # Training
@@ -171,7 +170,7 @@ scheduler = torch.optim.lr_scheduler.StepLR(
 # We use the :func:`spyrit.core.train.train_model` function,
 # which iterates through the dataloader, feeds the STL10 images to the full
 # network and optimizes the parameters of the CNN. In addition, it computes
-# the loss and desired metrics on the training and validation sets at each 
+# the loss and desired metrics on the training and validation sets at each
 # iteration. The training process can be monitored using Tensorboard.
 
 
@@ -186,7 +185,9 @@ from datetime import datetime
 model_root = Path("./model")  # path to model saving files
 num_epochs = 20  # number of training epochs (num_epochs = 30)
 checkpoint_interval = 0  # interval between saving model checkpoints
-tb_freq = 50  # interval between logging to Tensorboard (iterations through the dataloader)
+tb_freq = (
+    50  # interval between logging to Tensorboard (iterations through the dataloader)
+)
 
 # Path for Tensorboard experiment tracking logs
 name_run = "stl10_hadam_positive"
