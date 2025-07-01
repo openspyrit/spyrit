@@ -26,7 +26,7 @@ and intermediate results (reconstructed images at different epochs).
 # low-frequency components (see :ref:`Tutorial 4 <tuto_04_pseudoinverse_cnn_linear>` for details).
 
 ############################################################################
-# Positive component of a Hadamard matrix in "2D". 
+# Positive component of a Hadamard matrix in "2D".
 import torch
 from spyrit.core.torch import walsh_matrix_2d
 
@@ -113,14 +113,14 @@ pinv_net = PinvNet(meas_op, denoi=denoiser, device=device, store_H_pinv=True)
 # Set :attr:`mode_run=True` in the the script below to download the STL10
 # dataset and train the CNN. Otherwise, the CNN paramameters will be downloaded.
 
-#import torch.nn
+# import torch.nn
 from spyrit.misc.statistics import data_loaders_stl10
 from pathlib import Path
 
 # Parameters
 h = 64  # image size hxh
 data_root = Path("./data/")  # path to data folder (where the dataset is stored)
-batch_size = 700 
+batch_size = 700
 
 # Dataloader for STL-10 dataset
 mode_run = False
@@ -131,8 +131,8 @@ if mode_run:
         batch_size=batch_size,
         seed=7,
         shuffle=True,
-        download=True, 
-        normalize=False
+        download=True,
+        normalize=False,
     )
 
 ###############################################################################
@@ -234,7 +234,7 @@ else:
 
 from spyrit.core.train import save_net
 
-title = 'tuto_4b'
+title = "tuto_4b"
 
 Path(model_root).mkdir(parents=True, exist_ok=True)
 model_path = model_root / (title + ".pth")
@@ -252,7 +252,7 @@ import pickle
 
 if mode_run:
     from spyrit.core.train import Train_par
-    
+
     reg = 1e-7  # Default value
     params = Train_par(batch_size, lr, h, reg=reg)
     params.set_loss(train_info)
@@ -273,27 +273,27 @@ else:
 
     with open(train_path, "rb") as param_file:
         params = pickle.load(param_file)
-        
+
     train_info["train"] = params.train_loss
     train_info["val"] = params.val_loss
 
 
-#%%
+# %%
 # Validation and training losses
 # -----------------------------------------------------------------------------
 
 ###############################################################################
 # We plot the training loss and validation loss
 
-import matplotlib.pyplot as  plt
+import matplotlib.pyplot as plt
 import numpy as np
 
-epoch = np.arange(1, num_epochs+1)
+epoch = np.arange(1, num_epochs + 1)
 
 fig = plt.figure()
-plt.semilogy(epoch, train_info["train"],    label="train")
-plt.semilogy(epoch, train_info["val"],      label="val")
-plt.xticks([5,10,15,20])
+plt.semilogy(epoch, train_info["train"], label="train")
+plt.semilogy(epoch, train_info["val"], label="val")
+plt.xticks([5, 10, 15, 20])
 plt.xlabel("Epochs", fontsize=20)
 plt.ylabel("Loss", fontsize=20)
 plt.legend(fontsize=20)
