@@ -7,51 +7,14 @@ This tutorial trains a post processing CNN used for by a
 :class:`spyrit.core.recon.PinvNet` (see the
 :ref:`previous tutorial <tuto_04_pseudoinverse_cnn_linear>`).
 
-Here, we consider a small CNN; however, it be replaced by any other network 
-(e.g., a Unet). Training is performed on the STL-10 dataset, but any other 
-database can be considered.
+The linear measurement operator is chosen as the positive part of a Hadamard matrix, but this matrix can be replaced by any desired matrix.
+
+For post-processing, we consider a small CNN; however, it be replaced by any other network (e.g., a Unet). Training is performed on the STL-10 dataset, but any other database can be considered.
 
 You can use Tensorboard for Pytorch for experiment tracking and
 for visualizing the training process: losses, network weights,
 and intermediate results (reconstructed images at different epochs).
-
-The linear measurement operator is chosen as the positive part of a Hadamard matrix, but this matrix can be replaced by any desired matrix.
-
 """
-
-
-# %%
-# Load a batch of images
-# -----------------------------------------------------------------------------
-
-###############################################################################
-# As in the :ref:`previous tutorial <tuto_04_pseudoinverse_cnn_linear>`, we 
-# load a batch of images from the :attr:`/images/` folder. Using the
-# :func:`spyrit.misc.statistics.transform_gray_norm` function with the
-# :attr:`normalize=False` argument returns images with values in (0,1).
-import os
-import torchvision
-import torch.nn
-from spyrit.misc.statistics import transform_gray_norm
-
-spyritPath = os.getcwd()
-imgs_path = os.path.join(spyritPath, "images/")
-
-# Grayscale images of size 64 x 64, no normalization to keep values in (0,1)
-transform = transform_gray_norm(img_size=64, normalize=False)
-
-# Create dataset and loader (expects class folder 'images/test/')
-dataset = torchvision.datasets.ImageFolder(root=imgs_path, transform=transform)
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=7)
-
-x, _ = next(iter(dataloader))
-print(f"Ground-truth images: {x.shape}")
-
-###############################################################################
-# We plot the second image in the batch
-from spyrit.misc.disp import imagesc
-
-imagesc(x[1, 0, :, :], "x[1, 0, :, :]")
 
 # %%
 # Measurement operator
@@ -64,6 +27,7 @@ imagesc(x[1, 0, :, :], "x[1, 0, :, :]")
 
 ############################################################################
 # Positive component of a Hadamard matrix in "2D". 
+import torch
 from spyrit.core.torch import walsh_matrix_2d
 
 H = walsh_matrix_2d(64)
@@ -92,11 +56,6 @@ from spyrit.core.meas import Linear
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 meas_op = Linear(H, (64, 64), device=device)
-
-###############################################################################
-# Measurement vectors
-x = x.to(device)
-y = meas_op(x)
 
 #####################################################################
 # .. note::
@@ -145,15 +104,6 @@ pinv_net = PinvNet(meas_op, denoi=denoiser, device=device, store_H_pinv=True)
 #   matrix. This will be *much* faster that using a solver (default option) when a 
 #   large number of pseudoinverse solutions will have to be computed during training.    
 
-    
-###############################################################################
-# We plot the output of the reconstruction layers (pseudo inverse solution 
-# followed by a CNN with random initialization)
-
-x_rec = pinv_net.reconstruct(y)
-imagesc(x_rec[1, 0, :, :].detach().cpu(), "Pinv + CNN (random init)")
-
-
 # %%
 # Dataloader for training
 # -----------------------------------------------------------------------------
@@ -163,15 +113,14 @@ imagesc(x_rec[1, 0, :, :].detach().cpu(), "Pinv + CNN (random init)")
 # Set :attr:`mode_run=True` in the the script below to download the STL10 
 # dataset and train the CNN. Otherwise, the CNN paramameters will be downloaded.
 
-import os
-import torch.nn
+#import torch.nn
 from spyrit.misc.statistics import data_loaders_stl10
 from pathlib import Path
 
 # Parameters
 h = 64  # image size hxh
 data_root = Path("./data/")  # path to data folder (where the dataset is stored)
-batch_size = 750
+batch_size = 700 
 
 # Dataloader for STL-10 dataset
 mode_run = False
@@ -182,7 +131,7 @@ if mode_run:
         batch_size=batch_size,
         seed=7,
         shuffle=True,
-        download=False, # !!!!!!!!!!! Set to True when all is good
+        download=True, 
         normalize=False
     )
 
@@ -275,7 +224,7 @@ else:
 #       reconstructed images at different iterations :attr:`tb_freq`.
 
 # %%
-# Save CNN and training history
+# Training history
 # -----------------------------------------------------------------------------
 
 ###############################################################################
@@ -284,43 +233,30 @@ else:
 
 from spyrit.core.train import save_net
 
-# Training parameters
-# train_type = "nonoise"
-# arch = "pinv-net"
-# denoi = "cnn"
-# data = "stl10"
-reg = 1e-7  # Default value
-# suffix = "N_{}_M_{}_epo_{}_lr_{}_sss_{}_sdr_{}_bs_{}".format(
-#     meas_op.meas_shape[0], meas_op.M, 
-#     num_epochs, lr, step_size, gamma, batch_size
-# )
-# title = model_root / f"{arch}_{denoi}_{data}_{train_type}_{suffix}"
 title = 'tuto_4b'
-print(title)
 
 Path(model_root).mkdir(parents=True, exist_ok=True)
+model_path = model_root / (title + ".pth")
+train_path = model_root / (title + ".pkl")
 
 if checkpoint_interval:
-    Path(model_root/(title+".pth")).mkdir(parents=True, exist_ok=True)
+    Path(model_path).mkdir(parents=True, exist_ok=True)
 
-save_net(model_root/(title+".pth"), pinv_net)
-
-# !!!!! Check !!!!!!!!
-save_net(model_root/(title+"_light.pth"), pinv_net.denoi)
+save_net(model_path, pinv_net.denoi)
+# save_net(model_root/(title+"_cnn.pth"), pinv_net.denoi.denoi)
 
 # Save training history
 import pickle
 
+
 if mode_run:
     from spyrit.core.train import Train_par
-
+    
+    reg = 1e-7  # Default value
     params = Train_par(batch_size, lr, h, reg=reg)
     params.set_loss(train_info)
 
-    train_path = (
-        #model_root / f"TRAIN_{arch}_{denoi}_{data}_{train_type}_{suffix}.pkl"
-        model_root / (title + ".pkl")
-    )
+    train_path = model_root / (title + ".pkl")
 
     with open(train_path, "wb") as param_file:
         pickle.dump(params, param_file)
@@ -330,36 +266,34 @@ else:
     from spyrit.misc.load_data import download_girder
 
     url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
-    dataID = "667ebfe4baa5a90007058964"  # unique ID of the file
-    data_name = "tuto4_TRAIN_pinv-net_cnn_stl10_N0_1_N_64_M_1024_epo_30_lr_0.001_sss_10_sdr_0.5_bs_512_reg_1e-07.pkl"
-    train_path = os.path.join(model_root, data_name)
-    # download girder file
-    download_girder(url, dataID, model_root, data_name)
+    dataID = "68639a2af39e1d2884b09abc"  # unique ID of the file
+
+    download_girder(url, dataID, model_root)
 
     with open(train_path, "rb") as param_file:
         params = pickle.load(param_file)
+        
     train_info["train"] = params.train_loss
     train_info["val"] = params.val_loss
+
+
+#%%
+# Validation and training losses
+# -----------------------------------------------------------------------------
 
 ###############################################################################
 # We plot the training loss and validation loss
 
-# Plot
-# sphinx_gallery_thumbnail_number = 2
+import matplotlib.pyplot as  plt
+import numpy as np
 
-import matplotlib.pyplot as plt
+epoch = np.arange(1, num_epochs+1)
 
 fig = plt.figure()
-plt.plot(train_info["train"], label="train")
-plt.plot(train_info["val"], label="val")
+plt.semilogy(epoch, train_info["train"],    label="train")
+plt.semilogy(epoch, train_info["val"],      label="val")
+plt.xticks([5,10,15,20])
 plt.xlabel("Epochs", fontsize=20)
 plt.ylabel("Loss", fontsize=20)
 plt.legend(fontsize=20)
 plt.show()
-
-
-x_rec = pinv_net.reconstruct(y)
-
-with torch.no_grad():
-    x_rec = pinv_net.reconstruct(y)
-    imagesc(x_rec[1, 0, :, :].cpu(), "Pseudo Inverse + CNN")
