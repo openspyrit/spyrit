@@ -229,7 +229,7 @@ plt.show()
 
 ###############################################################################
 # We show the best result again (tutorial thumbnail purpose)
-# sphinx_gallery_thumbnail_number = 6
+# sphinx_gallery_thumbnail_number = 7
 
 imagesc(x_rec_cnn.cpu()[1, 0, :, :], "Pinv + CNN", title_fontsize=20)
 
@@ -257,7 +257,7 @@ denoiser = torch.nn.Sequential(denoiser)
 
 
 ###############################################################################
-# We load a spyrit 2.4 denoiser ans show the reconstruction
+# We load a spyrit 2.4 denoiser and show the reconstruction
 
 dataID = "67221889f03a54733161e963"  # unique ID of the file
 model_cnn_path = download_girder(url, dataID, model_folder)
