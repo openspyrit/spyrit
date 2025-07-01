@@ -130,9 +130,9 @@ x_rec = pinv_net.reconstruct(y)
 imagesc(x_rec[1, 0, :, :], "Pseudo Inverse")
 
 ###############################################################################
-# Alternatively, the pseudo-inverse of the acquition matrix is computed and 
+# Alternatively, the pseudo-inverse of the acquition matrix is computed and
 # stored. This option becomes efficient when a large number of reconstructions
-# are performed (e.g., during training). To do so, we used set 'store_H_pinv' 
+# are performed (e.g., during training). To do so, we used set 'store_H_pinv'
 # to 'True'.
 
 pinv_net_2 = PinvNet(meas_op, store_H_pinv=True)
@@ -236,7 +236,7 @@ imagesc(x_rec_cnn.cpu()[1, 0, :, :], "Pinv + CNN", title_fontsize=20)
 ###############################################################################
 # .. note::
 #
-#   In the :ref:`next tutorial <tuto_4b_train_pseudoinverse_cnn_linear>`, we will 
+#   In the :ref:`next tutorial <tuto_4b_train_pseudoinverse_cnn_linear>`, we will
 #   show how to train PinvNet + CNN denoiser.
 
 # %%
@@ -245,10 +245,11 @@ imagesc(x_rec_cnn.cpu()[1, 0, :, :], "Pinv + CNN", title_fontsize=20)
 
 #########################################################################
 # SPyRiT 2.4 trains neural networks for images with values in the
-# range (-1,1), while SPyRiT 3 assumes images with values in the range (0,1). 
+# range (-1,1), while SPyRiT 3 assumes images with values in the range (0,1).
 # This can be compensated for using :class:`spyrit.core.prep.Rerange`.
 
 from spyrit.core.prep import Rerange
+
 rerange = Rerange((0, 1), (-1, 1))
 denoiser = OrderedDict(
     {"rerange": rerange, "denoi": ConvNet(), "rerange_inv": rerange.inverse()}
@@ -267,5 +268,5 @@ pinv_net = PinvNet(meas_op, denoi=denoiser, device=device)
 
 with torch.no_grad():
     x_rec_cnn = pinv_net.reconstruct(y)
-    
+
 imagesc(x_rec_cnn.cpu()[1, 0, :, :], "Pinv + CNN (v2.4)", title_fontsize=20)
