@@ -2825,10 +2825,6 @@ class DynamicLinearSplit(DynamicLinear):
         # define the available matrices for reconstruction
         self._available_pinv_matrices = ["H_dyn", "A_dyn"]
         self._selected_pinv_matrix = "H_dyn"  # select default here
-
-    @property
-    def dtype(self) -> torch.dtype:
-        return _split_dtype(self)
     
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""
