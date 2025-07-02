@@ -2818,100 +2818,143 @@ class DynamicLinearSplit(DynamicLinear):
         self._available_pinv_matrices = ["H_dyn", "A_dyn"]
         self._selected_pinv_matrix = "H_dyn"  # select default here
     
-    def forward(self, x: torch.tensor) -> torch.tensor:
-        r"""
-        Simulates the measurement of a motion picture :math:`y = P \cdot x(t)`.
+    def measure(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulate noiseless dynamic measurements from matrix A.
+        
+        Args:
+            x (torch.tensor): input tensor. Has shape defined by measurement
+            shapes given at initialization.
+        
+        Returns:
+            torch.tensor: measured tensor.
+        """
+        # vectorize with the time dimension being the second-to-last dimension
+        x = self.vectorize(x)
+        # here index m is the number of mesurements
+        # it is also the number of frames ie. time dimension
+        x = torch.einsum("mn,...mn->...m", self.A, x)
+        return x
 
-        The output :math:`y` is computed as :math:`y = Px`, where :math:`P` is
-        the measurement matrix and :math:`x` is a batch of images.
-
-        The matrix :math:`P` contains only positive values and is obtained by
-        splitting a measurement matrix :math:`H` such that
-        :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
-        `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
-        :math:`H_{-} = \max(0,-H)`.
-
-        If you want to measure with the original matrix :math:`H`, use the
-        method :meth:`forward_H`.
+    def measure_H(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulate noiseless measurements from matrix H
 
         Args:
-            :attr:`x`: Batch of images of shape :math:`(*, t, c, h, w)` where *
-            denotes any dimension (e.g. the batch size), :math:`t` the number of
-            frames, :math:`c` the number of channels, and :math:`h`, :math:`w`
-            the height and width of the images.
-
-        Output:
-            :math:`y`: Linear measurements of the input images. It has shape
-            :math:`(*, c, 2M)` where * denotes any number of dimensions, :math:`c`
-            the number of channels, and :math:`M` the number of measurements.
-
-        .. important::
-            There must be as many images as there are measurements in the split
-            linear operator, i.e. :math:`t = 2M`.
-
-        Shape:
-            :math:`x`: :math:`(*, t, c, h, w)`
-
-            :math:`P` has a shape of :math:`(2M, N)` where :math:`M` is the
-            number of measurements as defined by the first dimension of :math:`H`
-            and :math:`N` is the number of pixels in the image.
-
-            :math:`output`: :math:`(*, c, 2M)` or :math:`(*, c, t)`
-
-        Example:
-            >>> x = torch.rand([10, 800, 3, 40, 40])
-            >>> H = torch.rand([400, 1600])
-            >>> meas_op = DynamicLinearSplit(H)
-            >>> y = meas_op(x)
-            >>> print(y.shape)
-            torch.Size([10, 3, 800])
+            x (torch.tensor): input tensor. Has shape defined by measurement
+            shapes given at initialization.
+        
+        Returns:
+            torch.tensor: measured tensor.
         """
-        return self._dynamic_forward_with_op(x, self.P)
+        return super().measure(x)
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        # r"""
+        # Simulates the measurement of a motion picture :math:`y = P \cdot x(t)`.
+
+        # The output :math:`y` is computed as :math:`y = Px`, where :math:`P` is
+        # the measurement matrix and :math:`x` is a batch of images.
+
+        # The matrix :math:`P` contains only positive values and is obtained by
+        # splitting a measurement matrix :math:`H` such that
+        # :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
+        # `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
+        # :math:`H_{-} = \max(0,-H)`.
+
+        # If you want to measure with the original matrix :math:`H`, use the
+        # method :meth:`forward_H`.
+
+        # Args:
+        #     :attr:`x`: Batch of images of shape :math:`(*, t, c, h, w)` where *
+        #     denotes any dimension (e.g. the batch size), :math:`t` the number of
+        #     frames, :math:`c` the number of channels, and :math:`h`, :math:`w`
+        #     the height and width of the images.
+
+        # Output:
+        #     :math:`y`: Linear measurements of the input images. It has shape
+        #     :math:`(*, c, 2M)` where * denotes any number of dimensions, :math:`c`
+        #     the number of channels, and :math:`M` the number of measurements.
+
+        # .. important::
+        #     There must be as many images as there are measurements in the split
+        #     linear operator, i.e. :math:`t = 2M`.
+
+        # .. important::
+        #     This docstring is NOT up to date    
+        
+        # Shape:
+        #     :math:`x`: :math:`(*, t, c, h, w)`
+
+        #     :math:`P` has a shape of :math:`(2M, N)` where :math:`M` is the
+        #     number of measurements as defined by the first dimension of :math:`H`
+        #     and :math:`N` is the number of pixels in the image.
+
+        #     :math:`output`: :math:`(*, c, 2M)` or :math:`(*, c, t)`
+
+        # Example:
+        #     >>> x = torch.rand([10, 800, 3, 40, 40])
+        #     >>> H = torch.rand([400, 1600])
+        #     >>> meas_op = DynamicLinearSplit(H)
+        #     >>> y = meas_op(x)
+        #     >>> print(y.shape)
+        #     torch.Size([10, 3, 800])
+        # """
+
+        # -------------
+
+        #TDOO : review and update docstring
+        # it is ok to use super().forward, because measure method has been redefined
+        return super().forward(x)
 
     def forward_H(self, x: torch.tensor) -> torch.tensor:
-        r"""
-        Simulates the measurement of a motion picture :math:`y = H \cdot x(t)`.
+        # r"""
+        # Simulates the measurement of a motion picture :math:`y = H \cdot x(t)`.
 
-        The output :math:`y` is computed as :math:`y = Hx`, where :math:`H` is
-        the measurement matrix and :math:`x` is a batch of images.
+        # The output :math:`y` is computed as :math:`y = Hx`, where :math:`H` is
+        # the measurement matrix and :math:`x` is a batch of images.
 
-        The matrix :math:`H` can contain positive and negative values and is
-        given by the user at initialization. If you want to measure with the
-        splitted matrix :math:`P`, use the method :meth:`forward`.
+        # The matrix :math:`H` can contain positive and negative values and is
+        # given by the user at initialization. If you want to measure with the
+        # splitted matrix :math:`P`, use the method :meth:`forward`.
 
-        Args:
-            :attr:`x`: Batch of images of shape :math:`(*, t, c, h, w)` where *
-            denotes any dimension (e.g. the batch size), :math:`t` the number of
-            frames, :math:`c` the number of channels, and :math:`h`, :math:`w`
-            the height and width of the images.
+        # Args:
+        #     :attr:`x`: Batch of images of shape :math:`(*, t, c, h, w)` where *
+        #     denotes any dimension (e.g. the batch size), :math:`t` the number of
+        #     frames, :math:`c` the number of channels, and :math:`h`, :math:`w`
+        #     the height and width of the images.
 
-        Output:
-            :math:`y`: Linear measurements of the input images. It has shape
-            :math:`(*, c, M)` where * denotes any number of dimensions, :math:`c`
-            the number of channels, and :math:`M` the number of measurements.
+        # Output:
+        #     :math:`y`: Linear measurements of the input images. It has shape
+        #     :math:`(*, c, M)` where * denotes any number of dimensions, :math:`c`
+        #     the number of channels, and :math:`M` the number of measurements.
 
-        .. important::
-            There must be as many images as there are measurements in the original
-            linear operator, i.e. :math:`t = M`.
+        # .. important::
+        #     There must be as many images as there are measurements in the original
+        #     linear operator, i.e. :math:`t = M`.
 
-        Shape:
-            :math:`x`: :math:`(*, t, c, h, w)`
+        # Shape:
+        #     :math:`x`: :math:`(*, t, c, h, w)`
 
-            :math:`H` has a shape of :math:`(M, N)` where :math:`M` is the
-            number of measurements and :math:`N` is the number of pixels in the
-            image.
+        #     :math:`H` has a shape of :math:`(M, N)` where :math:`M` is the
+        #     number of measurements and :math:`N` is the number of pixels in the
+        #     image.
 
-            :math:`output`: :math:`(*, c, M)`
+        #     :math:`output`: :math:`(*, c, M)`
 
-        Example:
-            >>> x = torch.rand([10, 400, 3, 40, 40])
-            >>> H = torch.rand([400, 1600])
-            >>> meas_op = LinearDynamicSplit(H)
-            >>> y = meas_op.forward_H(x)
-            >>> print(y.shape)
-            torch.Size([10, 3, 400])
-        """
-        return super().forward(x)
+        # Example:
+        #     >>> x = torch.rand([10, 400, 3, 40, 40])
+        #     >>> H = torch.rand([400, 1600])
+        #     >>> meas_op = LinearDynamicSplit(H)
+        #     >>> y = meas_op.forward_H(x)
+        #     >>> print(y.shape)
+        #     torch.Size([10, 3, 400])
+        # """
+
+        # -------------
+
+        #TDOO : review and update docstring
+        x = self.measure_H(x)
+        x = self.noise_model(x)
+        return x
 
 
     # # =============================================================================
