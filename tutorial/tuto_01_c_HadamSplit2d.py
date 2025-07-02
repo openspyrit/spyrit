@@ -189,7 +189,7 @@ Ord_variance = Cov2Var(Cov)
 
 ######################################################################
 # .. note::
-#   In this tutorial, the covariance matrix is used to define the subsampling strategy. As explained in another tutorial, the covariance matrix can also be used to reconstruct the image from the measurements.
+#   In this tutorial, the covariance matrix is used to define the subsampling strategy. As explained in :ref:`Tutorial 5 <tuto_dcnet_split_measurements>` , the covariance matrix can also be used as a prior for image reconstruction.
 
 # %%
 # Comparison of the two subsampling strategies
