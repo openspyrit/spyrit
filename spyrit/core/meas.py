@@ -3072,12 +3072,13 @@ class DynamicLinearSplit(DynamicLinear):
 # =============================================================================
 # Split Functions (written here to avoid duplicates in static & dynamic)
 # =============================================================================
-def _split_device(self: Union[LinearSplit, DynamicLinearSplit]) -> torch.device:
+def _get_device(self: Union[LinearSplit, DynamicLinearSplit]) -> torch.device:
     """Returns the device the object is stored on.
      
     If 2 different devices are found for H and A, it returns an error.
     """
-    if self.H.device == self.A.device:
+    # get A attribute, if it does not exist get H
+    if self.H.device == getattr(self, 'A', self.H).device:
         return self.H.device
     else:
         raise RuntimeError(
@@ -3085,12 +3086,12 @@ def _split_device(self: Union[LinearSplit, DynamicLinearSplit]) -> torch.device:
         )
 
 
-def _split_dtype(self: Union[LinearSplit, DynamicLinearSplit]) -> torch.dtype:
+def _get_dtype(self: Union[LinearSplit, DynamicLinearSplit]) -> torch.dtype:
     """Returns the dtype the matrices are stored with.
      
     If 2 different dtypes are found for H and A, it returns an error.
     """
-    if self.H.dtype == self.A.dtype:
+    if self.H.dtype == getattr(self, 'A', self.H).dtype:
         return self.H.dtype
     else:
         raise RuntimeError(
