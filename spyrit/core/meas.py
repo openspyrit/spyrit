@@ -895,9 +895,7 @@ class LinearSplit(Linear):
             >>> print(meas_op.meas_dims)
             torch.Size([-2, -1])
         """
-        x = self.vectorize(x)
-        x = torch.einsum("mn,...n->...m", self.H, x)
-        return x
+        return super().measure(x)
 
     def adjoint(self, y: torch.tensor, unvectorize=False):
         r"""Apply adjoint of matrix A.
@@ -1042,9 +1040,7 @@ class LinearSplit(Linear):
             >>> print(meas_op.meas_dims)
             torch.Size([-2, -1])
         """
-        x = self.measure(x)
-        x = self.noise_model(x)
-        return x
+        return super().forward(x)
 
     def forward_H(self, x: torch.tensor):
         r"""Simulate noisy measurements from matrix H.
@@ -2252,11 +2248,7 @@ class DynamicLinear(Linear):
         .. important::
             Docstring to be completed. 
         """
-        # same code as static / super method can be used
-        # but explicit code is more clear
-        x = self.measure(x)
-        x = self.noise_model(x)
-        return x
+        return super().forward(x)
 
     def build_H_dyn(
         self,
