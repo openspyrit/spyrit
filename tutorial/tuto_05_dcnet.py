@@ -3,7 +3,7 @@ r"""
 05. Denoised Completion Network (DC-Net)
 =========================================
 .. _tuto_dcnet_split_measurements:
-    
+
 This tutorial shows how to perform image reconstruction using a denoised
 completion network (DC-Net) [1]_ with a trainable image denoiser.
 
@@ -11,9 +11,9 @@ completion network (DC-Net) [1]_ with a trainable image denoiser.
    :width: 600
    :align: center
    :alt: Reconstruction and neural network denoising architecture sketch using split measurements
-   
+
 |
-   
+
 .. [1] A Lorente Mur, P Leclerc, F Peyrin, and N Ducros, "Single-pixel image reconstruction from experimental data using neural networks," *Opt. Express*, Vol. 29, Issue 11, 17097-17110 (2021). `DOI <https://doi.org/10.1364/OE.424228>`_.
 """
 
@@ -61,10 +61,11 @@ imagesc(x[1, 0, :, :], "x[1, 0, :, :]")
 #
 # where :math:`\alpha` is a scalar value that represents the maximum image intensity (in photons), :math:`A \colon\, \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains the DMD patterns, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`2M` is the number of DMD patterns, and :math:`N` is the dimension of the signal.
 #
-# The larger :math:`\alpha`, the higher the signal-to-noise ratio of the measurements. 
+# The larger :math:`\alpha`, the higher the signal-to-noise ratio of the measurements.
 
 ###############################################################################
 # The acquisition matrix :math:`A` is chosen as a split Hadamard matrix. It is subsampled by a factor of four by retaining the rows that give, statistically, the coefficients with the largest variance. This is achieved by the :class:`~spyrit.core.meas.HadamSplit` class (see :ref:`Tutorial 1.c <tuto_acquisition_operators_HadamSplit2d>` for details). 
+
 
 ###############################################################################
 # First, we download a covariance matrix (for subsampling).
@@ -85,7 +86,7 @@ from spyrit.core.meas import HadamSplit2d
 from spyrit.core.noise import Poisson
 
 M = 64 * 64 // 4
-alpha = 100.0     # image intensity
+alpha = 100.0  # image intensity
 
 Variance = Cov2Var(Cov)
 noise_model = Poisson(alpha)
@@ -100,7 +101,7 @@ y = meas_op(x)
 # =========================================
 
 ######################################################################
-# We compute the pseudo inverse solution using :class:`spyrit.core.recon.PinvNet`,  
+# We compute the pseudo inverse solution using :class:`spyrit.core.recon.PinvNet`,
 # which can include a preprocessing step
 #
 # .. math::
@@ -108,7 +109,7 @@ y = meas_op(x)
 
 ###############################################################################
 # We consider the :class:`spyrit.core.prep.UnsplitRescale` class that intends
-# to "undo": 
+# to "undo":
 #
 # * The splitting of an acquisition matrix (see :class:`spyrit.core.meas.LinearSplit`)
 # * The scaling that controls the SNR of Poisson-corrupted measurements (see :class:`spyrit.core.noise.Poisson`).
@@ -135,9 +136,9 @@ y = y.to(device)
 # Reconstruction
 with torch.no_grad():
     x_pinv = pinvnet.reconstruct(y)
-    
+
 ###############################################################################
-# We display the second image in the batch  
+# We display the second image in the batch
 imagesc(x_pinv[1, 0, :, :].cpu(), "pinv")
 
 ######################################################################
@@ -178,7 +179,7 @@ imagesc(x_pinv[1, 0, :, :].cpu(), "pinv")
 # In practice, it is more convenient to use the :class:`spyrit.core.recon.DCNet` class, which relies on a forward operator, a preprocessing operator, and a covariance prior.
 from spyrit.core.recon import DCNet
 
-dcnet = DCNet(meas_op, prep_op, Cov/4, device=device)
+dcnet = DCNet(meas_op, prep_op, Cov / 4, device=device)
 
 ######################################################################
 # .. note::
@@ -191,7 +192,7 @@ with torch.no_grad():
     x_dc = dcnet.reconstruct(y)
 
 ###############################################################################
-# We display the second image in the batch     
+# We display the second image in the batch
 imagesc(x_dc[1, 0, :, :].cpu(), "denoised completion")
 
 ######################################################################
@@ -214,7 +215,7 @@ model_cnn_path = download_girder(url, dataID, model_folder)
 
 ###############################################################################
 # The UNet should be placed in an ordered dictionary and passed to a
-# :class:`nn.Sequential`. 
+# :class:`nn.Sequential`.
 # SPyRiT 2.4 trains neural networks for images with values in the
 # range (-1, 1), while SPyRiT 3 assumes images with values in the range (0, 1).
 # This can be compensated for using :class:`spyrit.core.prep.Rerange`.
@@ -241,7 +242,7 @@ with torch.no_grad():
     x_dcnet = dcnet.reconstruct(y)
 
 ###############################################################################
-# We display the second image in the batch  
+# We display the second image in the batch
 # sphinx_gallery_thumbnail_number = 4
 im = imagesc(x_dcnet[1, 0, :, :].cpu(), "denoised completion")
 
