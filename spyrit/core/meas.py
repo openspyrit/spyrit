@@ -31,6 +31,7 @@ from spyrit.core.warp import DeformationField
 import spyrit.core.torch as spytorch
 
 
+# This class exists so that DynamicLinear does NOT inherit from adjoint method
 # =============================================================================
 class _Base(nn.Module):
     def __init__(
