@@ -87,11 +87,11 @@ class _Base(nn.Module):
 
     @property
     def device(self) -> torch.device:
-        return self.H.device
+        return _get_device(self)
 
     @property
     def dtype(self) -> torch.dtype:
-        return self.H.dtype
+        return _get_dtype(self)
 
     @property
     def matrix_to_inverse(self) -> str:
@@ -797,14 +797,6 @@ class LinearSplit(Linear):
         self._selected_pinv_matrix = "H"  # select default here
 
         # HERE: device=device, dtype=dtype
-
-    @property
-    def device(self) -> torch.device:
-        return _split_device(self)
-
-    @property
-    def dtype(self) -> torch.dtype:
-        return _split_dtype(self)
 
     def measure(self, x: torch.tensor):
         r"""Simulate noiseless measurements from matrix A.
