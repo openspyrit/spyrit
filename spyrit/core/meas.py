@@ -2827,10 +2827,6 @@ class DynamicLinearSplit(DynamicLinear):
         self._selected_pinv_matrix = "H_dyn"  # select default here
 
     @property
-    def device(self) -> torch.device:
-        return _split_device(self)
-
-    @property
     def dtype(self) -> torch.dtype:
         return _split_dtype(self)
     
