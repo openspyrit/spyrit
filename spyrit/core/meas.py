@@ -33,61 +33,6 @@ import spyrit.core.torch as spytorch
 
 # =============================================================================
 class _Base(nn.Module):
-    r"""
-    Simulates linear measurements
-
-    .. math::
-        m =\mathcal{N}\left(Hx\right),
-
-    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
-
-    .. important::
-        The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`).
-
-    Args:
-        :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
-        with shape :math:`(M, N)`. Only real values are supported.
-
-        :attr:`meas_shape` (tuple, optional): Shape of the underliying
-        multi-dimensional array :math:`X`. Must be a tuple of integers
-        :math:`(N_1, ... ,N_k)` such that :math:`\prod_k N_k = N`. If not, an
-        error is raised. Defaults to None.
-
-        :attr:`meas_dims` (tuple, optional): Dimensions of :math:`X` the
-        acquisition matrix applies to. Must be a tuple with the same length as
-        :attr:`meas_shape`. If not, an error is raised. Defaults to the last
-        dimensions of the multi-dimensional array :math:`X` (e.g., `(-2,-1)`
-        when `len(meas_shape)`).
-
-        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. Defaults to = `torch.nn.Identity`.
-
-    Attributes:
-        :attr:`H` (:class:`torch.tensor`): (Learnable) measurement matrix of shape
-        :math:`(M, N)` initialized as :math:`H`.
-
-        :attr:`meas_shape` (tuple): Shape of the underliying
-        multi-dimensional array :math:`X`.
-
-        :attr:`meas_dims` (tuple): Dimensions the acquisition matrix applies to.
-
-        :attr:`meas_ndim` (int): Number of dimensions the
-        acquisition matrix applies to. This is `len(meas_dims)`
-
-        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
-
-        :attr:`M` (int): Number of measurements :math:`M`.
-
-    Example: (to be updated!)
-        Example 1:
-
-        >>> H = torch.rand([400, 1600])
-        >>> meas_op = Linear(H)
-        >>> print(meas_op)
-        Linear(
-          (noise_model): Identity()
-        )
-    """
-
     def __init__(
         self,
         H: torch.tensor,
@@ -318,6 +263,60 @@ class _Base(nn.Module):
 
 # =============================================================================
 class Linear(_Base):
+    r"""
+    Simulates linear measurements
+
+    .. math::
+        m =\mathcal{N}\left(Hx\right),
+
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
+
+    .. important::
+        The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`).
+
+    Args:
+        :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
+        with shape :math:`(M, N)`. Only real values are supported.
+
+        :attr:`meas_shape` (tuple, optional): Shape of the underliying
+        multi-dimensional array :math:`X`. Must be a tuple of integers
+        :math:`(N_1, ... ,N_k)` such that :math:`\prod_k N_k = N`. If not, an
+        error is raised. Defaults to None.
+
+        :attr:`meas_dims` (tuple, optional): Dimensions of :math:`X` the
+        acquisition matrix applies to. Must be a tuple with the same length as
+        :attr:`meas_shape`. If not, an error is raised. Defaults to the last
+        dimensions of the multi-dimensional array :math:`X` (e.g., `(-2,-1)`
+        when `len(meas_shape)`).
+
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. Defaults to = `torch.nn.Identity`.
+
+    Attributes:
+        :attr:`H` (:class:`torch.tensor`): (Learnable) measurement matrix of shape
+        :math:`(M, N)` initialized as :math:`H`.
+
+        :attr:`meas_shape` (tuple): Shape of the underliying
+        multi-dimensional array :math:`X`.
+
+        :attr:`meas_dims` (tuple): Dimensions the acquisition matrix applies to.
+
+        :attr:`meas_ndim` (int): Number of dimensions the
+        acquisition matrix applies to. This is `len(meas_dims)`
+
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
+
+        :attr:`M` (int): Number of measurements :math:`M`.
+
+    Example: (to be updated!)
+        Example 1:
+
+        >>> H = torch.rand([400, 1600])
+        >>> meas_op = Linear(H)
+        >>> print(meas_op)
+        Linear(
+          (noise_model): Identity()
+        )
+    """
     def __init__(
         self,
         H: torch.tensor,
