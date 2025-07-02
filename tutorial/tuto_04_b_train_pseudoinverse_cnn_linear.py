@@ -1,13 +1,18 @@
 r"""
-04.b Training of (pseudoinverse + CNN)
+04.b. Pseudoinverse + CNN (training)
 ================================================
 .. _tuto_4b_train_pseudoinverse_cnn_linear:
 
-This tutorial trains a post processing CNN used for by a
+This tutorial trains a post processing CNN used by a
 :class:`spyrit.core.recon.PinvNet` (see the
 :ref:`previous tutorial <tuto_04_pseudoinverse_cnn_linear>`).
 
-The linear measurement operator is chosen as the positive part of a Hadamard matrix, but this matrix can be replaced by any desired matrix.
+.. image:: ../fig/tuto4_pinvnet.png
+   :width: 600
+   :align: center
+   :alt: Reconstruction architecture sketch
+
+|
 
 For post-processing, we consider a small CNN; however, it be replaced by any other network (e.g., a Unet). Training is performed on the STL-10 dataset, but any other database can be considered.
 

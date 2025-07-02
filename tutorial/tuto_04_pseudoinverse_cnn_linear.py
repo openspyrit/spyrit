@@ -1,9 +1,9 @@
 r"""
-04.a Pseudoinverse + CNN
+04.a. Pseudoinverse + CNN (reconstruction)
 ==========================================
 .. _tuto_04_pseudoinverse_cnn_linear:
 
-This tutorial shows how to simulate measurements and perform image reconstruction using the :class:`~spyrit.core.recon.PinvNet` class of the :mod:`spyrit.core.recon` submodule.
+This tutorial shows how to simulate measurements and perform image reconstruction using the :class:`spyrit.core.recon.PinvNet` class of the :mod:`spyrit.core.recon` submodule.
 
 .. image:: ../fig/tuto4_pinvnet.png
    :width: 600
