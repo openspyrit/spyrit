@@ -64,7 +64,7 @@ imagesc(x[1, 0, :, :], "x[1, 0, :, :]")
 # The larger :math:`\alpha`, the higher the signal-to-noise ratio of the measurements. 
 
 ###############################################################################
-# The acquisition matrix :math:`A` is chosen as a split Hadamard matrix. It is subsampled by a factor of four by retaining the rows that give, statistically, the coefficients with the largest variance. This is achieved by the :class:`~spyrit.core.meas.HadamSplit` class (see :ref:`Tutorial 5 <tuto_acquisition_operators_HadamSplit2d>` for details). 
+# The acquisition matrix :math:`A` is chosen as a split Hadamard matrix. It is subsampled by a factor of four by retaining the rows that give, statistically, the coefficients with the largest variance. This is achieved by the :class:`~spyrit.core.meas.HadamSplit` class (see :ref:`Tutorial 1.c <tuto_acquisition_operators_HadamSplit2d>` for details). 
 
 ###############################################################################
 # First, we download a covariance matrix (for subsampling).
