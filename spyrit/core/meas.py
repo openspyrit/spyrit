@@ -317,6 +317,86 @@ class _Base(nn.Module):
 
 
 # =============================================================================
+class Linear(_Base):
+    def __init__(
+        self,
+        H: torch.tensor,
+        meas_shape: Union[int, torch.Size, Iterable[int]] = None,
+        meas_dims: Union[int, torch.Size, Iterable[int]] = None,
+        *,
+        noise_model: nn.Module = nn.Identity(),
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu"),
+    ):
+        super().__init__(H, meas_shape, meas_dims, noise_model=noise_model, dtype=dtype, device=device)
+
+    
+    def adjoint(self, m: torch.tensor, unvectorize=False):
+        r"""Apply adjoint of matrix H.
+
+        It computes
+
+        .. math::
+            x = H^Tm,
+
+        where :math:`H^T\in\mathbb{R}^{N\times M}` is the adjoint of the
+        acquisition matrix, :math:`m \in \mathbb{R}^M` is a measurement.
+
+        Args:
+            :attr:`m` (:class:`torch.tensor`): A batch of measurement
+            :math:`m` of shape :math:`(*, M)` where :math:`*`  denotes all the
+            dimensions that are not included in :attr:`self.meas_dims`
+
+
+            :attr:`unvectorize` (:obj:`bool`, optional): Whether to unvectorize
+            the measurement dimensions. This calls
+            :meth:`~spyrit.core.meas.unvectorize()` after mutiplication by the
+            adjoint. Defaults to False.
+
+        Returns:
+            :class:`torch.tensor`: A batch of signals :math:`x`.
+            If :attr:`unvectorize` is :obj:`False`, :math:`x` has shape
+            :math:`(*, N)` where :math:`*` is the same as for :attr:`m`. If
+            :attr:`unvectorize` is :obj:`True`, :math:`x` is reshaped such that
+            the dimensions :attr:`self.meas_dims` match the measurement shape
+            :attr:`self.meas_shape`.
+
+
+        Example:
+            Example 2: (3, 4) measurements of length 10 produces (3, 4) signals
+            of length 10.
+
+            >>> H = torch.randn(10, 15)
+            >>> meas_op = Linear(H)
+            >>> m = torch.randn(3, 4, 10)
+            >>> x = meas_op.adjoint(m)
+            >>> print(x.shape)
+            torch.Size([3, 4, 15])
+
+
+            Example 2: 3 measurements of length 10 produces 3 signals of length
+            60
+            >>> import spyrit.core.meas as meas
+            >>> H = torch.randn(10, 60)
+            >>> meas_op = meas.Linear(H, meas_shape=(15, 4))
+            >>> m = torch.randn(3, 10)
+            >>> x = meas_op.adjoint(m)
+            >>> print(x.shape)
+            torch.Size([3, 60])
+
+            Using unvectorize=True produces 3 signals of length (15, 4)
+
+            >>> x = meas_op.adjoint(m, unvectorize=True)
+            >>> print(x.shape)
+            torch.Size([3, 15, 4])
+        """
+        m = torch.einsum("mn,...m->...n", self.H, m)
+        if unvectorize:
+            m = self.unvectorize(m)
+        return m
+
+
+# =============================================================================
 class FreeformLinear(Linear):
     r"""Simulate linear measurements in a region of interest
 
