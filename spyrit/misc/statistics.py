@@ -446,11 +446,11 @@ def stat_walsh_ImageNet(
         :attr:`data_root` needs to have all images in a subfolder
 
     Example:
-        # >>> from pathlib import Path
-        # >>> from spyrit.misc.statistics import stat_walsh_ImageNet
-        # >>> data_root =  Path('../data/ILSVRC2012_v10102019')
-        # >>> stat_root =  Path('../stat/ILSVRC2012_v10102019')
-        # >>> stat_walsh_ImageNet(stat_root = stat_root, data_root = data_root, img_size = 32, batch_size = 1024)
+        >>> from pathlib import Path
+        >>> from spyrit.misc.statistics import stat_walsh_ImageNet
+        >>> data_root =  Path('../data/ILSVRC2012_v10102019')
+        >>> stat_root =  Path('../stat/ILSVRC2012_v10102019')
+        >>> stat_walsh_ImageNet(stat_root = stat_root, data_root = data_root, img_size = 32, batch_size = 1024) # doctest: +SKIP
 
     """
 
@@ -479,10 +479,10 @@ def stat_walsh_stl10(
         test*.bin, train*.bin and unlabeled_X.bin files.
 
     Example:
-        # >>> data_root =  Path('../datasets/')
-        # >>> stat_root =  Path('../stat/stl10')
-        # >>> from spyrit.misc.statistics import stat_walsh_stl10
-        # >>> stat_walsh_stl10(stat_root = stat_root, data_root = data_root)
+        >>> data_root =  Path('../datasets/')
+        >>> stat_root =  Path('../stat/stl10')
+        >>> from spyrit.misc.statistics import stat_walsh_stl10
+        >>> stat_walsh_stl10(stat_root = stat_root, data_root = data_root) # doctest: +SKIP
 
     """
     dataloaders = data_loaders_stl10(
@@ -705,8 +705,8 @@ def stat_fwalsh_S_stl10(
         torch.tensor: S-transformed signal with shape `(*, n, n)`
 
     Examples:
-        # >>> import spyrit.misc.statistics as st
-        # >>> st.stat_fwalsh_S_stl10()
+        >>> import spyrit.misc.statistics as st
+        >>> st.stat_fwalsh_S_stl10() # doctest: +SKIP
 
     """
 
@@ -772,11 +772,10 @@ def stat_imagenet(
 
 
     Example:
-        data_root =  Path('../data/ILSVRC2012_img_test_v10102019/')
-        stat_root =  Path('../stat/ILSVRC2012_img_test_v10102019')
-
-        from spyrit.misc.statistics import stat_imagenet
-        stat_imagenet(stat_root = stat_root, data_root = data_root)
+        >>> data_root =  Path('../data/ILSVRC2012_img_test_v10102019/')
+        >>> stat_root =  Path('../stat/ILSVRC2012_img_test_v10102019')
+        >>> from spyrit.misc.statistics import stat_imagenet
+        >>> stat_imagenet(stat_root = stat_root, data_root = data_root) # doctest: +SKIP
 
     """
     dataloaders = data_loaders_imagenet(

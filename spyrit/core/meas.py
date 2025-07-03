@@ -2374,16 +2374,10 @@ class DynamicLinear(Linear):
 
     Example:
         # >>> H_static = torch.rand([400, 1600])
-        # >>> meas_op = DynamicLinear(H_static)
+        # >>> meas_op = DynamicLinear(H_static, 10)
         # >>> print(meas_op)
         # DynamicLinear(
-        #   (M): 400
-        #   (N): 1600
-        #   (H.shape): torch.Size([400, 1600])
-        #   (meas_shape): (40, 40)
-        #   (H_dyn): False
-        #   (img_shape): (40, 40)
-        #   (H_pinv): False
+        #   (noise_model): Identity()
         # )
 
     Reference:
@@ -2779,7 +2773,7 @@ class DynamicLinear(Linear):
         Example:
             # >>> x = torch.rand([10, 400, 3, 40, 40])
             # >>> H = torch.rand([400, 1600])
-            # >>> meas_op = DynamicLinear(H)
+            # >>> meas_op = DynamicLinear(H, 10)
             # >>> y = meas_op(x)
             # >>> print(y.shape)
             # torch.Size([10, 3, 400])
