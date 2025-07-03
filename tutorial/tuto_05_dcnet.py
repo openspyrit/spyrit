@@ -98,7 +98,7 @@ y = meas_op(x)
 
 # %%
 # Pseudo inverse solution with preprocessing
-# =========================================
+# ==========================================
 
 ######################################################################
 # We compute the pseudo inverse solution using :class:`spyrit.core.recon.PinvNet`,
@@ -281,7 +281,7 @@ noaxis(axs[1, 1])
 add_colorbar(im4, "bottom")
 
 ######################################################################:
-# While the pseudo inverse reconstrcution is pixelized, the solution obtained by denoised completion is smoother. DCNet with UNet provides the best reconstruction.
+# While the pseudo inverse reconstruction is pixelized, the solution obtained by denoised completion is smoother. DCNet with UNet provides the best reconstruction.
 
 ######################################################################
 # .. note::

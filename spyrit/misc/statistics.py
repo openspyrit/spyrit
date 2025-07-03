@@ -27,7 +27,7 @@ def data_loaders_imagenet(
     shuffle=False,
     get_size: str = "original",
 ):
-    """
+    r"""
     Args:
         Both 'train_root' and 'val_root' need to have images in a subfolder
 
@@ -45,6 +45,7 @@ def data_loaders_imagenet(
 
         :attr:`get_size`: specifies how images of size :attr:`img_size` are
         obtained
+
             - 'original': random crop with padding
             - 'resize': resize
             - 'ccrop': center crop

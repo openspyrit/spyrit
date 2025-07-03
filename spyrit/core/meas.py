@@ -5,7 +5,7 @@ There are six classes contained in this module, each representing a different
 type of measurement operator. Three of them are static, i.e. they are used to
 simulate measurements of still images, and three are dynamic, i.e. they are used
 to simulate measurements of moving objects, represented as a sequence of images.
- The inheritance tree is as follows::
+The inheritance tree is as follows::
 
       Linear          DynamicLinear
         |                   |
@@ -290,6 +290,7 @@ class Linear(nn.Module):
 
             Example 2: 3 measurements of length 10 produces 3 signals of length
             60
+
             >>> import spyrit.core.meas as meas
             >>> H = torch.randn(10, 60)
             >>> meas_op = meas.Linear(H, meas_shape=(15, 4))
@@ -317,7 +318,7 @@ class Linear(nn.Module):
         their original positions as defined by :attr:`self.meas_dims`.
 
         Input:
-            input (:class:`torch.tensor`): A tensor of shape (:attr:`*, self.N`) where * denotes any batch size.
+            :class:`input` (:class:`torch.tensor`): A tensor of shape (:attr:`*, self.N`) where * denotes any batch size.
 
         Output:
             :class:`torch.tensor`: A tensor whose dimensions given by :attr:`self.meas_dims` have shape :attr:`self.meas_shape`.
@@ -494,12 +495,12 @@ class FreeformLinear(Linear):
         dimension of the output tensor.
 
         Args:
-            x (:class:`torch.tensor`): The input tensor to select the mask from. The
+            :attr:`x` (:class:`torch.tensor`): The input tensor to select the mask from. The
             dimensions indexed by `self.meas_dims` should match the measurement shape
             `self.meas_shape`.
 
         Returns:
-            :class:`torch.tensor`: A tensor of shape (*, self.N) where * denotes
+            :class:`torch.tensor`: A tensor of shape (\*, self.N) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
@@ -537,14 +538,15 @@ class FreeformLinear(Linear):
             This method does not include the noise model.
 
         Args:
-            x (:class:`torch.tensor`): A tensor where the dimensions indexed by
+            :attr:`x` (:class:`torch.tensor`): A tensor where the dimensions indexed by
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
+            :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
+
             >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
             >>> H = torch.randn(13, 20)
@@ -566,11 +568,11 @@ class FreeformLinear(Linear):
             This method does not include the noise model.
 
         Args:
-            x (:class:`torch.tensor`): A tensor where the dimensions indexed by
+            :attr:`x` (:class:`torch.tensor`): A tensor where the dimensions indexed by
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
+            :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
@@ -603,10 +605,10 @@ class FreeformLinear(Linear):
             The output tensor is not a view of the input tensor.
 
         Args:
-            x (:class:`torch.tensor`): tensor to be expanded. Its last dimension must
+            :attr:`x` (:class:`torch.tensor`): tensor to be expanded. Its last dimension must
             contain `self.N` elements.
 
-            fill_value (Any, optional): Fill value for all the indices not
+            :attr:`fill_value` (Any, optional): Fill value for all the indices not
             covered by the mask. Defaults to 0.
 
         Returns:
@@ -822,7 +824,7 @@ class LinearSplit(Linear):
             shape :attr:`self.meas_shape`.
 
         Returns:
-            :class:`torch.tensor`: Measurement vector :math:`y` of length :attr:`2*self.M`.
+            :class:`torch.tensor`: Measurement vector :math:`y` of length :attr:`2\*self.M`.
 
         Examples:
 
@@ -1197,12 +1199,12 @@ class FreeformLinearSplit(LinearSplit):
         dimension of the output tensor.
 
         Args:
-            x (:class:`torch.tensor`): The input tensor to select the mask from. The
+            :attr:`x` (:class:`torch.tensor`): The input tensor to select the mask from. The
             dimensions indexed by `self.meas_dims` should match the measurement shape
             `self.meas_shape`.
 
         Returns:
-            :class:`torch.tensor`: A tensor of shape (*, self.N) where * denotes
+            :class:`torch.tensor`: A tensor of shape (\*, self.N) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
@@ -1242,11 +1244,11 @@ class FreeformLinearSplit(LinearSplit):
             This method does not include the noise model.
 
         Args:
-            x (:class:`torch.tensor`): A tensor where the dimensions indexed by
+            :attr:`x` (:class:`torch.tensor`): A tensor where the dimensions indexed by
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
+            :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
@@ -1273,11 +1275,11 @@ class FreeformLinearSplit(LinearSplit):
             This method does not include the noise model.
 
         Args:
-            x (:class:`torch.tensor`): A tensor where the dimensions indexed by
+            :attr:`x` (:class:`torch.tensor`): A tensor where the dimensions indexed by
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
+            :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
@@ -1304,11 +1306,11 @@ class FreeformLinearSplit(LinearSplit):
             This method does not include the noise model.
 
         Args:
-            x (:class:`torch.tensor`): A tensor where the dimensions indexed by
+            :attr:`x` (:class:`torch.tensor`): A tensor where the dimensions indexed by
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
+            :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
@@ -1336,11 +1338,11 @@ class FreeformLinearSplit(LinearSplit):
             This method does not include the noise model.
 
         Args:
-            x (:class:`torch.tensor`): A tensor where the dimensions indexed by
+            :attr:`x` (:class:`torch.tensor`): A tensor where the dimensions indexed by
             `self.meas_dims` match the measurement shape `self.meas_shape`.
 
         Returns:
-            :class:`torch.tensor`: A tensor of shape (*, self.M) where * denotes
+            :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
         Example: Select one every second point on the diagonal of a batch of images
@@ -1373,10 +1375,10 @@ class FreeformLinearSplit(LinearSplit):
             The output tensor is not a view of the input tensor.
 
         Args:
-            x (:class:`torch.tensor`): tensor to be expanded. Its last dimension must
+            :attr:`x` (:class:`torch.tensor`): tensor to be expanded. Its last dimension must
             contain `self.N` elements.
 
-            fill_value (Any, optional): Fill value for all the indices not
+            :attr:`fill_value` (Any, optional): Fill value for all the indices not
             covered by the mask. Defaults to 0.
 
         Returns:
@@ -1604,13 +1606,13 @@ class HadamSplit2d(LinearSplit):
             See :func:`~spyrit.core.torch.reindex()` for more details.
 
         Args:
-            values (:class:`torch.tensor`): The tensor to sort. Can be 1D, 2D, or any
+            :attr:`values` (:class:`torch.tensor`): The tensor to sort. Can be 1D, 2D, or any
             multi-dimensional batch of 2D tensors.
 
-            axis (str, optional): The axis to sort along. Must be either 'rows' or
+            :attr:`axis` (str, optional): The axis to sort along. Must be either 'rows' or
             'cols'. If `values` is 1D, `axis` is not used. Default is 'rows'.
 
-            inverse_permutation (bool, optional): Whether to apply the permutation
+            :attr:`inverse_permutation` (bool, optional): Whether to apply the permutation
             inverse. Default is False.
 
         Raises:
@@ -1730,6 +1732,7 @@ class HadamSplit2d(LinearSplit):
 
         Examples:
             Example 1: No subsampling
+
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> h = 32
@@ -1740,6 +1743,7 @@ class HadamSplit2d(LinearSplit):
             torch.Size([10, 1024])
 
             Example 2: With subsampling
+
             >>> import torch
             >>> import spyrit.core.meas as meas
             >>> h, M = 32, 49
@@ -2382,7 +2386,6 @@ class DynamicLinear(Linear):
 
     Reference:
 
-    .. _MICCAI24::
         [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
         Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
         without Warping the Patterns. 2024. hal-04533981
@@ -2431,7 +2434,7 @@ class DynamicLinear(Linear):
         mode: str = "bilinear",
         warping: bool = False,
     ) -> None:
-        """Build the dynamic measurement matrix `H_dyn`.
+        r"""Build the dynamic measurement matrix `H_dyn`.
 
         Compute and store the dynamic measurement matrix `H_dyn` from the static
         measurement matrix `H_static` and the deformation field `motion`. The
@@ -2460,10 +2463,10 @@ class DynamicLinear(Linear):
             `self.H_dyn`.
 
         References:
-        .. _MaBP24:
-            [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
-            Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
-            without Warping the Patterns. 2024. hal-04533981
+
+                [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
+                Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
+                without Warping the Patterns. 2024. hal-04533981
         """
 
         if self.device != motion.device:
@@ -2747,13 +2750,13 @@ class DynamicLinear(Linear):
         the measurement matrix and :math:`x` is a batch of images.
 
         Args:
-            :math:`x`: Batch of images of shape :math:`(*, t, c, h, w)`. `*`
+            :attr:`x`: Batch of images of shape :math:`(*, t, c, h, w)`. `*`
             denotes any dimension (e.g. the batch size), `t` the number of frames,
             `c` the number of channels, and `h`, `w` the height and width of the
             images.
 
         Output:
-            :math:`y`: Linear measurements of the input images. It has shape
+            :attr:`y`: Linear measurements of the input images. It has shape
             :math:`(*, c, M)` where * denotes any number of dimensions, `c` the
             number of channels, and `M` the number of measurements.
 
@@ -2787,13 +2790,13 @@ class DynamicLinear(Linear):
         method build_H_dyn(). An error will be raised if H_dyn has not been set yet.
 
         Args:
-            x (torch.tensor): still image of shape (*, h, w). * denotes any dimension.
+            :attr:`x` (torch.tensor): still image of shape (\*, h, w). \* denotes any dimension.
             h and w are the height and width of the image. If h and w are larger
             than the measurement pattern, the image is center-cropped to the measurement
             pattern size.
 
         Returns:
-            torch.tensor: Measurement of the input image. It has shape (*, M).
+            torch.tensor: Measurement of the input image. It has shape (\*, M).
         """
         x = spytorch.center_crop(x, self.meas_shape)
         return self._static_forward_with_op(x, self.H_dyn)
