@@ -1302,7 +1302,7 @@ class TikhoNet(nn.Module):
 
         # measurements to image domain processing
         x = self.tikho(x, cov_meas)
-        x = x.reshape(*x.shape[:-1], self.acqu.meas_op.h, self.acqu.meas_op.w)
+        # x = x.reshape(*x.shape[:-1], self.acqu.meas_op.h, self.acqu.meas_op.w)
 
         # Image domain denoising
         x = self.denoi(x)
@@ -1333,7 +1333,7 @@ class TikhoNet(nn.Module):
 
         # measurements to image domain processing
         x = self.tikho(x, cov_meas)
-        x = x.reshape(*x.shape[:-1], self.acqu.meas_op.h, self.acqu.meas_op.w)
+        # x = x.reshape(*x.shape[:-1], self.acqu.meas_op.h, self.acqu.meas_op.w)
 
         # Image domain denoising
         x = self.denoi(x)
