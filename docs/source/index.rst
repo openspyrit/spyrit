@@ -27,6 +27,13 @@ Getting started
 
 Please check our `tutorials <gallery/index.html>`_ as well as the  `examples <.. _examples: https://github.com/openspyrit/spyrit-examples/tree/master/2025_spyrit_v3>`_ on GitHub.
 
+
+External librairies
+==================================
+
+You can connect spyrit to different packages like deepinv. Check `tutorials <external_libraries.html>`_.
+
+
 Cite us
 ==================================
 
@@ -57,6 +64,12 @@ The list of contributors can be found `here <https://github.com/openspyrit/spyri
 
    gallery/index
 
+.. toctree::
+   :maxdepth: 2
+   :caption: External libraries
+   :hidden:
+
+   external_libraries
 
 Contents
 ========
