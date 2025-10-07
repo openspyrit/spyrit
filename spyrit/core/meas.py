@@ -2201,6 +2201,7 @@ class DynamicLinear(Linear):
         self,
         H: torch.tensor,
         time_dim: int,
+        img_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_dims: Union[int, torch.Size, Iterable[int]] = None,
         *,
@@ -2224,6 +2225,10 @@ class DynamicLinear(Linear):
             raise RuntimeError(
                 f"The time dimension must not be in the measurement dimensions. Found {self.time_dim} in {self.meas_dims}."
             )
+        
+        self.img_shape = img_shape if img_shape is not None else meas_shape
+        self.img_h, self.img_w = self.img_shape  # for legacy
+        self.h, self.w = self.meas_shape  # for legacy
 
         # define the available matrices for reconstruction
         self._available_pinv_matrices = ["H_dyn"]
@@ -2233,6 +2238,18 @@ class DynamicLinear(Linear):
     def recon_mode(self) -> str:
         """Interpolation mode used for reconstruction."""
         return self._recon_mode
+    
+    @property
+    def H_dyn(self) -> torch.tensor:
+        """Dynamic measurement matrix H."""
+        try:
+            return self._param_H_dyn.data
+        except AttributeError as e:
+            raise AttributeError(
+                "The dynamic measurement matrix H has not been set yet. "
+                + "Please call build_H_dyn() before accessing the attribute "
+                + "H_dyn (or H)."
+            ) from e
     
     def measure(self, x):
         r"""Simulate noiseless measurements
@@ -2247,6 +2264,7 @@ class DynamicLinear(Linear):
             corresponds to the previously mentioned batch dimensions, and
             `M` is the number of measurements (also the number of frames) 
         """
+        # x = spytorch.center_crop(x, self.meas_shape)
         # vectorize with the time dimension being the second-to-last dimension
         x = self.vectorize(x)
         # here index m is the number of mesurements
@@ -2303,6 +2321,11 @@ class DynamicLinear(Linear):
             without Warping the Patterns. 2024. hal-04533981
         """
 
+        if self.img_shape != motion.img_shape:
+            raise RuntimeError(
+                "The measurement operator img_shape must be the same as the motion field."
+            )
+
         if self.device != motion.device:
             raise RuntimeError(
                 "The device of the motion and the measurement operator must be the same."
@@ -2334,7 +2357,8 @@ class DynamicLinear(Linear):
         if isinstance(self, DynamicLinearSplit):
             meas_pattern = self.P
         else:
-            meas_pattern = self.H_static
+            # meas_pattern = self.H_static
+            meas_pattern = self.H  # is it the same?
 
         if self.white_acq is not None:
             meas_pattern *= self.white_acq.ravel().unsqueeze(
@@ -2623,13 +2647,14 @@ class DynamicLinear(Linear):
         dimension to the and, and brings the time dimension to the second-to-last
         position."""
         # concatenate time and measurement dimensions
-        time_and_meas_dims = torch.Size(self.time_dim, self.meas_dims)
+        time_and_meas_dims = torch.Size([self.time_dim, *self.meas_dims])
         time_and_last_dims = torch.Size(list(range(-len(self.meas_shape)-1, 0)))
         # move only if necessary
         if time_and_meas_dims != time_and_last_dims:
             input = torch.movedim(input, time_and_meas_dims, time_and_last_dims)
         # flatten the last measured dimensions
-        input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
+        # input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
+        input = input.reshape(*input.shape[: -self.meas_ndim], self.img_h * self.img_w)
         return input
 
     def unvectorize(self, input:torch.tensor) -> torch.tensor:
