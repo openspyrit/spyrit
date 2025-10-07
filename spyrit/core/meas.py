@@ -2264,9 +2264,11 @@ class DynamicLinear(Linear):
             corresponds to the previously mentioned batch dimensions, and
             `M` is the number of measurements (also the number of frames) 
         """
-        # x = spytorch.center_crop(x, self.meas_shape)
+        x = spytorch.center_crop(x, self.meas_shape)
+        print(x.shape)
         # vectorize with the time dimension being the second-to-last dimension
         x = self.vectorize(x)
+        print(x.shape)
         # here index m is the number of mesurements
         # it is also the number of frames ie. time dimension
         x = torch.einsum("mn,...mn->...m", self.H, x)
@@ -2644,7 +2646,7 @@ class DynamicLinear(Linear):
 
     def vectorize(self, input:torch.tensor) -> torch.tensor:
         r"""Flattens across the measured dimensions, brings the flattened
-        dimension to the and, and brings the time dimension to the second-to-last
+        dimension to the end, and brings the time dimension to the second-to-last
         position."""
         # concatenate time and measurement dimensions
         time_and_meas_dims = torch.Size([self.time_dim, *self.meas_dims])
@@ -2653,8 +2655,8 @@ class DynamicLinear(Linear):
         if time_and_meas_dims != time_and_last_dims:
             input = torch.movedim(input, time_and_meas_dims, time_and_last_dims)
         # flatten the last measured dimensions
-        # input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
-        input = input.reshape(*input.shape[: -self.meas_ndim], self.img_h * self.img_w)
+        input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
+        # input = input.reshape(*input.shape[: -self.meas_ndim], self.img_h * self.img_w)
         return input
 
     def unvectorize(self, input:torch.tensor) -> torch.tensor:
