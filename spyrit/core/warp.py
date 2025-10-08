@@ -367,7 +367,6 @@ class DeformationField(nn.Module):
     def _attributeslist(self):
         a = [
             ("field shape", self.field.shape),
-            ("field shape", self.field.shape),
             ("n_frames", self.n_frames),
             ("img_shape", self.img_shape),
         ]

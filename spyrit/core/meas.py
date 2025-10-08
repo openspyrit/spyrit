@@ -2359,8 +2359,7 @@ class DynamicLinear(Linear):
         if isinstance(self, DynamicLinearSplit):
             meas_pattern = self.A
         else:
-            # meas_pattern = self.H_static
-            meas_pattern = self.H  # is it the same?
+            meas_pattern = self.H
 
         if self.white_acq is not None:
             meas_pattern *= self.white_acq.ravel().unsqueeze(
@@ -2494,8 +2493,7 @@ class DynamicLinear(Linear):
             self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
 
         else:
-            # motion_inverse_approx = self.approx_inv_deform(motion)  ## WRONG, TOO COARSE APPROXIMATION
-            # def_field needs to be passed as the inverse deform now
+            print('Be careful to use the inverse deformation field when warping = True.')
 
             det = self.calc_det(def_field)
 
@@ -2568,35 +2566,6 @@ class DynamicLinear(Linear):
 
         return det
 
-    def approx_inv_deform(self, def_field):
-        r"""Computes an approximation of the inverse deformation field.
-        
-        The approximation works for small (compared to a pixel) deformations
-        and is equivalent to using 1/(1+x) ~ 1-x for x close to 0.
-        
-        Args:
-            def_field (torch.tensor): Input deformation field, of shape
-            (t, h, w, 2)
-        
-        Returns:
-            torch.tensor: Approximate inverse of the input deformation
-            field =, has shape (t, h, w, 2)
-        """
-        _, height, width, _ = def_field.field.shape
-        dtype = def_field.field.dtype
-
-        interval_1, interval_2 = (
-            torch.linspace(0, width - 1, width, dtype=dtype) / width * 2 - 1,
-            torch.linspace(0, height - 1, height, dtype=dtype) / height * 2 - 1,
-        )
-        x1, x2 = torch.meshgrid(interval_1, interval_2, indexing="xy")
-        identity = torch.stack((x1, x2), axis=2).unsqueeze(0)
-
-        elem_def_field = def_field.field - identity
-
-        def_field_inverse = DeformationField(identity - elem_def_field)
-
-        return def_field_inverse
 
     def build_H_dyn_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
         """Computes the pseudo-inverse of the dynamic measurement matrix
@@ -2656,7 +2625,6 @@ class DynamicLinear(Linear):
             input = torch.movedim(input, time_and_meas_dims, time_and_last_dims)
         # flatten the last measured dimensions
         input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
-        # input = input.reshape(*input.shape[: -self.meas_ndim], self.img_h * self.img_w)
         return input
 
     def unvectorize(self, input:torch.tensor) -> torch.tensor:
@@ -3271,7 +3239,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
             time_and_last_dims = torch.Size([1, -2, -1])
             if time_and_meas_dims != time_and_last_dims:
                 x = torch.movedim(x, time_and_meas_dims, time_and_last_dims)
-                
+
             return self.fast_measure(x)
         else:
             return super().measure(x)
