@@ -2278,7 +2278,9 @@ class DynamicLinear(Linear):
         .. important::
             Docstring to be completed. 
         """
-        return super().forward(x)
+        x = self.measure(x)
+        x = self.noise_model(x)
+        return x
 
     def build_H_dyn(
         self,
@@ -3264,6 +3266,12 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         """
         if self.fast:
             x = spytorch.center_crop(x, self.meas_shape)
+
+            time_and_meas_dims = torch.Size([self.time_dim, *self.meas_dims])
+            time_and_last_dims = torch.Size([1, -2, -1])
+            if time_and_meas_dims != time_and_last_dims:
+                x = torch.movedim(x, time_and_meas_dims, time_and_last_dims)
+                
             return self.fast_measure(x)
         else:
             return super().measure(x)
@@ -3311,6 +3319,12 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         """
         if self.fast:
             x = spytorch.center_crop(x, self.meas_shape)
+
+            time_and_meas_dims = torch.Size([self.time_dim, *self.meas_dims])
+            time_and_last_dims = torch.Size([1, -2, -1])
+            if time_and_meas_dims != time_and_last_dims:
+                x = torch.movedim(x, time_and_meas_dims, time_and_last_dims)
+
             return self.fast_measure_H(x)
         else:
             return super().measure_H(x)
@@ -3355,7 +3369,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
             return super().adjoint_H(m, unvectorize)
 
     def fast_measure(self, x: torch.tensor) -> torch.tensor:
-        r"""Simulate noiseless measurements from matrix A.
+        r"""Simulate noiseless measurements from matrix A. Assumes time_dim = 1; use measure otherwise.
         Each time step uses a different split 2D Hadamard pattern (positive/negative parts)."""
         pattern_indices = self.indices[:self.M]
         
@@ -3395,7 +3409,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         return y
 
     def fast_measure_H(self, x: torch.tensor) -> torch.tensor:
-        r"""Simulate noiseless measurements from matrix H.
+        r"""Simulate noiseless measurements from matrix H. Assumes time_dim = 1; use measure_H otherwise.
         Each time step k uses a different 2D Hadamard pattern."""
         pattern_indices = self.indices[:self.M]
         
