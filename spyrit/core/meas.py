@@ -3368,15 +3368,14 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         H1d_cols = self.H1d[:, col_indices]  # shape (h, M)
         
         # Split the 1D patterns into positive and negative parts
-        H1d_rows_pos = nn.functional.relu(H1d_rows)  # shape (M, h)
-        H1d_rows_neg = -nn.functional.relu(H1d_rows) # shape (M, h)
-        H1d_cols_pos = nn.functional.relu(H1d_cols)  # shape (h, M)
-        H1d_cols_neg = -nn.functional.relu(H1d_cols)  # shape (h, M)
+        H1d_rows_pos = nn.functional.relu(H1d_rows)   # shape (M, h)
+        H1d_rows_neg = nn.functional.relu(-H1d_rows)  # shape (M, h)
+        H1d_cols_pos = nn.functional.relu(H1d_cols)   # shape (h, M)
+        H1d_cols_neg = nn.functional.relu(-H1d_cols)  # shape (h, M)
 
         # For split 2D Hadamard: H_pos = H_row_pos \otimes H_col_pos + H_row_neg \otimes H_col_neg
         #                        H_neg = H_row_pos \otimes H_col_neg + H_row_neg \otimes H_col_pos
         
-
         x_pos, x_neg = x[:, ::2], x[:, 1::2]
 
         # Compute the four separable components
@@ -3389,6 +3388,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         y_pos = m_pp + m_nn
         y_neg = m_pn + m_np
         
+        # Interleave positive and negative measurements: [pos0, neg0, pos1, neg1, ...]
         y = torch.stack([y_pos, y_neg], dim=-1)  # shape (b, c, M, 2)
         y = y.reshape(*y.shape[:-2], 2 * self.M)  # shape (b, c, 2*M)
         
