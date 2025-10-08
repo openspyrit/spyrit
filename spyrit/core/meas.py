@@ -2265,10 +2265,8 @@ class DynamicLinear(Linear):
             `M` is the number of measurements (also the number of frames) 
         """
         x = spytorch.center_crop(x, self.meas_shape)
-        print(x.shape)
         # vectorize with the time dimension being the second-to-last dimension
         x = self.vectorize(x)
-        print(x.shape)
         # here index m is the number of mesurements
         # it is also the number of frames ie. time dimension
         x = torch.einsum("mn,...mn->...m", self.H, x)
@@ -2357,7 +2355,7 @@ class DynamicLinear(Linear):
         def_field = (motion.field + 1) / 2 * scale_factor
 
         if isinstance(self, DynamicLinearSplit):
-            meas_pattern = self.P
+            meas_pattern = self.A
         else:
             # meas_pattern = self.H_static
             meas_pattern = self.H  # is it the same?
@@ -2832,6 +2830,7 @@ class DynamicLinearSplit(DynamicLinear):
         self,
         H: torch.tensor,
         time_dim: int,
+        img_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_dims: Union[int, torch.Size, Iterable[int]] = None,
         *,
@@ -2842,7 +2841,7 @@ class DynamicLinearSplit(DynamicLinear):
     ):
         # call constructor of DynamicLinear
         super().__init__(
-            H, time_dim, meas_shape, meas_dims, noise_model=noise_model,
+            H, time_dim, img_shape, meas_shape, meas_dims, noise_model=noise_model,
             dtype=dtype, device=device, white_acq=white_acq
         )
                 
@@ -2867,6 +2866,7 @@ class DynamicLinearSplit(DynamicLinear):
         Returns:
             torch.tensor: measured tensor.
         """
+        x = spytorch.center_crop(x, self.meas_shape)
         # vectorize with the time dimension being the second-to-last dimension
         x = self.vectorize(x)
         # here index m is the number of mesurements
@@ -2996,127 +2996,490 @@ class DynamicLinearSplit(DynamicLinear):
         return x
 
 
-    # # =============================================================================
-    # class DynamicHadamSplit(DynamicLinearSplit):
-    #     # =========================================================================
-    #     r"""
-    #     Simulates the measurement of a moving object using a splitted operator
-    #     :math:`y = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix} \cdot x(t)` with
-    #     :math:`H` a Hadamard matrix.
+# =============================================================================
+class DynamicHadamSplit2d(DynamicLinearSplit):
+    # =========================================================================
+    r"""
+    Simulates the measurement of a moving object using a splitted operator
+    :math:`y = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix} \cdot x(t)` with
+    :math:`H` a Hadamard matrix.
 
-    #     Computes linear measurements from incoming images: :math:`y = Px`,
-    #     where :math:`P` is a linear operator (matrix) with positive entries and
-    #     :math:`x` is a batch of vectorized images representing a motion picture.
+    Computes linear measurements from incoming images: :math:`y = Px`,
+    where :math:`P` is a linear operator (matrix) with positive entries and
+    :math:`x` is a batch of vectorized images representing a motion picture.
 
-    #     The matrix :math:`P` contains only positive values and is obtained by
-    #     splitting a Hadamard-based matrix :math:`H` such that
-    #     :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
-    #     `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
-    #     :math:`H_{-} = \max(0,-H)`.
+    The matrix :math:`P` contains only positive values and is obtained by
+    splitting a Hadamard-based matrix :math:`H` such that
+    :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
+    `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
+    :math:`H_{-} = \max(0,-H)`.
 
-    #     :math:`H` is obtained by selecting a re-ordered subsample of :math:`M` rows
-    #     of a "full" Hadamard matrix :math:`F` with shape :math:`(N^2, N^2)`.
-    #     :math:`N` must be a power of 2.
+    :math:`H` is obtained by selecting a re-ordered subsample of :math:`M` rows
+    of a "full" Hadamard matrix :math:`F` with shape :math:`(N^2, N^2)`.
+    :math:`N` must be a power of 2.
 
-    #     Args:
-    #         :attr:`M` (int): Number of measurements. If :math:`M < h^2`, the
-    #         measurement matrix :math:`H` is cropped to :math:`M` rows.
+    Args:
+        :attr:`M` (int): Number of measurements. If :math:`M < h^2`, the
+        measurement matrix :math:`H` is cropped to :math:`M` rows.
 
-    #         :attr:`h` (int): Measurement pattern height, must be a power of 2. The
-    #         image is assumed to be square, so the number of pixels in the image is
-    #         :math:`N = h^2`.
+        :attr:`h` (int): Measurement pattern height, must be a power of 2. The
+        image is assumed to be square, so the number of pixels in the image is
+        :math:`N = h^2`.
 
-    #         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
-    #         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
-    #         will correspond to the highest value in :math:`Ord`. Must contain
-    #         :math:`M` values. If some values repeat, the order is kept. Defaults to
-    #         None.
+        :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
+        rows of the measurement matrix :math:`H`. The first new row of :math:`H`
+        will correspond to the highest value in :math:`Ord`. Must contain
+        :math:`M` values. If some values repeat, the order is kept. Defaults to
+        None.
 
-    #         :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
-    #         of two integers representing the height and width of the image. If not
-    #         specified, the shape is taken as equal to `meas_shape`. Setting this
-    #         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
+        :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
+        of two integers representing the height and width of the image. If not
+        specified, the shape is taken as equal to `meas_shape`. Setting this
+        value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
 
-    #         :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
-    #         detector inhomogeneities. Must have the same shape as the measurement patterns.
+        :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
+        detector inhomogeneities. Must have the same shape as the measurement patterns.
 
-    #     Attributes:
-    #         :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
-    #         of shape :math:`(M,N)` initialized as :math:`H`.
+    Attributes:
+        :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
+        of shape :math:`(M,N)` initialized as :math:`H`.
 
-    #         :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of
-    #         shape :math:`(2M, N)` such that `P[0::2, :] = H_{+}` and `P[1::2, :] = H_{-}`.
+        :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of
+        shape :math:`(2M, N)` such that `P[0::2, :] = H_{+}` and `P[1::2, :] = H_{-}`.
 
-    #         :attr:`M` (int): Number of measurements performed by the linear operator.
+        :attr:`M` (int): Number of measurements performed by the linear operator.
 
-    #         :attr:`N` (int): Number of pixels in the image.
+        :attr:`N` (int): Number of pixels in the image.
 
-    #         :attr:`h` (int): Measurement pattern height.
+        :attr:`h` (int): Measurement pattern height.
 
-    #         :attr:`w` (int): Measurement pattern width.
+        :attr:`w` (int): Measurement pattern width.
 
-    #         :attr:`meas_shape` (tuple): Shape of the measurement patterns
-    #         (height, width). Is equal to `(self.h, self.w)`.
+        :attr:`meas_shape` (tuple): Shape of the measurement patterns
+        (height, width). Is equal to `(self.h, self.w)`.
 
-    #         :attr:`img_h` (int): Image height.
+        :attr:`img_h` (int): Image height.
 
-    #         :attr:`img_w` (int): Image width.
+        :attr:`img_w` (int): Image width.
 
-    #         :attr:`img_shape` (tuple): Shape of the image (height, width). Is equal
-    #         to `(self.img_h, self.img_w)`.
+        :attr:`img_shape` (tuple): Shape of the image (height, width). Is equal
+        to `(self.img_h, self.img_w)`.
 
-    #         :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H`.
-    #         Must be set using the method :meth:`build_H_dyn` before being accessed.
+        :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H`.
+        Must be set using the method :meth:`build_H_dyn` before being accessed.
 
-    #         :attr:`H` (torch.tensor): Alias for :attr:`H_dyn`.
+        :attr:`H` (torch.tensor): Alias for :attr:`H_dyn`.
 
-    #         :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
-    #         matrix :math:`H_{dyn}^\dagger`. Must be set using the method
-    #         :meth:`build_H_dyn_pinv` before being accessed.
+        :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
+        matrix :math:`H_{dyn}^\dagger`. Must be set using the method
+        :meth:`build_H_dyn_pinv` before being accessed.
 
-    #         :attr:`H_pinv` (torch.tensor): Alias for :attr:`H_dyn_pinv`.
+        :attr:`H_pinv` (torch.tensor): Alias for :attr:`H_dyn_pinv`.
 
-    #     .. note::
-    #         The computation of a Hadamard transform :math:`Fx` benefits a fast
-    #         algorithm, as well as the computation of inverse Hadamard transforms.
+    .. note::
+        The computation of a Hadamard transform :math:`Fx` benefits a fast
+        algorithm, as well as the computation of inverse Hadamard transforms.
 
-    #     .. note::
-    #         :math:`H = H_{+} - H_{-}`
+    .. note::
+        :math:`H = H_{+} - H_{-}`
 
-    #     Example:
-    #         >>> Ord = torch.rand([32,32])
-    #         >>> meas_op = HadamSplitDynamic(400, 32, Ord)
-    #         >>> print(meas_op)
-    #         DynamicHadamSplit(
-    #           (M): 400
-    #           (N): 1024
-    #           (H.shape): torch.Size([400, 1024])
-    #           (meas_shape): (32, 32)
-    #           (H_dyn): False
-    #           (img_shape): (32, 32)
-    #           (H_pinv): False
-    #           (P.shape): torch.Size([800, 1024])
-    #         )
+    Example:
+        >>> Ord = torch.rand([32,32])
+        >>> meas_op = HadamSplitDynamic(400, 32, Ord)
+        >>> print(meas_op)
+        DynamicHadamSplit(
+            (M): 400
+            (N): 1024
+            (H.shape): torch.Size([400, 1024])
+            (meas_shape): (32, 32)
+            (H_dyn): False
+            (img_shape): (32, 32)
+            (H_pinv): False
+            (P.shape): torch.Size([800, 1024])
+        )
 
-    #     Reference:
-    #     .. _MICCAI24:
-    #         [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
-    #         Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
-    #         without Warping the Patterns. 2024. hal-04533981
-    #     """
+    Reference:
+    .. _MICCAI24:
+        [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
+        Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
+        without Warping the Patterns. 2024. hal-04533981
+    """
 
-    # def __init__(
-    #     self,
-    #     M: int,
-    #     h: int,
-    #     Ord: torch.tensor = None,
-    #     img_shape: tuple = None,  # (height, width)
-    #     white_acq: torch.tensor = None,
-    # ):
+    def __init__(
+        self,
+        time_dim: int,
+        h: int,
+        M: int = None,
+        order: torch.tensor = None,
+        fast: bool = True,
+        reshape_output: bool = False,
+        img_shape: Union[int, torch.Size, Iterable[int]] = None,
+        *,
+        noise_model: nn.Module = nn.Identity(),
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu"),
+        white_acq: torch.tensor = None,  
+    ):
+        meas_dims = (-2, -1)
+        meas_shape = (h, h)
+        if M is None:
+            M = h**2
 
-    #         F = spytorch.walsh_matrix_2d(h)
-    #         # empty = torch.empty(h**2, h**2)  # just to get the shape
+        # call Linear constructor (avoid setting A)
+        super(DynamicLinearSplit, self).__init__(
+            torch.empty(h**2, h**2),
+            time_dim,
+            img_shape,
+            meas_shape,
+            meas_dims,
+            noise_model=noise_model,
+            dtype=dtype,
+            device=device,
+            white_acq=white_acq
+        )
 
-    # # we pass the whole F matrix to the constructor
-    # super().__init__(F, Ord, (h, h), img_shape)
-    # self._M = M
+
+        if order is None:
+            order = torch.ones(h, h)
+        # 1D version of H
+        # H1d = spytorch.walsh_matrix(h).to(dtype=dtype, device=device)
+        # self.H1d = nn.Parameter(H1d, requires_grad=False)
+        self.H1d = nn.Parameter(spytorch.walsh_matrix(h), requires_grad=False).to(
+            dtype=dtype, device=device
+        )
+        self.M = M  # supercharged self.M
+        self.order = order
+        self.indices = torch.argsort(-order.flatten(), stable=True).to(
+            dtype=torch.int32, device=self.device
+        )
+        self.fast = fast
+        self.reshape_output = reshape_output
+
+    @property
+    def dtype(self) -> torch.dtype:
+        return self.H1d.dtype
+
+    @property
+    def device(self) -> torch.device:
+        return self.H1d.device
+
+    @property
+    def H(self):
+        H = torch.kron(self.H1d, self.H1d)
+        H = self.reindex(H, "rows", False)
+
+        # !!!!
+
+        return H[: self.M, :]
+
+    @property
+    def A(self):
+        H = self.H
+        pos, neg = nn.functional.relu(H), nn.functional.relu(-H)
+        return torch.cat([pos, neg], 1).reshape(2 * self.M, self.N)
+
+    @property
+    def matrix_to_inverse(self):
+        return self.H
+
+    def reindex(
+        self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
+    ) -> torch.tensor:
+        """Sorts a tensor along a specified axis using the indices tensor. The
+        indices tensor is contained in the attribute :attr:`self.indices`.
+
+        The indices tensor contains the new indices of the elements in the values
+        tensor. `values[0]` will be placed at the index `indices[0]`, `values[1]`
+        at `indices[1]`, and so on.
+
+        Using the inverse permutation allows to revert the permutation: in this
+        case, it is the element at index `indices[0]` that will be placed at the
+        index `0`, the element at index `indices[1]` that will be placed at the
+        index `1`, and so on.
+
+        .. note::
+            See :func:`~spyrit.core.torch.reindex()` for more details.
+
+        Args:
+            values (:class:`torch.tensor`): The tensor to sort. Can be 1D, 2D, or any
+            multi-dimensional batch of 2D tensors.
+
+            axis (str, optional): The axis to sort along. Must be either 'rows' or
+            'cols'. If `values` is 1D, `axis` is not used. Default is 'rows'.
+
+            inverse_permutation (bool, optional): Whether to apply the permutation
+            inverse. Default is False.
+
+        Raises:
+            ValueError: If `axis` is not 'rows' or 'cols'.
+
+        Returns:
+            :class:`torch.tensor`: The sorted tensor by the given indices along the
+            specified axis.
+        """
+        return spytorch.reindex(x, self.indices.to(x.device), axis, inverse_permutation)
+
+    def measure(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulate noiseless measurements from matrix A.
+
+        It computes
+
+        .. math::
+            y =\mathcal{S}\left(AXA^T\right),
+
+        where :math:`\mathcal{S} \colon\, \mathbb{R}^{2h\times 2h} \to \mathbb{R}^{2M}` is the subsampling operator, :math:`A \colon\, \mathbb{R}_+^{2h\times h}` is the acquisition matrix that contains the positive and negative component of 2D Hadamard patterns, :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image, :math:`2M` is the number of DMD patterns, and :math:`h` is the image size.
+
+        Args:
+            :attr:`x` (:class:`torch.tensor`): Image :math:`X` whose
+            dimensions :attr:`self.meas_dims` must have shape
+            shape :attr:`self.meas_shape`.
+
+        Returns:
+            Measurement vector :math:`y \in \mathbb{R}^{2M}`.
+
+        Examples:
+            Example 1: No subsampling
+
+            >>> import torch
+            >>> import spyrit.core.meas as meas
+            >>> h = 32
+            >>> Ord = torch.randn(h, h)
+            >>> meas_op = meas.HadamSplit2d(h)
+            >>> x = torch.empty(10, h, h).uniform_(0, 1)
+            >>> y = meas_op.measure(x)
+            >>> print(y.shape)
+            torch.Size([10, 2048])
+
+            Example 2: With subsampling
+
+            >>> import torch
+            >>> import spyrit.core.meas as meas
+            >>> h = 32
+            >>> Ord = torch.randn(h, h)
+            >>> meas_op = meas.HadamSplit2d(h, 49)
+            >>> x = torch.empty(8, 2, h, h).uniform_(0, 1)
+            >>> y = meas_op.measure_H(x)
+            >>> print(y.shape)
+            torch.Size([8, 2, 49])
+        """
+        if self.fast:
+            x = spytorch.center_crop(x, self.meas_shape)
+            return self.fast_measure(x)
+        else:
+            return super().measure(x)
+
+    def measure_H(self, x: torch.tensor):
+        r"""Simulate noiseless measurements from matrix H.
+
+        It computes
+
+        .. math::
+            m =\mathcal{S}\left(HXH^T\right),
+
+        where :math:`\mathcal{S} \colon\, \mathbb{R}^{h\times h} \to \mathbb{R}^{M}` is the subsampling operator, :math:`H \colon\, \mathbb{R}^{h\times h}` is the Hadamard matrix, :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image.
+
+        Args:
+            :attr:`x` (:class:`torch.tensor`): Image :math:`X` whose
+            dimensions :attr:`self.meas_dims` must have shape
+            shape :attr:`self.meas_shape`.
+
+        Returns:
+            Measurement vector :math:`m \in \mathbb{R}^{M}`.
+
+        Examples:
+            Example 1: No subsampling
+
+            >>> import torch
+            >>> import spyrit.core.meas as meas
+            >>> h = 32
+            >>> meas_op = meas.HadamSplit2d(h)
+            >>> x = torch.empty(h, h).uniform_(0, 1)
+            >>> y = meas_op.measure(x)
+            >>> print(y.shape)
+            torch.Size([2048])
+
+            Example 2: With subsampling
+
+            >>> import torch
+            >>> import spyrit.core.meas as meas
+            >>> h = 32
+            >>> meas_op = meas.HadamSplit2d(h, 49)
+            >>> x = torch.empty(8, 2, h, h).uniform_(0, 1)
+            >>> y = meas_op.measure(x)
+            >>> print(y.shape)
+            torch.Size([8, 2, 98])
+        """
+        if self.fast:
+            x = spytorch.center_crop(x, self.meas_shape)
+            return self.fast_measure_H(x)
+        else:
+            return super().measure_H(x)
+
+    def adjoint_H(self, m: torch.tensor, unvectorize=False) -> torch.tensor:
+        r"""Apply the adjoint of matrix H.
+
+        Args:
+            :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` length is :attr:`self.M`.
+
+            :attr:`unvectorize` (bool): whether to apply a :meth:`unvectorize`
+            operation at the end of the computation.
+
+        Returns:
+            Vectorized image vector :math:`x \in \mathbb{R}^{h^2}`
+
+        Examples:
+            Example 1: No subsampling
+            >>> import torch
+            >>> import spyrit.core.meas as meas
+            >>> h = 32
+            >>> meas_op = meas.HadamSplit2d(h)
+            >>> m = torch.empty(10, h*h).uniform_(0, 1)
+            >>> x = meas_op.adjoint_H(m)
+            >>> print(x.shape)
+            torch.Size([10, 1024])
+
+            Example 2: With subsampling
+            >>> import torch
+            >>> import spyrit.core.meas as meas
+            >>> h, M = 32, 49
+            >>> meas_op = meas.HadamSplit2d(h, M)
+            >>> m = torch.empty(8, 2, M).uniform_(0, 1)
+            >>> x = meas_op.adjoint_H(m)
+            >>> print(x.shape)
+            torch.Size([8, 2, 1024])
+        """
+        if self.fast:
+            # fast_pinv takes 'vectorize' as argument
+            return self.fast_pinv(m, not unvectorize) * self.N
+        else:
+            return super().adjoint_H(m, unvectorize)
+
+    def fast_measure(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulate noiseless measurements from matrix A.
+        Each time step uses a different split 2D Hadamard pattern (positive/negative parts)."""
+        pattern_indices = self.indices[:self.M]
+        
+        # Find indices to 2D coordinates in the Hadamard sampling map (for separable transform)
+        row_indices = pattern_indices // self.h
+        col_indices = pattern_indices % self.h
+        
+        # Extract all required rows and columns from H1d
+        H1d_rows = self.H1d[row_indices, :]  # shape (M, h)
+        H1d_cols = self.H1d[:, col_indices]  # shape (h, M)
+        
+        # Split the 1D patterns into positive and negative parts
+        H1d_rows_pos = nn.functional.relu(H1d_rows)  # shape (M, h)
+        H1d_rows_neg = -nn.functional.relu(H1d_rows) # shape (M, h)
+        H1d_cols_pos = nn.functional.relu(H1d_cols)  # shape (h, M)
+        H1d_cols_neg = -nn.functional.relu(H1d_cols)  # shape (h, M)
+
+        # For split 2D Hadamard: H_pos = H_row_pos \otimes H_col_pos + H_row_neg \otimes H_col_neg
+        #                        H_neg = H_row_pos \otimes H_col_neg + H_row_neg \otimes H_col_pos
+        
+
+        x_pos, x_neg = x[:, ::2], x[:, 1::2]
+
+        # Compute the four separable components
+        m_pp = torch.einsum('th,btchw,wt->bct', H1d_rows_pos, x_pos, H1d_cols_pos)
+        m_nn = torch.einsum('th,btchw,wt->bct', H1d_rows_neg, x_pos, H1d_cols_neg)
+        m_pn = torch.einsum('th,btchw,wt->bct', H1d_rows_pos, x_neg, H1d_cols_neg)
+        m_np = torch.einsum('th,btchw,wt->bct', H1d_rows_neg, x_neg, H1d_cols_pos)
+        
+        # Combine to get positive and negative measurements
+        y_pos = m_pp + m_nn
+        y_neg = m_pn + m_np
+        
+        y = torch.stack([y_pos, y_neg], dim=-1)  # shape (b, c, M, 2)
+        y = y.reshape(*y.shape[:-2], 2 * self.M)  # shape (b, c, 2*M)
+        
+        return y
+
+    def fast_measure_H(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulate noiseless measurements from matrix H.
+        Each time step k uses a different 2D Hadamard pattern."""
+        pattern_indices = self.indices[:self.M]
+        
+        # Find indices to 2D coordinates in the Hadamard sampling map (for separable transform)
+        row_indices = pattern_indices // self.h
+        col_indices = pattern_indices % self.h
+        
+        # Extract all required rows and columns from H1d
+        H1d_rows = self.H1d[row_indices, :]  # shape (M, h)
+        H1d_cols = self.H1d[:, col_indices]  # shape (h, M)
+        
+        # Vectorized separable 2D transform using the kronecker structure
+        # x shape: (b, t, c, h, w) -> we want (b, c, t)
+        m = torch.einsum('th,btchw,wt->bct', H1d_rows, x, H1d_cols)
+        
+        return m
+        
+
+    def fast_pinv(self, m: torch.tensor, vectorize=False) -> torch.tensor:
+        r"""Apply the pseudo inverse of H.
+
+        Args:
+            :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` of length :attr:`self.M`.
+
+            :attr:`vectorize` (bool): Whether to apply the :meth:`vectorize` method
+            after computation of the pseudo inverse.
+
+        Returns:
+            :class:`torch.tensor`: Vectorized image :math:`x` of length :attr:`self.N`.
+
+        .. note::
+            We use the separability of the 2D Hadamard transform. Only multiplications
+            with the "1D" Hadamard matrix (i.e., :attr:`self.H1d`) are required. If
+            the number of measurements is smaller than the number of pixels,
+            the measurement vector is zero-padded.
+
+        Examples:
+            Example 1: No subsampling
+
+            >>> import torch
+            >>> import spyrit.core.meas as meas
+            >>> h = 32
+            >>> meas_op = meas.HadamSplit2d(h)
+            >>> m = torch.empty(10, h*h).uniform_(0, 1)
+            >>> x = meas_op.fast_pinv(m)
+            >>> print(x.shape)
+            torch.Size([10, 32, 32])
+
+            Example 2: With subsampling
+
+            >>> import torch
+            >>> import spyrit.core.meas as meas
+            >>> h, M = 32, 49
+            >>> meas_op = meas.HadamSplit2d(h, M)
+            >>> m = torch.empty(8, 2, M).uniform_(0, 1)
+            >>> x = meas_op.fast_pinv(m)
+            >>> print(x.shape)
+            torch.Size([8, 2, 32, 32])
+
+            Example 3: Output are vectors, not images
+
+            >>> import torch
+            >>> import spyrit.core.meas as meas
+            >>> h, M = 32, 49
+            >>> meas_op = meas.HadamSplit2d(h, M)
+            >>> m = torch.empty(8, 2, M).uniform_(0, 1)
+            >>> x = meas_op.fast_pinv(m, vectorize=True)
+            >>> print(x.shape)
+            torch.Size([8, 2, 1024])
+        """
+        if self.N != self.M:
+            m = torch.cat(
+                (m, torch.zeros(*m.shape[:-1], self.N - self.M, device=m.device)),
+                -1,
+            )
+        m = self.reindex(m, "cols", False)
+        m = self.unvectorize(m)
+        m = spytorch.mult_2d_separable(self.H1d, m) / self.N
+
+        if vectorize:
+            m = self.vectorize(m)
+        return m
+
+    def fast_H_pinv(self) -> torch.tensor:
+        r"""Return the pseudo inverse of the matrix H"""
+        return self.H.T / self.N
+
