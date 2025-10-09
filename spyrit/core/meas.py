@@ -2380,6 +2380,10 @@ class DynamicLinear(Linear):
             kernel_size = self._spline(torch.tensor([0]), mode).shape[1]
             kernel_width = kernel_size - 1
             kernel_n_pts = kernel_size**2
+            
+            # Memory optimization: Clear CUDA cache before large allocations
+            if self.device.type == 'cuda':
+                torch.cuda.empty_cache()
 
             # PART 1: SEPARATE THE INTEGER AND DECIMAL PARTS OF THE FIELD
             # _________________________________________________________________
@@ -2396,7 +2400,6 @@ class DynamicLinear(Linear):
             # shape (n_frames, meas_h, meas_w, 2)
             # compute decimal part in x y direction
             dx, dy = torch.split((def_field - def_field_floor), [1, 1], dim=-1)
-            del def_field
             dx, dy = dx.squeeze(-1), dy.squeeze(-1)
             # dx.shape = dy.shape = (n_frames, meas_h, meas_w)
             # evaluate the spline at the decimal part
@@ -2404,7 +2407,11 @@ class DynamicLinear(Linear):
                 "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
             ).reshape(n_frames, kernel_n_pts, self.h * self.w)
             # shape (n_frames, kernel_n_pts, meas_h*meas_w)
-            del dx, dy
+            
+            # Memory optimization: explicitly delete large intermediate tensors
+            del dx, dy, def_field
+            if self.device.type == 'cuda':
+                torch.cuda.empty_cache()
 
             # PART 2: FLATTEN THE INDICES
             # _________________________________________________________________
@@ -2435,7 +2442,10 @@ class DynamicLinear(Linear):
                 def_field_00[..., 0]
                 + def_field_00[..., 1] * (self.img_w + kernel_width),
             ).reshape(n_frames, self.h * self.w)
+            
             del def_field_00, mask
+            if self.device.type == 'cuda':
+                torch.cuda.empty_cache()
 
             # PART 3: WARP H MATRIX WITH FLATTENED INDICES
             # _________________________________________________________________
@@ -2443,48 +2453,119 @@ class DynamicLinear(Linear):
             meas_dxy = (
                 meas_pattern.reshape(n_frames, 1, self.h * self.w).to(dxy.dtype) * dxy
             )
+
             del dxy, meas_pattern
-            # shape (n_frames, kernel_size^2, meas_h*meas_w)
-            # Create a larger H_dyn that will be folded
-            meas_dxy_sorted = torch.zeros(
-                (
-                    n_frames,
-                    kernel_n_pts,
-                    (self.img_h + kernel_width) * (self.img_w + kernel_width)
-                    + 1,  # +1 for trash
-                ),
-                dtype=meas_dxy.dtype,
-                device=self.device,
-            )
-            # add at flattened_indices the values of meas_dxy (~warping)
-            meas_dxy_sorted.scatter_add_(
-                2, flattened_indices.unsqueeze(1).expand_as(meas_dxy), meas_dxy
-            )
+            
+            # Memory optimization: Check if we need chunked processing
+            sparse_size = (self.img_h + kernel_width) * (self.img_w + kernel_width) + 1
+            max_memory_per_tensor = 1e9  # ~1GB limit per tensor
+            expected_size = n_frames * kernel_n_pts * sparse_size * meas_dxy.element_size()
+            
+            print(f"Expected tensor size: {expected_size/1e9:.2f} GB")
+            
+            if expected_size > max_memory_per_tensor:
+                print(f"Using chunked processing to avoid OOM (tensor would be {expected_size/1e9:.2f} GB)")
+                
+                # Process in smaller chunks
+                chunk_size = max(1, int(max_memory_per_tensor / (kernel_n_pts * sparse_size * meas_dxy.element_size())))
+                print(f"Processing {n_frames} frames in chunks of {chunk_size}")
+                H_dyn_chunks = []
+                
+                for i in range(0, n_frames, chunk_size):
+                    end_idx = min(i + chunk_size, n_frames)
+                    chunk_frames = end_idx - i
+                    print(f"Processing chunk {i//chunk_size + 1}/{(n_frames + chunk_size - 1)//chunk_size}: frames {i} to {end_idx-1}")
+                    
+                    # Create smaller tensor for this chunk
+                    meas_dxy_sorted_chunk = torch.zeros(
+                        (chunk_frames, kernel_n_pts, sparse_size),
+                        dtype=meas_dxy.dtype,
+                        device=self.device,
+                    )
+                    
+                    # add at flattened_indices the values of meas_dxy for this chunk
+                    meas_dxy_sorted_chunk.scatter_add_(
+                        2, 
+                        flattened_indices[i:end_idx].unsqueeze(1).expand_as(meas_dxy[i:end_idx]), 
+                        meas_dxy[i:end_idx]
+                    )
+                    
+                    # drop last column (trash)
+                    meas_dxy_sorted_chunk = meas_dxy_sorted_chunk[:, :, :-1]
+                    
+                    # FOLD THE MATRIX for this chunk
+                    fold = nn.Fold(
+                        output_size=(self.img_h, self.img_w),
+                        kernel_size=(kernel_size, kernel_size),
+                        padding=kernel_width,
+                    )
+                    H_dyn_chunk = fold(meas_dxy_sorted_chunk).reshape(chunk_frames, self.img_h * self.img_w)
+                    H_dyn_chunks.append(H_dyn_chunk.clone())  # Clone to ensure memory is copied
+                    
+                    # Clean up chunk memory
+                    del meas_dxy_sorted_chunk, H_dyn_chunk
+                    if self.device.type == 'cuda':
+                        torch.cuda.empty_cache()
+                
+                # Concatenate all chunks
+                H_dyn = torch.cat(H_dyn_chunks, dim=0)
+                del H_dyn_chunks
+                print("Chunked processing completed successfully")
+                
+            else:
+                print("Using standard processing (tensor fits in memory)")
+                # Create a larger H_dyn that will be folded
+                meas_dxy_sorted = torch.zeros(
+                    (n_frames, kernel_n_pts, sparse_size),
+                    dtype=meas_dxy.dtype,
+                    device=self.device,
+                )
+                # add at flattened_indices the values of meas_dxy
+                meas_dxy_sorted.scatter_add_(
+                    2, flattened_indices.unsqueeze(1).expand_as(meas_dxy), meas_dxy
+                )
+                
+                # drop last column (trash)
+                meas_dxy_sorted = meas_dxy_sorted[:, :, :-1]
+                
+                # PART 4: FOLD THE MATRIX
+                # _________________________________________________________________
+                # define operator
+                fold = nn.Fold(
+                    output_size=(self.img_h, self.img_w),
+                    kernel_size=(kernel_size, kernel_size),
+                    padding=kernel_width,
+                )
+                H_dyn = fold(meas_dxy_sorted).reshape(n_frames, self.img_h * self.img_w)
+
+                # Memory optimization: Clean up after folding
+                del meas_dxy_sorted
+            
+            # Clean up remaining variables
             del flattened_indices, meas_dxy
-            # drop last column (trash)
-            meas_dxy_sorted = meas_dxy_sorted[:, :, :-1]
-            self.meas_dxy_sorted = meas_dxy_sorted
-            # PART 4: FOLD THE MATRIX
-            # _________________________________________________________________
-            # define operator
-            fold = nn.Fold(
-                output_size=(self.img_h, self.img_w),
-                kernel_size=(kernel_size, kernel_size),
-                padding=kernel_width,
-            )
-            H_dyn = fold(meas_dxy_sorted).reshape(n_frames, self.img_h * self.img_w)
+            if self.device.type == 'cuda':
+                torch.cuda.empty_cache()
 
         else:
             print('Be careful to use the inverse deformation field when warping = True.')
+            
+            # Memory optimization: Clear cache before warping operations
+            if self.device.type == 'cuda':
+                torch.cuda.empty_cache()
 
             det = self.calc_det(def_field)
 
             meas_pattern = meas_pattern.reshape(
                 meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1]
             )
+            
+            # Memory optimization: Use in-place operations when possible
             meas_pattern_ext = torch.zeros(
-                (meas_pattern.shape[0], 1, self.img_shape[0], self.img_shape[1])
+                (meas_pattern.shape[0], 1, self.img_shape[0], self.img_shape[1]),
+                dtype=motion.field.dtype,  # Use correct dtype from start
+                device=self.device
             )
+            
             amp_max_h = (self.img_shape[0] - self.meas_shape[0]) // 2
             amp_max_w = (self.img_shape[1] - self.meas_shape[1]) // 2
             meas_pattern_ext[
@@ -2493,7 +2574,8 @@ class DynamicLinear(Linear):
                 amp_max_h : self.meas_shape[0] + amp_max_h,
                 amp_max_w : self.meas_shape[1] + amp_max_w,
             ] = meas_pattern
-            meas_pattern_ext = meas_pattern_ext.to(dtype=motion.field.dtype)
+            
+            del meas_pattern
 
             H_dyn = nn.functional.grid_sample(
                 meas_pattern_ext,
@@ -2502,11 +2584,26 @@ class DynamicLinear(Linear):
                 padding_mode="zeros",
                 align_corners=True,
             )
-            H_dyn = det.reshape((meas_pattern.shape[0], -1)) * H_dyn.reshape(
-                (meas_pattern.shape[0], -1)
+            
+            # Memory optimization: Clean up before final computation
+            del meas_pattern_ext
+            if self.device.type == 'cuda':
+                torch.cuda.empty_cache()
+                
+            H_dyn = det.reshape((det.shape[0], -1)) * H_dyn.reshape(
+                (H_dyn.shape[0], -1)
             )
             
+            del det
+            
         self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device) # store in _param_H_dyn
+        
+        # Memory optimization: Clean up H_dyn variable (data is now in parameter)
+        del H_dyn
+        if self.device.type == 'cuda':
+            torch.cuda.empty_cache()
+            print(f"Final memory after storing H_dyn: {torch.cuda.memory_allocated()/1024**3:.2f} GB")
+        
 
     def calc_det(self, def_field):
         r"""Computes the determinant of the deformation field. It is used for the 'warping the patterns'
