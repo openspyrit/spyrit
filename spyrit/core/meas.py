@@ -23,7 +23,6 @@ from collections.abc import Iterable
 
 # import memory_profiler as mprof
 
-import math
 import torch
 import torch.nn as nn
 
@@ -31,9 +30,64 @@ from spyrit.core.warp import DeformationField
 import spyrit.core.torch as spytorch
 
 
-# This class exists so that DynamicLinear does NOT inherit from adjoint method
+
+
 # =============================================================================
-class _Base(nn.Module):
+class Linear(nn.Module):
+    r"""
+    Simulates linear measurements
+
+    .. math::
+        m =\mathcal{N}\left(Hx\right),
+
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
+
+    .. important::
+        The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`).
+
+    Args:
+        :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
+        with shape :math:`(M, N)`. Only real values are supported.
+
+        :attr:`meas_shape` (tuple, optional): Shape of the underliying
+        multi-dimensional array :math:`X`. Must be a tuple of integers
+        :math:`(N_1, ... ,N_k)` such that :math:`\prod_k N_k = N`. If not, an
+        error is raised. Defaults to None.
+
+        :attr:`meas_dims` (tuple, optional): Dimensions of :math:`X` the
+        acquisition matrix applies to. Must be a tuple with the same length as
+        :attr:`meas_shape`. If not, an error is raised. Defaults to the last
+        dimensions of the multi-dimensional array :math:`X` (e.g., `(-2,-1)`
+        when `len(meas_shape)`).
+
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. Defaults to = `torch.nn.Identity`.
+
+    Attributes:
+        :attr:`H` (:class:`torch.tensor`): (Learnable) measurement matrix of shape
+        :math:`(M, N)` initialized as :math:`H`.
+
+        :attr:`meas_shape` (tuple): Shape of the underliying
+        multi-dimensional array :math:`X`.
+
+        :attr:`meas_dims` (tuple): Dimensions the acquisition matrix applies to.
+
+        :attr:`meas_ndim` (int): Number of dimensions the
+        acquisition matrix applies to. This is `len(meas_dims)`
+
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
+
+        :attr:`M` (int): Number of measurements :math:`M`.
+
+    Example: (to be updated!)
+        Example 1:
+
+        >>> H = torch.rand([400, 1600])
+        >>> meas_op = Linear(H)
+        >>> print(meas_op)
+        Linear(
+          (noise_model): Identity()
+        )
+    """
     def __init__(
         self,
         H: torch.tensor,
@@ -241,107 +295,6 @@ class _Base(nn.Module):
         if self.meas_dims != self.last_dims:
             input = torch.movedim(input, self.last_dims, self.meas_dims)
         return input
-
-    def vectorize(self, input: torch.tensor) -> torch.tensor:
-        r"""Flatten the measured dimensions.
-
-        The tensor is flattened at the indicated `self.meas_dims` dimensions. The
-        flattened dimensions are then collapsed into one, which is the last
-        dimension of the output tensor.
-
-        Input:
-            input (:class:`torch.tensor`): A tensor whose dimensions given by :attr:`self.meas_dims` have shape :attr:`self.meas_shape`.
-
-        Output:
-            :class:`torch.tensor`: A tensor of shape (:attr:`*, self.meas_shape`) where * denotes all the dimensions of the input tensor not included in :attr:`self.meas_dims`.
-
-        See also:
-            For the opposite operation use :meth:`unvectorize()`.
-
-        Example:
-            >>> import spyrit.core.meas as meas
-            >>> matrix = torch.randn(10, 60)
-            >>> meas_op = meas.Linear(matrix, meas_shape=(12, 5), meas_dims=(-1,-3))
-            >>> x = torch.randn(3, 5, 7, 12)
-            >>> print(meas_op.vectorize(x).shape)
-            torch.Size([3, 7, 60])
-        """
-        # move all measured dimensions to the end
-        if self.meas_dims != self.last_dims:
-            input = torch.movedim(input, self.meas_dims, self.last_dims)
-        # flatten the measured dimensions
-        input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
-        return input
-
-
-# =============================================================================
-class Linear(_Base):
-    r"""
-    Simulates linear measurements
-
-    .. math::
-        m =\mathcal{N}\left(Hx\right),
-
-    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
-
-    .. important::
-        The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`).
-
-    Args:
-        :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
-        with shape :math:`(M, N)`. Only real values are supported.
-
-        :attr:`meas_shape` (tuple, optional): Shape of the underliying
-        multi-dimensional array :math:`X`. Must be a tuple of integers
-        :math:`(N_1, ... ,N_k)` such that :math:`\prod_k N_k = N`. If not, an
-        error is raised. Defaults to None.
-
-        :attr:`meas_dims` (tuple, optional): Dimensions of :math:`X` the
-        acquisition matrix applies to. Must be a tuple with the same length as
-        :attr:`meas_shape`. If not, an error is raised. Defaults to the last
-        dimensions of the multi-dimensional array :math:`X` (e.g., `(-2,-1)`
-        when `len(meas_shape)`).
-
-        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. Defaults to = `torch.nn.Identity`.
-
-    Attributes:
-        :attr:`H` (:class:`torch.tensor`): (Learnable) measurement matrix of shape
-        :math:`(M, N)` initialized as :math:`H`.
-
-        :attr:`meas_shape` (tuple): Shape of the underliying
-        multi-dimensional array :math:`X`.
-
-        :attr:`meas_dims` (tuple): Dimensions the acquisition matrix applies to.
-
-        :attr:`meas_ndim` (int): Number of dimensions the
-        acquisition matrix applies to. This is `len(meas_dims)`
-
-        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
-
-        :attr:`M` (int): Number of measurements :math:`M`.
-
-    Example: (to be updated!)
-        Example 1:
-
-        >>> H = torch.rand([400, 1600])
-        >>> meas_op = Linear(H)
-        >>> print(meas_op)
-        Linear(
-          (noise_model): Identity()
-        )
-    """
-    def __init__(
-        self,
-        H: torch.tensor,
-        meas_shape: Union[int, torch.Size, Iterable[int]] = None,
-        meas_dims: Union[int, torch.Size, Iterable[int]] = None,
-        *,
-        noise_model: nn.Module = nn.Identity(),
-        dtype: torch.dtype = torch.float32,
-        device: torch.device = torch.device("cpu"),
-    ):
-        super().__init__(H, meas_shape, meas_dims, noise_model=noise_model, dtype=dtype, device=device)
-
     
     def adjoint(self, m: torch.tensor, unvectorize=False):
         r"""Apply adjoint of matrix H.
@@ -406,6 +359,38 @@ class Linear(_Base):
         if unvectorize:
             m = self.unvectorize(m)
         return m
+
+    def vectorize(self, input: torch.tensor) -> torch.tensor:
+        r"""Flatten the measured dimensions.
+
+        The tensor is flattened at the indicated `self.meas_dims` dimensions. The
+        flattened dimensions are then collapsed into one, which is the last
+        dimension of the output tensor.
+
+        Input:
+            input (:class:`torch.tensor`): A tensor whose dimensions given by :attr:`self.meas_dims` have shape :attr:`self.meas_shape`.
+
+        Output:
+            :class:`torch.tensor`: A tensor of shape (:attr:`*, self.meas_shape`) where * denotes all the dimensions of the input tensor not included in :attr:`self.meas_dims`.
+
+        See also:
+            For the opposite operation use :meth:`unvectorize()`.
+
+        Example:
+            >>> import spyrit.core.meas as meas
+            >>> matrix = torch.randn(10, 60)
+            >>> meas_op = meas.Linear(matrix, meas_shape=(12, 5), meas_dims=(-1,-3))
+            >>> x = torch.randn(3, 5, 7, 12)
+            >>> print(meas_op.vectorize(x).shape)
+            torch.Size([3, 7, 60])
+        """
+        # move all measured dimensions to the end
+        if self.meas_dims != self.last_dims:
+            input = torch.movedim(input, self.meas_dims, self.last_dims)
+        # flatten the measured dimensions
+        input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
+        return input
+
 
 
 # =============================================================================
@@ -2362,9 +2347,8 @@ class DynamicLinear(Linear):
             meas_pattern = self.H
 
         if self.white_acq is not None:
-            meas_pattern *= self.white_acq.ravel().unsqueeze(
-                0
-            )  # for eventual spatial gain
+            # for eventual spatial gain
+            meas_pattern *= self.white_acq.ravel().unsqueeze(0)  
 
         if not warping:
             # drawings of the kernels for bilinear and bicubic 'interpolation'
@@ -2489,8 +2473,6 @@ class DynamicLinear(Linear):
                 padding=kernel_width,
             )
             H_dyn = fold(meas_dxy_sorted).reshape(n_frames, self.img_h * self.img_w)
-            # store in _param_H_dyn
-            self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
 
         else:
             print('Be careful to use the inverse deformation field when warping = True.')
@@ -2523,8 +2505,8 @@ class DynamicLinear(Linear):
             H_dyn = det.reshape((meas_pattern.shape[0], -1)) * H_dyn.reshape(
                 (meas_pattern.shape[0], -1)
             )
-
-            self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device)
+            
+        self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device) # store in _param_H_dyn
 
     def calc_det(self, def_field):
         r"""Computes the determinant of the deformation field. It is used for the 'warping the patterns'
@@ -2610,8 +2592,38 @@ class DynamicLinear(Linear):
         Returns:
             torch.tensor: Measurement of the input image. It has shape (*, M).
         """
-        x = spytorch.center_crop(x, self.meas_shape)
-        return self._static_forward_with_op(x, self.H_dyn)
+        # x = spytorch.center_crop(x, self.meas_shape)   
+        # return self._static_forward_with_op(x, self.H_dyn)
+
+        # I think it is better for this function to perform the product H_dyn @ x (no noise involved), ask Nicolas later. (TODO: update docstring if we keep this)
+        x = self.vectorize(x)  # don't need to crop because H_dyn has extended FOV
+        x = torch.einsum("mn,...n->...m", self.H_dyn, x)
+        return x
+    
+    def adjoint(self, y: torch.tensor) -> torch.tensor:
+        r"""Adjoint operation of the dynamic measurement operator.
+
+        Computes :math:`x = H_{dyn}^T y`, where :math:`y` is the input
+        measurements, and :math:`H_{dyn}^T` is the adjoint of the dynamic
+        measurement matrix.
+
+        This supposes the dynamic measurement matrix `H_dyn` has been set using
+        the method `build_H_dyn()`. An error will be raised if `H_dyn` has not
+        been set yet.
+
+        Args:
+            y (torch.tensor): batch of measurements of shape :math:`(*, M)`.
+            `*` denotes any size, and `M` the number of measurements (with
+            `M` equal to the number of frames).
+
+        Returns:
+            torch.tensor: batch of images in the image domain of shape
+            :math:`(*, h, w)`. `*` denotes any size, and `h`, `w` the height
+            and width of the image.
+        """ 
+
+        y = torch.einsum("mn,...m->...n", self.H_dyn, y)
+        return y
 
     def vectorize(self, input:torch.tensor) -> torch.tensor:
         r"""Flattens across the measured dimensions, brings the flattened
@@ -2624,12 +2636,13 @@ class DynamicLinear(Linear):
         if time_and_meas_dims != time_and_last_dims:
             input = torch.movedim(input, time_and_meas_dims, time_and_last_dims)
         # flatten the last measured dimensions
-        input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
+        # input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
+        input = input.reshape(*input.shape[: -self.meas_ndim], -1)   # this way it works even for img_shape and meas_shape
         return input
 
     def unvectorize(self, input:torch.tensor) -> torch.tensor:
         r"""Unflattens an input tensor, does the inverse operation of
-        :meth:`vectorize`
+        :meth:`vectorize` 
         
         .. important::
             To be completed
@@ -2682,6 +2695,7 @@ class DynamicLinear(Linear):
                 + "bicubic or schaum."
             )
         return ans.to(self.device)
+    
 
 
 # =============================================================================
@@ -3097,7 +3111,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
         # call Linear constructor (avoid setting A)
         super(DynamicLinearSplit, self).__init__(
-            torch.empty(h**2, h**2),
+            torch.empty(h**2, h**2, dtype=dtype, device=device),  # dummy H
             time_dim,
             img_shape,
             meas_shape,
