@@ -2617,31 +2617,44 @@ class DynamicLinear(Linear):
             :class:`torch.tensor`: The determinant for each frame of the
             deformation field, it has shape (t, h, w).        
         """
+        # Memory optimization: Clear cache before computation
+        if self.device.type == 'cuda':
+            torch.cuda.empty_cache()
+            
         # def_field of shape (n_frames, img_shape[0], img_shape[1], 2) in range [0, h-1] x [0, w-1]
         v1, v2 = def_field[:, :, :, 0], def_field[:, :, :, 1]
         n_frames = def_field.shape[0]
 
-        # def opérateur gradient (differences finies non normalisées)
-        L = lambda u: torch.stack(
-            [
-                torch.cat(
-                    [torch.diff(u, dim=1), torch.ones(n_frames, 1, u.shape[2])], dim=1
-                ),
-                torch.cat(
-                    [torch.diff(u, dim=2), torch.ones(n_frames, u.shape[1], 1)], dim=2
-                ),
-            ],
-            dim=3,
-        )
+        # Memory-efficient gradient computation
+        # Compute gradients for v1
+        diff_v1_dim1 = torch.diff(v1, dim=1)
+        ones_v1_dim1 = torch.ones(n_frames, 1, v1.shape[2], device=v1.device, dtype=v1.dtype)
+        dy_v1 = torch.cat([diff_v1_dim1, ones_v1_dim1], dim=1)
+        del diff_v1_dim1, ones_v1_dim1
+        
+        diff_v1_dim2 = torch.diff(v1, dim=2)
+        ones_v1_dim2 = torch.ones(n_frames, v1.shape[1], 1, device=v1.device, dtype=v1.dtype)
+        dx_v1 = torch.cat([diff_v1_dim2, ones_v1_dim2], dim=2)
+        del diff_v1_dim2, ones_v1_dim2, v1
+        
+        # Compute gradients for v2
+        diff_v2_dim1 = torch.diff(v2, dim=1)
+        ones_v2_dim1 = torch.ones(n_frames, 1, v2.shape[2], device=v2.device, dtype=v2.dtype)
+        dy_v2 = torch.cat([diff_v2_dim1, ones_v2_dim1], dim=1)
+        del diff_v2_dim1, ones_v2_dim1
+        
+        diff_v2_dim2 = torch.diff(v2, dim=2)
+        ones_v2_dim2 = torch.ones(n_frames, v2.shape[1], 1, device=v2.device, dtype=v2.dtype)
+        dx_v2 = torch.cat([diff_v2_dim2, ones_v2_dim2], dim=2)
+        del diff_v2_dim2, ones_v2_dim2, v2
 
-        dx_v1 = L(v1)[..., 1]
-        dx_v2 = L(v2)[..., 1]
-        dy_v1 = L(v1)[..., 0]
-        dy_v2 = L(v2)[..., 0]
-
-        det = (
-            dx_v1 * dy_v2 - dx_v2 * dy_v1
-        )  # shape is (n_frames, img_shape[0], img_shape[1])
+        # Compute determinant
+        det = dx_v1 * dy_v2 - dx_v2 * dy_v1
+        
+        # Clean up
+        del dx_v1, dy_v1, dx_v2, dy_v2
+        if self.device.type == 'cuda':
+            torch.cuda.empty_cache()
 
         return det
 
