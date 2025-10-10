@@ -22,6 +22,11 @@ Each tutorial focuses on a specific submodule of the full pipeline.
 
 * :ref:`Tutorial 3 <sphx_glr_gallery_tuto_03_pseudoinverse_linear.py>` demonstrates pseudo-inverse reconstructions from Hadamard measurements.
 
+* :ref:`Tutorial 4 <sphx_glr_gallery_tuto_04_pseudoinverse_cnn_linear.py>`.a introduces data-driven post-processing reconstruction.
+
+* :ref:`Tutorial 4 <sphx_glr_gallery_tuto_04_b_train_pseudoinverse_cnn_linear.py>`.b trains the post-processing CNN used in :ref:`Tutorial 4 <sphx_glr_gallery_tuto_04_pseudoinverse_cnn_linear.py>`.a.
+
+* :ref:`Tutorial 5 <sphx_glr_gallery_tuto_05_dcnet.py>` introduces the denoised completion network for the reconstruction of Poisson-corrupted subsampled measurements.
 
 .. note::
 
@@ -29,11 +34,6 @@ Each tutorial focuses on a specific submodule of the full pipeline.
 
 The tutorials below will gradually be updated to be compatible with SPyRiT 3 (work in progress, in the meantime see SPyRiT `2.4.0`_).
 
-* :ref:`Tutorial 3 <sphx_glr_gallery_tuto_03_pseudoinverse_cnn_linear.py>` uses a CNN to denoise the image if necessary
-
-* :ref:`Tutorial 4 <sphx_glr_gallery_tuto_04_train_pseudoinverse_cnn_linear.py>` is used to train the CNN introduced in Tutorial 3
-
-* :ref:`Tutorial 5 <sphx_glr_gallery_tuto_05_acquisition_split_measurements.py>` introduces a new type of measurement operator ('split') that simulates positive and negative measurements
 
 * :ref:`Tutorial 6 <sphx_glr_gallery_tuto_06_dcnet_split_measurements.py>` uses a Denoised Completion Network with a trainable image denoiser to improve the results obtained in Tutorial 5
 
@@ -42,9 +42,6 @@ The tutorials below will gradually be updated to be compatible with SPyRiT 3 (wo
 * :ref:`Tutorial 8 <sphx_glr_gallery_tuto_08_lpgd_split_measurements.py>` shows how to perform image reconstruction using a learnt proximal gradient descent.
 
 * :ref:`Tutorial 9 <sphx_glr_gallery_tuto_09_dynamic.py>` explains motion simulation from an image, dynamic measurements and reconstruction.
-
-* Explore :ref:`Bonus Tutorial <sphx_glr_gallery_tuto_bonus_advanced_methods_colab.py>` if you want to go deeper into Spyrit's capabilities
-
 
 .. _GitHub: https://github.com/openspyrit/spyrit/tree/3895b5e61fb6d522cff5e8b32a36da89b807b081/tutorial/images/test
 

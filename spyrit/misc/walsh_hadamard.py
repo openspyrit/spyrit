@@ -1018,8 +1018,11 @@ def walsh2_S_matrix(n):
     Returns:
         S (np.ndarray): (n*n-1)-by-(n*n-1) matrix
 
-    Example 1:
+    Example:
+        >>> from spyrit.misc.walsh_hadamard import walsh2_S_matrix
         >>> S = walsh2_S_matrix(4)
+        >>> print(S.shape)
+        (15, 15)
     """
 
     H = walsh_matrix_2d(n)
@@ -1425,11 +1428,11 @@ def load_matrix(order, name="sage"):
         np.ndarray: Walsh-Hadamard matrix.
 
     Example 1:
-        #>>> had = load_matrix(order=28, name="296")
-        #>>> had = load_matrix(order=4)
-        #>>> had = load_matrix(order=508)
-        #>>> had = load_matrix(order=508, name="sage")
-        #>>> had = load_matrix(order=508, name="sage.SDS")
+        >>> had = load_matrix(order=28, name="296") # doctest: +SKIP
+        >>> had = load_matrix(order=4) # doctest: +SKIP
+        >>> had = load_matrix(order=508) # doctest: +SKIP
+        >>> had = load_matrix(order=508, name="sage") # doctest: +SKIP
+        >>> had = load_matrix(order=508, name="sage.SDS") # doctest: +SKIP
     """
     folder = check_downloaded_hadamard_matrix()
     file = ""
@@ -1464,7 +1467,7 @@ def list_available_hadamard_matrix():
         np.ndarray: Walsh-Hadamard matrix.
 
     Example 1:
-        #>>> print(list_available_hadamard_matrix())
+        >>> print(list_available_hadamard_matrix()) # doctest: +SKIP
     """
 
     # Function to extract numerical parts from the filename

@@ -42,13 +42,23 @@ class FullNet(nn.Sequential):
         recon_modules (nn.Sequential): Reconstruction modules.
 
     Example:
-        # >>> import torch.nn as nn
-        # >>> acqu1 = lambda x: x*2
-        # >>> acqu2 = lambda x: x - 10
-        # >>> acqu = nn.Sequential(acqu1, acqu2)
-        # >>> recon1 = lambda x: (x + 10) / 2
-        # >>> recon = nn.Sequential(recon1)
-        # >>> net = FullNet(acqu, recon)
+        >>> import torch.nn as nn
+        >>> acqu1 = nn.Linear(10,5)
+        >>> acqu2 = nn.Sigmoid()
+        >>> acqu = nn.Sequential(acqu1, acqu2)
+        >>> recon1 = nn.Linear(2,5)
+        >>> recon = nn.Sequential(recon1)
+        >>> net = FullNet(acqu, recon)
+        >>> print(net)
+        FullNet(
+          (acqu_modules): Sequential(
+            (0): Linear(in_features=10, out_features=5, bias=True)
+            (1): Sigmoid()
+          )
+          (recon_modules): Sequential(
+            (0): Linear(in_features=2, out_features=5, bias=True)
+          )
+        )
     """
 
     def __init__(
@@ -96,16 +106,19 @@ class FullNet(nn.Sequential):
             reconstruction modules.
 
         Example:
-            # >>> acqu1 = lambda x: x*2
-            # >>> acqu2 = lambda x: x - 10
-            # >>> acqu = nn.Sequential(acqu1, acqu2)
-            # >>> recon1 = lambda x: (x + 10) / 2
-            # >>> recon = nn.Sequential(recon1)
-            # >>> net = FullNet(acqu, recon)
-            # >>> x = torch.tensor(5.0)
-            # >>> y = net(x)
-            # >>> print(y)
-            tensor(5.0000)
+            >>> acqu1 = nn.Linear(10,5)
+            >>> acqu2 = nn.Sigmoid()
+            >>> acqu = nn.Sequential(acqu1, acqu2)
+            >>> recon1 = nn.Linear(5,2)
+            >>> recon = nn.Sequential(recon1)
+            >>> net = FullNet(acqu, recon)
+            >>> x = torch.ones(2, 10)
+            >>> y = net(x)
+            >>> print(y.shape)
+            torch.Size([2, 2])
+            >>> print(y)
+            tensor([[...],
+                    [...]], grad_fn=<AddmmBackward0>)
         """
         x = self.acquire(x)  # use custom measurement operator
         x = self.reconstruct(x)  # use custom reconstruction operator
@@ -128,16 +141,19 @@ class FullNet(nn.Sequential):
             measurement modules.
 
         Example:
-            # >>> acqu1 = lambda x: x*2
-            # >>> acqu2 = lambda x: x - 10
-            # >>> acqu = nn.Sequential(acqu1, acqu2)
-            # >>> recon1 = lambda x: (x + 10) / 2
-            # >>> recon = nn.Sequential(recon1)
-            # >>> net = FullNet(acqu, recon)
-            # >>> x = torch.tensor(5.0)
-            # >>> z = net.acquire(x)
-            # >>> print(z)
-            tensor(0.0000)
+            >>> acqu1 = nn.Linear(10,5)
+            >>> acqu2 = nn.Sigmoid()
+            >>> acqu = nn.Sequential(acqu1, acqu2)
+            >>> recon1 = nn.Linear(2,5)
+            >>> recon = nn.Sequential(recon1)
+            >>> net = FullNet(acqu, recon)
+            >>> x = torch.ones(2, 10)
+            >>> z = net.acquire(x)
+            >>> print(z.shape)
+            torch.Size([2, 5])
+            >>> print(z)
+            tensor([[...],
+                    [...]], grad_fn=<SigmoidBackward0>)
         """
         return self.acqu_modules(x)
 
@@ -157,16 +173,27 @@ class FullNet(nn.Sequential):
             reconstruction modules.
 
         Example:
-            # >>> acqu1 = lambda x: x*2
-            # >>> acqu2 = lambda x: x - 10
-            # >>> acqu = nn.Sequential(acqu1, acqu2)
-            # >>> recon1 = lambda x: (x + 10) / 2
-            # >>> recon = nn.Sequential(recon1)
-            # >>> net = FullNet(acqu, recon)
-            # >>> y = torch.tensor(0.0)
-            # >>> z = net.reconstruct(y)
-            # >>> print(z)
-            tensor(5.0000)
+            >>> acqu1 = nn.Linear(10,5)
+            >>> acqu2 = nn.Sigmoid()
+            >>> acqu = nn.Sequential(acqu1, acqu2)
+            >>> recon1 = nn.Linear(2,5)
+            >>> recon = nn.Sequential(recon1)
+            >>> net = FullNet(acqu, recon)
+            >>> y = torch.ones(10, 2)
+            >>> z = net.reconstruct(y)
+            >>> print(z.shape)
+            torch.Size([10, 5])
+            >>> print(z)
+            tensor([[...],
+                    [...],
+                    [...],
+                    [...],
+                    [...],
+                    [...],
+                    [...],
+                    [...],
+                    [...],
+                    [...
         """
         return self.recon_modules(y)
 
@@ -294,29 +321,30 @@ class PinvNet(_PrebuiltFullNet):
     directly from the :class:`PinvNet` constructor.
 
     Args:
-        acqu (spyrit.core.meas): Acquisition operator (see :mod:`~spyrit.core.meas`)
+        :attr:`acqu` (:mod:`spyrit.core.meas`): Acquisition operator
 
-        prep (spyrit.core.prep): Preprocessing operator (see :mod:`~spyrit.core.prep`)
+        :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator.
+        Defaults to no preprocesing (i.e., :class:`~spyrit.core.prep.Identity`).
 
-        denoi (torch.nn.Module, optional): Image denoising operator. Default
-        is :class:`~torch.nn.Identity`.
+        :attr:`denoi` (:obj:`torch.nn.Module`, optional): Image denoising
+        operator. Defaults to no denoising (i.e., to :class:`~torch.nn.Identity`).
 
         **pinv_kwargs: Optional keyword arguments passed to the pseudo inverse
-        operator (see :class:`~spyrit.core.inverse.PseudoInverse`).
+        operator (see :class:`spyrit.core.inverse.PseudoInverse`).
 
     Attributes:
-        :attr:`acqu` (spyrit.core.meas): Acquisition operator.
+        :attr:`acqu` (:mod:`spyrit.core.meas`): Acquisition operator.
 
-        :attr:`acqu_modules` (nn.Sequential): Measurement modules. Only contains
+        :attr:`acqu_modules` (:obj:`torch.nn.Sequential`): Measurement modules. Only contains
         the acquisition operator.
 
-        :attr:`prep` (spyrit.core.prep): Preprocessing operator.
+        :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator.
 
-        :attr:`inv` (spyrit.core.inverse.PseudoInverse): Pseudo inverse operator.
+        :attr:`pinv` (:class:`spyrit.core.inverse.PseudoInverse`): Pseudo inverse operator.
 
-        :attr:`denoi` (torch.nn.Module): Image denoising operator.
+        :attr:`denoi` (:obj:`torch.nn.Module`): Image denoising operator.
 
-        :attr:`recon_modules` (nn.Sequential): Reconstruction modules. Contains
+        :attr:`recon_modules` (:obj:`torch.nn.Sequential`): Reconstruction modules. Contains
         the preprocessing operator, the pseudo inverse operator, and the denoising
         operator.
 
@@ -331,24 +359,23 @@ class PinvNet(_PrebuiltFullNet):
         :attr:`output`: Reconstructed images with shape :math:`(b,c,h,w)`.
 
     Example:
-        >>> import spyrit
-        >>> acqu = spyrit.core.meas.HadamSplit2d(32)
-        >>> prep = spyrit.core.prep.Rescale(1.0)
-        >>> pinv = PinvNet(acqu, prep, device=torch.device("cpu"))
+        >>> import spyrit.core.meas as meas
+        >>> import spyrit.core.recon as recon
+        >>> acqu = meas.HadamSplit2d(32)
+        >>> pinv = recon.PinvNet(acqu)
 
     Example with a regularized pseudo inverse:
-        >>> import spyrit
-        >>> noise_model = spyrit.core.noise.Poisson(100)
-        >>> acqu = spyrit.core.meas.HadamSplit2d(32, noise_model=noise_model)
-        >>> prep = spyrit.core.prep.Rescale(100)
-        >>> pinv = PinvNet(acqu, prep, use_fast_pinv=False, store_H_pinv=True, regularization='H1', eta=1e-6, img_shape=(32, 32))
+        >>> import spyrit.core.meas as meas
+        >>> import spyrit.core.recon as recon
+        >>> acqu = meas.HadamSplit2d(32)
+        >>> pinv = recon.PinvNet(acqu, use_fast_pinv=False, store_H_pinv=True, regularization='H1', eta=1e-6, img_shape=(32, 32))
     """
 
     def __init__(
         self,
         acqu: meas.Linear,
-        prep,
-        denoi=nn.Identity(),
+        prep=prep.Identity(),  # I.e., defaults to no preprocesing.
+        denoi=nn.Identity(),  # I.e., defaults to no denosing.
         *,
         device: torch.device = torch.device("cpu"),
         **pinv_kwargs,
@@ -624,26 +651,27 @@ class TikhoNet(_PrebuiltFullNet):
         :attr:`output` (torch.tensor): Reconstructed images with shape :math:`(b,c,h,w)`.
 
     Example 1:
-        # >>> noise = spyrit.core.noise.Poisson(100)
-        # >>> acqu = spyrit.core.meas.HadamSplit2d(64, noise_model=noise)
-        # >>> prep = spyrit.core.prep.Rescale(100)
-        # >>> sigma = torch.ones(64, 64)
-        # >>> tikho = TikhoNet(acqu, prep, sigma, device=torch.device("cuda"))
-        # >>> x = torch.rand(10, 1, 64, 64)
-        # >>> z = tikho(x)
-        # >>> print(z.shape)
-        # torch.Size([10, 1, 64, 64])
+        >>> import spyrit
+        >>> noise = spyrit.core.noise.Poisson(100)
+        >>> acqu = spyrit.core.meas.HadamSplit2d(8, noise_model=noise)
+        >>> prep = spyrit.core.prep.UnsplitRescale()
+        >>> sigma = torch.ones(64, 64)
+        >>> tikho = TikhoNet(acqu, prep, sigma, device=torch.device("cpu"))
+        >>> x = torch.rand(10, 1, 8, 8)
+        >>> z = tikho(x)
+        >>> print(z.shape)
+        torch.Size([10, 1, 8, 8])
 
     Example 2:
-        # >>> noise = spyrit.core.noise.Gaussian(1.0)
-        # >>> acqu = spyrit.core.meas.HadamSplit2d(64, noise_model=noise)
-        # >>> prep = spyrit.core.prep.Rescale(1.0)
-        # >>> sigma = torch.ones(64, 64)
-        # >>> tikho = TikhoNet(acqu, prep, sigma, approx=True, reshape_output=False)
-        # >>> x = torch.rand(10, 1, 64, 64)
-        # >>> z = tikho(x)
-        # >>> print(z.shape)
-        # torch.Size([10, 1, 4096])
+        >>> noise = spyrit.core.noise.Gaussian(1.0)
+        >>> acqu = spyrit.core.meas.HadamSplit2d(8, noise_model=noise)
+        >>> prep = spyrit.core.prep.UnsplitRescale()
+        >>> sigma = torch.ones(64, 64)
+        >>> tikho = TikhoNet(acqu, prep, sigma, approx=True, reshape_output=False)
+        >>> x = torch.rand(10, 1, 8, 8)
+        >>> z = tikho(x)
+        >>> print(z.shape)
+        torch.Size([10, 1, 64])
     """
 
     def __init__(
@@ -693,15 +721,16 @@ class TikhoNet(_PrebuiltFullNet):
             or :math:`(b,c,hw)` otherwise.
 
         Example:
-            # >>> acqu = spyrit.core.meas.HadamSplit2d(64)
-            # >>> prep = spyrit.core.prep.Rescale(1)
-            # >>> sigma = torch.ones(64, 64)
-            # >>> tikho = TikhoNet(acqu, prep, sigma)
-            # >>> x = torch.rand(10, 1, 64, 64)
-            # >>> y = acqu(x)
-            # >>> z = tikho.reconstruct(y)
-            # >>> print(z.shape)
-            # torch.Size([10, 1, 64, 64])
+            >>> import spyrit
+            >>> acqu = spyrit.core.meas.HadamSplit2d(8)
+            >>> prep = spyrit.core.prep.UnsplitRescale()
+            >>> sigma = torch.ones(64, 64)
+            >>> tikho = TikhoNet(acqu, prep, sigma)
+            >>> x = torch.rand(10, 1, 8, 8)
+            >>> y = acqu(x)
+            >>> z = tikho.reconstruct(y)
+            >>> print(z.shape)
+            torch.Size([10, 1, 8, 8])
         """
         y = self.reconstruct_pinv(y)
         y = self.denoi(y)
@@ -726,15 +755,16 @@ class TikhoNet(_PrebuiltFullNet):
             or :math:`(b,c,hw)` otherwise.
 
         Example:
-            # >>> acqu = spyrit.core.meas.HadamSplit2d(64)
-            # >>> prep = spyrit.core.prep.Rescale(1)
-            # >>> sigma = torch.ones(64, 64)
-            # >>> tikho = TikhoNet(acqu, prep, sigma)
-            # >>> x = torch.rand(10, 1, 64, 64)
-            # >>> y = acqu(x)
-            # >>> z = tikho.reconstruct_pinv(y)
-            # >>> print(z.shape)
-            # torch.Size([10, 1, 64, 64])
+            >>> import spyrit
+            >>> acqu = spyrit.core.meas.HadamSplit2d(8)
+            >>> prep = spyrit.core.prep.UnsplitRescale()
+            >>> sigma = torch.ones(64, 64)
+            >>> tikho = TikhoNet(acqu, prep, sigma)
+            >>> x = torch.rand(10, 1, 8, 8)
+            >>> y = acqu(x)
+            >>> z = tikho.reconstruct_pinv(y)
+            >>> print(z.shape)
+            torch.Size([10, 1, 8, 8])
         """
         # covariance of measurements BEFORE preprocessing
         cov_meas = self.prep.sigma(y)

@@ -27,7 +27,7 @@ def data_loaders_imagenet(
     shuffle=False,
     get_size: str = "original",
 ):
-    """
+    r"""
     Args:
         Both 'train_root' and 'val_root' need to have images in a subfolder
 
@@ -45,6 +45,7 @@ def data_loaders_imagenet(
 
         :attr:`get_size`: specifies how images of size :attr:`img_size` are
         obtained
+
             - 'original': random crop with padding
             - 'resize': resize
             - 'ccrop': center crop
@@ -228,7 +229,13 @@ def transform_gray_norm(img_size, normalize=True):
 
 
 def data_loaders_stl10(
-    data_root, img_size=64, batch_size=512, seed=7, shuffle=False, download=True
+    data_root,
+    img_size=64,
+    batch_size=512,
+    seed=7,
+    shuffle=False,
+    download=True,
+    normalize=True,
 ):
     """
     Args:
@@ -239,7 +246,7 @@ def data_loaders_stl10(
     converted into grayscale images.
 
     """
-    transform = transform_gray_norm(img_size)
+    transform = transform_gray_norm(img_size, normalize=normalize)
 
     trainset = torchvision.datasets.STL10(
         root=data_root, split="train+unlabeled", download=download, transform=transform
@@ -440,11 +447,11 @@ def stat_walsh_ImageNet(
         :attr:`data_root` needs to have all images in a subfolder
 
     Example:
-        # >>> from pathlib import Path
-        # >>> from spyrit.misc.statistics import stat_walsh_ImageNet
-        # >>> data_root =  Path('../data/ILSVRC2012_v10102019')
-        # >>> stat_root =  Path('../stat/ILSVRC2012_v10102019')
-        # >>> stat_walsh_ImageNet(stat_root = stat_root, data_root = data_root, img_size = 32, batch_size = 1024)
+        >>> from pathlib import Path
+        >>> from spyrit.misc.statistics import stat_walsh_ImageNet
+        >>> data_root =  Path('../data/ILSVRC2012_v10102019')
+        >>> stat_root =  Path('../stat/ILSVRC2012_v10102019')
+        >>> stat_walsh_ImageNet(stat_root = stat_root, data_root = data_root, img_size = 32, batch_size = 1024) # doctest: +SKIP
 
     """
 
@@ -473,10 +480,10 @@ def stat_walsh_stl10(
         test*.bin, train*.bin and unlabeled_X.bin files.
 
     Example:
-        # >>> data_root =  Path('../datasets/')
-        # >>> stat_root =  Path('../stat/stl10')
-        # >>> from spyrit.misc.statistics import stat_walsh_stl10
-        # >>> stat_walsh_stl10(stat_root = stat_root, data_root = data_root)
+        >>> data_root =  Path('../datasets/')
+        >>> stat_root =  Path('../stat/stl10')
+        >>> from spyrit.misc.statistics import stat_walsh_stl10
+        >>> stat_walsh_stl10(stat_root = stat_root, data_root = data_root) # doctest: +SKIP
 
     """
     dataloaders = data_loaders_stl10(
@@ -699,8 +706,8 @@ def stat_fwalsh_S_stl10(
         torch.tensor: S-transformed signal with shape `(*, n, n)`
 
     Examples:
-        # >>> import spyrit.misc.statistics as st
-        # >>> st.stat_fwalsh_S_stl10()
+        >>> import spyrit.misc.statistics as st
+        >>> st.stat_fwalsh_S_stl10() # doctest: +SKIP
 
     """
 
@@ -766,11 +773,10 @@ def stat_imagenet(
 
 
     Example:
-        data_root =  Path('../data/ILSVRC2012_img_test_v10102019/')
-        stat_root =  Path('../stat/ILSVRC2012_img_test_v10102019')
-
-        from spyrit.misc.statistics import stat_imagenet
-        stat_imagenet(stat_root = stat_root, data_root = data_root)
+        >>> data_root =  Path('../data/ILSVRC2012_img_test_v10102019/')
+        >>> stat_root =  Path('../stat/ILSVRC2012_img_test_v10102019')
+        >>> from spyrit.misc.statistics import stat_imagenet
+        >>> stat_imagenet(stat_root = stat_root, data_root = data_root) # doctest: +SKIP
 
     """
     dataloaders = data_loaders_imagenet(

@@ -25,14 +25,21 @@ See `here <https://github.com/openspyrit/spyrit>`_ for advanced installation gui
 Getting started
 ==================================
 
-Please check our `tutorials <gallery/index.html>`_ as well as the  `examples <https://github.com/openspyrit/spyrit-examples>`_ on GitHub.
+Please check our `tutorials <gallery/index.html>`_ as well as the  `examples <.. _examples: https://github.com/openspyrit/spyrit-examples/tree/master/2025_spyrit_v3>`_ on GitHub.
+
+
+External librairies
+==================================
+
+You can connect spyrit to different packages like deepinv. Check `tutorials <external_libraries.html>`_.
+
 
 Cite us
 ==================================
 
 When using SPyRiT in scientific publications, please cite [v3]_ for SPyRiT v3, [v2]_ for SPyRiT v2, and [v1]_ for DC-Net.
 
-.. [v3] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros, "SPyRiT 3.0: an open source package for single-pixel imaging based on deep learning," Preprint (2024).
+.. [v3] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros, "SPyRiT 3.0: an open source package for single-pixel imaging based on deep learning," Vol. 33, Issue 13, pp. 27988-28005 (2025). `DOI <https://doi.org/10.1364/OE.559227>`_.
 .. [v2] G Beneti-Martin, L Mahieu-Williame, T Baudier, N Ducros, "OpenSpyrit: an Ecosystem for Reproducible Single-Pixel Hyperspectral Imaging," *Optics Express*, Vol. 31, Issue 10, (2023). `DOI <https://doi.org/10.1364/OE.483937>`_.
 .. [v1] A Lorente Mur, P Leclerc, F Peyrin, and N Ducros, "Single-pixel image reconstruction from experimental data using neural networks," *Opt. Express*, Vol. 29, Issue 11, 17097-17110 (2021). `DOI <https://doi.org/10.1364/OE.424228>`_.
 
@@ -57,6 +64,12 @@ The list of contributors can be found `here <https://github.com/openspyrit/spyri
 
    gallery/index
 
+.. toctree::
+   :maxdepth: 2
+   :caption: External libraries
+   :hidden:
+
+   external_libraries
 
 Contents
 ========

@@ -147,3 +147,24 @@ jobs:
         user: __token__
         password: ${{ secrets.PYPI }}
         skip_existing: true
+
+  test_deepinv:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout github repo
+      uses: actions/checkout@v4
+    - name: Checkout submodules
+      run: git submodule update --init --recursive
+    - name: Set up Python '3.12'
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        architecture: 'x64'
+    - name: Run the tests with deepinv
+      run: |
+          pip install pytest
+          pip install deepinv
+          pip install -e .
+          cd tutorial
+          cp wip/tuto_a00_connect_deepinv.py .
+          python tuto_a00_connect_deepinv.py || exit -1
