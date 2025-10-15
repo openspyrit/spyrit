@@ -95,7 +95,7 @@ class DeformationField(nn.Module):
         self._device_tracker = nn.Parameter(torch.tensor([0.0]), requires_grad=False)
 
         # field is None if AffineDeformationField is used
-        if type(self) is DeformationField:
+        if field is not None:
             # store as nn.Parameter and ensure proper device/dtype handling
             self._field = nn.Parameter(field.detach().clone(), requires_grad=False)
             # Move device tracker to same device as field
@@ -501,80 +501,24 @@ class AffineDeformationField(DeformationField):
         time_vector: torch.tensor,
         img_shape: tuple,
         dtype: torch.dtype = torch.float32,
-        device: torch.device = None,
+        device: torch.device = torch.device('cpu'),
     ) -> None:
 
-        self._func = func
-        self._time_vector = time_vector
-        self._img_shape = img_shape
-        self._dtype = dtype
-        
-        # Determine device - use time_vector's device if provided, otherwise use default
-        if device is None:
-            device = time_vector.device if hasattr(time_vector, 'device') else torch.device('cpu')
-        self._device = device
+        self._align_corners = True  
+        self.func = func
+        self.time_vector = time_vector
 
-        super().__init__(None)
-        
-        # Move device tracker to the correct device
-        self._device_tracker = nn.Parameter(
-            torch.tensor([0.0], device=self._device, dtype=self._dtype), 
-            requires_grad=False
-        )
+        field = self._generate_inv_grid_frames(img_shape, time_vector, func, dtype=dtype, device=device)
+        super().__init__(field)
 
-    # override the field property to generate it on the fly
-    @property
-    def field(self) -> torch.tensor:
-        return self._generate_inv_grid_frames(self.img_shape).to(device=self.device, dtype=self.dtype)
-    
-    @property
-    def dtype(self) -> torch.dtype:
-        """Get the dtype of the affine deformation field."""
-        return self._dtype
-
-    # override inherited properties
-    @property
-    def n_frames(self) -> int:
-        return len(self.time_vector)
-
-    # add a setter for the img_shape
-    @property
-    def img_shape(self) -> tuple:
-        return self._img_shape
-
-    @img_shape.setter
-    def img_shape(self, img_shape: tuple):
-        self._img_shape = img_shape
-
-    @property
-    def img_h(self) -> int:
-        return self.img_shape[0]
-
-    @img_h.setter
-    def img_h(self, img_h: int):
-        self._img_shape = (img_h, self.img_shape[1])
-
-    @property
-    def img_w(self) -> int:
-        return self.img_shape[1]
-
-    @img_w.setter
-    def img_w(self, img_w: int):
-        self._img_shape = (self.img_shape[0], img_w)
-
-    # new property
-    @property
-    def func(self):
-        return self._func
-
-    # new property
-    @property
-    def time_vector(self):
-        return self._time_vector
 
     def _generate_inv_grid_frames(
         self,
         grid_shape: tuple,
+        time_vector: torch.tensor,
+        func,
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device('cpu')
     ) -> torch.tensor:
         r"""Generates the inverse deformation field as a tensor of shape
         :math:`(n\_frames, h, w, 2)`.
@@ -603,21 +547,21 @@ class AffineDeformationField(DeformationField):
         # get a batch of matrices of shape (n_frames, 2, 3)
         inv_mat_frames = torch.stack(
             [
-                self.func(t.item())[:2, :]  # need only the first 2 rows
-                for t in self.time_vector
+                func(t.item())[:2, :]  # need only the first 2 rows
+                for t in time_vector
             ]
         )
         
         # Ensure matrices are on the correct device and dtype
-        inv_mat_frames = inv_mat_frames.to(dtype=self.dtype, device=self.device)
+        inv_mat_frames = inv_mat_frames.to(dtype=dtype, device=device)
 
         # use them to generate the grid
         inv_grid_frames = nn.functional.affine_grid(
             inv_mat_frames,
             torch.Size(
-                (len(self.time_vector), 1, *grid_shape)
+                (len(time_vector), 1, *grid_shape)
             ),  # n_channels has no effect
-            align_corners=self.align_corners,
+            align_corners=self._align_corners,
         )
         return inv_grid_frames
 
@@ -700,63 +644,28 @@ class ElasticDeformation(DeformationField):
         n_frames, 
         n_interpolation, 
         dtype=torch.float32,
-        device=None
-    ):
+        device=torch.device('cpu')
+    ): 
 
-        # Set device before calling super().__init__
-        if device is None:
-            device = torch.device('cpu')
+        field = self._generate_inv_grid_frames(img_shape, n_frames, n_interpolation, alpha, sigma, dtype, device)
+        field = field.to(dtype=dtype, device=device)
         
-        super().__init__(None)
+        super().__init__(field)
 
-        # self.sigma_time = sigma_time
+        # Set additional attributes (after init)
         self.alpha = alpha
         self.sigma = sigma
         self.n_interpolation = n_interpolation
-        self.dtype = dtype
-        self.ElasticTransform = v2.ElasticTransform(self.alpha, sigma)
+        self.ElasticTransform = v2.ElasticTransform(alpha, sigma)
 
-        # Generate field and ensure proper device/dtype
-        field = self._generate_inv_grid_frames(img_shape, n_frames, n_interpolation)
-        self._field = nn.Parameter(
-            field.to(device=device, dtype=dtype),
-            requires_grad=False,
-        )
-        
-        # Update device tracker
-        self._device_tracker = nn.Parameter(
-            torch.tensor([0.0], device=device, dtype=dtype), 
-            requires_grad=False
-        )
 
-    # No need for properties since we're storing as regular attributes
-    # dtype, alpha, sigma, n_interpolation are accessed directly
 
-    @property
-    def field(self):
-        return self._field.data
-
-    @field.setter
-    def field(self, field):
-        # Ensure field is on the correct device and dtype when setting
-        field = field.to(device=self.device, dtype=self.dtype)
-        self._field = nn.Parameter(field, requires_grad=False)
-        self.n_frames = field.shape[0]
-
-    @property
-    def img_shape(self):
-        return self.field.shape[1:3]
-
-    @property
-    def n_frames(self):
-        return self.field.shape[0]
-
-    def _generate_inv_grid_frames(self, img_shape, n_frames, n_interpolation):
+    def _generate_inv_grid_frames(self, img_shape, n_frames, n_interpolation, alpha, sigma, dtype, device):
         """Generates the frames of the elastic deformation field of shape
         (n_frames, h, w, 2)."""
         # create base frame between -1 and 1
-        base_frame_i = torch.linspace(-1, 1, img_shape[0], dtype=self.dtype, device=self.device)
-        base_frame_j = torch.linspace(-1, 1, img_shape[1], dtype=self.dtype, device=self.device)
+        base_frame_i = torch.linspace(-1, 1, img_shape[0], dtype=dtype, device=device)
+        base_frame_j = torch.linspace(-1, 1, img_shape[1], dtype=dtype, device=device)
 
         # shape (h, w, 2)
         base_frame = torch.stack(
@@ -772,20 +681,22 @@ class ElasticDeformation(DeformationField):
 
         for i in range(total_frames_to_generate // n_interpolation):
             # generate a random field - create tensor on correct device
-            dummy_input = torch.empty([1, *img_shape], device=self.device, dtype=self.dtype)
-            displacement = self.ElasticTransform._get_params(dummy_input)["displacement"][0, :, :, :]
-            grid[i * n_interpolation] += displacement.to(device=self.device, dtype=self.dtype)
+            dummy_input = torch.empty([1, *img_shape], device=device, dtype=dtype)
+            # Note: ElasticTransform needs to be created with the correct parameters
+            elastic_transform = v2.ElasticTransform(alpha, sigma)
+            displacement = elastic_transform._get_params(dummy_input)["displacement"][0, :, :, :]
+            grid[i * n_interpolation] += displacement.to(device=device, dtype=dtype)
 
         # Define Gaussian convolution operator
         Conv = nn.Conv1d(1, 1, window_width, bias=False, padding=0)
         gaussian_window = torch.signal.windows.gaussian(
-            window_width, std=window_width / 4, dtype=self.dtype, device=self.device
+            window_width, std=window_width / 4, dtype=dtype, device=device
         )  # , std=self.sigma_time)
         gaussian_window /= gaussian_window.sum()
         Conv.weight = nn.Parameter(gaussian_window.view(1, 1, -1), requires_grad=False)
         
         # Move Conv to correct device
-        Conv = Conv.to(device=self.device)
+        Conv = Conv.to(device=device)
 
         # reshape, convolute, reshape back
         grid = grid.permute(1, 2, 3, 0)  # put time in the last dimension

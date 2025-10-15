@@ -2302,6 +2302,7 @@ class DynamicLinear(Linear):
         motion: DeformationField,
         mode: str = "bilinear",
         warping: bool = False,
+        verbose: bool = False
     ) -> None:
         r"""Build the dynamic measurement matrix `H_dyn`.
 
@@ -2419,6 +2420,9 @@ class DynamicLinear(Linear):
             # _________________________________________________________________
             # crop def_field to keep only measured area
             # moveaxis because crop expects (h,w) as last dimensions
+            if verbose:
+                print("Part 1: separating integer and decimal parts of the field")
+
             def_field = spytorch.center_crop(
                 def_field.moveaxis(-1, 0), self.meas_shape
             ).moveaxis(
@@ -2432,6 +2436,11 @@ class DynamicLinear(Linear):
             dx, dy = torch.split((def_field - def_field_floor), [1, 1], dim=-1)
             dx, dy = dx.squeeze(-1), dy.squeeze(-1)
             # dx.shape = dy.shape = (n_frames, meas_h, meas_w)
+
+            del def_field
+            if self.device.type == 'cuda':
+                torch.cuda.empty_cache()
+
             # evaluate the spline at the decimal part
             dxy = torch.einsum(
                 "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
@@ -2439,7 +2448,7 @@ class DynamicLinear(Linear):
             # shape (n_frames, kernel_n_pts, meas_h*meas_w)
             
             # Memory optimization: explicitly delete large intermediate tensors
-            del dx, dy, def_field
+            del dx, dy
             if self.device.type == 'cuda':
                 torch.cuda.empty_cache()
 
@@ -2449,6 +2458,9 @@ class DynamicLinear(Linear):
             # (kernel_width). This allows each part of the (kernel_size^2)-
             # point grid to contribute to the interpolation.
             # get coordinate of point _00
+            if verbose:
+                print("Part 2: flattening the indices")
+
             def_field_00 = def_field_floor - (kernel_size // 2 - 1)
             del def_field_floor
             # shift the grid for phantom rows/columns
@@ -2480,6 +2492,9 @@ class DynamicLinear(Linear):
             # PART 3: WARP H MATRIX WITH FLATTENED INDICES
             # _________________________________________________________________
             # Build 4 submatrices with 4 weights for bilinear interpolation
+            if verbose:
+                print("Part 3: building H_dyn matrix with flattened indices")
+
             meas_dxy = (
                 meas_pattern.reshape(n_frames, 1, self.h * self.w).to(dxy.dtype) * dxy
             )
@@ -2488,24 +2503,25 @@ class DynamicLinear(Linear):
             
             # Memory optimization: Check if we need chunked processing
             sparse_size = (self.img_h + kernel_width) * (self.img_w + kernel_width) + 1
-            max_memory_per_tensor = 1e9  # ~1GB limit per tensor
+            max_memory_per_tensor = 4e8  # ~400MB limit per tensor
             expected_size = n_frames * kernel_n_pts * sparse_size * meas_dxy.element_size()
             
-            print(f"Expected tensor size: {expected_size/1e9:.2f} GB")
-            
             if expected_size > max_memory_per_tensor:
-                print(f"Using chunked processing to avoid OOM (tensor would be {expected_size/1e9:.2f} GB)")
+                if verbose:
+                    print(f"Using chunked processing to avoid OOM (tensor is expected to be {expected_size/1e9:.2f} GB)")
                 
                 # Process in smaller chunks
                 chunk_size = max(1, int(max_memory_per_tensor / (kernel_n_pts * sparse_size * meas_dxy.element_size())))
-                print(f"Processing {n_frames} frames in chunks of {chunk_size}")
+                if verbose:
+                    print(f"Processing {n_frames} frames in chunks of {chunk_size}")
                 H_dyn_chunks = []
                 
                 for i in range(0, n_frames, chunk_size):
                     end_idx = min(i + chunk_size, n_frames)
                     chunk_frames = end_idx - i
-                    print(f"Processing chunk {i//chunk_size + 1}/{(n_frames + chunk_size - 1)//chunk_size}: frames {i} to {end_idx-1}")
-                    
+                    if verbose:
+                        print(f"Processing chunk {i//chunk_size + 1}/{(n_frames + chunk_size - 1)//chunk_size}: frames {i} to {end_idx-1}")
+
                     # Create smaller tensor for this chunk
                     meas_dxy_sorted_chunk = torch.zeros(
                         (chunk_frames, kernel_n_pts, sparse_size),
@@ -2540,10 +2556,12 @@ class DynamicLinear(Linear):
                 # Concatenate all chunks
                 H_dyn = torch.cat(H_dyn_chunks, dim=0)
                 del H_dyn_chunks
-                print("Chunked processing completed successfully")
+                if verbose:
+                    print("Chunked processing completed successfully")
                 
             else:
-                print("Using standard processing (tensor fits in memory)")
+                if verbose:
+                    print("Using standard processing (tensor fits in memory)")
                 # Create a larger H_dyn that will be folded
                 meas_dxy_sorted = torch.zeros(
                     (n_frames, kernel_n_pts, sparse_size),
@@ -2632,7 +2650,8 @@ class DynamicLinear(Linear):
         del H_dyn
         if self.device.type == 'cuda':
             torch.cuda.empty_cache()
-            print(f"Final memory after storing H_dyn: {torch.cuda.memory_allocated()/1024**3:.2f} GB")
+            if verbose:
+                print(f"Final memory after storing H_dyn: {torch.cuda.memory_allocated()/1024**3:.2f} GB")
         
 
     def calc_det(self, def_field):
