@@ -2252,18 +2252,30 @@ class DynamicLinear(Linear):
     @property
     def recon_mode(self) -> str:
         """Interpolation mode used for reconstruction."""
-        return self._recon_mode
+        return self._recon_mode        
     
     @property
     def H_dyn(self) -> torch.tensor:
-        """Dynamic measurement matrix H."""
+        """Dynamic measurement matrix H_dyn."""
         try:
             return self._param_H_dyn.data
         except AttributeError as e:
             raise AttributeError(
-                "The dynamic measurement matrix H has not been set yet. "
-                + "Please call build_H_dyn() before accessing the attribute "
-                + "H_dyn (or H)."
+                "The dynamic measurement matrix H_dyn has not been set yet. "
+                + "Please call build_H_dyn() before accessing the attribute H_dyn."
+            ) from e
+        
+    @property
+    def H_dyn_diff(self) -> torch.tensor:
+        """Dynamic measurement matrix H_dyn_diff that adopts the differential 
+        measurement strategy as described in [ref_journal], 
+        i.e., `H_dyn[0] - H_dyn[1]`, `H_dyn[2] - H_dyn[3]`, etc."""
+        try:
+            return self._param_H_dyn.data[::2] - self._param_H_dyn.data[1::2]
+        except AttributeError as e:
+            raise AttributeError(
+                "The dynamic measurement matrix H_dyn has not been set yet. "
+                + "Please call build_H_dyn() before accessing the attribute H_dyn_diff."
             ) from e
     
     def measure(self, x):
@@ -3268,7 +3280,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         if M is None:
             M = h**2
 
-        # call Linear constructor (avoid setting A)
+        # call DynamicLinearSplit constructor (avoid setting A)
         super(DynamicLinearSplit, self).__init__(
             torch.empty(h**2, h**2, dtype=dtype, device=device),  # dummy H
             time_dim,
