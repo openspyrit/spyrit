@@ -658,6 +658,15 @@ class ElasticDeformation(DeformationField):
         self.n_interpolation = n_interpolation
         self.ElasticTransform = v2.ElasticTransform(alpha, sigma)
 
+    def _compute_field_std(self):
+        """Computes the theoretical standard deviation (in pixels) of the deformation field."""
+        sigma_t = 3 * self.n_interpolation / 4
+        var_dz = 1 / 3
+        var_gdz = var_dz / (4 * math.pi * self.sigma ** 2)
+        std = self.alpha * (var_gdz / (2 * math.pi ** 0.5 * sigma_t)) ** 0.5
+
+        return std
+
 
 
     def _generate_inv_grid_frames(self, img_shape, n_frames, n_interpolation, alpha, sigma, dtype, device):
