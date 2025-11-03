@@ -6,15 +6,11 @@
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from PIL import Image
 import numpy as np
-from numpy import linalg as LA
-import time
-from scipy import signal
-from scipy import misc
-from scipy import sparse
 import torch
 import math
+from pathlib import Path
+from typing import Tuple, List, Optional, Union
 
 
 def display_vid(video, fps, title="", colormap=plt.cm.gray):
@@ -342,3 +338,136 @@ def pre_process_video(video, crop_patch, kernel_size):
         output_batch[i, :, :] = torch.Tensor(median_frame)
     output_batch = output_batch.reshape(batch_size, seq_length, c, h, w)
     return output_batch
+
+
+def contrib_map(H_dyn: np.ndarray, n: int, save_figs: bool = False, 
+                path_fig: Union[str, Path] = '', show_fig: bool = True) -> np.ndarray:
+    """
+    Generate a contribution map showing measurement pattern coverage.
+    
+    Args:
+        H_dyn: Dynamic measurement matrix.
+        n: Image size (assuming square images).
+        save_figs: Whether to save the figure.
+        path_fig: Path to save the figure.
+        show_fig: Whether to display the figure.
+        
+    Returns:
+        Contribution map as numpy array.
+    """
+    _, L = H_dyn.shape
+    l = int(np.sqrt(L))
+    
+    if l * l != L:
+        raise ValueError(f"Matrix dimension L={L} is not a perfect square")
+    
+    # Create contribution map
+    contrib = np.where(H_dyn != 0, 1, 0)
+    contrib_image = np.sum(contrib, axis=0)
+    contrib_image = contrib_image.reshape((l, l)) / (n ** 2)
+    contrib_image = np.rot90(contrib_image, 2)  # Account for rotation in SP POV
+    
+    # Create visualization
+    plt.figure(figsize=(8, 6))
+    plt.imshow(contrib_image, cmap="hot")
+    cbar = plt.colorbar(fraction=0.047, pad=0.01, format="%.1f")
+    cbar.ax.tick_params(labelsize=15)
+    plt.title("Contribution Map", fontsize=16)
+    
+    if save_figs and path_fig:
+        plt.axis('off')
+        plt.savefig(str(path_fig), bbox_inches='tight', dpi=300)
+
+    if show_fig:
+        plt.show()
+    else:
+        plt.close()
+    
+    return contrib_image
+
+
+def error_map(img1: np.ndarray, img2: np.ndarray, save_figs: bool = False, 
+              path_fig: Union[str, Path] = '', show_fig: bool = True, 
+              title: str = "Error Map") -> np.ndarray:
+    """
+    Compute and visualize error map between two images.
+    
+    Args:
+        img1: First image.
+        img2: Second image.
+        save_figs: Whether to save the figure.
+        path_fig: Path to save the figure.
+        show_fig: Whether to display the figure.
+        title: Title for the plot.
+        
+    Returns:
+        Error map as numpy array.
+        
+    Raises:
+        ValueError: If images have different shapes.
+    """
+    if img1.shape != img2.shape:
+        raise ValueError(f"Image shapes don't match: {img1.shape} vs {img2.shape}")
+    
+    # Normalize images to [0, 1]
+    img1_normalized = (img1 - img1.min()) / (img1.max() - img1.min()) if img1.max() != img1.min() else np.zeros_like(img1)
+    img2_normalized = (img2 - img2.min()) / (img2.max() - img2.min()) if img2.max() != img2.min() else np.zeros_like(img2)
+
+    error = img1_normalized - img2_normalized
+    
+    plt.figure(figsize=(8, 6))
+    plt.imshow(error, cmap='Spectral')
+    cbar = plt.colorbar(fraction=0.047, pad=0.01, format="%.2f")
+    cbar.ax.tick_params(labelsize=15)
+    plt.title(title, fontsize=16)
+    plt.axis('off')
+
+    if save_figs and path_fig:
+        plt.savefig(str(path_fig), bbox_inches='tight', dpi=300)
+
+    if show_fig:
+        plt.show()
+    else:
+        plt.close()
+        
+    return error
+
+
+def blue_box(f: np.ndarray, amp_max: int = 0, box_color: Tuple[int, int, int] = (0, 0, 255)) -> np.ndarray:
+    """
+    Add a colored box overlay to an image for visualization purposes.
+    
+    Args:
+        f: Input grayscale image.
+        amp_max: Offset from image borders for the box.
+        box_color: RGB color for the box (default: blue).
+        
+    Returns:
+        RGB image with colored box overlay.
+        
+    Raises:
+        ValueError: If amp_max is too large for the image size.
+    """
+    if amp_max * 2 >= min(f.shape):
+        raise ValueError(f"amp_max={amp_max} is too large for image shape {f.shape}")
+    
+    # Normalize to 8-bit and create RGB image
+    f_normalized = (f - f.min()) / (f.max() - f.min()) if f.max() != f.min() else np.zeros_like(f)
+    f_255 = (f_normalized * 255).astype(np.uint8)
+    f_rgb = np.stack([f_255] * 3, axis=2)
+    
+    if amp_max == 0:
+        return f_rgb
+    
+    r, g, b = box_color
+    
+    # Draw box borders
+    # Top and bottom borders
+    f_rgb[amp_max, amp_max:-amp_max] = [r, g, b]
+    f_rgb[-amp_max-1, amp_max:-amp_max] = [r, g, b]
+    
+    # Left and right borders
+    f_rgb[amp_max:-amp_max, amp_max] = [r, g, b]
+    f_rgb[amp_max:-amp_max, -amp_max-1] = [r, g, b]
+
+    return f_rgb
