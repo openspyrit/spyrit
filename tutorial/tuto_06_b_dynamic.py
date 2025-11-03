@@ -12,10 +12,10 @@ with the SpyRIT library. We'll cover:
 5. **Reconstruction**: Solving the inverse problem with regularization
 6. **Evaluation**: Comparing static vs dynamic reconstruction quality
 
-Key concepts:
-- Dynamic forward operator H_dyn that accounts for motion during acquisition
-- Motion compensation in single-pixel imaging systems
-- Regularized reconstruction with finite differences
+### Key concepts:
+    - Dynamic forward operator H_dyn that accounts for motion during acquisition
+    - Motion compensation in single-pixel imaging systems
+    - Regularized reconstruction with finite differences
 """
 
 # %% Import libraries
@@ -28,7 +28,7 @@ import time
 
 from IPython.display import clear_output
 
-from spyrit.misc.disp import torch2numpy, imagesc
+from spyrit.misc.disp import torch2numpy, imagesc, contrib_map
 from spyrit.misc.statistics import transform_gray_norm
 import spyrit.core.torch as spytorch
 import spyrit.misc.metrics as score
@@ -348,6 +348,7 @@ with torch.no_grad():
     
     print(f"Final system matrix shape: {H_dyn_diff.shape}")
     print(f"Reconstruction will be in {reco_shape} space")
+
         
     # %% Verify forward model accuracy
     """
@@ -370,6 +371,15 @@ with torch.no_grad():
     plt.colorbar(fraction=0.046, pad=0.04)
     plt.title(f'Forward Model Residual |y - H_dyn·x| \n Max: {residual_2d.max():.2e}')
     plt.show()
+
+    
+    # %% Visualize contribution map
+    """
+    Visualize the contribution each measurements to the pixel reconstruction in percentage.
+    All measurements were used to recover the white pixel, whereas only a few measurements 
+    contributed to the reddish pixels reconstruction.
+    """
+    contrib = contrib_map(H_dyn_diff.cpu().numpy(), n)
 
 
     # %% Visualize dynamic matrix evolution
