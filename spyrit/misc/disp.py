@@ -9,6 +9,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import torch
 import math
+import cv2
 from pathlib import Path
 from typing import Tuple, List, Optional, Union
 
@@ -471,3 +472,86 @@ def blue_box(f: np.ndarray, amp_max: int = 0, box_color: Tuple[int, int, int] = 
     f_rgb[amp_max:-amp_max, -amp_max-1] = [r, g, b]
 
     return f_rgb
+
+
+
+def get_frame(movie_path: Union[str, Path], frame_number: int = 0) -> np.ndarray:
+    """
+    Extract a specific frame from a video file.
+    
+    Args:
+        movie_path: Path to the video file.
+        frame_number: Frame number to extract (0-indexed).
+        
+    Returns:
+        Grayscale frame as numpy array.
+        
+    Raises:
+        FileNotFoundError: If video file doesn't exist.
+        ValueError: If frame cannot be read or video is invalid.
+    """
+    movie_path = Path(movie_path)
+    if not movie_path.exists():
+        raise FileNotFoundError(f"Video file not found: {movie_path}")
+    
+    cap = cv2.VideoCapture(str(movie_path))
+
+    if not cap.isOpened():
+        raise ValueError(f"Error opening video file: {movie_path}")
+
+    # Get total frame count for validation
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    if frame_number >= total_frames:
+        cap.release()
+        raise ValueError(f"Frame {frame_number} not available. Video has {total_frames} frames.")
+
+    # Set frame position directly (more efficient than iterating)
+    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+    
+    ret, frame = cap.read()
+    cap.release()
+
+    if not ret:
+        raise ValueError(f"Could not read frame {frame_number} from video")
+
+    # Convert to grayscale
+    if len(frame.shape) == 3:
+        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    else:
+        gray_frame = frame
+
+    return gray_frame
+
+
+def save_motion_video(x_motion, out_path, amp_max, img_size, fps=820):
+    """
+    Save a motion video from x_motion tensor.
+    x_motion: tensor with shape (batch, time, channel, H, W)
+    out_path: pathlib.Path or str
+    Crops using amp_max as in the script.
+    """
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    h_crop = img_size - 2 * amp_max
+    w_crop = h_crop
+
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+    writer = cv2.VideoWriter(str(out_path), fourcc, fps, (w_crop, h_crop), True)
+    if not writer.isOpened():
+        raise RuntimeError("cv2 VideoWriter failed to open")
+    for t in range(x_motion.shape[1]):
+        frame_wide = x_motion[0, t, 0].cpu().numpy()
+
+        mn, mx = frame_wide.min(), frame_wide.max()
+
+        frame = frame_wide[amp_max:img_size - amp_max, amp_max:img_size - amp_max]
+
+        if mx > mn:
+            frame8 = ((frame - mn) / (mx - mn) * 255.0).astype('uint8')
+        else:
+            frame8 = (frame * 0).astype('uint8')
+        frame_bgr = cv2.cvtColor(frame8, cv2.COLOR_GRAY2BGR)
+        writer.write(frame_bgr)
+    writer.release()
+    print(f"Saved motion video to {out_path}")

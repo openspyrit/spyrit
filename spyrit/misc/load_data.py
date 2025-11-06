@@ -13,11 +13,19 @@ Created on Wed Jan 15 17:06:19 2020
 """
 
 import os
-import sys
 import glob
 import numpy as np
 import PIL
-from typing import Union
+
+import torch
+from pathlib import Path
+from typing import Tuple, List, Optional, Union
+from dataclasses import dataclass
+
+from spas.metadata2 import read_metadata, read_metadata_2arms
+
+from spyrit.misc.statistics import Cov2Var
+from spyrit.misc.disp import torch2numpy
 
 
 def Files_names(Path, name_type):
@@ -156,3 +164,137 @@ def download_girder(
         abs_paths.append(os.path.abspath(os.path.join(local_folder, name)))
 
     return abs_paths[0] if len(abs_paths) == 1 else abs_paths
+
+
+
+@dataclass
+class ExperimentConfig:
+    """Configuration for experimental data processing."""
+    n_acq: int = 64
+    n: int = 64
+    amp_max: int = 0
+    zoom_factor: int = 1
+    dtype: torch.dtype = torch.float64
+
+
+
+def read_acquisition(data_root: Path, data_folder: str, 
+                    data_file_prefix: str) -> Tuple[dict, np.ndarray]:
+    """
+    Read acquisition data and metadata from experimental files.
+    
+    Args:
+        data_root: Root directory of the data.
+        data_folder: Folder containing the data.
+        data_file_prefix: Prefix of the data files.
+        
+    Returns:
+        Tuple of (acquisition_parameters, measurement_data).
+        
+    Raises:
+        FileNotFoundError: If metadata or data files are not found.
+    """
+    data_root = Path(data_root)
+    
+    # Read metadata
+    meta_path = data_root / data_folder / f"{data_file_prefix}_metadata.json"
+    if not meta_path.exists():
+        raise FileNotFoundError(f"Metadata file not found: {meta_path}")
+    
+    try:
+        metadata = read_metadata_2arms(meta_path)
+    except Exception:
+        print("Falling back to single-arm metadata reader")
+        metadata = read_metadata(meta_path)
+   
+    # Read spectral data
+    data_path = data_root / data_folder / f"{data_file_prefix}_spectraldata.npz"
+    if not data_path.exists():
+        raise FileNotFoundError(f"Spectral data file not found: {data_path}")
+    
+    raw = np.load(data_path)
+    meas = raw['spectral_data']
+
+    return metadata, meas
+
+
+def empty_acqui(data_root: Path, data_folder: str, data_file_prefix: str, homography: torch.Tensor, 
+                config: Optional[ExperimentConfig] = None) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Process empty acquisition data for calibration.
+    
+    Args:
+        data_root: Root directory of the data.
+        homography: Homography transformation matrix.
+        config: Experimental configuration. If None, uses default values.
+        
+    Returns:
+        Tuple of (calibrated_cmos_image, sp_reconstruction).
+        
+    Raises:
+        ImportError: If homography module cannot be imported.
+        FileNotFoundError: If required data files are not found.
+    """
+    try:
+        from spyrit.core.meas import HadamSplit2d
+        from homography import recalibrate
+    except ImportError as e:
+        raise ImportError(f"Required modules not available: {e}")
+
+    if config is None:
+        config = ExperimentConfig()
+
+    # Load covariance matrix
+    stat_folder = Path('./stats/')
+    cov_file = stat_folder / f'Cov_{config.n_acq}x{config.n_acq}.npy'
+    
+    if not cov_file.exists():
+        raise FileNotFoundError(f"Covariance file not found: {cov_file}")
+
+    Cov_acq = np.load(cov_file)
+    Ord_acq = Cov2Var(Cov_acq)
+
+    Ord = torch.from_numpy(Ord_acq)
+
+    # Create measurement operator
+    M = config.n ** 2
+    meas_op_stat = HadamSplit2d(M=M, h=config.n, order=Ord, dtype=config.dtype)
+
+    # Read empty acquisition data
+    try:
+        _, meas_empty = read_acquisition(data_root, data_folder, data_file_prefix)
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Empty acquisition data not found: {e}")
+
+    # Process measurements
+    meas_empty_torch = torch.from_numpy(meas_empty)
+    y_empty = torch.mean(meas_empty_torch, axis=1)
+    y_empty = y_empty - y_empty[1]
+    y_empty_diff = y_empty[::2] - y_empty[1::2]
+    y_empty_diff = y_empty_diff.view(1, -1)
+
+    # Reconstruct SP image
+    w = meas_op_stat.fast_pinv(y_empty_diff)
+    w_np = torch2numpy(w).reshape((config.n, config.n))
+    w_np = np.rot90(w_np, 2)
+
+    # Load and calibrate CMOS image
+    cmos_file = data_root / data_folder / f'{data_file_prefix}_IDScam_before_acq.npy'
+    if not cmos_file.exists():
+        raise FileNotFoundError(f"CMOS image file not found: {cmos_file}")
+    
+    g_frame0_empty = np.load(cmos_file).astype(np.float64)
+
+    # Apply homography calibration
+    homography_inv = torch.linalg.inv(homography)
+    g_frame0_empty_tensor = torch.from_numpy(g_frame0_empty).unsqueeze(0).unsqueeze(0).to(config.dtype)
+    
+    img_cmos_calibrated = recalibrate(
+        g_frame0_empty_tensor, 
+        (config.n, config.n), 
+        homography_inv, 
+        amp_max=config.amp_max
+    )
+    img_cmos_calibrated_np = np.rot90(torch2numpy(img_cmos_calibrated[0, 0]), 2)
+
+    return img_cmos_calibrated_np, w_np
