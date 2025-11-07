@@ -2178,7 +2178,7 @@ class DynamicLinear(Linear):
             # for eventual spatial gain
             meas_pattern *= self.white_acq.ravel().unsqueeze(0)  
 
-        if not warping:
+        if warping == 'image':
             # drawings of the kernels for bilinear and bicubic 'interpolation'
             #   00    point      01
             #    +------+--------+
@@ -2391,8 +2391,8 @@ class DynamicLinear(Linear):
             if self.device.type == 'cuda':
                 torch.cuda.empty_cache()
 
-        else:
-            print('Be careful to use the inverse deformation field when warping = True.')
+        elif warping == 'pattern':
+            print('Be careful to use the inverse deformation field when warping patterns.')
             
             # Memory optimization: Clear cache before warping operations
             if self.device.type == 'cuda':
