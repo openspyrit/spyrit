@@ -7,7 +7,7 @@ simulate measurements of still images, and three are dynamic, i.e. they are used
 to simulate measurements of moving objects, represented as a sequence of images.
 The inheritance tree is as follows::
 
-      Linear           DynamicLinear
+      Linear -------> DynamicLinear
         |                   |
         V                   V
     LinearSplit     DynamicLinearSplit
@@ -40,10 +40,13 @@ class Linear(nn.Module):
     .. math::
         m =\mathcal{N}\left(Hx\right),
 
-    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian),
+    :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, 
+    :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
 
     .. important::
-        The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`).
+        The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array 
+        (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`).
 
     Args:
         :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
@@ -60,13 +63,14 @@ class Linear(nn.Module):
         dimensions of the multi-dimensional array :math:`X` (e.g., `(-2,-1)`
         when `len(meas_shape)`).
 
-        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. Defaults to = `torch.nn.Identity`.
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. 
+        Defaults to = `torch.nn.Identity()`.
 
     Attributes:
         :attr:`H` (:class:`torch.tensor`): (Learnable) measurement matrix of shape
         :math:`(M, N)` initialized as :math:`H`.
 
-        :attr:`meas_shape` (tuple): Shape of the underliying
+        :attr:`meas_shape` (tuple): Shape of the underlying
         multi-dimensional array :math:`X`.
 
         :attr:`meas_dims` (tuple): Dimensions the acquisition matrix applies to.
@@ -181,7 +185,10 @@ class Linear(nn.Module):
         .. math::
             m = Hx,
 
-        where :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
+        where :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, 
+        :math:`x \in \mathbb{R}^N` is the signal of interest, 
+        :math:`M` is the number of measurements, and 
+        :math:`N` is the dimension of the signal.
 
         .. note::
             This method does not degrade measurement with noise. To do so, see :func:`~spyrit.core.meas.forward()`
@@ -311,7 +318,6 @@ class Linear(nn.Module):
             :attr:`m` (:class:`torch.tensor`): A batch of measurement
             :math:`m` of shape :math:`(*, M)` where :math:`*`  denotes all the
             dimensions that are not included in :attr:`self.meas_dims`
-
 
             :attr:`unvectorize` (:obj:`bool`, optional): Whether to unvectorize
             the measurement dimensions. This calls
@@ -715,7 +721,10 @@ class FreeformLinear(Linear):
 # =============================================================================
 class LinearSplit(Linear):
     r"""
-    Simulate linear measurements by splitting an acquisition matrix :math:`H\in \mathbb{R}^{M\times N}` that contains negative values. In pratice, only positive values can be implemented using a DMD. Therefore, we acquire
+    Simulate linear measurements by splitting an acquisition matrix 
+    :math:`H\in \mathbb{R}^{M\times N}` that contains negative values. 
+    In practice, only positive values can be implemented using a DMD. 
+    Therefore, we acquire
 
     .. math::
         y =\mathcal{N}\left(Ax\right),
@@ -843,7 +852,6 @@ class LinearSplit(Linear):
         Given a matrix :math:`H \in \mathbb{R}^{M\times N}`, we define the positive DMD patterns :math:`A` from the positive and negative components of :math:`H`.
 
         .. note::
-
             The acquisition matrix :math:`A` is given by :attr:`self.A`.
 
         Args:
@@ -1872,358 +1880,116 @@ class HadamSplit2d(LinearSplit):
 
 
 
-# # =============================================================================
-# class HadamSplit(LinearSplit):
-#     # =========================================================================
-#     r"""
-#     Simulates splitted measurements :math:`y = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix}x`
-#     with :math:`H` a Hadamard matrix.
-
-#     Computes linear measurements from incoming images: :math:`y = Px`,
-#     where :math:`P` is a linear operator (matrix) and :math:`x` is a
-#     vectorized image or batch of vectorized images.
-
-#     The matrix :math:`P` contains only positive values and is obtained by
-#     splitting a Hadamard-based matrix :math:`H` such that
-#     :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
-#     `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
-#     :math:`H_{-} = \max(0,-H)`.
-
-#     :math:`H` is obtained by selecting a re-ordered subsample of :math:`M` rows
-#     of a "full" Hadamard matrix :math:`F` with shape :math:`(N^2, N^2)`.
-#     :math:`N` must be a power of 2.
-
-#     Args:
-#         :attr:`M` (int): Number of measurements. It determines the size of the
-#         Hadamard matrix subsample :math:`H`.
-
-#         :attr:`h` (int): Measurement pattern height. The width is taken to be
-#         equal to the height, so the measurement pattern is square. The Hadamard
-#         matrix will have shape :math:`(h^2, h^2)`.
-
-#         :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
-#         rows of the measurement matrix :math:`H`. The first new row of :math:`H`
-#         will correspond to the highest value in :math:`Ord`. Must contain
-#         :math:`M` values. If some values repeat, the order is kept. Defaults to
-#         None.
-
-#     Attributes:
-#         :attr:`H` (torch.tensor): The learnable measurement matrix of shape
-#         :math:`(M, N)`.
-
-#         :attr:`H_static` (torch.tensor): alias for :attr:`H`.
-
-#         :attr:`P` (torch.tensor): The splitted measurement matrix of shape
-#         :math:`(2M, N)`.
-
-#         :attr:`H_pinv` (torch.tensor, optional): The learnable pseudo inverse
-#         measurement matrix :math:`H^\dagger` of shape :math:`(N, M)`.
-
-#         :attr:`M` (int): Number of measurements performed by the linear operator.
-#         Is equal to the parameter :attr:`M`.
-
-#         :attr:`N` (int): Number of pixels in the image, is equal to :math:`h^2`.
-
-#         :attr:`h` (int): Measurement pattern height.
-
-#         :attr:`w` (int): Measurement pattern width. Is equal to :math:`h`.
-
-#         :attr:`meas_shape` (tuple): Shape of the measurement patterns
-#         (height, width). Is equal to `(self.h, self.h)`.
-
-#         :attr:`indices` (torch.tensor): Indices used to sort the rows of H.	It
-#         is used by the method :meth:`reindex()`.
-
-#         :attr:`Ord` (torch.tensor): Order matrix used to sort the rows of H. It
-#         is used by :func:`~spyrit.core.torch.sort_by_significance()`.
-
-#     .. note::
-#         The computation of a Hadamard transform :math:`Fx` benefits a fast
-#         algorithm, as well as the computation of inverse Hadamard transforms.
-
-#     .. note::
-#         :math:`H = H_{+} - H_{-}`
-
-#     Example:
-#         >>> h = 32
-#         >>> Ord = torch.randn(h, h)
-#         >>> meas_op = HadamSplit(400, h, Ord)
-#         >>> print(meas_op)
-#         HadamSplit(
-#           (M): 400
-#           (N): 1024
-#           (H.shape): torch.Size([400, 1024])
-#           (meas_shape): (32, 32)
-#           (H_pinv): True
-#           (P.shape): torch.Size([800, 1024])
-#         )
-#     """
-
-#     def __init__(
-#         self,
-#         M: int,
-#         h: int,
-#         Ord: torch.tensor = None,
-#     ):
-
-#         F = spytorch.walsh_matrix_2d(h)
-
-#         # we pass the whole F matrix to the constructor, but override the
-#         # calls self.H etc to only return the first M rows
-#         super().__init__(F, pinv=False, Ord=Ord, meas_shape=(h, h))
-#         self._M = M
-
-#     @property
-#     def H_pinv(self) -> torch.tensor:
-#         return self._param_H_static_pinv.data / self.N
-
-#     @H_pinv.setter
-#     def H_pinv(self, value: torch.tensor) -> None:
-#         self._param_H_static_pinv = nn.Parameter(
-#             value.to(torch.float64), requires_grad=False
-#         )
-
-#     @H_pinv.deleter
-#     def H_pinv(self) -> None:
-#         del self._param_H_static_pinv
-
-#     def forward_H(self, x: torch.tensor) -> torch.tensor:
-#         r"""Optimized measurement simulation using the Fast Hadamard Transform.
-
-#         The 2D fast Walsh-ordered Walsh-Hadamard transform is applied to the
-#         incoming images :math:`x`. This is equivalent to computing :math:`x \cdot H^T`.
-
-#         Args:
-#             :math:`x` (torch.tensor): Batch of images of shape :math:`(*,h,w)`.
-#             `*` denotes any dimension, for instance `(b,c)` where `b` is the
-#             batch size and `c` the number of channels. `h` and `w` are the height
-#             and width of the images.
-
-#         Output:
-#             torch.tensor: The linear measurements of the input images. It has
-#             shape :math:`(*,M)` where * denotes any number of dimensions and
-#             `M` the number of measurements.
-
-#         Shape:
-#             :math:`x`: :math:`(*,h,w)` where * denotes any dimension, for
-#             instance `(b,c)` where `b` is the batch size and `c` the number of
-#             channels. `h` and `w` are the height and width of the images.
-
-#             Output: :math:`(*,M)` where * denotes denotes any number of
-#             dimensions and `M` the number of measurements.
-#         """
-#         m = spytorch.fwht_2d(x)
-#         m_flat = self.vectorize(m)
-#         return self.reindex(m_flat, "cols", True)[..., : self.M]
-
-#     def build_H_pinv(self):
-#         """Build the pseudo-inverse (inverse) of the Hadamard matrix H.
-
-#         This computes the pseudo-inverse of the Hadamard matrix H, and stores it
-#         in the attribute H_pinv. In the case of an invertible matrix, the
-#         pseudo-inverse is the inverse.
-
-#         Args:
-#             None.
-
-#         Returns:
-#             None. The pseudo-inverse is stored in the attribute H_pinv.
-#         """
-#         # the division by self.N is done in the property so as to avoid
-#         # memory overconsumption
-#         self.H_pinv = self.H.T
-
-#     def pinv(self, y, *args, **kwargs):
-#         y_padded = torch.zeros(y.shape[:-1] + (self.N,), device=y.device, dtype=y.dtype)
-#         y_padded[..., : self.M] = y
-#         return self.inverse(y_padded)
-
-#     def inverse(self, y: torch.tensor) -> torch.tensor:
-#         r"""Inverse transform of Hadamard-domain images.
-
-#         It can be described as :math:`x = H_{had}^{-1}G y`, where :math:`y` is
-#         the input Hadamard-domain measurements, :math:`H_{had}^{-1}` is the inverse
-#         Hadamard transform, and :math:`G` is the reordering matrix.
-
-#         .. note::
-#             For this inverse to work, the input vector must have the same number
-#             of measurements as there are pixels in the original image
-#             (:math:`M = N`), i.e. no subsampling is allowed.
-
-#         .. warning::
-#             This method is deprecated and will be removed in a future version.
-#             Use self.pinv instead.
-
-#         Args:
-#             :math:`y`: batch of images in the Hadamard domain of shape
-#             :math:`(*,c,M)`. `*` denotes any size, `c` the number of
-#             channels, and `M` the number of measurements (with `M = N`).
-
-#         Output:
-#             :math:`x`: batch of images of shape :math:`(*,c,h,w)`. `*` denotes
-#             any size, `c` the number of channels, and `h`, `w` the height and
-#             width of the image (with `h \times w = N = M`).
-
-#         Shape:
-#             :math:`y`: :math:`(*, c, M)` with :math:`*` any size,
-#             :math:`c` the number of channels, and :math:`N` the number of
-#             measurements (with `M = N`).
-
-#             Output: math:`(*, c, h, w)` with :math:`h` and :math:`w` the height
-#             and width of the image.
-
-#         Example:
-#             >>> h = 32
-#             >>> Ord = torch.randn(h, h)
-#             >>> meas_op = HadamSplit(400, h, Ord)
-#             >>> y = torch.randn(10, h**2)
-#             >>> x = meas_op.inverse(y)
-#             >>> print(x.shape)
-#             torch.Size([10, 32, 32])
-#         """
-#         # permutations
-#         y = self.reindex(y, "cols", False)
-#         y = self.unvectorize(y)
-#         # inverse of full transform
-#         x = 1 / self.N * spytorch.fwht_2d(y, True)
-#         return x
-
-#     def _pinv_mult(self, y):
-#         """We use fast walsh-hadamard transform to compute the pseudo inverse.
-
-#         Args:
-#             y (torch.tensor): batch of images in the Hadamard domain of shape
-#             (*,M). * denotes any size, and M the number of measurements.
-
-#         Returns:
-#             torch.tensor: batch of images in the image domain of shape (*,N).
-#         """
-#         # zero-pad the measurements until size N
-#         y_shape = y.shape
-#         y_new_shape = y_shape[:-1] + (self.N,)
-#         y_new = torch.zeros(y_new_shape, device=y.device, dtype=y.dtype)
-#         y_new[..., : y_shape[-1]] = y
-
-#         # unsort the measurements
-#         y_new = self.reindex(y_new, "cols", False)
-#         y_new = self.unvectorize(y_new)
-
-#         # inverse of full transform
-#         return 1 / self.N * spytorch.fwht_2d(y_new, True)
-
-#     def _set_Ord(self, Ord: torch.tensor) -> None:
-#         """Set the order matrix used to sort the rows of H."""
-#         # get only the indices, as done in spyrit.core.torch.sort_by_significance
-#         self._indices = torch.argsort(-Ord.flatten(), stable=True).to(torch.int32)
-#         # update the Ord attribute
-#         self._param_Ord.data = Ord.to(self.device)
-
-
 # =============================================================================
 class DynamicLinear(Linear):
-    r"""Simulates the measurement of a moving object :math:`y = H \cdot x(t)`.
+    r"""Simulates linear measurements of a moving scene
+     
+    .. math::
+        m = \mathcal{N}\left( \text{diag}(H x_{t=1, ..., M})\right),
 
-    Computes linear measurements :math:`y` from incoming images: :math:`y = Hx`,
-    where :math:`H` is a linear operator (matrix) and :math:`x` is a
-    batch of vectorized images representing a motion picture.
+    where :math:`H\in\mathbb{R}^{M \times N}` is the acquisition matrix, 
+    :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal of interest, 
+    :math:`M` is both the number of measurements and the number of frames,
+    :math:`N` is the dimension of the signal within the field of view, 
+    :math:`\text{diag}\colon\, \mathbb{R}^{M \times M} \to \mathbb{R}^M` extracts the diagonal of its input, and
+    :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian).
 
-    The class is constructed from a matrix :math:`H` of shape :math:`(M, N)`,
-    where :math:`N` represents the number of pixels in the image and
-    :math:`M` the number of measurements and the number of frames in the
-    animated object.
+    
+    .. warning::
+        The current implementation only supports 2D spatial dimensions (i.e., images).
+        Consequently, meas_shape and img_shape must be tuples of two integers.
 
     .. warning::
-        For each call, there must be **exactly** as many images in :math:`x` as
+        For each call, there must be **exactly** as many frames in :math:`x` as
         there are measurements in the linear operator used to initialize the class.
 
     Args:
-        :attr:`H` (torch.tensor): measurement matrix (linear operator) with
-        shape :math:`(M, N)`.
+        :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
+        with shape :math:`(M, N)`. Only real values are supported.
 
-        :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
-        rows of the measurement matrix :math:`H`. The first new row of :math:`H`
-        will correspond to the highest value in :math:`Ord`. Must contain
-        :math:`M` values. If some values repeat, the order is kept. Defaults to
-        None.
+        :attr:`time_dim` (int): dimension index in the input tensor :math:`x` that
+        corresponds to time (i.e., the frames dimension).
 
         :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
         Must be a tuple of two integers representing the height and width of the
         patterns. If not specified, the shape is suppposed to be a square image.
         If not, an error is raised. Defaults to None.
 
+        :attr:`meas_dims` (tuple, optional): Dimensions of :math:`x_{t=1, ..., M}` the
+        acquisition matrix applies to. Must be a tuple with the same length as
+        :attr:`meas_shape`. If not, an error is raised. Defaults to the last
+        dimensions of the multi-dimensional array :math:`x_{t=1, ..., M}` (e.g., `(-2,-1)`
+        when `len(meas_shape)=2`).
+
         :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
         of two integers representing the height and width of the image. If not
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
 
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. 
+        Defaults to `torch.nn.Identity()`.
+
         :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
-        detector inhomogeneities. Must have the same shape as the measurement patterns.
+        detector inhomogeneities and used for dynamic flat-field correction. It can be
+        determined from a "white acquisition" without any object. If None, no correction is
+        applied. Must have :attr:`self.meas_shape` shape.
 
     Attributes:
-        :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
-        of shape :math:`(M,N)` initialized as :math:`H`.  Only real values are supported.
+        :attr:`M` (int): Number of measurements.
 
-        :attr:`M` (int): Number of measurements performed by the linear operator.
+        :attr:`N` (int): Number of pixels in the field of view.
 
-        :attr:`N` (int): Number of pixels in the image.
+        :attr:`L` (int): Number of pixels in the extended field of view.
 
-        :attr:`h` (int): Measurement pattern height.
+        :attr:`meas_shape` (tuple): Shape of the underlying multi-dimensional 
+        array :math:`x` over the field of view.
 
-        :attr:`w` (int): Measurement pattern width.
+        :attr:`img_shape` (tuple): Shape of the underlying multi-dimensional 
+        array :math:`x` over the extended field of view.
 
-        :attr:`meas_shape` (tuple): Shape of the measurement patterns
-        (height, width). Is equal to `(self.h, self.w)`.
+        :attr:`H` (:class:`torch.tensor`): Static measurement matrix of shape
+        :math:`(M, N)` initialized as :math:`H`.
 
-        :attr:`img_h` (int): Image height.
-
-        :attr:`img_w` (int): Image width.
-
-        :attr:`img_shape` (tuple): Shape of the image (height, width). Is equal
-        to `(self.img_h, self.img_w)`.
-
-        :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H`.
-        Must be set using the method :meth:`build_H_dyn` before being accessed.
-
-        :attr:`H` (torch.tensor): Alias for :attr:`H_dyn`.
+        :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H_{\rm{dyn}}` of shape.
+        :math:`(M, L)`. Must be set using the method :meth:`build_H_dyn` before being accessed.
 
         :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
-        matrix :math:`H_{dyn}^\dagger`. Must be set using the method
+        matrix :math:`H_{\rm{dyn}}^\dagger`. Must be set using the method
         :meth:`build_H_dyn_pinv` before being accessed.
 
-        :attr:`H_pinv` (torch.tensor): Alias for :attr:`H_dyn_pinv`.
 
-    .. warning::
-        The attributes :attr:`H` and :attr:`H_pinv` are used as aliases for
-        :attr:`H_dyn` and :attr:`H_dyn_pinv`. If you want to access the static
-        versions of the attributes, be sure to include the suffix `_static`.
-
-    Example:
-        # >>> H_static = torch.rand([400, 1600])
-        # >>> meas_op = DynamicLinear(H_static, 10)
-        # >>> print(meas_op)
-        # DynamicLinear(
-        #   (noise_model): Identity()
-        # )
+    Example: 
+        >>> x = torch.rand([1, 400, 3, 50, 50])  # dummy RGB video with 400 frames of size 50x50
+        >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+        >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50))
+        >>> print(meas_op)
+        DynamicLinear(
+          (noise_model): Identity()
+        )
+        >>> m = meas_op(x)  # simulate dynamic measurements
+        >>> print(m.shape)
+        torch.Size([1, 3, 400])
 
     Reference:
-
+    .. _MICCAI24:
         [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
         Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
         without Warping the Patterns. 2024. hal-04533981
+
     """
 
     def __init__(
         self,
         H: torch.tensor,
         time_dim: int,
-        img_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_dims: Union[int, torch.Size, Iterable[int]] = None,
+        img_shape: Union[int, torch.Size, Iterable[int]] = None,
         *,
         noise_model: nn.Module = nn.Identity(),
+        white_acq: torch.tensor = None,
         dtype: torch.dtype = torch.float32,
         device: torch.device = torch.device("cpu"),
-        white_acq: torch.tensor = None,
     ):
         super().__init__(
             H,
@@ -2241,9 +2007,16 @@ class DynamicLinear(Linear):
                 f"The time dimension must not be in the measurement dimensions. Found {self.time_dim} in {self.meas_dims}."
             )
         
-        self.img_shape = img_shape if img_shape is not None else meas_shape
+        if len(self.meas_shape) != 2:
+            raise NotImplementedError(
+                "Currently only 2D spatial dimensions are supported."
+            )
+
+        self.img_shape = img_shape if img_shape is not None else self.meas_shape
         self.img_h, self.img_w = self.img_shape  # for legacy
-        self.h, self.w = self.meas_shape  # for legacy
+        # self.h, self.w = self.meas_shape  # for legacy
+        self.N = int(torch.prod(torch.tensor(self.meas_shape)))
+        self.L = int(torch.prod(torch.tensor(self.img_shape)))
 
         # define the available matrices for reconstruction
         self._available_pinv_matrices = ["H_dyn"]
@@ -2265,45 +2038,61 @@ class DynamicLinear(Linear):
                 + "Please call build_H_dyn() before accessing the attribute H_dyn."
             ) from e
         
-    @property
-    def H_dyn_diff(self) -> torch.tensor:
-        """Dynamic measurement matrix H_dyn_diff that adopts the differential 
-        measurement strategy as described in [ref_journal], 
-        i.e., `H_dyn[0] - H_dyn[1]`, `H_dyn[2] - H_dyn[3]`, etc."""
-        try:
-            return self._param_H_dyn.data[::2] - self._param_H_dyn.data[1::2]
-        except AttributeError as e:
-            raise AttributeError(
-                "The dynamic measurement matrix H_dyn has not been set yet. "
-                + "Please call build_H_dyn() before accessing the attribute H_dyn_diff."
-            ) from e
     
     def measure(self, x):
-        r"""Simulate noiseless measurements
-        
+        r"""Simulates noiseless measurements.
+
+        .. math::
+            m = \text{diag}(H x_{t=1, ..., M}),
+
+        where :math:`H \in \mathbb{R}^{M \times N}` is the acquisition matrix, 
+        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal of interest, 
+        :math:`M` is both the number of measurements and frames, 
+        :math:`N` is the dimension of the signal in the field of view, and
+        :math:`\text{diag}\colon\, \mathbb{R}^{M \times M} \to \mathbb{R}^M` extracts the diagonal of its input.
+
+        .. note::
+            This method does not degrade measurement with noise. 
+            To do so, see :func:`~spyrit.core.meas.DynamicLinear.forward()`
+
         Args:
-            :attr:`x` (:class:`torch.tensor`): a tensor whose time dimension
-            matches with `self.time_dim`, and measured dimensions match with
-            `self.meas_dims`. All other dimensions (`*`) are batches.
+            :attr:`x` (:class:`torch.tensor`): A batch of temporal signals whose time 
+            dimension matches :attr:`self.time_dim`, and measured dimensions matches :attr:`self.meas_dims`.
         
         Returns:
-            :class:`torch.tensor`: A tensor of shape `(*, M)`, where `*`
-            corresponds to the previously mentioned batch dimensions, and
-            `M` is the number of measurements (also the number of frames) 
+            :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
+            all the dimensions of the input tensor that are not included in :attr:`self.meas_dims`.
         """
         x = spytorch.center_crop(x, self.meas_shape)
         # vectorize with the time dimension being the second-to-last dimension
         x = self.vectorize(x)
-        # here index m is the number of mesurements
-        # it is also the number of frames ie. time dimension
+        # here index m is the number of mesurements, it is also the number of frames, ie. time dimension
         x = torch.einsum("mn,...mn->...m", self.H, x)
         return x
     
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Simulates noisy dynamic measurements.
         
-        .. important::
-            Docstring to be completed. 
+        .. math::
+            m = \mathcal{N}\left(\text{diag}(H x_{t=1, ..., M})\right),
+
+        where :math:`H \in \mathbb{R}^{M \times N}` is the acquisition matrix, 
+        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal of interest, 
+        :math:`M` is both the number of measurements and frames, 
+        :math:`N` is the dimension of the signal in the field of view, and
+        :math:`\text{diag}\colon\, \mathbb{R}^{M \times M} \to \mathbb{R}^M` extracts the diagonal of its input.
+
+        .. note::
+            This method degrades measurements with noise. 
+            To compute :math:`Hx_{t=1, ..., M}` only, see :func:`~spyrit.core.meas.DynamicLinear.measure()`.
+
+        Args:
+            :attr:`x` (:class:`torch.tensor`): A batch of temporal signals whose time 
+            dimension matches :attr:`self.time_dim`, and measured dimensions matches :attr:`self.meas_dims`.
+        
+        Returns:
+            :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
+            all the dimensions of the input tensor that are not included in :attr:`self.meas_dims`.
         """
         x = self.measure(x)
         x = self.noise_model(x)
@@ -2313,39 +2102,35 @@ class DynamicLinear(Linear):
         self,
         motion: DeformationField,
         mode: str = "bilinear",
-        warping: bool = False,
+        warping: str = "image",
         verbose: bool = False
     ) -> None:
-        r"""Build the dynamic measurement matrix `H_dyn`.
+        r"""Builds the dynamic measurement matrix :math:`H_{\rm{dyn}}`.
 
-        Compute and store the dynamic measurement matrix `H_dyn` from the static
-        measurement matrix `H_static` and the deformation field `motion`. The
-        output is stored in the attribute `self.H_dyn`.
-
-        This is done using the physical version explained in [MaBP24]_.
+        Computes and stores the dynamic measurement matrix :math:`H_{\rm{dyn}}` from the static
+        measurement matrix :math:`H` and the deformation field `motion`. The
+        output is stored in the attribute :attr:`self.H_dyn`.
 
         Args:
-
             :attr:`motion` (DeformationField): Deformation field representing the
-            motion of the image. Need to pass the inverse deformation field when
-            :attr:`warping` is set to False, and the direct deformation field when
-            :attr:`warping` is set to True.
+            scene motion. Need to pass the inverse deformation field when
+            :attr:`warping` is set to 'image', and the direct deformation field when
+            :attr:`warping` is set to 'pattern'.
 
-            :attr:`mode` (str): Mode according to which the dynamic matrix is constructed. When warping the patterns,
-            it refers to the interpolation method. When the patterns are not warped, it refers to the regularity of
-            the solution that is sought after. Defaults to 'bilinear'.
+            :attr:`mode` (str): Interpolation mode for constructing the dynamic matrix. Defaults to 'bilinear'.
 
-            :attr:`warping` (bool): Whether to warp the patterns when building
-            the dynamic measurement matrix. It's been shown [MaBP24] that warping
-            the patterns induces a bias in the model. Defaults to 'False'.
+            :attr:`warping` (str): Choose between 'image' or 'pattern'. This parameter decides whether to warp 
+            the patterns or the (unknown) image to recover when building the dynamic measurement matrix.
+            Defaults to 'image'.
+
+            .. note::
+                It's been shown [MaBP24] that warping sharp patterns introduces a bias in the model. We recommend
+                to exploit the image regularity by setting `warping='image'`.
 
         Returns:
-
-            None. The dynamic measurement matrix is stored in the attribute
-            `self.H_dyn`.
+            None. The dynamic measurement matrix is stored in the attribute :attr:`self.H_dyn`.
 
         References:
-
                 [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
                 Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
                 without Warping the Patterns. 2024. hal-04533981
@@ -2456,7 +2241,7 @@ class DynamicLinear(Linear):
             # evaluate the spline at the decimal part
             dxy = torch.einsum(
                 "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
-            ).reshape(n_frames, kernel_n_pts, self.h * self.w)
+            ).reshape(n_frames, kernel_n_pts, self.N)
             # shape (n_frames, kernel_n_pts, meas_h*meas_w)
             
             # Memory optimization: explicitly delete large intermediate tensors
@@ -2495,7 +2280,7 @@ class DynamicLinear(Linear):
                 trash,
                 def_field_00[..., 0]
                 + def_field_00[..., 1] * (self.img_w + kernel_width),
-            ).reshape(n_frames, self.h * self.w)
+            ).reshape(n_frames, self.N)
             
             del def_field_00, mask
             if self.device.type == 'cuda':
@@ -2508,7 +2293,7 @@ class DynamicLinear(Linear):
                 print("Part 3: building H_dyn matrix with flattened indices")
 
             meas_dxy = (
-                meas_pattern.reshape(n_frames, 1, self.h * self.w).to(dxy.dtype) * dxy
+                meas_pattern.reshape(n_frames, 1, self.N).to(dxy.dtype) * dxy
             )
 
             del dxy, meas_pattern
@@ -2553,11 +2338,11 @@ class DynamicLinear(Linear):
                     
                     # FOLD THE MATRIX for this chunk
                     fold = nn.Fold(
-                        output_size=(self.img_h, self.img_w),
+                        output_size=self.img_shape,
                         kernel_size=(kernel_size, kernel_size),
                         padding=kernel_width,
                     )
-                    H_dyn_chunk = fold(meas_dxy_sorted_chunk).reshape(chunk_frames, self.img_h * self.img_w)
+                    H_dyn_chunk = fold(meas_dxy_sorted_chunk).reshape(chunk_frames, self.L)
                     H_dyn_chunks.append(H_dyn_chunk.clone())  # Clone to ensure memory is copied
                     
                     # Clean up chunk memory
@@ -2592,11 +2377,11 @@ class DynamicLinear(Linear):
                 # _________________________________________________________________
                 # define operator
                 fold = nn.Fold(
-                    output_size=(self.img_h, self.img_w),
+                    output_size=self.img_shape,
                     kernel_size=(kernel_size, kernel_size),
                     padding=kernel_width,
                 )
-                H_dyn = fold(meas_dxy_sorted).reshape(n_frames, self.img_h * self.img_w)
+                H_dyn = fold(meas_dxy_sorted).reshape(n_frames, self.L)
 
                 # Memory optimization: Clean up after folding
                 del meas_dxy_sorted
@@ -2613,7 +2398,7 @@ class DynamicLinear(Linear):
             if self.device.type == 'cuda':
                 torch.cuda.empty_cache()
 
-            det = self.calc_det(def_field)
+            det = self._calc_det(def_field)
 
             meas_pattern = meas_pattern.reshape(
                 meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1]
@@ -2666,9 +2451,9 @@ class DynamicLinear(Linear):
                 print(f"Final memory after storing H_dyn: {torch.cuda.memory_allocated()/1024**3:.2f} GB")
         
 
-    def calc_det(self, def_field):
-        r"""Computes the determinant of the deformation field. It is used for the 'warping the patterns'
-        method.
+    def _calc_det(self, def_field):
+        r"""Computes the determinant of the deformation field. 
+        It is used for building the dynamic matrix with pattern warping.
 
         Args:
             :attr:`def_field` (:class:`torch.tensor`): a tensor of shape
@@ -2719,24 +2504,27 @@ class DynamicLinear(Linear):
 
         return det
 
-
     def build_H_dyn_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
         """Computes the pseudo-inverse of the dynamic measurement matrix
-        `H_dyn` and stores it in the attribute `H_dyn_pinv`.
+        :math:`H_{\rm{dyn}}` and stores it in the attribute :attr:`H_dyn_pinv`.
 
-        This method supposes that the dynamic measurement matrix `H_dyn` has
-        already been set using the method `build_H_dyn()`. An error will be
-        raised if `H_dyn` has not been set yet.
+        .. important::
+            TODO: Ask Nicolas whether to remove or not? Seems obsolete.
+
+        .. warning::
+            This method supposes that the dynamic measurement matrix :math:`H_{\rm{dyn}}` has
+            already been set using the :meth:`build_H_dyn()` method. 
+            An error will be raised otherwise.
 
         Args:
             :attr:`reg` (str): Regularization method. Can be either 'rcond',
             'L2' or 'H1'. Defaults to 'rcond'.
 
-            :attr:`eta` (float): Regularization parameter. Defaults to 1e-6.
+            :attr:`eta` (float): Regularization parameter. Defaults to 1e-3.
 
         Raises:
-            AttributeError: If the dynamic measurement matrix `H_dyn` has not
-            been set yet.
+            AttributeError: If the dynamic measurement matrix 
+            :math:`H_{\rm{dyn}}` has not been set yet.
         """
         # later do with regularization parameter
         try:
@@ -2748,58 +2536,114 @@ class DynamicLinear(Linear):
             ) from e
         self.H_dyn_pinv = self._build_pinv(H_dyn, reg, eta)
 
-    def forward_H_dyn(self, x: torch.tensor) -> torch.tensor:
-        r"""Simulates the acquisition of measurements using the dynamic measurement matrix H_dyn.
+    def measure_H_dyn(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulates noiseless dynamic measurements with the dynamic matrix
 
-        This supposes the dynamic measurement matrix H_dyn has been set using the
-        method build_H_dyn(). An error will be raised if H_dyn has not been set yet.
+        .. math::
+            m = H_{\rm{dyn}} x
+
+        where :math:`H_{\rm{dyn}} \in \mathbb{R}^{M \times L}` is the dynamic acquisition matrix, 
+        :math:`x \in \mathbb{R}^L` is the reference signal of interest, 
+        :math:`M` is the number of measurements, and 
+        :math:`L` is the dimension of the signal (with extended FOV).
+
+        .. warning::
+            This supposes the dynamic measurement matrix :math:`H_{\rm{dyn}}` has been set using the
+            :meth:`build_H_dyn()` method. An error will be raised otherwise.
 
         Args:
-            :attr:`x` (torch.tensor): still image of shape (\*, h, w). \* denotes any dimension.
-            h and w are the height and width of the image. If h and w are larger
-            than the measurement pattern, the image is center-cropped to the measurement
-            pattern size.
+            :attr:`x` (torch.tensor): Batch of reference (static) signals. The
+            dimensions indexed by :attr:`self.meas_dims` must match the measurement
+            shape :attr:`self.img_shape`.
 
         Returns:
-            torch.tensor: Measurement of the input image. It has shape (\*, M).
+            torch.tensor: Measurement of the input signal. It has shape (..., M).
         """
-        # x = spytorch.center_crop(x, self.meas_shape)   
-        # return self._static_forward_with_op(x, self.H_dyn)
-
-        # I think it is better for this function to perform the product H_dyn @ x (no noise involved), ask Nicolas later. (TODO: update docstring if we keep this)
         x = self.vectorize(x)  # don't need to crop because H_dyn has extended FOV
         x = torch.einsum("mn,...n->...m", self.H_dyn, x)
         return x
     
-    def adjoint(self, y: torch.tensor) -> torch.tensor:
-        r"""Adjoint operation of the dynamic measurement operator.
+    def forward_H_dyn(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulates noisy dynamic measurements with the dynamic matrix
 
-        Computes :math:`x = H_{dyn}^T y`, where :math:`y` is the input
-        measurements, and :math:`H_{dyn}^T` is the adjoint of the dynamic
-        measurement matrix.
+        .. math::
+            m = \mathcal{N}\left(H_{\rm{dyn}} x \right)
 
-        This supposes the dynamic measurement matrix `H_dyn` has been set using
-        the method `build_H_dyn()`. An error will be raised if `H_dyn` has not
-        been set yet.
+        where :math:`H_{\rm{dyn}} \in \mathbb{R}^{M \times L}` is the dynamic acquisition matrix, 
+        :math:`x \in \mathbb{R}^L` is the reference signal of interest, 
+        :math:`M` is the number of measurements, and 
+        :math:`L` is the dimension of the signal (with extended FOV).
+
+        .. warning::
+            This supposes the dynamic measurement matrix :math:`H_{\rm{dyn}}` has been set using the
+            :meth:`build_H_dyn()` method. An error will be raised otherwise.
 
         Args:
-            y (torch.tensor): batch of measurements of shape :math:`(*, M)`.
-            `*` denotes any size, and `M` the number of measurements (with
-            `M` equal to the number of frames).
+            :attr:`x` (torch.tensor): Batch of reference (static) signals. The
+            dimensions indexed by :attr:`self.meas_dims` must match the measurement
+            shape :attr:`self.img_shape`.
 
         Returns:
-            torch.tensor: batch of images in the image domain of shape
-            :math:`(*, h, w)`. `*` denotes any size, and `h`, `w` the height
-            and width of the image.
-        """ 
+            torch.tensor: Measurement of the input signal. It has shape :math:`(*, M)` where :math:`*`
+            denotes all the dimensions that are not included in :attr:`self.meas_dims`
+        """
+        x = self.vectorize(x)  # don't need to crop because H_dyn has extended FOV
+        x = torch.einsum("mn,...n->...m", self.H_dyn, x)
+        x = self.noise_model(x)
+        return x
+    
+    def adjoint(self, m: torch.tensor, unvectorize=False) -> torch.tensor:
+        r"""Apply adjoint of matrix :math:`H_{\rm{dyn}}`.
 
-        y = torch.einsum("mn,...m->...n", self.H_dyn, y)
-        return y
+        It computes 
+        .. math::
+            x = H_{\rm{dyn}}^\top m, 
+
+        where :math:`H_{\rm{dyn}}^\top \in\mathbb{R}^{L \times M}` is the adjoint of the
+        dynamic acquisition matrix, :math:`m \in \mathbb{R}^M` is the measurement vector.
+
+        .. warning:: 
+            This supposes the dynamic measurement matrix :math:`H_{\rm{dyn}}` has been 
+            set using the :meth:`build_H_dyn()` method. An error will be raised otherwise.
+
+        Args:
+            :attr:`m` (:class:`torch.tensor`): A batch of measurement
+            :math:`m` of shape :math:`(*, M)` where :math:`*`  denotes all the
+            dimensions that are not included in :attr:`self.meas_dims`
+
+        Returns:
+            :class:`torch.tensor`: A batch of signals :math:`x`.
+            If :attr:`unvectorize` is :obj:`False`, :math:`x` has shape
+            :math:`(*, N)` where :math:`*` is the same as for :attr:`m`. If
+            :attr:`unvectorize` is :obj:`True`, :math:`x` is reshaped such that
+            the dimensions :attr:`self.meas_dims` match the measurement shape
+            :attr:`self.meas_shape`.
+
+        """ 
+        m = torch.einsum("mn,...m->...n", self.H_dyn, m)
+        if unvectorize:
+            m = self.unvectorize(m)
+        return m
 
     def vectorize(self, input:torch.tensor) -> torch.tensor:
-        r"""Flattens across the measured dimensions, brings the flattened
-        dimension to the end, and brings the time dimension to the second-to-last
-        position."""
+        r"""Flatten the measured dimensions.
+        
+        The tensor is flattened at the indicated `self.meas_dims` dimensions. The
+        collapsed dimensions are then moved to the last dimension of the output tensor.
+        The time dimension is moved to the second-to-last position.
+        
+        Input:
+            input (:class:`torch.tensor`): A tensor whose dimensions given by :attr:`self.meas_dims` 
+            have shape :attr:`self.meas_shape`.
+
+        Output:
+            :class:`torch.tensor`: A tensor of shape (:attr:`*, self.M, self.meas_shape`) where * denotes
+            all the dimensions of the input tensor not included in :attr:`self.meas_dims`.
+
+        See also:
+            For the opposite operation use :meth:`unvectorize()`.
+
+        """
         # concatenate time and measurement dimensions
         time_and_meas_dims = torch.Size([self.time_dim, *self.meas_dims])
         time_and_last_dims = torch.Size(list(range(-len(self.meas_shape)-1, 0)))
@@ -2812,17 +2656,42 @@ class DynamicLinear(Linear):
         return input
 
     def unvectorize(self, input:torch.tensor) -> torch.tensor:
-        r"""Unflattens an input tensor, does the inverse operation of
-        :meth:`vectorize` 
-        
-        .. important::
-            To be completed
+        r"""Unflatten the measured dimensions.
+
+        This method expands the last dimension into the measurement or image
+        shape (:attr:`self.meas_shape` or :attr:`self.img_shape`), and then moves the 
+        expanded dimensions to their original positions as defined by :attr:`self.meas_dims`.
+
+        Input:
+            :class:`input` (:class:`torch.tensor`): A tensor of shape (:attr:`*, self.N`) 
+            or (:attr:`*, self.L`) where * denotes any batch size.
+
+        Output:
+            :class:`torch.tensor`: A tensor whose dimensions given by :attr:`self.meas_dims` 
+            have shape :attr:`self.meas_shape` or :attr:`self.img_shape`.
+
+        Raises:
+            ValueError: If the last dimension of input is different from :attr:`self.N` or
+            :attr:`self.L`
+
+        See also:
+            For the opposite operation use :meth:`vectorize()`.
+
         """
+        if input.shape[-1] == self.N:
+            unflattened_shape = self.meas_shape
+        elif input.shape[-1] == self.L:
+            unflattened_shape = self.img_shape
+        else:
+            raise ValueError(
+                "Input of unvectorize has unexpected size in its last dim"
+                )
+
         # unflatten the last dimension
-        input = input.reshape(*input.shape[: -1], *self.meas_shape)
+        input = input.reshape(*input.shape[: -1], *unflattened_shape)
         # compare the dimensions
         time_and_meas_dims = torch.Size(self.time_dim, self.meas_dims)
-        time_and_last_dims = torch.Size(list(range(-len(self.meas_shape)-1, 0)))
+        time_and_last_dims = torch.Size(list(range(-len(unflattened_shape)-1, 0)))
         # move dimensions if necessary
         if time_and_meas_dims != time_and_last_dims:
             input = torch.movedim(input, time_and_last_dims, time_and_meas_dims)
@@ -2835,8 +2704,8 @@ class DynamicLinear(Linear):
         dx must be between 0 and 1.
 
         Shapes
-            dx: (n_frames, self.h, self.w)
-            out: (n_frames, {2,4}, self.h, self.w)
+            dx: (n_frames, meas_h, meas_w)
+            out: (n_frames, {2,4}, meas_h, meas_w)
         """
         if mode == "bilinear":
             ans = torch.stack((1 - dx, dx), dim=1)
@@ -2873,106 +2742,120 @@ class DynamicLinear(Linear):
 class DynamicLinearSplit(DynamicLinear):
     # =========================================================================
     r"""
-    Simulates the measurement of a moving object using a splitted operator
-    :math:`y = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix} \cdot x(t)`.
+    Simulates linear measurements of a moving scene by splitting an acquisition matrix 
+    :math:`H \in \mathbb{R}^{M \times N}` that contains negative values. 
+    In practice, only positive values can be implemented using a DMD. 
+    Therefore, we acquire
 
-    Computes linear measurements :math:`y` from incoming images: :math:`y = Px`,
-    where :math:`P` is a linear operator (matrix) and :math:`x` is a batch of
-    vectorized images representing a motion picture.
+    .. math::
+        m = \mathcal{N}\left(\text{diag}(A x_{t=1,..., 2M})\right),
 
-    The matrix :math:`P` contains only positive values and is obtained by
-    splitting a measurement matrix :math:`H` such that
-    :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
-    `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
-    :math:`H_{-} = \max(0,-H)`.
+    where :math:`A \colon\, \mathbb{R}_+^{2M\times N}` is the acquisition
+    matrix that contains positive DMD patterns, 
+    :math:`x_{t=1,..., 2M} \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest, 
+    :math:`2M` is both the number of DMD patterns (positives and negatives) 
+    and the number of frames, 
+    :math:`N` is the dimension of the signal within the field of view,
+    :math:`\text{diag}\colon\, \mathbb{R}^{2M \times 2M} \to \mathbb{R}^{2M}` 
+    extracts the diagonal of its input, and
+    :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` 
+    represents a noise operator (e.g., Gaussian).
 
-    The class is constructed from the :math:`M` by :math:`N` matrix :math:`H`,
-    where :math:`N` represents the number of pixels in the image and
-    :math:`M` the number of measurements. Therefore, the shape of :math:`P` is
-    :math:`(2M, N)`.
+    Given a matrix :math:`H`, we define the positive DMD patterns :math:`A`
+    from the positive and negative components :math:`H`. 
+    In practice, the even rows of :math:`A` contain the positive components of :math:`H`, 
+    while odd rows of :math:`A` contain the negative components of :math:`H.
+
+    .. math::
+        \begin{cases}
+            A[0::2, :] = H_{+}, \text{ with } H_{+} = \max(0,H),\\
+            A[1::2, :] = H_{-}, \text{ with } H_{-} = \max(0,-H).
+        \end{cases}
 
     .. note::
-        It is possible to reconstruct the image using either the unsplit matrix
-        or the splitted one. This cas be changed
+        :math:`H_{+}` and :math:`H_{-}` are such that :math:`H_{+} - H_{-} = H`.
+
+    .. warning::
+        For each call, there must be **exactly** twice as many images in :math:`x` as
+        there are measurements in the linear operator :math:`H`.
 
     Args:
-        :attr:`H` (torch.tensor): measurement matrix (linear operator) with
-        shape :math:`(M, N)` where :math:`M` is the number of measurements and
-        :math:`N` the number of pixels in the image. Only real values are supported.
+        :attr:`H` (:class:`torch.tensor`): measurement matrix (linear operator)
+        with shape :math:`(M, N)`. Only real values are supported.
 
-        :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
-        rows of the measurement matrix :math:`H`. The first new row of :math:`H`
-        will correspond to the highest value in :math:`Ord`. Must contain
-        :math:`M` values. If some values repeat, the order is kept. Defaults to
-        None.
+        :attr:`time_dim` (int): dimension index in the input tensor :math:`x` that corresponds
+        to time (i.e., the frames dimension).
 
-        :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
+          :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
         Must be a tuple of two integers representing the height and width of the
         patterns. If not specified, the shape is suppposed to be a square image.
         If not, an error is raised. Defaults to None.
+
+        :attr:`meas_dims` (tuple, optional): Dimensions of :math:`x_{t=1, ..., M}` the
+        acquisition matrix applies to. Must be a tuple with the same length as
+        :attr:`meas_shape`. If not, an error is raised. Defaults to the last
+        dimensions of the multi-dimensional array :math:`x_{t=1, ..., M}` (e.g., `(-2,-1)`
+        when `len(meas_shape)=2`).
 
         :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
         of two integers representing the height and width of the image. If not
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
 
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. 
+        Defaults to `torch.nn.Identity()`.
+
         :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
-        detector inhomogeneities. Must have the same shape as the measurement patterns.
+        detector inhomogeneities and used for dynamic flat-field correction. It can be
+        determined from a "white acquisition" without any object. If None, no correction is
+        applied. Must have :attr:`self.meas_shape` shape.
 
     Attributes:
-        :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
-        of shape :math:`(M,N)` initialized as :math:`H`.
+        :attr:`M` (int): Number of measurements.
 
-        :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of
-        shape :math:`(2M, N)` such that `P[0::2, :] = H_{+}` and `P[1::2, :] = H_{-}`.
+        :attr:`N` (int): Number of pixels in the field of view.
 
-        :attr:`M` (int): Number of measurements performed by the linear operator.
+        :attr:`L` (int): Number of pixels in the extended field of view.
 
-        :attr:`N` (int): Number of pixels in the image.
+        :attr:`meas_shape` (tuple): Shape of the underlying multi-dimensional 
+        array :math:`x` over the field of view.
 
-        :attr:`h` (int): Measurement pattern height.
+        :attr:`img_shape` (tuple): Shape of the underlying multi-dimensional 
+        array :math:`x` over the extended field of view.
 
-        :attr:`w` (int): Measurement pattern width.
+        :attr:`H` (:class:`torch.tensor`): Static measurement matrix of shape
+        :math:`(M, N)` initialized as :math:`H`.
 
-        :attr:`meas_shape` (tuple): Shape of the measurement patterns
-        (height, width). Is equal to `(self.h, self.w)`.
+        :attr:`A` (:class:`torch.tensor`): Splitted static measurement matrix of shape
+        :math:`(2M, N)` initialized as :math:`A`.
 
-        :attr:`img_h` (int): Image height.
+        :attr:`H_dyn` (torch.tensor): Splitted dynamic measurement matrix :math:`H_{\rm{dyn}}` of shape.
+        :math:`(2M, L)`. Must be set using the :meth:`build_H_dyn` method before being accessed.
 
-        :attr:`img_w` (int): Image width.
-
-        :attr:`img_shape` (tuple): Shape of the image (height, width). Is equal
-        to `(self.img_h, self.img_w)`.
-
-        :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H`.
-        Must be set using the method :meth:`build_H_dyn` before being accessed.
-
-        :attr:`H` (torch.tensor): Alias for :attr:`H_dyn`.
+        :attr:`H_dyn_diff` (torch.tensor): Differential dynamic measurement matrix :math:`H_{\rm{dyn}}` of shape.
+        :math:`(M, L)`. 
 
         :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
-        matrix :math:`H_{dyn}^\dagger`. Must be set using the method
+        matrix :math:`H_{\rm{dyn}}^\dagger`. Must be set using the method
         :meth:`build_H_dyn_pinv` before being accessed.
 
-        :attr:`H_pinv` (torch.tensor): Alias for :attr:`H_dyn_pinv`.
-
-    .. warning::
-        For each call, there must be **exactly** as many images in :math:`x` as
-        there are measurements in the linear operator :math:`P`.
+        .. note::
+            When working with splitted measurements, it is common practice to exploit the problem's linearity by using 
+            a differential measurement strategy. This allows to eliminate ambient light and dark current offsets.
+            We provide the attribute :attr:`H_dyn_diff` which applies the differential strategy after motion compensation to avoid
+            an additional error term [ref journal].  
 
     Example:
-        >>> H = torch.rand([400,1600])
-        >>> meas_op = DynamicLinearSplit(H)
+        >>> x = torch.rand([1, 2*400, 3, 50, 50])  # dummy RGB video with 800 frames of size 50x50
+        >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+        >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50))
         >>> print(meas_op)
         DynamicLinearSplit(
-            (M): 400
-            (N): 1600
-            (H.shape): torch.Size([400, 1600])
-            (meas_shape): (40, 40)
-            (H_dyn): False
-            (img_shape): (40, 40)
-            (H_pinv): False
-            (P.shape): torch.Size([800, 1600])
+          (noise_model): Identity()
         )
+        >>> m = meas_op(x)  # simulate dynamic measurements
+        >>> print(m.shape)
+        torch.Size([1, 3, 800])
 
     Reference:
     .. _MICCAI24:
@@ -2985,19 +2868,19 @@ class DynamicLinearSplit(DynamicLinear):
         self,
         H: torch.tensor,
         time_dim: int,
-        img_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_shape: Union[int, torch.Size, Iterable[int]] = None,
         meas_dims: Union[int, torch.Size, Iterable[int]] = None,
+        img_shape: Union[int, torch.Size, Iterable[int]] = None,
         *,
         noise_model: nn.Module = nn.Identity(),
+        white_acq: torch.tensor = None,
         dtype: torch.dtype = torch.float32,
         device: torch.device = torch.device("cpu"),
-        white_acq: torch.tensor = None,
     ):
         # call constructor of DynamicLinear
         super().__init__(
-            H, time_dim, img_shape, meas_shape, meas_dims, noise_model=noise_model,
-            dtype=dtype, device=device, white_acq=white_acq
+            H, time_dim, meas_shape, meas_dims, img_shape, noise_model=noise_model,
+            white_acq=white_acq, dtype=dtype, device=device
         )
                 
         # split positive and negative components
@@ -3010,142 +2893,161 @@ class DynamicLinearSplit(DynamicLinear):
         # define the available matrices for reconstruction
         self._available_pinv_matrices = ["H_dyn", "A_dyn"]
         self._selected_pinv_matrix = "H_dyn"  # select default here
+
+    @property
+    def H_dyn_diff(self) -> torch.tensor:
+        """Dynamic measurement matrix H_dyn_diff that adopts the differential 
+        measurement strategy as described in [ref_journal], 
+        i.e., `H_dyn[0] - H_dyn[1]`, `H_dyn[2] - H_dyn[3]`, etc."""
+        try:
+            return self._param_H_dyn.data[::2] - self._param_H_dyn.data[1::2]
+        except AttributeError as e:
+            raise AttributeError(
+                "The dynamic measurement matrix H_dyn has not been set yet. "
+                + "Please call build_H_dyn() before accessing the attribute H_dyn_diff."
+            ) from e
     
     def measure(self, x: torch.tensor) -> torch.tensor:
-        r"""Simulate noiseless dynamic measurements from matrix A.
+        r"""Simulates noiseless dynamic measurements from matrix A.
+
+        It acquires
+
+        .. math::
+            m = \text{diag}(A x_{t=1, ..., 2M}),
+
+        where :math:`A \in \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns, 
+        :math:`x \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest, 
+        :math:`2M` is the number of DMD patterns and the number of frames, 
+        :math:`N` is the dimension of the signal, and
+        :math:`\text{diag}\colon\, \mathbb{R}^{2M \times 2M} \to \mathbb{R}^{2M}` 
+        extracts the diagonal of its input.
+
+        Given a matrix :math:`H \in \mathbb{R}^{M\times N}`, 
+        we define the positive DMD patterns :math:`A` from the positive and negative components of :math:`H`.
+
+        .. note::
+            The acquisition matrix :math:`A` is given by :attr:`self.A`.
         
         Args:
-            x (torch.tensor): input tensor. Has shape defined by measurement
-            shapes given at initialization.
-        
+            :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
+            dimensions :attr:`self.meas_dims` must have shape
+            shape :attr:`self.meas_shape`.
+
         Returns:
-            torch.tensor: measured tensor.
+            :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`2\*self.M`.
+
         """
         x = spytorch.center_crop(x, self.meas_shape)
         # vectorize with the time dimension being the second-to-last dimension
         x = self.vectorize(x)
-        # here index m is the number of mesurements
-        # it is also the number of frames ie. time dimension
+        # here index m is the number of mesurements and the number of frames
         x = torch.einsum("mn,...mn->...m", self.A, x)
         return x
 
     def measure_H(self, x: torch.tensor) -> torch.tensor:
-        r"""Simulate noiseless measurements from matrix H
+        r"""Simulates noiseless dynamic measurements from matrix H.
 
-        Args:
-            x (torch.tensor): input tensor. Has shape defined by measurement
-            shapes given at initialization.
+        It acquires
+
+        .. math::
+            m = \text{diag}(H x_{t=1, ..., M}),
+
+        where :math:`H \in \mathbb{R}^{M\times N}` is the measurement matrix (that may contain negative values), 
+        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal obtained from 
+        averaging the positive and negative frames of :math:`x_{t=1, ..., 2M}`, 
+        :math:`M` is the number of DMD patterns, 
+        :math:`N` is the dimension of the signal, and
+        :math:`\text{diag}\colon\, \mathbb{R}^{M \times M} \to \mathbb{R}^{M}` 
+        extracts the diagonal of its input.
+
+        .. note::
+            The acquisition matrix :math:`H` is given by :attr:`self.H`.
+
+        .. note::
+            Here the number of frames is 2M and the number of measurements is M.
         
+        Args:
+            :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
+            dimensions :attr:`self.meas_dims` must have shape
+            shape :attr:`self.meas_shape`.
+
         Returns:
-            torch.tensor: measured tensor.
+            :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`self.M`.
+
         """
+        x = x.movedim(self.time_dim, 0)
+        x = (x[::2] + x[1::2]) / 2
+        x = x.movedim(0, self.time_dim)
         return super().measure(x)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
-        # r"""
-        # Simulates the measurement of a motion picture :math:`y = P \cdot x(t)`.
+        r"""Simulates noisy dynamic measurements from matrix A.
 
-        # The output :math:`y` is computed as :math:`y = Px`, where :math:`P` is
-        # the measurement matrix and :math:`x` is a batch of images.
+        It acquires
 
-        # The matrix :math:`P` contains only positive values and is obtained by
-        # splitting a measurement matrix :math:`H` such that
-        # :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
-        # `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
-        # :math:`H_{-} = \max(0,-H)`.
+        .. math::
+            m = \mathcal{N}\left(\text{diag}(A x_{t=1, ..., 2M})\right),
 
-        # If you want to measure with the original matrix :math:`H`, use the
-        # method :meth:`forward_H`.
+        where :math:`A \in \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns, 
+        :math:`x \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest, 
+        :math:`2M` is the number of DMD patterns and the number of frames, 
+        :math:`N` is the dimension of the signal,
+        :math:`\text{diag}\colon\, \mathbb{R}^{2M \times 2M} \to \mathbb{R}^{2M}` 
+        extracts the diagonal of its input, and
+        :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` 
+        represents a noise operator (e.g., Gaussian).
 
-        # Args:
-        #     :attr:`x`: Batch of images of shape :math:`(*, t, c, h, w)` where *
-        #     denotes any dimension (e.g. the batch size), :math:`t` the number of
-        #     frames, :math:`c` the number of channels, and :math:`h`, :math:`w`
-        #     the height and width of the images.
+        Given a matrix :math:`H \in \mathbb{R}^{M\times N}`, 
+        we define the positive DMD patterns :math:`A` from the positive and negative components of :math:`H`.
 
-        # Output:
-        #     :math:`y`: Linear measurements of the input images. It has shape
-        #     :math:`(*, c, 2M)` where * denotes any number of dimensions, :math:`c`
-        #     the number of channels, and :math:`M` the number of measurements.
-
-        # .. important::
-        #     There must be as many images as there are measurements in the split
-        #     linear operator, i.e. :math:`t = 2M`.
-
-        # .. important::
-        #     This docstring is NOT up to date    
+        .. note::
+            The acquisition matrix :math:`A` is given by :attr:`self.A`.
         
-        # Shape:
-        #     :math:`x`: :math:`(*, t, c, h, w)`
+        Args:
+            :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
+            dimensions :attr:`self.meas_dims` must have shape
+            shape :attr:`self.meas_shape`.
 
-        #     :math:`P` has a shape of :math:`(2M, N)` where :math:`M` is the
-        #     number of measurements as defined by the first dimension of :math:`H`
-        #     and :math:`N` is the number of pixels in the image.
+        Returns:
+            :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`2\*self.M`.
+        """
 
-        #     :math:`output`: :math:`(*, c, 2M)` or :math:`(*, c, t)`
-
-        # Example:
-        #     >>> x = torch.rand([10, 800, 3, 40, 40])
-        #     >>> H = torch.rand([400, 1600])
-        #     >>> meas_op = DynamicLinearSplit(H)
-        #     >>> y = meas_op(x)
-        #     >>> print(y.shape)
-        #     torch.Size([10, 3, 800])
-        # """
-
-        # -------------
-
-        #TDOO : review and update docstring
         # it is ok to use super().forward, because measure method has been redefined
         return super().forward(x)
 
     def forward_H(self, x: torch.tensor) -> torch.tensor:
-        # r"""
-        # Simulates the measurement of a motion picture :math:`y = H \cdot x(t)`.
+        r""" Simulates noisy dynamic measurements from matrix H.
 
-        # The output :math:`y` is computed as :math:`y = Hx`, where :math:`H` is
-        # the measurement matrix and :math:`x` is a batch of images.
+        It acquires
 
-        # The matrix :math:`H` can contain positive and negative values and is
-        # given by the user at initialization. If you want to measure with the
-        # splitted matrix :math:`P`, use the method :meth:`forward`.
+        .. math::
+            m = \mathcal{N}\left(\text{diag}(H x_{t=1, ..., M})\right),
 
-        # Args:
-        #     :attr:`x`: Batch of images of shape :math:`(*, t, c, h, w)` where *
-        #     denotes any dimension (e.g. the batch size), :math:`t` the number of
-        #     frames, :math:`c` the number of channels, and :math:`h`, :math:`w`
-        #     the height and width of the images.
+        where :math:`H \in \mathbb{R}^{M\times N}` is the measurement matrix (that may contain negative values), 
+        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal obtained from 
+        averaging the positive and negative frames of :math:`x_{t=1, ..., 2M}`, 
+        :math:`M` is the number of DMD patterns, 
+        :math:`N` is the dimension of the signal,
+        :math:`\text{diag}\colon\, \mathbb{R}^{M \times M} \to \mathbb{R}^{M}` 
+        extracts the diagonal of its input, and
+        :math:`\mathcal{N} \colon\, \mathbb{R}^{M} \to \mathbb{R}^{M}` 
+        represents a noise operator (e.g., Gaussian).
 
-        # Output:
-        #     :math:`y`: Linear measurements of the input images. It has shape
-        #     :math:`(*, c, M)` where * denotes any number of dimensions, :math:`c`
-        #     the number of channels, and :math:`M` the number of measurements.
+        .. note::
+            The acquisition matrix :math:`H` is given by :attr:`self.H`.
 
-        # .. important::
-        #     There must be as many images as there are measurements in the original
-        #     linear operator, i.e. :math:`t = M`.
+        .. note::
+            Here the number of frames is 2M and the number of measurements is M.
+        
+        Args:
+            :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
+            dimensions :attr:`self.meas_dims` must have shape
+            shape :attr:`self.meas_shape`.
 
-        # Shape:
-        #     :math:`x`: :math:`(*, t, c, h, w)`
+        Returns:
+            :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`self.M`.
 
-        #     :math:`H` has a shape of :math:`(M, N)` where :math:`M` is the
-        #     number of measurements and :math:`N` is the number of pixels in the
-        #     image.
-
-        #     :math:`output`: :math:`(*, c, M)`
-
-        # Example:
-        #     >>> x = torch.rand([10, 400, 3, 40, 40])
-        #     >>> H = torch.rand([400, 1600])
-        #     >>> meas_op = LinearDynamicSplit(H)
-        #     >>> y = meas_op.forward_H(x)
-        #     >>> print(y.shape)
-        #     torch.Size([10, 3, 400])
-        # """
-
-        # -------------
-
-        #TDOO : review and update docstring
+        """
         x = self.measure_H(x)
         x = self.noise_model(x)
         return x
