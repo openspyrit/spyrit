@@ -47,7 +47,6 @@ dependencies = [
         "PyWavelets",
         "wget",
         "sympy",
-        "imageio",
         "astropy",
         "requests",
         "tqdm",
