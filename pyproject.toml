@@ -45,7 +45,6 @@ dependencies = [
         "torchvision",
         "Pillow",
         "PyWavelets",
-        "wget",
         "sympy",
         "astropy",
         "requests",
