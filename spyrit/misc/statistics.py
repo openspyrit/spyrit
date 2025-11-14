@@ -227,6 +227,32 @@ def transform_gray_norm(img_size, normalize=True):
     )
     return transform
 
+def transform_norm(img_size, normalize=True):
+    """
+    Args:
+        img_size=int, image size
+
+    Create torchvision transform for natural images:
+    resize, then to tensor, and normalize (center reduced in [0, 1])
+    """
+    transform = torchvision.transforms.Compose(
+        [
+            torchvision.transforms.Resize(
+                img_size,
+                interpolation=torchvision.transforms.InterpolationMode.BILINEAR,
+            ),
+            # torchvision.transforms.CenterCrop(img_size),
+            CenterCrop(img_size),
+            torchvision.transforms.ToTensor(),
+            (
+                torchvision.transforms.Normalize([0.5], [0.5])
+                if normalize
+                else torch.nn.Identity()
+            ),
+        ]
+    )
+    return transform
+
 
 def data_loaders_stl10(
     data_root,

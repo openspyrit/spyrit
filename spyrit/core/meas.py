@@ -2098,18 +2098,46 @@ class DynamicLinear(Linear):
         x = self.noise_model(x)
         return x
 
-    def build_H_dyn(
+    def build_dynamic_forward(
         self,
         motion: DeformationField,
         mode: str = "bilinear",
         warping: str = "image",
         verbose: bool = False
     ) -> None:
-        r"""Builds the dynamic measurement matrix :math:`H_{\rm{dyn}}`.
+        r"""Builds the dynamic forward operator :math:`H_{\rm{dyn}}`.
 
-        Computes and stores the dynamic measurement matrix :math:`H_{\rm{dyn}}` from the static
-        measurement matrix :math:`H` and the deformation field `motion`. The
-        output is stored in the attribute :attr:`self.H_dyn`.
+        .. math::
+            \text{diag}(H x_{t=1, ..., M}) = H_{\rm{dyn}} x,
+
+        where 
+        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal of interest, 
+        :math:`H \in \mathbb{R}^{M \times N}` is the static acquisition matrix, 
+        :math:`x \in \mathbb{R}^L` is the reference frame defined over an extended field-of-view, and
+        :math:`H_{\rm{dyn}} \in \mathbb{R}^{M \times L}` is the dynamic forward operator that compensates the motion.
+
+        The dynamic measurement matrix :math:`H_{\rm{dyn}}` is obtained by **motion-compensation**
+        to a reference time, leveraging known deformation field.
+         
+        The output is stored in the attribute :attr:`self.H_dyn`.
+
+        .. important::
+            There are two ways of building the dynamic matrix, namely :attr:`warping='pattern'` or :attr:`warping='image'`.
+            The input deformation field :attr:`motion` needs to be respectively the *direct* or the *inverse* deformation field,
+            as defined in the :func:`spyrit.core.warp` module.
+            
+            **Reminder**: When looking at the images vectors as continuous functions from :math:`\mathbb{R}^2` to :math:`\mathbb{R}`, 
+            we define the **direct** deformation as the function :math:`u \colon \mathbb{Z}^3 \mapsto \mathbb{R}^2` such that, 
+            for :math:`k \in \{1, ..., M\}` and :math:`(i, j) \in \mathbb{Z}^2`,
+            
+            .. math::
+                x_{t=k}(i, j) = x_{t=1}(u(t=k, i, j))
+
+            The *inverse* deformation field is defined as :math:`v=u^{-1}`.
+
+        .. note::
+            Warping sharp patterns introduces a bias in the model due to interpolation artifacts. 
+            We recommend to exploit the image regularity by setting :attr:`warping='image'`.
 
         Args:
             :attr:`motion` (DeformationField): Deformation field representing the
@@ -2123,18 +2151,28 @@ class DynamicLinear(Linear):
             the patterns or the (unknown) image to recover when building the dynamic measurement matrix.
             Defaults to 'image'.
 
-            .. note::
-                It's been shown [MaBP24] that warping sharp patterns introduces a bias in the model. We recommend
-                to exploit the image regularity by setting `warping='image'`.
-
         Returns:
             None. The dynamic measurement matrix is stored in the attribute :attr:`self.H_dyn`.
 
         References:
-                [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
-                Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
-                without Warping the Patterns. 2024. hal-04533981
+            [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
+            Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
+            without Warping the Patterns. 2024. hal-04533981
         """
+
+        # Deprecate boolean 'warping' values: accept only 'image' or 'pattern' going forward.
+        if isinstance(warping, bool):
+            warnings.warn(
+                "Passing a boolean for 'warping' is deprecated and will be removed in a future release. "
+                "Please pass the string 'image' or 'pattern' instead. "
+                f"Interpreting {warping!r} as {'pattern' if warping else 'image'}.",
+                DeprecationWarning,
+            )
+            warping = "pattern" if warping else "image"
+
+        if not isinstance(warping, str) or warping not in ("image", "pattern"):
+            raise ValueError("warping must be either 'image' or 'pattern'")
+
 
         if self.img_shape != motion.img_shape:
             raise RuntimeError(
@@ -2786,7 +2824,7 @@ class DynamicLinearSplit(DynamicLinear):
         :attr:`time_dim` (int): dimension index in the input tensor :math:`x` that corresponds
         to time (i.e., the frames dimension).
 
-          :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
+        :attr:`meas_shape` (tuple, optional): Shape of the measurement patterns.
         Must be a tuple of two integers representing the height and width of the
         patterns. If not specified, the shape is suppposed to be a square image.
         If not, an error is raised. Defaults to None.
@@ -2811,7 +2849,7 @@ class DynamicLinearSplit(DynamicLinear):
         applied. Must have :attr:`self.meas_shape` shape.
 
     Attributes:
-        :attr:`M` (int): Number of measurements.
+        :attr:`M` (int): Number of (pos, neg) measurements.
 
         :attr:`N` (int): Number of pixels in the field of view.
 
@@ -2829,21 +2867,15 @@ class DynamicLinearSplit(DynamicLinear):
         :attr:`A` (:class:`torch.tensor`): Splitted static measurement matrix of shape
         :math:`(2M, N)` initialized as :math:`A`.
 
-        :attr:`H_dyn` (torch.tensor): Splitted dynamic measurement matrix :math:`H_{\rm{dyn}}` of shape.
-        :math:`(2M, L)`. Must be set using the :meth:`build_H_dyn` method before being accessed.
+        :attr:`H_dyn` (torch.tensor): Differential dynamic measurement matrix :math:`H_{\rm{dyn}}` of shape.
+        :math:`(M, L)`. Must be set using the :meth:`build_dynamic_forward` method before being accessed.
 
-        :attr:`H_dyn_diff` (torch.tensor): Differential dynamic measurement matrix :math:`H_{\rm{dyn}}` of shape.
-        :math:`(M, L)`. 
+        :attr:`A_dyn` (torch.tensor): Splitted dynamic measurement matrix :math:`A_{\rm{dyn}}` of shape.
+        :math:`(2M, L)`. Must be set using the :meth:`build_dynamic_forward` method before being accessed.
 
         :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
         matrix :math:`H_{\rm{dyn}}^\dagger`. Must be set using the method
         :meth:`build_H_dyn_pinv` before being accessed.
-
-        .. note::
-            When working with splitted measurements, it is common practice to exploit the problem's linearity by using 
-            a differential measurement strategy. This allows to eliminate ambient light and dark current offsets.
-            We provide the attribute :attr:`H_dyn_diff` which applies the differential strategy after motion compensation to avoid
-            an additional error term [ref journal].  
 
     Example:
         >>> x = torch.rand([1, 2*400, 3, 50, 50])  # dummy RGB video with 800 frames of size 50x50
@@ -2895,7 +2927,18 @@ class DynamicLinearSplit(DynamicLinear):
         self._selected_pinv_matrix = "H_dyn"  # select default here
 
     @property
-    def H_dyn_diff(self) -> torch.tensor:
+    def A_dyn(self) -> torch.tensor:
+        """Splitted dynamic measurement matrix computed with the call to build_H_dyn"""
+        try:
+            return self._param_H_dyn.data
+        except AttributeError as e:
+            raise AttributeError(
+                "The dynamic measurement matrix H_dyn has not been set yet. "
+                + "Please call build_H_dyn() before accessing the attribute H_dyn_diff."
+            ) from e
+
+    @property
+    def H_dyn(self) -> torch.tensor:
         """Dynamic measurement matrix H_dyn_diff that adopts the differential 
         measurement strategy as described in [ref_journal], 
         i.e., `H_dyn[0] - H_dyn[1]`, `H_dyn[2] - H_dyn[3]`, etc."""
@@ -2929,9 +2972,9 @@ class DynamicLinearSplit(DynamicLinear):
             The acquisition matrix :math:`A` is given by :attr:`self.A`.
         
         Args:
-            :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
-            dimensions :attr:`self.meas_dims` must have shape
-            shape :attr:`self.meas_shape`.
+            :attr:`x` (:class:`torch.tensor`): Batch of temporal signals :math:`x` whose
+            time dimensions :matches :attr:`self.time_dim` and measured dimensions matches
+            :attr:`self.meas_dims`
 
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`2\*self.M`.
@@ -2967,9 +3010,9 @@ class DynamicLinearSplit(DynamicLinear):
             Here the number of frames is 2M and the number of measurements is M.
         
         Args:
-            :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
-            dimensions :attr:`self.meas_dims` must have shape
-            shape :attr:`self.meas_shape`.
+            :attr:`x` (:class:`torch.tensor`): Batch of temporal signals :math:`x` whose
+            time dimensions :matches :attr:`self.time_dim` and measured dimensions matches
+            :attr:`self.meas_dims`
 
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`self.M`.
@@ -2979,6 +3022,143 @@ class DynamicLinearSplit(DynamicLinear):
         x = (x[::2] + x[1::2]) / 2
         x = x.movedim(0, self.time_dim)
         return super().measure(x)
+    
+    def build_dynamic_forward(
+        self,
+        motion: DeformationField,
+        mode: str = "bilinear",
+        warping: str = "image",
+        verbose: bool = False
+    ) -> None:
+        r"""Builds the dynamic forward operator :math:`A_{\rm{dyn}}`.
+
+        .. math::
+            \text{diag}(A x_{t=1, ..., 2M}) = A_{\rm{dyn}} x,
+
+        where 
+        :math:`x_{t=1, ..., 2M} \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest, 
+        :math:`1 \in \mathbb{R}^{2M \times N}` is the splitted static acquisition matrix, 
+        :math:`x \in \mathbb{R}^L` is the reference frame defined over an extended field-of-view, and
+        :math:`A_{\rm{dyn}} \in \mathbb{R}^{M \times L}` is the splitted dynamic forward operator that compensates the motion.
+
+        The dynamic measurement matrix :math:`A_{\rm{dyn}}` is obtained by **motion-compensation**
+        to a reference time, leveraging known deformation field.
+         
+        The output is stored in the attribute :attr:`self.A_dyn`.
+
+        .. important::
+            There are two ways of building the dynamic matrix, namely :attr:`warping='pattern'` or :attr:`warping='image'`.
+            The input deformation field :attr:`motion` needs to be respectively the *direct* or the *inverse* deformation field,
+            as defined in the :func:`spyrit.core.warp` module.
+            
+            **Reminder**: When looking at the images vectors as continuous functions from :math:`\mathbb{R}^2` to :math:`\mathbb{R}`, 
+            we define the **direct** deformation as the function :math:`u \colon \mathbb{Z}^3 \mapsto \mathbb{R}^2` such that, 
+            for :math:`k \in \{1, ..., 2M\}` and :math:`(i, j) \in \mathbb{Z}^2`,
+            
+            .. math::
+                x_{t=k}(i, j) = x_{t=1}(u(t=k, i, j))
+
+            The *inverse* deformation field is defined as :math:`v=u^{-1}`.
+
+        .. note::
+            Warping sharp patterns introduces a bias in the model due to interpolation artifacts. 
+            We recommend to exploit the image regularity by setting :attr:`warping='image'`.
+
+        .. note::
+            When working with splitted measurements, it is common practice to exploit the problem's linearity by using 
+            a differential measurement strategy. This allows to eliminate ambient light and dark current offsets.
+            The attribute :attr:`H_dyn` applies the differential strategy **after** motion compensation to avoid
+            an additional error term [ref journal].  
+
+
+
+        Args:
+            :attr:`motion` (DeformationField): Deformation field representing the
+            scene motion. Need to pass the inverse deformation field when
+            :attr:`warping` is set to 'image', and the direct deformation field when
+            :attr:`warping` is set to 'pattern'.
+
+            :attr:`mode` (str): Interpolation mode for constructing the dynamic matrix. Defaults to 'bilinear'.
+
+            :attr:`warping` (str): Choose between 'image' or 'pattern'. This parameter decides whether to warp 
+            the patterns or the (unknown) image to recover when building the dynamic measurement matrix.
+            Defaults to 'image'.
+
+        Returns:
+            None. The dynamic measurement matrix is stored in the attribute :attr:`self.A_dyn`.
+
+        References:
+            [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
+            Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
+            without Warping the Patterns. 2024. hal-04533981
+        """
+
+        # redefine to update doc for splitted measurements
+        super().build_dynamic_forward(motion, mode, warping, verbose)
+    
+    def adjoint(self, y: torch.tensor, unvectorize=False):
+        r"""Apply adjoint of matrix :math:`A_{\rm{dyn}}`.
+
+        It computes
+
+        .. math::
+            x = A_{\rm{dyn}}^\top y,
+
+        where :math:`A_{\rm{dyn}} \in \mathbb{R}^{2M\times L}` is the 
+        dynamic acquisition matrix (that may contain negative values due to warping) 
+        and :math:`y \in \mathbb{R}^{2M}` is a measurement vector.
+
+        .. warning:: 
+            This supposes the dynamic measurement matrix :math:`A_{\rm{dyn}}` has been 
+            set using the :meth:`build_H_dyn()` method. An error will be raised otherwise.
+
+        .. note::
+            The acquisition matrix :math:`A_{\rm{dyn}}` is given by :attr:`self.A_dyn`.
+            It may contains negative values due to warping.
+
+        Args:
+            :attr:`y` (:class:`torch.tensor`): Measurement :math:`y` whose dimensions 
+            :attr:`self.meas_dims` must have shape :attr:`self.meas_shape`.
+
+        Returns:
+            :class:`torch.tensor`: A batch of signals :math:`x` with shape :math:`(*, N)`
+            where :math:`*` is the same as for :attr:`m`.
+        """
+        y = torch.einsum("mn,...m->...n", self.A_dyn, y)
+        if unvectorize:
+            y = self.unvectorize(y)
+        return y
+
+    def adjoint_H_dyn(self, m: torch.tensor, unvectorize=False):
+        r"""Apply adjoint of matrix :math:`H_{\rm{dyn}}`.
+
+        It computes
+
+        .. math::
+            x = H_{\rm{dyn}}^\top m,
+
+        where :math:`H_{\rm{dyn}} \in \mathbb{R}^{M \times L}` is the 
+        dynamic acquisition matrix (that may contain negative values), 
+        :math:`m \in \mathbb{R}^M` is a measurement vector.
+
+        .. warning:: 
+            This supposes the dynamic measurement matrix :math:`H_{\rm{dyn}}` has been 
+            set using the :meth:`build_H_dyn()` method. An error will be raised otherwise.
+
+        .. note::
+            The acquisition matrix :math:`H_{\rm{dyn}}` is given by :attr:`self.H_dyn`.
+
+        Args:
+            :attr:`m` (:class:`torch.tensor`): Measurements :math:`m` whose dimensions
+            :attr:`self.meas_dims` must have shape :attr:`self.meas_shape`.
+
+        Returns:
+            A batch of signals :math:`x`. If :attr:`unvectorize` is :obj:`False`, :math:`x` has 
+            shape :math:`(*, L)` where :math:`*` is the same as for :attr:`m`. If :attr:`unvectorize` 
+            is :obj:`True`, :math:`x` is reshaped such that the dimensions :attr:`self.meas_dims` have
+            shape :attr:`self.img_shape`.
+        """
+        return super().adjoint(m, unvectorize=unvectorize)
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Simulates noisy dynamic measurements from matrix A.
@@ -3182,19 +3362,20 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         if M is None:
             M = h**2
 
+        self.h = h
+
         # call DynamicLinearSplit constructor (avoid setting A)
         super(DynamicLinearSplit, self).__init__(
             torch.empty(h**2, h**2, dtype=dtype, device=device),  # dummy H
             time_dim,
-            img_shape,
             meas_shape,
             meas_dims,
+            img_shape,
             noise_model=noise_model,
+            white_acq=white_acq,
             dtype=dtype,
-            device=device,
-            white_acq=white_acq
+            device=device
         )
-
 
         if order is None:
             order = torch.ones(h, h)

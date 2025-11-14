@@ -190,8 +190,8 @@ def generate_colormap(wavelength: float, img_size: int = 256,
     return colormap
 
 
-def plot_hs(strategy, img, wav, suptitle=None, save_fig=False, 
-             results_root=None, data_folder=None):
+def plot_hs(strategy, img, wav, suptitle=None, save_fig=False,
+             results_root=None, data_folder=None, colorbar_format=None):
     """Plot hyperspectral data with wavelength-aware colormaps.
     
     Creates a grid of subplots showing each spectral band with a colormap that
@@ -211,6 +211,9 @@ def plot_hs(strategy, img, wav, suptitle=None, save_fig=False,
             Required if save_fig is True. Defaults to None.
         data_folder (Path or str, optional): Data folder name for organizing 
             saved figures. Required if save_fig is True. Defaults to None.
+        colorbar_format (str, optional): printf-style format string used by
+            matplotlib colorbar to format tick labels (e.g. '%.1f').
+            Defaults to '%.1f'.
     
     Raises:
         ValueError: If save_fig is True but results_root or data_folder is None.
@@ -253,11 +256,14 @@ def plot_hs(strategy, img, wav, suptitle=None, save_fig=False,
         
         # Add colorbar with spectral colormap, closer to the axis
         cax = fig.add_axes([ax.get_position().x1 + 0.005, 
-                            ax.get_position().y0, 
-                            0.01, 
-                            ax.get_position().height])
-        plt.colorbar(im, cax=cax)
-    
+                    ax.get_position().y0, 
+                    0.01, 
+                    ax.get_position().height])
+        if colorbar_format is None:
+            plt.colorbar(im, cax=cax)
+        else:
+            plt.colorbar(im, cax=cax, format=colorbar_format)
+        
     # Hide unused subplots
     for i in range(n_wav, n_rows * n_cols):
         axes[i // n_cols, i % n_cols].axis('off')

@@ -439,7 +439,7 @@ def blue_box(f: np.ndarray, amp_max: int = 0, box_color: Tuple[int, int, int] = 
     Add a colored box overlay to an image for visualization purposes.
     
     Args:
-        f: Input grayscale image.
+        f: Input grayscale or RGB image.
         amp_max: Offset from image borders for the box.
         box_color: RGB color for the box (default: blue).
         
@@ -449,13 +449,17 @@ def blue_box(f: np.ndarray, amp_max: int = 0, box_color: Tuple[int, int, int] = 
     Raises:
         ValueError: If amp_max is too large for the image size.
     """
-    if amp_max * 2 >= min(f.shape):
+    if amp_max * 2 >= min(f.shape[0], f.shape[1]):
         raise ValueError(f"amp_max={amp_max} is too large for image shape {f.shape}")
     
     # Normalize to 8-bit and create RGB image
     f_normalized = (f - f.min()) / (f.max() - f.min()) if f.max() != f.min() else np.zeros_like(f)
     f_255 = (f_normalized * 255).astype(np.uint8)
-    f_rgb = np.stack([f_255] * 3, axis=2)
+
+    if len(f.shape) == 2:
+        f_rgb = np.stack([f_255] * 3, axis=2)
+    elif len(f.shape) == 3:
+        f_rgb = f_255
     
     if amp_max == 0:
         return f_rgb
@@ -523,35 +527,40 @@ def get_frame(movie_path: Union[str, Path], frame_number: int = 0) -> np.ndarray
     return gray_frame
 
 
-def save_motion_video(x_motion, out_path, amp_max, img_size, fps=820):
-    """
-    Save a motion video from x_motion tensor.
-    x_motion: tensor with shape (batch, time, channel, H, W)
-    out_path: pathlib.Path or str
-    Crops using amp_max as in the script.
+def save_motion_video(x_motion, out_path, amp_max=0, fps=820):
+    r"""
+    Save :attr:`x_motion` of shape (1, n_frames, c, h, w) as a video file.
     """
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    h_crop = img_size - 2 * amp_max
-    w_crop = h_crop
+    n_batch, n_frames, n_wav, h, w = x_motion.shape
+
+    h_crop, w_crop = torch.tensor((h, w)) - 2 * amp_max
+    h_crop, w_crop = int(h_crop.item()), int(w_crop.item())
+
+    if n_batch > 1:
+        raise ValueError(f"save_motion_video expects a single batch, got {n_batch}")
+    if n_wav != 1 and n_wav != 3:
+        raise ValueError(f"save_motion_video expects 1 or 3 channels, got {n_wav}")
 
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
     writer = cv2.VideoWriter(str(out_path), fourcc, fps, (w_crop, h_crop), True)
     if not writer.isOpened():
         raise RuntimeError("cv2 VideoWriter failed to open")
-    for t in range(x_motion.shape[1]):
-        frame_wide = x_motion[0, t, 0].cpu().numpy()
+    for t in range(n_frames):
+        frame_wide = x_motion[0, t].moveaxis(0, -1).cpu().numpy()
 
         mn, mx = frame_wide.min(), frame_wide.max()
 
-        frame = frame_wide[amp_max:img_size - amp_max, amp_max:img_size - amp_max]
+        frame = frame_wide[amp_max:h - amp_max, amp_max:w - amp_max]
 
         if mx > mn:
             frame8 = ((frame - mn) / (mx - mn) * 255.0).astype('uint8')
         else:
             frame8 = (frame * 0).astype('uint8')
-        frame_bgr = cv2.cvtColor(frame8, cv2.COLOR_GRAY2BGR)
+        # frame_bgr = cv2.cvtColor(frame8, cv2.COLOR_GRAY2BGR)
+        frame_bgr = cv2.cvtColor(frame8, cv2.COLOR_RGB2BGR)
         writer.write(frame_bgr)
     writer.release()
     print(f"Saved motion video to {out_path}")
