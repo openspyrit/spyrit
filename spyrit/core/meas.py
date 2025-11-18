@@ -2848,6 +2848,12 @@ class DynamicLinearSplit(DynamicLinear):
         determined from a "white acquisition" without any object. If None, no correction is
         applied. Must have :attr:`self.meas_shape` shape.
 
+        :attr:`dtype` (:class:`torch.dtype`, optional): Data type of the measurement
+        matrix. Defaults to `torch.float32`.
+
+        :attr:`device` (:obj:`torch.device`, optional): Device of the measurement matrix.
+        Defaults to `torch.device("cpu")`.
+
     Attributes:
         :attr:`M` (int): Number of (pos, neg) measurements.
 
@@ -3236,91 +3242,111 @@ class DynamicLinearSplit(DynamicLinear):
 # =============================================================================
 class DynamicHadamSplit2d(DynamicLinearSplit):
     # =========================================================================
-    r"""
-    Simulates the measurement of a moving object using a splitted operator
-    :math:`y = \begin{bmatrix}{H_{+}}\\{H_{-}}\end{bmatrix} \cdot x(t)` with
-    :math:`H` a Hadamard matrix.
+    r""" Simulate 2D Hadamard split acquisitions of a moving scene.
 
-    Computes linear measurements from incoming images: :math:`y = Px`,
-    where :math:`P` is a linear operator (matrix) with positive entries and
-    :math:`x` is a batch of vectorized images representing a motion picture.
+    We perform the acquisition of :math:`2M` square DMD patterns of size :math:`h` by exploiting the Kronecker structure of the 2D Hadamard matrix:
 
-    The matrix :math:`P` contains only positive values and is obtained by
-    splitting a Hadamard-based matrix :math:`H` such that
-    :math:`P` has a shape of :math:`(2M, N)` and `P[0::2, :] = H_{+}` and
-    `P[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and
-    :math:`H_{-} = \max(0,-H)`.
+    /!\ TODO: revise equation 
+    .. math::
+        y =\mathcal{N}\left(\text{diag} \left( \mathcal{S}\left(A X_{t=1, ..., 2M} A^\top\right)\right)\right),
 
-    :math:`H` is obtained by selecting a re-ordered subsample of :math:`M` rows
-    of a "full" Hadamard matrix :math:`F` with shape :math:`(N^2, N^2)`.
-    :math:`N` must be a power of 2.
+    where 
+    :math:`A \in \mathbb{R}_+^{2h\times h}` is the acquisition matrix that contains the positive and negative components of a Hadamard matrix, 
+    :math:`X_{t=1, ..., 2M} \in \mathbb{R}^{h \times 2M \times h}` is the video,
+    :math:`\text{diag}\colon\, \mathbb{R}^{2M \times 2M} \to \mathbb{R}^{2M}` extracts the diagonal of its input
+    :math:`\mathcal{S} \colon\, \mathbb{R}^{2h\times 2h} \to \mathbb{R}^{2M}` is a subsampling operator, 
+    :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` represents a noise operator (e.g., Gaussian).
+
+
+    1. The matrix :math:`A` is obtained by splitting a Hadamard matrix :math:`H\in\mathbb{R}^{h\times h}` such that :math:`A[0::2, :] = H_{+}` and :math:`A[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.
+
+    .. note::
+
+        :math:`H_{+} - H_{-} = H`.
+
+    2. The subsampling operator keeps the pixels that correspond to the :math:`M` largest values in the order matrix :math:`O\in\mathbb{R}^{h^2 \times h^2}`.
+
+    .. note::
+
+        Subsampling applies to :math:`H_{+}XH_{+}^T` and :math:`H_{-}XH_{-}^T` the same way, independently.
+
+    .. note::
+            The operator :math:`\mathcal{S}` returns a vector. In the case :math:`M=h^2` (no subsampling), :math:`\mathcal{S}` is the vectorization operator.
 
     Args:
-        :attr:`M` (int): Number of measurements. If :math:`M < h^2`, the
-        measurement matrix :math:`H` is cropped to :math:`M` rows.
+        white_acq: torch.tensor = None,  
 
-        :attr:`h` (int): Measurement pattern height, must be a power of 2. The
-        image is assumed to be square, so the number of pixels in the image is
-        :math:`N = h^2`.
+        :attr:`time_dim` (int): dimension index in the input tensor :math:`x` that corresponds
+        to time (i.e., the frames dimension).
 
-        :attr:`Ord` (torch.tensor, optional): Order matrix used to reorder the
-        rows of the measurement matrix :math:`H`. The first new row of :math:`H`
-        will correspond to the highest value in :math:`Ord`. Must contain
-        :math:`M` values. If some values repeat, the order is kept. Defaults to
-        None.
+        :attr:`h` (int): Image size :math:`h`. Must be a power of 2.
 
-        :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
-        of two integers representing the height and width of the image. If not
-        specified, the shape is taken as equal to `meas_shape`. Setting this
-        value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
+        :attr:`M` (int): Number of (pos, neg) measurements. If None, it is set to :math:`h^2` (no subsampling).
+
+        :attr:`order` (:class:`torch.tensor`, optional): Order matrix :math:`O` that defines the measurements to keep. The first component of :math:`y` will correspond to the index where :attr:`order` is the highest.
+
+        :attr:`fast` (bool, optional): Whether to use the fast Hadamard transform
+        algorithm. If False, it uses matrix-vector products. Defaults to True.
+
+        :attr:`reshape_output` (bool, optional): Whether reshape the output of adjoint and pinv methods to images. If False, output are vectors.
+
+        :attr:`img_shape` (tuple): Shape of the underlying multi-dimensional 
+        array :math:`x` over the extended field of view. If None, is set to :math:`(h, h)`.
+
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
+        Defaults to `torch.nn.Identity()`.
 
         :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
-        detector inhomogeneities. Must have the same shape as the measurement patterns.
+        detector inhomogeneities and used for dynamic flat-field correction. It can be
+        determined from a "white acquisition" without any object. If None, no correction is
+        applied. Must have :attr:`self.meas_shape` shape.
+
+        :attr:`dtype` (:class:`torch.dtype`, optional): Data type of the measurement
+        matrix. Defaults to `torch.float32`.
+
+        :attr:`device` (:obj:`torch.device`, optional): Device of the measurement matrix.
+        Defaults to `torch.device("cpu")`.
+
+    .. note:
+        The argument :attr:`order` is particularly useful when rearranging the
+        measurements by decreasing variance. The variance matrix can simply be
+        put as `order`.
 
     Attributes:
-        :attr:`H_static` (torch.nn.Parameter): The learnable measurement matrix
-        of shape :math:`(M,N)` initialized as :math:`H`.
+        :attr:`M` (int): Number of (pos, neg) measurements.
 
-        :attr:`P` (torch.nn.Parameter): The splitted measurement matrix of
-        shape :math:`(2M, N)` such that `P[0::2, :] = H_{+}` and `P[1::2, :] = H_{-}`.
+        :attr:`N` (int): Number of pixels in the field of view.
 
-        :attr:`M` (int): Number of measurements performed by the linear operator.
+        :attr:`L` (int): Number of pixels in the extended field of view.
 
-        :attr:`N` (int): Number of pixels in the image.
+        :attr:`meas_shape` (tuple): Shape of the measurements patterns. It is equal to :math:`(h, h)`.
 
-        :attr:`h` (int): Measurement pattern height.
+        :attr:`meas_dims` (torch.Size): Dimensions of the image the acquisition
+        matrix applies to. Is equal to `(-2, -1)`.
 
-        :attr:`w` (int): Measurement pattern width.
+        :attr:`img_shape` (tuple): Shape of the underlying multi-dimensional 
+        array :math:`x` over the extended field of view.
 
-        :attr:`meas_shape` (tuple): Shape of the measurement patterns
-        (height, width). Is equal to `(self.h, self.w)`.
+        :attr:`H` (:class:`torch.tensor`): Static 2D measurement matrix of shape
+        :math:`(M, N)` given by :math:`H_{1d} \otimes H_{1d}`.
 
-        :attr:`img_h` (int): Image height.
+        :attr:`A` (:class:`torch.tensor`): Splitted static 2d measurement matrix of shape
+        :math:`(2M, N)` given by :math:`A_{1d} \otimes A_{1d}`.
 
-        :attr:`img_w` (int): Image width.
+        :attr:`H_dyn` (torch.tensor): Differential dynamic measurement matrix :math:`H_{\rm{dyn}}` of shape.
+        :math:`(M, L)`. Must be set using the :meth:`build_dynamic_forward` method before being accessed.
 
-        :attr:`img_shape` (tuple): Shape of the image (height, width). Is equal
-        to `(self.img_h, self.img_w)`.
+        :attr:`A_dyn` (torch.tensor): Splitted dynamic measurement matrix :math:`A_{\rm{dyn}}` of shape.
+        :math:`(2M, L)`. Must be set using the :meth:`build_dynamic_forward` method before being accessed.
 
-        :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H`.
-        Must be set using the method :meth:`build_H_dyn` before being accessed.
+        :attr:`order` (:class:`torch.tensor`): Order matrix :math:`O`. It
+        is used by :func:`~spyrit.core.torch.sort_by_significance()`. Defaults to rectangular order (e.g., linear indices).
 
-        :attr:`H` (torch.tensor): Alias for :attr:`H_dyn`.
+        :attr:`indices` (:class:`torch.tensor`): Indices used to reorder the measurement vector. It is used by the method :meth:`reindex()`.
 
-        :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
-        matrix :math:`H_{dyn}^\dagger`. Must be set using the method
-        :meth:`build_H_dyn_pinv` before being accessed.
 
-        :attr:`H_pinv` (torch.tensor): Alias for :attr:`H_dyn_pinv`.
-
-    .. note::
-        The computation of a Hadamard transform :math:`Fx` benefits a fast
-        algorithm, as well as the computation of inverse Hadamard transforms.
-
-    .. note::
-        :math:`H = H_{+} - H_{-}`
-
-    Example:
+   
+    Example (TODO: UPDATE):
         >>> Ord = torch.rand([32,32])
         >>> meas_op = HadamSplitDynamic(400, 32, Ord)
         >>> print(meas_op)
@@ -3353,9 +3379,9 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         img_shape: Union[int, torch.Size, Iterable[int]] = None,
         *,
         noise_model: nn.Module = nn.Identity(),
+        white_acq: torch.tensor = None,
         dtype: torch.dtype = torch.float32,
-        device: torch.device = torch.device("cpu"),
-        white_acq: torch.tensor = None,  
+        device: torch.device = torch.device("cpu")  
     ):
         meas_dims = (-2, -1)
         meas_shape = (h, h)
@@ -3660,7 +3686,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         # Vectorized separable 2D transform using the kronecker structure
         # x shape: (b, t, c, h, w) -> we want (b, c, t)
         m = torch.einsum('th,btchw,wt->bct', H1d_rows, x, H1d_cols)
-        
+
         return m
         
 

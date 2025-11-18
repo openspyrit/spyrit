@@ -661,7 +661,8 @@ class MotionFieldProjector(nn.Module):
     def __init__(self, deform_path: Union[str, Path], deform_prefix: str, 
                  n: int, M: int, n_ppg: int, T: float, frame_ref: int =0, 
                  homography: torch.Tensor = torch.eye(3),
-                 translation: Tuple[float, float] = (0.0, 0.0),
+                 translation: Tuple[float, float] = (0.0, 0.0), 
+                 dtype: Optional[torch.dtype] = torch.float64,
                  device: Optional[Union[str, torch.device]] = torch.device('cpu')):
         """
         Initialize motion estimation module.
@@ -672,6 +673,7 @@ class MotionFieldProjector(nn.Module):
             n, M, n_ppg, T, frame_ref: Motion estimation parameters.
             homography: 3x3 homography transformation matrix.
             translation: Translation offset (x, y).
+            dtype: Data type for computations (torch.float32, torch.float64, etc.).
             device: Device to use for computations ('cpu', 'cuda', etc.).
             
         Raises:
@@ -685,9 +687,10 @@ class MotionFieldProjector(nn.Module):
             raise FileNotFoundError(f"Deformation path not found: {deform_path}")
             
         self.deform_prefix = deform_prefix
-        self.config = MotionConfig(n=n, M=M, n_ppg=n_ppg, T=T, frame_ref=frame_ref)
+        self.config = MotionConfig(n=n, M=M, n_ppg=n_ppg, T=T, frame_ref=frame_ref, dtype=dtype)
 
         # Setup device
+        self.dtype = dtype
         self.device = device
 
         # Validate homography matrix
@@ -710,12 +713,12 @@ class MotionFieldProjector(nn.Module):
         self.u_cmos: Optional[torch.Tensor] = None
         
 
-    def _load_deformation_movies(self, warping: bool) -> Tuple[torch.Tensor, int, int, int]:
+    def _load_deformation_movies(self, warping: str) -> Tuple[torch.Tensor, int, int, int]:
         """
         Load deformation field movies from NIfTI files.
         
         Args:
-            warping: If True, use 'direct' mode, else 'inverse' mode.
+            warping: If 'pattern', use 'direct' mode, if 'image' use 'inverse' mode.
             
         Returns:
             Tuple of (combined_motion_data, width, height, n_frames).
@@ -724,7 +727,12 @@ class MotionFieldProjector(nn.Module):
             FileNotFoundError: If deformation files are not found.
             ValueError: If file dimensions are inconsistent.
         """
-        mode = 'direct' if warping else 'inverse'
+        if warping == 'image':
+            mode = 'inverse'
+        elif warping == 'pattern':
+            mode = 'direct'
+        else:
+            raise ValueError(f"Invalid warping mode: {warping}. Use 'image' or 'pattern'.")
         
         movies = []
         for i in range(2):
@@ -813,7 +821,7 @@ class MotionFieldProjector(nn.Module):
         return x1_new, x2_new
     
 
-    def estim_motion_from_CMOS(self, warping: bool, amp_max: int = 0, 
+    def estim_motion_from_CMOS(self, warping: str, amp_max: int = 0, 
                               show_deform_field: bool = False) -> None:
         """
         Estimate motion field from CMOS camera data.
@@ -1100,7 +1108,7 @@ class MotionFieldProjector(nn.Module):
         return g_beg, g_end 
 
 
-    def forward(self, warping: bool, amp_max: int = 0, 
+    def forward(self, warping: str, amp_max: int = 0, 
                 show_deform_field: bool = False) -> torch.Tensor:
         """
         Complete forward pass for motion estimation.

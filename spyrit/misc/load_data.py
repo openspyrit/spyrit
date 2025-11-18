@@ -237,12 +237,19 @@ def empty_acqui(data_root: Path, data_folder: str, data_file_prefix: str, homogr
     """
     try:
         from spyrit.core.meas import HadamSplit2d
+        from spyrit.core.prep import Unsplit
         from homography import recalibrate
     except ImportError as e:
         raise ImportError(f"Required modules not available: {e}")
 
     if config is None:
-        config = ExperimentConfig()
+        config = ExperimentConfig(
+            n_acq=64,
+            n=64,
+            amp_max=0,
+            zoom_factor=1,
+            dtype=homography.dtype
+        )
 
     # Load covariance matrix
     stat_folder = Path('./stats/')
@@ -267,11 +274,10 @@ def empty_acqui(data_root: Path, data_folder: str, data_file_prefix: str, homogr
         raise FileNotFoundError(f"Empty acquisition data not found: {e}")
 
     # Process measurements
-    meas_empty_torch = torch.from_numpy(meas_empty)
-    y_empty = torch.mean(meas_empty_torch, axis=1)
-    y_empty = y_empty - y_empty[1]
-    y_empty_diff = y_empty[::2] - y_empty[1::2]
-    y_empty_diff = y_empty_diff.view(1, -1)
+    prep_op = Unsplit()
+    meas_empty_torch = torch.from_numpy(meas_empty).to(config.dtype)
+    y_empty = torch.mean(meas_empty_torch, axis=1).view(1, -1)
+    y_empty_diff = prep_op(y_empty)
 
     # Reconstruct SP image
     w = meas_op_stat.fast_pinv(y_empty_diff)
@@ -298,3 +304,73 @@ def empty_acqui(data_root: Path, data_folder: str, data_file_prefix: str, homogr
     img_cmos_calibrated_np = np.rot90(torch2numpy(img_cmos_calibrated[0, 0]), 2)
 
     return img_cmos_calibrated_np, w_np
+
+
+import math
+def generate_synthetic_tumors(
+    x: torch.Tensor,
+    tumor_params: List[dict],
+) -> torch.Tensor:
+    """
+    Creates synthetic Gaussian tumors to a tensor of shape (batch, n_wav, *img_shape).
+    
+    Args:
+        x (torch.Tensor): Input tensor of shape (batch, n_wav, *img_shape)
+        tumor_params (List[dict]): List of tumor parameters. Each dict should contain:
+            - 'center': (row, col) center position of the tumor
+            - 'sigma_x': Standard deviation of the Gaussian in the x direction
+            - 'sigma_y': Standard deviation of the Gaussian in the y direction
+            - 'amplitude': Amplitude of the tumor
+            - 'channels': List of channel indices to add the tumor to (if None, adds to all channels)
+            - 'angle' (optional): Rotation angle in degrees (counter-clockwise). Default is 0.
+        
+    Returns:
+        torch.Tensor: Tensor with synthetic tumors added
+    """
+    dtype = x.dtype
+    device = x.device
+    
+    _, n_wav, h, w = x.shape
+    
+    tumors = torch.zeros_like(x, dtype=dtype, device=device)
+    
+    # Create coordinate grids
+    y_axis = torch.arange(h, dtype=dtype, device=device)
+    x_axis = torch.arange(w, dtype=dtype, device=device)
+    yy, xx = torch.meshgrid(y_axis, x_axis, indexing='ij')
+    
+    for tumor_param in tumor_params:
+        center = tumor_param['center']
+        sigma_x = float(tumor_param['sigma_x'])
+        sigma_y = float(tumor_param['sigma_y'])
+        amplitude = float(tumor_param['amplitude'])
+        channels = tumor_param.get('channels', None)
+        # Optional rotation angle in degrees (default 0). Positive rotates counter-clockwise.
+        angle_deg = float(tumor_param.get('angle', 0.0))
+        theta = math.radians(angle_deg)
+
+        # Coordinates relative to center
+        x_rel = xx - float(center[1])
+        y_rel = yy - float(center[0])
+
+        # Rotate coordinates into the Gaussian's principal axes (apply R(-theta))
+        c = math.cos(theta)
+        s = math.sin(theta)
+        x_rot = c * x_rel + s * y_rel
+        y_rot = -s * x_rel + c * y_rel
+
+        # Avoid division by zero
+        sigma_x = max(sigma_x, 1e-8)
+        sigma_y = max(sigma_y, 1e-8)
+
+        # Generate rotated ellipsoidal Gaussian
+        gauss = amplitude * torch.exp(
+            -(x_rot ** 2 / (2 * sigma_x ** 2) + y_rot ** 2 / (2 * sigma_y ** 2))
+        )
+
+        if channels is None:
+            channels = list(range(n_wav))
+
+        tumors[:, channels, :, :] += gauss.unsqueeze(0).unsqueeze(0)
+                
+    return tumors, torch.clamp(x + tumors, 0.0, 1.0)
