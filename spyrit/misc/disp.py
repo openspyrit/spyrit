@@ -5,6 +5,7 @@
 # -----------------------------------------------------------------------------
 
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import torch
@@ -12,6 +13,8 @@ import math
 import cv2
 from pathlib import Path
 from typing import Tuple, List, Optional, Union
+
+from spyrit.core.warp import DeformationField
 
 
 def display_vid(video, fps, title="", colormap=plt.cm.gray):
@@ -564,3 +567,106 @@ def save_motion_video(x_motion, out_path, amp_max=0, fps=820):
         writer.write(frame_bgr)
     writer.release()
     print(f"Saved motion video to {out_path}")
+
+
+def save_field_video(def_field, out_path, n_frames, step=5, fps=30, figsize=(6, 6), dpi=200, scale=1, fs=16, amp_max=0, box_color='blue', box_linewidth=2):
+    r"""
+    Save deformation field as a quiver video.
+
+    Args:
+        :attr:`def_field` : Deformation field object (see the :mod:`spyrit.core.warp` module).
+        :attr:`out_path`: Path-like to save the output video (mp4).
+        :attr:`n_frames`: Number of frames in the output video (int).
+        :attr:`step`: Step size for quiver grid (spatial subsampling).
+        :attr:`fps`: Frames per second for the output video.
+        :attr:`figsize`: Figure size for the quiver plot (width, height).
+        :attr:`dpi`: Output DPI for the saved video/frames.
+        :attr:`scale`: Quiver scale parameter for scaling the length of arrows.
+        :attr:`amp_max`: int, optional
+                Number of pixels inset from each border to draw a blue box (e.g. the SPC FOV). If 0, no box is drawn.
+        :attr:`box_color`: matplotlib color for the box edge.
+        :attr:`box_linewidth`: width of the box edge line.
+    """
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Basic validation
+    if int(n_frames) < 1:
+        raise ValueError("n_frames must be >= 1")
+    if int(step) < 1:
+        raise ValueError("step must be >= 1")
+    if fps <= 0:
+        raise ValueError("fps must be > 0")
+    
+    if not isinstance(def_field, DeformationField):
+        raise ValueError("def_field must be a DeformationField object")
+
+    # Load and validate field
+    field_full = torch2numpy(def_field.field)
+
+    n_patterns = def_field.n_frames
+    l = int(def_field.img_shape[0])
+    n = l - 2 * amp_max
+
+    # Validate amp_max
+    if amp_max < 0:
+        raise ValueError("amp_max must be >= 0")
+    if amp_max * 2 >= l:
+        raise ValueError(f"amp_max={amp_max} is too large for image size {l}")
+
+    # Temporal indices: guarantee exactly n_frames samples
+    indices = np.linspace(0, n_patterns - 1, int(n_frames)).round().astype(int)
+
+    # Spatial subsampling using absolute pixel coordinates (0 .. l-1)
+    interval = np.arange(0, l)
+    x1_sp, x2_sp = np.meshgrid(interval, interval, indexing="xy")
+    x1 = x1_sp[::step, ::step]
+    x2 = x2_sp[::step, ::step]
+
+    field = field_full[indices][:, ::step, ::step, :]
+
+    # normalize to absolute pixel coordinates
+    scale_factor = (np.array(def_field.img_shape) - 1)
+    field = (field + 1) / 2 * scale_factor
+
+    # Prepare figure and initial quiver (use absolute pixel coords)
+    fig_q, ax_q = plt.subplots(figsize=figsize)
+    ax_q.set_aspect("equal")
+    ax_q.set_xlim([0, l - 1])
+    ax_q.set_ylim([0, l - 1])
+    ax_q.invert_yaxis()
+
+    # displacement vectors: target - source (in pixel coordinates)
+    U0 = field[0, ..., 0] - x1
+    V0 = field[0, ..., 1] - x2
+    Q = ax_q.quiver(x1, x2, U0, V0, angles="xy", scale_units="xy", scale=scale)
+
+    # Draw blue box (if requested) in absolute pixel coordinates
+    if amp_max and amp_max > 0:
+        from matplotlib.patches import Rectangle
+
+        x_min = amp_max
+        x_max = l - amp_max - 1
+        y_min = amp_max
+        y_max = l - amp_max - 1
+
+        width = x_max - x_min
+        height = y_max - y_min
+
+        rect = Rectangle((x_min, y_min), width, height, fill=False, edgecolor=box_color, linewidth=box_linewidth)
+        ax_q.add_patch(rect)
+
+    # Try writing MP4
+    try:
+        writer = animation.FFMpegWriter(fps=fps)
+        with writer.saving(fig_q, str(out_path), dpi=dpi):
+            for i, idx in enumerate(indices):
+                U = field[i, ..., 0] - x1
+                V = field[i, ..., 1] - x2
+                Q.set_UVC(U, V)
+                ax_q.set_title(f"frame {idx}", fontsize=fs)
+                writer.grab_frame()
+        plt.close(fig_q)
+    except Exception as e:
+        raise RuntimeError(f"FFMpegWriter failed: {e}")

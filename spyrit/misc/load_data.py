@@ -16,16 +16,19 @@ import os
 import glob
 import numpy as np
 import PIL
+import math
 
 import torch
 from pathlib import Path
 from typing import Tuple, List, Optional, Union
 from dataclasses import dataclass
 
-from spas.metadata2 import read_metadata, read_metadata_2arms
-
 from spyrit.misc.statistics import Cov2Var
 from spyrit.misc.disp import torch2numpy
+
+from spyrit.core.meas import HadamSplit2d
+from spyrit.core.prep import Unsplit
+
 
 
 def Files_names(Path, name_type):
@@ -194,6 +197,11 @@ def read_acquisition(data_root: Path, data_folder: str,
     Raises:
         FileNotFoundError: If metadata or data files are not found.
     """
+    try:
+        from spas.metadata2 import read_metadata, read_metadata_2arms
+    except ImportError:
+        raise ImportError("Single-pixel acquisition software (SPAS) package is required to read metadata. Please install it (see https://github.com/openspyrit/spas).")
+
     data_root = Path(data_root)
     
     # Read metadata
@@ -235,12 +243,11 @@ def empty_acqui(data_root: Path, data_folder: str, data_file_prefix: str, homogr
         ImportError: If homography module cannot be imported.
         FileNotFoundError: If required data files are not found.
     """
+
     try:
-        from spyrit.core.meas import HadamSplit2d
-        from spyrit.core.prep import Unsplit
-        from homography import recalibrate
-    except ImportError as e:
-        raise ImportError(f"Required modules not available: {e}")
+        from spyrit.core.dual_arm import recalibrate
+    except ImportError:
+        raise ImportError("There may be circular imports issues, please report if this error occurs.")
 
     if config is None:
         config = ExperimentConfig(
@@ -306,7 +313,6 @@ def empty_acqui(data_root: Path, data_folder: str, data_file_prefix: str, homogr
     return img_cmos_calibrated_np, w_np
 
 
-import math
 def generate_synthetic_tumors(
     x: torch.Tensor,
     tumor_params: List[dict],

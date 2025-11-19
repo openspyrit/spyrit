@@ -1953,10 +1953,6 @@ class DynamicLinear(Linear):
         :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H_{\rm{dyn}}` of shape.
         :math:`(M, L)`. Must be set using the method :meth:`build_H_dyn` before being accessed.
 
-        :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
-        matrix :math:`H_{\rm{dyn}}^\dagger`. Must be set using the method
-        :meth:`build_H_dyn_pinv` before being accessed.
-
 
     Example: 
         >>> x = torch.rand([1, 400, 3, 50, 50])  # dummy RGB video with 400 frames of size 50x50
@@ -2542,37 +2538,6 @@ class DynamicLinear(Linear):
 
         return det
 
-    def build_H_dyn_pinv(self, reg: str = "rcond", eta: float = 1e-3) -> None:
-        """Computes the pseudo-inverse of the dynamic measurement matrix
-        :math:`H_{\rm{dyn}}` and stores it in the attribute :attr:`H_dyn_pinv`.
-
-        .. important::
-            TODO: Ask Nicolas whether to remove or not? Seems obsolete.
-
-        .. warning::
-            This method supposes that the dynamic measurement matrix :math:`H_{\rm{dyn}}` has
-            already been set using the :meth:`build_H_dyn()` method. 
-            An error will be raised otherwise.
-
-        Args:
-            :attr:`reg` (str): Regularization method. Can be either 'rcond',
-            'L2' or 'H1'. Defaults to 'rcond'.
-
-            :attr:`eta` (float): Regularization parameter. Defaults to 1e-3.
-
-        Raises:
-            AttributeError: If the dynamic measurement matrix 
-            :math:`H_{\rm{dyn}}` has not been set yet.
-        """
-        # later do with regularization parameter
-        try:
-            H_dyn = self.H_dyn.to(torch.float64)
-        except AttributeError as e:
-            raise AttributeError(
-                "The dynamic measurement matrix H has not been set yet. "
-                + "Please call build_H_dyn() before computing the pseudo-inverse."
-            ) from e
-        self.H_dyn_pinv = self._build_pinv(H_dyn, reg, eta)
 
     def measure_H_dyn(self, x: torch.tensor) -> torch.tensor:
         r"""Simulates noiseless dynamic measurements with the dynamic matrix
@@ -2879,9 +2844,6 @@ class DynamicLinearSplit(DynamicLinear):
         :attr:`A_dyn` (torch.tensor): Splitted dynamic measurement matrix :math:`A_{\rm{dyn}}` of shape.
         :math:`(2M, L)`. Must be set using the :meth:`build_dynamic_forward` method before being accessed.
 
-        :attr:`H_dyn_pinv` (torch.tensor): Dynamic pseudo-inverse measurement
-        matrix :math:`H_{\rm{dyn}}^\dagger`. Must be set using the method
-        :meth:`build_H_dyn_pinv` before being accessed.
 
     Example:
         >>> x = torch.rand([1, 2*400, 3, 50, 50])  # dummy RGB video with 800 frames of size 50x50
@@ -3190,9 +3152,9 @@ class DynamicLinearSplit(DynamicLinear):
             The acquisition matrix :math:`A` is given by :attr:`self.A`.
         
         Args:
-            :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
-            dimensions :attr:`self.meas_dims` must have shape
-            shape :attr:`self.meas_shape`.
+            :attr:`x` (:class:`torch.tensor`): Video signal :math:`x` whose
+            dimensions :attr:`self.meas_dims` must be of shape :attr:`self.meas_shape` 
+            and dimension :attr:`self.time_dim` must be of size :attr:`2 * self.M`.
 
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`2\*self.M`.
@@ -3226,9 +3188,9 @@ class DynamicLinearSplit(DynamicLinear):
             Here the number of frames is 2M and the number of measurements is M.
         
         Args:
-            :attr:`x` (:class:`torch.tensor`): Signal :math:`x` whose
-            dimensions :attr:`self.meas_dims` must have shape
-            shape :attr:`self.meas_shape`.
+            :attr:`x` (:class:`torch.tensor`): Video signal :math:`x` whose
+            dimensions :attr:`self.meas_dims` must be of shape :attr:`self.meas_shape` 
+            and dimension :attr:`self.time_dim` must be of size :attr:`2 * self.M`.
 
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`self.M`.
@@ -3246,36 +3208,33 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
     We perform the acquisition of :math:`2M` square DMD patterns of size :math:`h` by exploiting the Kronecker structure of the 2D Hadamard matrix:
 
-    /!\ TODO: revise equation 
+    Each measurement is acquired as, for :math:`k \in \{1, ..., 2M\}`:
+
     .. math::
-        y =\mathcal{N}\left(\text{diag} \left( \mathcal{S}\left(A X_{t=1, ..., 2M} A^\top\right)\right)\right),
+
+        y_k = \mathcal{N}\left( \sum_{i, j} A_{1d}[r_k, i] x_{t=k}[i, j] A_{1d}[j, c_k] \right),
 
     where 
-    :math:`A \in \mathbb{R}_+^{2h\times h}` is the acquisition matrix that contains the positive and negative components of a Hadamard matrix, 
-    :math:`X_{t=1, ..., 2M} \in \mathbb{R}^{h \times 2M \times h}` is the video,
-    :math:`\text{diag}\colon\, \mathbb{R}^{2M \times 2M} \to \mathbb{R}^{2M}` extracts the diagonal of its input
-    :math:`\mathcal{S} \colon\, \mathbb{R}^{2h\times 2h} \to \mathbb{R}^{2M}` is a subsampling operator, 
-    :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` represents a noise operator (e.g., Gaussian).
+    :math:`A_{1d} \in \mathbb{R}_+^{2h\times h}` contains the positive and negative components of a 1d Hadamard matrix, 
+    :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
+    :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`,
+    :math:`\mathcal{N} \colon\, \mathbb{R} \to \mathbb{R}` represents a noise operator (e.g., Gaussian).
 
 
-    1. The matrix :math:`A` is obtained by splitting a Hadamard matrix :math:`H\in\mathbb{R}^{h\times h}` such that :math:`A[0::2, :] = H_{+}` and :math:`A[1::2, :] = H_{-}`, where :math:`H_{+} = \max(0,H)` and :math:`H_{-} = \max(0,-H)`.
+    .. important::
+        Only the forward methods benefit from the fast Hadamard transform algorithm, the adjoint methods do not because
+        the dynamic forward operator (:math:`H_{\rm{dyn}}` or :math:`A_{\rm{dyn}}`) does not have Kronecker structure.
+
 
     .. note::
+        The splitting of the :math:`k^{\rm{th}}` 2D pattern into its positive and negative parts is given by splitting 1D patterns as:
+        
+        ..math::
+            H[k, :]^{+} = H_{1d}^{+}[r_k, :] \otimes H_{1d}^{+}[:, c_k] + H_{1d}^{-}[r_k, :] \otimes H_{1d}^{-}[:, c_k] \\
+            H[k, :]^{-} = H_{1d}^{+}[r_k, :] \otimes H_{1d}^{-}[:, c_k] + H_{1d}^{-}[r_k, :] \otimes H_{1d}^{+}[:, c_k]
 
-        :math:`H_{+} - H_{-} = H`.
-
-    2. The subsampling operator keeps the pixels that correspond to the :math:`M` largest values in the order matrix :math:`O\in\mathbb{R}^{h^2 \times h^2}`.
-
-    .. note::
-
-        Subsampling applies to :math:`H_{+}XH_{+}^T` and :math:`H_{-}XH_{-}^T` the same way, independently.
-
-    .. note::
-            The operator :math:`\mathcal{S}` returns a vector. In the case :math:`M=h^2` (no subsampling), :math:`\mathcal{S}` is the vectorization operator.
-
+        
     Args:
-        white_acq: torch.tensor = None,  
-
         :attr:`time_dim` (int): dimension index in the input tensor :math:`x` that corresponds
         to time (i.e., the frames dimension).
 
@@ -3286,7 +3245,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         :attr:`order` (:class:`torch.tensor`, optional): Order matrix :math:`O` that defines the measurements to keep. The first component of :math:`y` will correspond to the index where :attr:`order` is the highest.
 
         :attr:`fast` (bool, optional): Whether to use the fast Hadamard transform
-        algorithm. If False, it uses matrix-vector products. Defaults to True.
+        algorithm (i.e. exploit the kronecker structure). If False, it uses matrix-vector products. Defaults to True.
 
         :attr:`reshape_output` (bool, optional): Whether reshape the output of adjoint and pinv methods to images. If False, output are vectors.
 
@@ -3327,16 +3286,19 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         :attr:`img_shape` (tuple): Shape of the underlying multi-dimensional 
         array :math:`x` over the extended field of view.
 
-        :attr:`H` (:class:`torch.tensor`): Static 2D measurement matrix of shape
+        :attr:`H1d` (:class:`torch.tensor`): Static 1D Hadamard matrix of shape
+        :math:`(h, h)`.
+
+        :attr:`H` (:class:`torch.tensor`): Static 2D Hadamard matrix of shape
         :math:`(M, N)` given by :math:`H_{1d} \otimes H_{1d}`.
 
-        :attr:`A` (:class:`torch.tensor`): Splitted static 2d measurement matrix of shape
+        :attr:`A` (:class:`torch.tensor`): Splitted static 2d Hadamard matrix of shape
         :math:`(2M, N)` given by :math:`A_{1d} \otimes A_{1d}`.
 
-        :attr:`H_dyn` (torch.tensor): Differential dynamic measurement matrix :math:`H_{\rm{dyn}}` of shape.
+        :attr:`H_dyn` (torch.tensor): Differential dynamic Hadamard matrix :math:`H_{\rm{dyn}}` of shape.
         :math:`(M, L)`. Must be set using the :meth:`build_dynamic_forward` method before being accessed.
 
-        :attr:`A_dyn` (torch.tensor): Splitted dynamic measurement matrix :math:`A_{\rm{dyn}}` of shape.
+        :attr:`A_dyn` (torch.tensor): Splitted dynamic Hadamard matrix :math:`A_{\rm{dyn}}` of shape.
         :math:`(2M, L)`. Must be set using the :meth:`build_dynamic_forward` method before being accessed.
 
         :attr:`order` (:class:`torch.tensor`): Order matrix :math:`O`. It
@@ -3345,21 +3307,13 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         :attr:`indices` (:class:`torch.tensor`): Indices used to reorder the measurement vector. It is used by the method :meth:`reindex()`.
 
 
-   
-    Example (TODO: UPDATE):
-        >>> Ord = torch.rand([32,32])
-        >>> meas_op = HadamSplitDynamic(400, 32, Ord)
+    Example:
+        >>> order = torch.rand([32,32])
+        >>> meas_op = DynamicHadamSplit2d(time_dim=1, h=32, M=32**2, order=order)
         >>> print(meas_op)
-        DynamicHadamSplit(
-            (M): 400
-            (N): 1024
-            (H.shape): torch.Size([400, 1024])
-            (meas_shape): (32, 32)
-            (H_dyn): False
-            (img_shape): (32, 32)
-            (H_pinv): False
-            (P.shape): torch.Size([800, 1024])
-        )
+        DynamicHadamSplit2d(
+            (noise_model): Identity()
+            )
 
     Reference:
     .. _MICCAI24:
@@ -3484,47 +3438,20 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         return spytorch.reindex(x, self.indices.to(x.device), axis, inverse_permutation)
 
     def measure(self, x: torch.tensor) -> torch.tensor:
-        r"""Simulate noiseless measurements from matrix A.
+        r"""Simulates noiseless measurements leveraging the Kronecker structure of the 2d splitted Hadamard transform A.
 
-        It computes
+        Each measurement is acquired as, for :math:`k \in \{1, ..., 2M\}`:
 
         .. math::
-            y =\mathcal{S}\left(AXA^T\right),
 
-        where :math:`\mathcal{S} \colon\, \mathbb{R}^{2h\times 2h} \to \mathbb{R}^{2M}` is the subsampling operator, :math:`A \colon\, \mathbb{R}_+^{2h\times h}` is the acquisition matrix that contains the positive and negative component of 2D Hadamard patterns, :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image, :math:`2M` is the number of DMD patterns, and :math:`h` is the image size.
+            y_k = \sum_{i, j} A_{1d}[r_k, i] x_{t=k}[i, j] A_{1d}[j, c_k],
 
-        Args:
-            :attr:`x` (:class:`torch.tensor`): Image :math:`X` whose
-            dimensions :attr:`self.meas_dims` must have shape
-            shape :attr:`self.meas_shape`.
+        where 
+        :math:`A_{1d} \in \mathbb{R}_+^{2h\times h}` contains the positive and negative components of a 1d Hadamard matrix, 
+        :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
+        :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
 
-        Returns:
-            Measurement vector :math:`y \in \mathbb{R}^{2M}`.
-
-        Examples:
-            Example 1: No subsampling
-
-            >>> import torch
-            >>> import spyrit.core.meas as meas
-            >>> h = 32
-            >>> Ord = torch.randn(h, h)
-            >>> meas_op = meas.HadamSplit2d(h)
-            >>> x = torch.empty(10, h, h).uniform_(0, 1)
-            >>> y = meas_op.measure(x)
-            >>> print(y.shape)
-            torch.Size([10, 2048])
-
-            Example 2: With subsampling
-
-            >>> import torch
-            >>> import spyrit.core.meas as meas
-            >>> h = 32
-            >>> Ord = torch.randn(h, h)
-            >>> meas_op = meas.HadamSplit2d(h, 49)
-            >>> x = torch.empty(8, 2, h, h).uniform_(0, 1)
-            >>> y = meas_op.measure_H(x)
-            >>> print(y.shape)
-            torch.Size([8, 2, 49])
+        
         """
         if self.fast:
             x = spytorch.center_crop(x, self.meas_shape)
@@ -3539,47 +3466,26 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
             return super().measure(x)
 
     def measure_H(self, x: torch.tensor):
-        r"""Simulate noiseless measurements from matrix H.
+        r"""Simulates noiseless measurements leveraging the Kronecker structure of the 2d Hadamard transform H.
 
-        It computes
+        Each measurement is acquired as, for :math:`k \in \{1, ..., M\}`:
 
         .. math::
-            m =\mathcal{S}\left(HXH^T\right),
 
-        where :math:`\mathcal{S} \colon\, \mathbb{R}^{h\times h} \to \mathbb{R}^{M}` is the subsampling operator, :math:`H \colon\, \mathbb{R}^{h\times h}` is the Hadamard matrix, :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image.
+            m_k = \sum_{i, j} H_{1d}[r_k, i] x_{t=k}[i, j] H_{1d}[j, c_k],
 
-        Args:
-            :attr:`x` (:class:`torch.tensor`): Image :math:`X` whose
-            dimensions :attr:`self.meas_dims` must have shape
-            shape :attr:`self.meas_shape`.
+        where 
+        :math:`H_{1d} \in \mathbb{R}^{h\times h}` is the 1d Hadamard matrix, 
+        :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
+        :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
 
-        Returns:
-            Measurement vector :math:`m \in \mathbb{R}^{M}`.
-
-        Examples:
-            Example 1: No subsampling
-
-            >>> import torch
-            >>> import spyrit.core.meas as meas
-            >>> h = 32
-            >>> meas_op = meas.HadamSplit2d(h)
-            >>> x = torch.empty(h, h).uniform_(0, 1)
-            >>> y = meas_op.measure(x)
-            >>> print(y.shape)
-            torch.Size([2048])
-
-            Example 2: With subsampling
-
-            >>> import torch
-            >>> import spyrit.core.meas as meas
-            >>> h = 32
-            >>> meas_op = meas.HadamSplit2d(h, 49)
-            >>> x = torch.empty(8, 2, h, h).uniform_(0, 1)
-            >>> y = meas_op.measure(x)
-            >>> print(y.shape)
-            torch.Size([8, 2, 98])
+        
         """
         if self.fast:
+            x = x.movedim(self.time_dim, 0)
+            x = (x[::2] + x[1::2]) / 2
+            x = x.movedim(0, self.time_dim)
+
             x = spytorch.center_crop(x, self.meas_shape)
 
             time_and_meas_dims = torch.Size([self.time_dim, *self.meas_dims])
@@ -3591,48 +3497,22 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         else:
             return super().measure_H(x)
 
-    def adjoint_H(self, m: torch.tensor, unvectorize=False) -> torch.tensor:
-        r"""Apply the adjoint of matrix H.
-
-        Args:
-            :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` length is :attr:`self.M`.
-
-            :attr:`unvectorize` (bool): whether to apply a :meth:`unvectorize`
-            operation at the end of the computation.
-
-        Returns:
-            Vectorized image vector :math:`x \in \mathbb{R}^{h^2}`
-
-        Examples:
-            Example 1: No subsampling
-            >>> import torch
-            >>> import spyrit.core.meas as meas
-            >>> h = 32
-            >>> meas_op = meas.HadamSplit2d(h)
-            >>> m = torch.empty(10, h*h).uniform_(0, 1)
-            >>> x = meas_op.adjoint_H(m)
-            >>> print(x.shape)
-            torch.Size([10, 1024])
-
-            Example 2: With subsampling
-            >>> import torch
-            >>> import spyrit.core.meas as meas
-            >>> h, M = 32, 49
-            >>> meas_op = meas.HadamSplit2d(h, M)
-            >>> m = torch.empty(8, 2, M).uniform_(0, 1)
-            >>> x = meas_op.adjoint_H(m)
-            >>> print(x.shape)
-            torch.Size([8, 2, 1024])
-        """
-        if self.fast:
-            # fast_pinv takes 'vectorize' as argument
-            return self.fast_pinv(m, not unvectorize) * self.N
-        else:
-            return super().adjoint_H(m, unvectorize)
-
     def fast_measure(self, x: torch.tensor) -> torch.tensor:
-        r"""Simulate noiseless measurements from matrix A. Assumes time_dim = 1; use measure otherwise.
-        Each time step uses a different split 2D Hadamard pattern (positive/negative parts)."""
+        r"""Simulates noiseless measurements leveraging the Kronecker structure of the 2d splitted Hadamard transform A.
+
+        Each measurement is acquired as, for :math:`k \in \{1, ..., 2M\}`:
+
+        .. math::
+
+            y_k = \sum_{i, j} A_{1d}[r_k, i] x_{t=k}[i, j] A_{1d}[j, c_k],
+
+        where 
+        :math:`A_{1d} \in \mathbb{R}_+^{2h\times h}` contains the positive and negative components of a 1d Hadamard matrix, 
+        :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
+        :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
+
+        
+        """
         pattern_indices = self.indices[:self.M]
         
         # Find indices to 2D coordinates in the Hadamard sampling map (for separable transform)
@@ -3649,8 +3529,8 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         H1d_cols_pos = nn.functional.relu(H1d_cols)   # shape (h, M)
         H1d_cols_neg = nn.functional.relu(-H1d_cols)  # shape (h, M)
 
-        # For split 2D Hadamard: H_pos = H_row_pos \otimes H_col_pos + H_row_neg \otimes H_col_neg
-        #                        H_neg = H_row_pos \otimes H_col_neg + H_row_neg \otimes H_col_pos
+        # For split 2D Hadamard: H_pos = H1d_row_pos \otimes H1d_col_pos + H1d_row_neg \otimes H1d_col_neg
+        #                        H_neg = H1d_row_pos \otimes H1d_col_neg + H1d_row_neg \otimes H1d_col_pos
         
         x_pos, x_neg = x[:, ::2], x[:, 1::2]
 
@@ -3671,8 +3551,20 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         return y
 
     def fast_measure_H(self, x: torch.tensor) -> torch.tensor:
-        r"""Simulate noiseless measurements from matrix H. Assumes time_dim = 1; use measure_H otherwise.
-        Each time step k uses a different 2D Hadamard pattern."""
+        r"""Simulates noiseless measurements leveraging the Kronecker structure of the 2d splitted Hadamard transform H.
+
+        Each measurement is acquired as, for :math:`k \in \{1, ..., M\}`:
+
+        .. math::
+
+            m_k = \sum_{i, j} H_{1d}[r_k, i] x_{t=k}[i, j] H_{1d}[j, c_k],
+
+        where 
+        :math:`H_{1d} \in \mathbb{R}^{h\times h}` is the 1d Hadamard matrix, 
+        :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
+        :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
+        
+        """
         pattern_indices = self.indices[:self.M]
         
         # Find indices to 2D coordinates in the Hadamard sampling map (for separable transform)
@@ -3688,74 +3580,61 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         m = torch.einsum('th,btchw,wt->bct', H1d_rows, x, H1d_cols)
 
         return m
+    
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulates noisy measurements leveraging the Kronecker structure of the 2d splitted Hadamard transform A.
+
+        Each measurement is acquired as, for :math:`k \in \{1, ..., 2M\}`:
+
+        .. math::
+
+            y_k = \mathcal{N}\left( \sum_{i, j} A_{1d}[r_k, i] x_{t=k}[i, j] A_{1d}[j, c_k] \right),
+
+        where 
+        :math:`A_{1d} \in \mathbb{R}_+^{2h\times h}` contains the positive and negative components of a 1d Hadamard matrix, 
+        :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
+        :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
+
         
-
-    def fast_pinv(self, m: torch.tensor, vectorize=False) -> torch.tensor:
-        r"""Apply the pseudo inverse of H.
-
+        
         Args:
-            :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` of length :attr:`self.M`.
-
-            :attr:`vectorize` (bool): Whether to apply the :meth:`vectorize` method
-            after computation of the pseudo inverse.
+            :attr:`x` (:class:`torch.tensor`): Video signal :math:`x` whose
+            dimensions :attr:`self.meas_dims` must be of shape :attr:`self.meas_shape` 
+            and dimension :attr:`self.time_dim` must be of size :attr:`2 * self.M`.
 
         Returns:
-            :class:`torch.tensor`: Vectorized image :math:`x` of length :attr:`self.N`.
-
-        .. note::
-            We use the separability of the 2D Hadamard transform. Only multiplications
-            with the "1D" Hadamard matrix (i.e., :attr:`self.H1d`) are required. If
-            the number of measurements is smaller than the number of pixels,
-            the measurement vector is zero-padded.
-
-        Examples:
-            Example 1: No subsampling
-
-            >>> import torch
-            >>> import spyrit.core.meas as meas
-            >>> h = 32
-            >>> meas_op = meas.HadamSplit2d(h)
-            >>> m = torch.empty(10, h*h).uniform_(0, 1)
-            >>> x = meas_op.fast_pinv(m)
-            >>> print(x.shape)
-            torch.Size([10, 32, 32])
-
-            Example 2: With subsampling
-
-            >>> import torch
-            >>> import spyrit.core.meas as meas
-            >>> h, M = 32, 49
-            >>> meas_op = meas.HadamSplit2d(h, M)
-            >>> m = torch.empty(8, 2, M).uniform_(0, 1)
-            >>> x = meas_op.fast_pinv(m)
-            >>> print(x.shape)
-            torch.Size([8, 2, 32, 32])
-
-            Example 3: Output are vectors, not images
-
-            >>> import torch
-            >>> import spyrit.core.meas as meas
-            >>> h, M = 32, 49
-            >>> meas_op = meas.HadamSplit2d(h, M)
-            >>> m = torch.empty(8, 2, M).uniform_(0, 1)
-            >>> x = meas_op.fast_pinv(m, vectorize=True)
-            >>> print(x.shape)
-            torch.Size([8, 2, 1024])
+            :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`2\*self.M`.
         """
-        if self.N != self.M:
-            m = torch.cat(
-                (m, torch.zeros(*m.shape[:-1], self.N - self.M, device=m.device)),
-                -1,
-            )
-        m = self.reindex(m, "cols", False)
-        m = self.unvectorize(m)
-        m = spytorch.mult_2d_separable(self.H1d, m) / self.N
 
-        if vectorize:
-            m = self.vectorize(m)
-        return m
+        # it is ok to use super().forward, because measure method has been redefined
+        return super().forward(x)
 
-    def fast_H_pinv(self) -> torch.tensor:
-        r"""Return the pseudo inverse of the matrix H"""
-        return self.H.T / self.N
+    def forward_H(self, x: torch.tensor) -> torch.tensor:
+        r""""Simulates noisy measurements leveraging the Kronecker structure of the 2d Hadamard transform H.
 
+        Each measurement is acquired as, for :math:`k \in \{1, ..., M\}`:
+
+        .. math::
+
+            m_k = \mathcal{N}\left( \sum_{i, j} H_{1d}[r_k, i] x_{t=k}[i, j] H_{1d}[j, c_k] \right),
+
+        where 
+        :math:`H_{1d} \in \mathbb{R}^{h\times h}` is the 1d Hadamard matrix, 
+        :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
+        :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
+
+        
+        Args:
+            :attr:`x` (:class:`torch.tensor`): Video signal :math:`x` whose
+            dimensions :attr:`self.meas_dims` must be of shape :attr:`self.meas_shape` 
+            and dimension :attr:`self.time_dim` must be of size :attr:`2 * self.M`.
+
+        Returns:
+            :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`self.M`.
+        """
+
+        # it is ok to use super().forward_H, because measure_H method has been redefined
+        return super().forward_H(x)
+
+    

@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from typing import Tuple, Optional, List, Union
 from pathlib import Path
 import torch.nn as nn
-import nibabel as nib
 import time
 import math
 
@@ -29,7 +28,8 @@ from spyrit.core.meas import HadamSplit2d
 from spyrit.misc.statistics import Cov2Var
 from spyrit.core.warp import DeformationField
 
-from utils_exp import read_acquisition, get_frame
+from spyrit.core.dual_arm import read_acquisition
+from spyrit.misc.load_data import get_frame
 
 @dataclass
 class MouseState:
@@ -727,6 +727,12 @@ class MotionFieldProjector(nn.Module):
             FileNotFoundError: If deformation files are not found.
             ValueError: If file dimensions are inconsistent.
         """
+        try:
+            import nibabel as nib
+        except ImportError:
+            raise ImportError("nibabel is required to load NIfTI files. Please install it (e.g. via 'pip install nibabel').")
+
+
         if warping == 'image':
             mode = 'inverse'
         elif warping == 'pattern':
