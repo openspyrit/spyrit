@@ -945,8 +945,8 @@ class LinearSplit(Linear):
             torch.Size([3, 60])
         """
         y = torch.einsum("mn,...m->...n", self.A, y)
-        # if unvectorize:
-        #     m = self.unvectorize(m)
+        if unvectorize:
+            y = self.unvectorize(y)
         return y
 
     def adjoint_H(self, m: torch.tensor, unvectorize=False):
