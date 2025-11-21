@@ -28,8 +28,8 @@ from spyrit.core.meas import HadamSplit2d
 from spyrit.misc.statistics import Cov2Var
 from spyrit.core.warp import DeformationField
 
-from spyrit.core.dual_arm import read_acquisition
-from spyrit.misc.load_data import get_frame
+from spyrit.misc.load_data import read_acquisition
+from spyrit.misc.disp import get_frame
 
 @dataclass
 class MouseState:
