@@ -151,6 +151,7 @@ def imagesc(Img,
             figsize=None,
             cbar_pos=None,
             title_fontsize=16,
+            **kwargs
             ):
     """
     Display image data with scaled colors, a colormap, and a colorbar, similar to
@@ -186,7 +187,11 @@ def imagesc(Img,
     if colormap is None:
         colormap=plt.cm.gray
     elif isinstance(colormap, numbers.Number):
-        colormap = wavelength_to_colormap(colormap, gamma=0.8)
+        if 'gamma' in kwargs:
+            gamma = kwargs['gamma']
+        else:
+            gamma = 0.6
+        colormap = wavelength_to_colormap(colormap, gamma=gamma)
         
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(1, 1, 1)
