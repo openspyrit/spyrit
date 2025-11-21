@@ -167,7 +167,7 @@ def imagesc(
             - If **None** (default), uses Matplotlib's default **'gray'** colormap.
             - If **str**, it should be a valid Matplotlib colormap name (e.g., 'plasma', 'jet', 'viridis').
             - If **int** or **float**, it is treated as a wavelength (in nm) and is passed
-              to the assumed function `wavelength_to_colormap(colormap, gamma=0.8)`
+              to the function `wavelength_to_colormap(colormap, gamma=0.8)` from `spyrit.misc.color`
               to generate a custom colormap.
             - If a **Matplotlib Colormap object**, it is used directly.
         show (bool, optional): If **True** (default), calls `plt.show()` to display the plot.
