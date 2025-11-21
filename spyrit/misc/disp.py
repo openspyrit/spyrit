@@ -156,10 +156,10 @@ def imagesc(Img,
     """
     Display image data with scaled colors, a colormap, and a colorbar, similar to
     MATLAB's `imagesc` function.
-    
+
     This function acts as a wrapper around `matplotlib.pyplot.imshow` with
     custom handling for the colormap and colorbar placement.
-    
+
     Args:
         Img (array-like): The 2D array or image data to be displayed.
         title (str, optional): The title for the plot. Defaults to an empty string.
@@ -167,25 +167,25 @@ def imagesc(Img,
             - If **None** (default), uses Matplotlib's default **'gray'** colormap.
             - If **str**, it should be a valid Matplotlib colormap name (e.g., 'plasma', 'jet', 'viridis').
             - If **int** or **float**, it is treated as a wavelength (in nm) and is passed
-              to the assumed function `wavelength_to_colormap(colormap, gamma=0.8)`
+              to the function `wavelength_to_colormap(colormap, gamma=0.8)` from `spyrit.misc.color`
               to generate a custom colormap.
             - If a **Matplotlib Colormap object**, it is used directly.
         show (bool, optional): If **True** (default), calls `plt.show()` to display the plot.
         figsize (tuple, optional): A tuple (width, height) specifying the figure size
         in inches. Passed to `plt.figure()`. Defaults to None.
-        
+
         cbar_pos (str, optional): Position of the colorbar.
             - If **"bottom"**, the colorbar is placed horizontally below the image.
             - If **None** (default) or any other value, the colorbar is placed
               vertically to the right of the image.
         title_fontsize (int, optional): Font size for the plot title. Defaults to 16.
-    
+
     Returns:
         None: The function primarily displays the plot via Matplotlib.
     """
-    
+
     if colormap is None:
-        colormap=plt.cm.gray
+        colormap = plt.cm.gray
     elif isinstance(colormap, numbers.Number):
         if 'gamma' in kwargs:
             gamma = kwargs['gamma']
@@ -198,7 +198,7 @@ def imagesc(Img,
     plt.imshow(Img, cmap=colormap)
     plt.title(title, fontsize=title_fontsize)
     divider = make_axes_locatable(ax)
-    
+
     from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
     if cbar_pos == "bottom":

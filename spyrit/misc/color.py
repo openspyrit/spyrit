@@ -151,29 +151,25 @@ def colorize(im, color, clip_percentile=0.1):
     return im_scaled * color
 
 
-def wavelength_to_colormap(wav, gamma=.6):
+def wavelength_to_colormap(wav, gamma=0.6):
     """
     Creates a linear Matplotlib colormap that transitions from black to a specific
     color corresponding to a given electromagnetic wavelength.
-    
-    
+
+
     Args:
-        wav (float): The wavelength in nanometers (nm) to determine the target 
+        wav (float): The wavelength in nanometers (nm) to determine the target
         color. Typically, this would be in the visible spectrum range (~380
         to 780 nm).
-        
-        gamma (float, optional): The gamma correction factor applied when 
+
+        gamma (float, optional): The gamma correction factor applied when
         calculating the RGB color from the wavelength. Defaults to 0.6.
-    
+
     Returns:
-        matplotlib.colors.LinearSegmentedColormap: A custom colormap object 
+        matplotlib.colors.LinearSegmentedColormap: A custom colormap object
         named 'DarkToColor' that spans from black at the low end (0.0) to the
         calculated wavelength-based color at the high end (1.0).
-    
-    Raises:
-        NameError: If `wavelength_to_rgb` or `LinearSegmentedColormap` (from
-        Matplotlib) are not defined or imported.
-    
+
     Example:
         >>> cmap = wavelength_to_colormap(550, gamma=0.8) # Green color at 550nm
         >>> print(cmap)
@@ -181,17 +177,17 @@ def wavelength_to_colormap(wav, gamma=.6):
     """
 
     # 'dark_color' is the color at 0.0 (start)
-    dark_color = 'black' # You can use any dark color (e.g., '#000033', 'black', 'darkred')
+    dark_color = (
+        "black"  # You can use any dark color (e.g., '#000033', 'black', 'darkred')
+    )
     # 'target_color' is the color at 1.0 (end)
-    
+
     target_color = wavelength_to_rgb(wav, gamma)
-    
+
     # 2. Create the list of color nodes (tuples of position and color)
     # The colormap will transition linearly between these nodes.
-    color_list = [(0.0, dark_color),
-                  (1.0, target_color)]
-    
-    custom_cmap = LinearSegmentedColormap.from_list('DarkToColor', color_list)
-    
-    return custom_cmap
+    color_list = [(0.0, dark_color), (1.0, target_color)]
 
+    custom_cmap = LinearSegmentedColormap.from_list("DarkToColor", color_list)
+
+    return custom_cmap
