@@ -170,10 +170,6 @@ def wavelength_to_colormap(wav, gamma=0.6):
         named 'DarkToColor' that spans from black at the low end (0.0) to the
         calculated wavelength-based color at the high end (1.0).
 
-    Raises:
-        NameError: If `wavelength_to_rgb` or `LinearSegmentedColormap` (from
-        Matplotlib) are not defined or imported.
-
     Example:
         >>> cmap = wavelength_to_colormap(550, gamma=0.8) # Green color at 550nm
         >>> print(cmap)
