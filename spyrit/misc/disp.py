@@ -180,6 +180,9 @@ def imagesc(
             - If **None** (default) or any other value, the colorbar is placed
               vertically to the right of the image.
         title_fontsize (int, optional): Font size for the plot title. Defaults to 16.
+        **kwargs: Additional keyword arguments.
+            - gamma (float, optional): The gamma correction factor when `colormap` is a wavelength (numeric).
+              Defaults to 0.6.
 
     Returns:
         None: The function primarily displays the plot via Matplotlib.
