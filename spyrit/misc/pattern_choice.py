@@ -12,7 +12,6 @@ import numpy as np
 from PIL import Image
 import torchvision
 from torchvision import datasets, models, transforms
-import matplotlib.pyplot as plt
 import time
 import os
 import copy
