@@ -136,7 +136,7 @@ class KeyPoints(nn.Module):
         src_points = np.array(src_points)
 
         # Save keypoints
-        data_path = Path("../data/exp_data") / self.homo_folder
+        data_path = self.homo_folder
         data_path.mkdir(parents=True, exist_ok=True)
         
         np.save(data_path / "handmade_dest_kp.npy", dest_points)
@@ -261,7 +261,7 @@ class KeyPoints(nn.Module):
         """
         if kp_method == 'hand':
             if read_hand_kp:
-                data_path = Path("../data/exp_data") / self.homo_folder / kp_method
+                data_path = self.homo_folder / kp_method
                 src_points = np.load(data_path / "handmade_src_kp.npy")
                 dest_points = np.load(data_path / "handmade_dest_kp.npy")
             else:
@@ -463,7 +463,7 @@ class ComputeHomography(nn.Module):
             Computed homography matrix as torch tensor.
         """
         # Create output directory
-        output_dir = Path("../data/exp_data") / homo_folder / kp_method
+        output_dir = self.data_root / homo_folder / kp_method
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Load CMOS image
@@ -554,7 +554,7 @@ class ComputeHomography(nn.Module):
                            save_homography: bool, output_dir: Path) -> torch.Tensor:
         """Compute homography using keypoint detection."""
         # Find keypoints
-        kp_finder = KeyPoints(g_frame0, f_stat_np, homo_folder)
+        kp_finder = KeyPoints(g_frame0, f_stat_np, self.data_root / homo_folder)
         src_points, dest_points = kp_finder(kp_method, read_hand_kp=read_hand_kp)
 
         if len(src_points) == 0 or len(dest_points) == 0:

@@ -23,13 +23,6 @@ from pathlib import Path
 from typing import Tuple, List, Optional, Union
 from dataclasses import dataclass
 
-from spyrit.misc.statistics import Cov2Var
-from spyrit.misc.disp import torch2numpy
-
-from spyrit.core.meas import HadamSplit2d
-from spyrit.core.prep import Unsplit
-
-
 
 def Files_names(Path, name_type):
     files = glob.glob(Path + name_type)
@@ -167,17 +160,6 @@ def download_girder(
         abs_paths.append(os.path.abspath(os.path.join(local_folder, name)))
 
     return abs_paths[0] if len(abs_paths) == 1 else abs_paths
-
-
-
-@dataclass
-class ExperimentConfig:
-    """Configuration for experimental data processing."""
-    n_acq: int = 64
-    n: int = 64
-    amp_max: int = 0
-    zoom_factor: int = 1
-    dtype: torch.dtype = torch.float64
 
 
 
