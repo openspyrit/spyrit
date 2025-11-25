@@ -25,7 +25,7 @@ def data_loaders_imagenet(
     seed: int = 7,
     shuffle=False,
     get_size: str = "original",
-    normalize = True,
+    normalize=True,
 ):
     r"""
     Args:
@@ -50,15 +50,19 @@ def data_loaders_imagenet(
             - 'resize': resize
             - 'ccrop': center crop
             - 'rcrop': random crop
-            
+
         :attr:`normalize`: The output of torchvision datasets are images in the range [0, 1]. Setting :attr:`normalize` to True send them to the range [-1, 1]. When :attr:`normalize` is False, the images are left in the range [0, 1].
 
-    .. note:: 
-        
+    .. note::
+
         The output of torchvision datasets are RGB images that are converted into grayscale images.
     """
-    
-    transform_normalize = torchvision.transforms.Normalize([0.5], [0.5]) if normalize else torch.nn.Identity()
+
+    transform_normalize = (
+        torchvision.transforms.Normalize([0.5], [0.5])
+        if normalize
+        else torch.nn.Identity()
+    )
 
     if get_size == "original":
         torch.manual_seed(seed)  # reproductibility of random transform
@@ -271,7 +275,7 @@ def data_loaders_stl10(
     return dataloaders
 
 
-#%% Metrics
+# %% Metrics
 def stat_psnr(
     model,
     dataloader,
@@ -439,6 +443,7 @@ def stat_ssim(
 
 
 # %% Covariance in Walsh Hadamard domain
+
 
 def stat_walsh_ImageNet(
     stat_root=Path("./stats/"),
@@ -754,6 +759,7 @@ def stat_fwalsh_S_stl10(
 
 # %% Covariance in image-domain
 
+
 def stat_imagenet(
     stat_root=Path("./stats/"),
     data_root=Path("./data/ILSVRC2012_img_test_v10102019/"),
@@ -762,8 +768,8 @@ def stat_imagenet(
     get_size: str = "resize",
     n_loop: int = 1,
     device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
-    normalize = True,
-    ext = 'npy'
+    normalize=True,
+    ext="npy",
 ):
     """
     Args:
@@ -783,15 +789,15 @@ def stat_imagenet(
             - 'resize': resize
             - 'ccrop': center crop
             - 'rcrop': random crop
-        
+
         :attr:`n_loop` (int, optional): Number of loops across image database. Defaults to 1. nloop > 1 is only relevant for dataloaders with random transforms (e.g., 'original' or 'rcrop' resizing)
-        
+
         :attr:`normalize`: Torchvision datasets are images in the range [0, 1]. Setting :attr:`normalize` to True send them to the range [-1, 1]. When :attr:`normalize` is False, the images are left in the range [0, 1].
-        
+
         :attr:`ext` (string): Extension of saved files:
-            
+
             - 'npy' for numpy (default),
-            - 'pt' for pytorch, 
+            - 'pt' for pytorch,
             - do not save files otherwise.
 
 
@@ -803,24 +809,20 @@ def stat_imagenet(
 
     """
     dataloaders = data_loaders_imagenet(
-        data_root, 
-        img_size=img_size, 
-        batch_size=batch_size, 
-        seed=7, 
+        data_root,
+        img_size=img_size,
+        batch_size=batch_size,
+        seed=7,
         get_size=get_size,
-        normalize=normalize
+        normalize=normalize,
     )
-    
+
     dataloader = dataloaders["train"]
-    
+
     # Compute mean and covariance
     time_start = time.perf_counter()
-    mean, cov = stat_2(dataloader, 
-                       device, 
-                       stat_root, 
-                       n_loop, 
-                       ext)
-    
+    mean, cov = stat_2(dataloader, device, stat_root, n_loop, ext)
+
     time_elapsed = time.perf_counter() - time_start
 
     print(f"Computed in {time_elapsed} seconds")
@@ -828,10 +830,7 @@ def stat_imagenet(
     # plot and save a few images
     inputs, _ = next(iter(dataloader))
     imagepanel(
-        inputs[0, 0, :, :], 
-        inputs[1, 0, :, :], 
-        inputs[2, 0, :, :], 
-        inputs[3, 0, :, :]
+        inputs[0, 0, :, :], inputs[1, 0, :, :], inputs[2, 0, :, :], inputs[3, 0, :, :]
     )
     plt.savefig(stat_root / f"images_{img_size}x{img_size}.png")
 
@@ -839,27 +838,32 @@ def stat_imagenet(
     i1 = int(img_size * img_size / 10)
     i2 = int(img_size * img_size / 5)
     i3 = int(img_size * img_size // 2 + img_size // 2)
-    
+
     im1 = cov[i1, :].reshape(img_size, img_size).cpu()
     im2 = cov[i2, :].reshape(img_size, img_size).cpu()
     im3 = cov[i3, :].reshape(img_size, img_size).cpu()
     im4 = torch.diag(cov).reshape(img_size, img_size).cpu()
 
-    imagepanel(im1, im2, im3, im4,
-               "",
-               f"cov ({i1}-th row)", 
-               f"cov ({i2}-th row)",
-               f"cov ({i3}-th row)",
-               "var (diagonal)")
-    
+    imagepanel(
+        im1,
+        im2,
+        im3,
+        im4,
+        "",
+        f"cov ({i1}-th row)",
+        f"cov ({i2}-th row)",
+        f"cov ({i3}-th row)",
+        "var (diagonal)",
+    )
+
     plt.savefig(stat_root / f"cov_{img_size}x{img_size}.png")
-    
+
     # plot and save mean
     imagesc(mean.detach().cpu(), "mean image")
     plt.savefig(stat_root / f"mean_{img_size}x{img_size}.png")
 
 
-def stat_2(dataloader, device, root, n_loop: int = 1, ext = 'npy'):
+def stat_2(dataloader, device, root, n_loop: int = 1, ext="npy"):
     """
     Computes and saves 2D mean image and covariance matrix of an image database
 
@@ -871,11 +875,11 @@ def stat_2(dataloader, device, root, n_loop: int = 1, ext = 'npy'):
         root (file, str, or pathlib.Path): Path where the covariance and mean are saved.
 
         n_loop (int, optional): Number of loops across image database. Defaults to 1. nloop > 1 is relevant for dataloaders with random transforms.
-        
+
         ext (string): Extension of saved files:
-            
+
             - 'npy' for numpy (default),
-            - 'pt' for pytorch, 
+            - 'pt' for pytorch,
             - do not save files otherwise.
 
     Returns:
@@ -901,12 +905,11 @@ def stat_2(dataloader, device, root, n_loop: int = 1, ext = 'npy'):
 
     if not root.exists():
         root.mkdir(parents=True, exist_ok=True)
-        
-    if ext == 'npy':    
+
+    if ext == "npy":
         np.save(path, mean.cpu().detach().numpy())
-    elif ext == 'pt':    
+    elif ext == "pt":
         torch.save(mean.cpu().detach(), path)
-        
 
     # --------------------------------------------------------------------------
     # 2. Covariance
@@ -919,9 +922,9 @@ def stat_2(dataloader, device, root, n_loop: int = 1, ext = 'npy'):
     else:
         path = root / Path("Cov_im2_{}_{}x{}".format(n_loop, nx, ny) + "." + ext)
 
-    if ext == 'npy':    
+    if ext == "npy":
         np.save(path, cov.cpu().detach().numpy())
-    elif ext == 'pt':    
+    elif ext == "pt":
         torch.save(cov.cpu().detach(), path)
 
     return mean, cov
@@ -1167,7 +1170,9 @@ def cov_1(dataloader, mean, device, n_loop=1):
 
     return cov
 
-#%%
+
+# %%
+
 
 def Cov2Var(Cov: np.ndarray, out_shape=None):
     r"""

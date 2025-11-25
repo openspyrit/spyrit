@@ -192,7 +192,7 @@ def imagesc(
 
     if colormap is None:
         colormap = plt.cm.gray
-        
+
     elif isinstance(colormap, numbers.Number):
         if "gamma" in kwargs:
             gamma = kwargs["gamma"]
@@ -202,18 +202,17 @@ def imagesc(
 
     if fig is None:
         fig = plt.figure(figsize=figsize)
-    
+
     if ax is None:
         ax = fig.add_subplot(1, 1, 1)
-        
-    pos = ax.imshow(Img, cmap=colormap) 
-    
-    fig.colorbar(pos, ax=ax, location='right')
+
+    pos = ax.imshow(Img, cmap=colormap)
+
+    fig.colorbar(pos, ax=ax, location="right")
     ax.set_title(title, fontsize=title_fontsize)
-    
-    #divider = make_axes_locatable(ax)
-    
-    
+
+    # divider = make_axes_locatable(ax)
+
     # fig = plt.figure(figsize=figsize)
     # ax = fig.add_subplot(1, 1, 1)
     # plt.imshow(Img, cmap=colormap)
