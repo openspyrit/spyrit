@@ -792,7 +792,7 @@ def stat_imagenet(
 
         :attr:`n_loop` (int, optional): Number of loops across image database. Defaults to 1. nloop > 1 is only relevant for dataloaders with random transforms (e.g., 'original' or 'rcrop' resizing)
 
-        :attr:`normalize`: Torchvision datasets are images in the range [0, 1]. Setting :attr:`normalize` to True send them to the range [-1, 1]. When :attr:`normalize` is False, the images are left in the range [0, 1].
+        :attr:`normalize`: Torchvision datasets are images in the range [0, 1]. Setting :attr:`normalize` to True sends them to the range [-1, 1]. When :attr:`normalize` is False, the images are left in the range [0, 1].
 
         :attr:`ext` (string): Extension of saved files:
 
