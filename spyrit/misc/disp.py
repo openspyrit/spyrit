@@ -208,7 +208,10 @@ def imagesc(
 
     pos = ax.imshow(Img, cmap=colormap)
 
-    fig.colorbar(pos, ax=ax, location="right")
+    if cbar_pos == "bottom":
+        fig.colorbar(pos, ax=ax, location="bottom", orientation="horizontal")
+    else:
+        fig.colorbar(pos, ax=ax, location="right", orientation="vertical")
     ax.set_title(title, fontsize=title_fontsize)
 
     # divider = make_axes_locatable(ax)
