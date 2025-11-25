@@ -1,7 +1,6 @@
 from __future__ import print_function, division
 from typing import Any
 from pathlib import Path
-from PIL import Image
 
 import time
 import torch
@@ -9,7 +8,7 @@ import torchvision
 import numpy as np
 from scipy.stats import rankdata
 
-from spyrit.misc.disp import imagepanel
+from spyrit.misc.disp import imagepanel, imagesc
 import matplotlib.pyplot as plt
 
 import spyrit.misc.walsh_hadamard as wh
@@ -26,6 +25,7 @@ def data_loaders_imagenet(
     seed: int = 7,
     shuffle=False,
     get_size: str = "original",
+    normalize = True,
 ):
     r"""
     Args:
@@ -50,11 +50,15 @@ def data_loaders_imagenet(
             - 'resize': resize
             - 'ccrop': center crop
             - 'rcrop': random crop
+            
+        :attr:`normalize`: The output of torchvision datasets are images in the range [0, 1]. Setting :attr:`normalize` to True send them to the range [-1, 1]. When :attr:`normalize` is False, the images are left in the range [0, 1].
 
-    The output of torchvision datasets are PILImage images in the range [0, 1].
-    We transform them to Tensors in the range [-1, 1]. Also RGB images are
-    converted into grayscale images.
+    .. note:: 
+        
+        The output of torchvision datasets are RGB images that are converted into grayscale images.
     """
+    
+    transform_normalize = torchvision.transforms.Normalize([0.5], [0.5]) if normalize else torch.nn.Identity()
 
     if get_size == "original":
         torch.manual_seed(seed)  # reproductibility of random transform
@@ -66,7 +70,7 @@ def data_loaders_imagenet(
                     size=(img_size, img_size), pad_if_needed=True, padding_mode="edge"
                 ),
                 torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize([0.5], [0.5]),
+                transform_normalize,
             ]
         )
 
@@ -77,7 +81,7 @@ def data_loaders_imagenet(
                 torchvision.transforms.Resize(img_size),
                 torchvision.transforms.CenterCrop(img_size),
                 torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize([0.5], [0.5]),
+                transform_normalize,
             ]
         )
 
@@ -87,7 +91,7 @@ def data_loaders_imagenet(
                 torchvision.transforms.functional.to_grayscale,
                 torchvision.transforms.CenterCrop(img_size),
                 torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize([0.5], [0.5]),
+                transform_normalize,
             ]
         )
 
@@ -99,7 +103,7 @@ def data_loaders_imagenet(
                 torchvision.transforms.functional.to_grayscale,
                 torchvision.transforms.RandomCrop(size=(img_size, img_size)),
                 torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize([0.5], [0.5]),
+                transform_normalize,
             ]
         )
 
@@ -267,6 +271,7 @@ def data_loaders_stl10(
     return dataloaders
 
 
+#%% Metrics
 def stat_psnr(
     model,
     dataloader,
@@ -433,7 +438,8 @@ def stat_ssim(
     return mean, var
 
 
-# %% Walsh Hadamard domain
+# %% Covariance in Walsh Hadamard domain
+
 def stat_walsh_ImageNet(
     stat_root=Path("./stats/"),
     data_root=Path("./data/ILSVRC2012_img_test_v10102019/"),
@@ -746,7 +752,8 @@ def stat_fwalsh_S_stl10(
     print(time_elapsed)
 
 
-# %% image-domain
+# %% Covariance in image-domain
+
 def stat_imagenet(
     stat_root=Path("./stats/"),
     data_root=Path("./data/ILSVRC2012_img_test_v10102019/"),
@@ -755,6 +762,8 @@ def stat_imagenet(
     get_size: str = "resize",
     n_loop: int = 1,
     device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+    normalize = True,
+    ext = 'npy'
 ):
     """
     Args:
@@ -770,6 +779,20 @@ def stat_imagenet(
 
         :attr:`get_size`: specifies how images of size :attr:`img_size` are
         obtained (see :mod:`~spyrit.misc.statistics.data_loaders_imagenet`)
+            - 'original': random crop with padding
+            - 'resize': resize
+            - 'ccrop': center crop
+            - 'rcrop': random crop
+        
+        :attr:`n_loop` (int, optional): Number of loops across image database. Defaults to 1. nloop > 1 is only relevant for dataloaders with random transforms (e.g., 'original' or 'rcrop' resizing)
+        
+        :attr:`normalize`: Torchvision datasets are images in the range [0, 1]. Setting :attr:`normalize` to True send them to the range [-1, 1]. When :attr:`normalize` is False, the images are left in the range [0, 1].
+        
+        :attr:`ext` (string): Extension of saved files:
+            
+            - 'npy' for numpy (default),
+            - 'pt' for pytorch, 
+            - do not save files otherwise.
 
 
     Example:
@@ -780,36 +803,63 @@ def stat_imagenet(
 
     """
     dataloaders = data_loaders_imagenet(
-        data_root, img_size=img_size, batch_size=batch_size, seed=7, get_size=get_size
+        data_root, 
+        img_size=img_size, 
+        batch_size=batch_size, 
+        seed=7, 
+        get_size=get_size,
+        normalize=normalize
     )
-    # Walsh ordered transforms
+    
+    dataloader = dataloaders["train"]
+    
+    # Compute mean and covariance
     time_start = time.perf_counter()
-    mean, cov = stat_2(dataloaders["train"], device, stat_root, n_loop)
+    mean, cov = stat_2(dataloader, 
+                       device, 
+                       stat_root, 
+                       n_loop, 
+                       ext)
+    
     time_elapsed = time.perf_counter() - time_start
 
     print(f"Computed in {time_elapsed} seconds")
 
-    # save a few images
-    inputs, _ = next(iter(dataloaders["train"]))
+    # plot and save a few images
+    inputs, _ = next(iter(dataloader))
     imagepanel(
-        inputs[0, 0, :, :], inputs[1, 0, :, :], inputs[2, 0, :, :], inputs[3, 0, :, :]
+        inputs[0, 0, :, :], 
+        inputs[1, 0, :, :], 
+        inputs[2, 0, :, :], 
+        inputs[3, 0, :, :]
     )
     plt.savefig(stat_root / f"images_{img_size}x{img_size}.png")
 
-    # save a few covariances
+    # plot and save a few covariances
     i1 = int(img_size * img_size / 10)
     i2 = int(img_size * img_size / 5)
     i3 = int(img_size * img_size // 2 + img_size // 2)
+    
     im1 = cov[i1, :].reshape(img_size, img_size).cpu()
     im2 = cov[i2, :].reshape(img_size, img_size).cpu()
     im3 = cov[i3, :].reshape(img_size, img_size).cpu()
     im4 = torch.diag(cov).reshape(img_size, img_size).cpu()
 
-    imagepanel(im1, im2, im3, im4, "", "cov", "cov", "cov", "var")
+    imagepanel(im1, im2, im3, im4,
+               "",
+               f"cov ({i1}-th row)", 
+               f"cov ({i2}-th row)",
+               f"cov ({i3}-th row)",
+               "var (diagonal)")
+    
     plt.savefig(stat_root / f"cov_{img_size}x{img_size}.png")
+    
+    # plot and save mean
+    imagesc(mean.detach().cpu(), "mean image")
+    plt.savefig(stat_root / f"mean_{img_size}x{img_size}.png")
 
 
-def stat_2(dataloader, device, root, n_loop: int = 1):
+def stat_2(dataloader, device, root, n_loop: int = 1, ext = 'npy'):
     """
     Computes and saves 2D mean image and covariance matrix of an image database
 
@@ -821,6 +871,12 @@ def stat_2(dataloader, device, root, n_loop: int = 1):
         root (file, str, or pathlib.Path): Path where the covariance and mean are saved.
 
         n_loop (int, optional): Number of loops across image database. Defaults to 1. nloop > 1 is relevant for dataloaders with random transforms.
+        
+        ext (string): Extension of saved files:
+            
+            - 'npy' for numpy (default),
+            - 'pt' for pytorch, 
+            - do not save files otherwise.
 
     Returns:
         mean (np.array): Mean image with shape `(N, N)`.
@@ -839,13 +895,18 @@ def stat_2(dataloader, device, root, n_loop: int = 1):
 
     # Save
     if n_loop == 1:
-        path = root / Path("Average_2_{}x{}".format(nx, ny) + ".npy")
+        path = root / Path("Average_im2_{}x{}".format(nx, ny) + "." + ext)
     else:
-        path = root / Path("Average_2_{}_{}x{}".format(n_loop, nx, ny) + ".npy")
+        path = root / Path("Average_im2_{}_{}x{}".format(n_loop, nx, ny) + "." + ext)
 
     if not root.exists():
-        root.mkdir()
-    np.save(path, mean.cpu().detach().numpy())
+        root.mkdir(parents=True, exist_ok=True)
+        
+    if ext == 'npy':    
+        np.save(path, mean.cpu().detach().numpy())
+    elif ext == 'pt':    
+        torch.save(mean.cpu().detach(), path)
+        
 
     # --------------------------------------------------------------------------
     # 2. Covariance
@@ -854,13 +915,14 @@ def stat_2(dataloader, device, root, n_loop: int = 1):
 
     # Save
     if n_loop == 1:
-        path = root / Path("Cov_2_{}x{}".format(nx, ny) + ".npy")
+        path = root / Path("Cov_im2_{}x{}".format(nx, ny) + "." + ext)
     else:
-        path = root / Path("Cov_2_{}_{}x{}".format(n_loop, nx, ny) + ".npy")
+        path = root / Path("Cov_im2_{}_{}x{}".format(n_loop, nx, ny) + "." + ext)
 
-    if not root.exists():
-        root.mkdir()
-    np.save(path, cov.cpu().detach().numpy())
+    if ext == 'npy':    
+        np.save(path, cov.cpu().detach().numpy())
+    elif ext == 'pt':    
+        torch.save(cov.cpu().detach(), path)
 
     return mean, cov
 
@@ -898,7 +960,8 @@ def mean_2(
         torch.manual_seed(i)
         for inputs, _ in dataloader:
             inputs = inputs.to(device)
-            mean += torch.sum(inputs, (0, 1))
+            batched_sum = torch.sum(inputs, (0, 1))
+            mean += batched_sum
             # print
             n = n + inputs.shape[0]
             print(f"Mean:  {n} / (less than) {tot_num*n_loop} images", end="\n")
@@ -1104,167 +1167,7 @@ def cov_1(dataloader, mean, device, n_loop=1):
 
     return cov
 
-
-# %% delete ? Deprecated ?
-
-# def stat_walsh_np(dataloader, root):
-#     """
-#         Computes Mean Hadamard Image over the whole dataset +
-#         Covariance Matrix Amongst the coefficients
-#     """
-#     inputs, classes = next(iter(dataloader))
-#     inputs = inputs.cpu().detach().numpy()
-#     (batch_size, channels, nx, ny) = inputs.shape
-#     tot_num = len(dataloader)*batch_size
-
-#     H1d = wh.walsh_ordered(nx)
-
-#      # Abs matrix
-#     Mean_had = abs_walsh_ordered(dataloader, H1d, tot_num)
-#     print("Saving abs")
-#     np.save(root / Path('Abs_{}x{}'.format(nx,ny)+'.npy'), Mean_had)
-
-#     # Mean matrix
-#     #-- Accumulate over all images in dataset
-#     n = 0
-#     Mean_had = np.zeros((nx, ny))
-#     for inputs,_ in dataloader:
-#         inputs = inputs.cpu().detach().numpy()
-#         for i in range(inputs.shape[0]):
-#             img = inputs[i,0,:,:]
-#             h_img = wh.walsh_ordered2(img,H1d)
-#             Mean_had += h_img
-#             n = n+1
-#         print(f'Mean:  {n} / (less than) {tot_num} images', end='\r')
-#     print('', end='\n')
-
-#     #-- Normalize & save
-#     Mean_had = Mean_had/n;
-#     print("Saving mean")
-#     np.save(root / Path('Mean_{}x{}'.format(nx,ny)+'.npy'), Mean_had)
-
-#     # Covariance matrix
-#     n = 0
-#     Cov_had = np.zeros((nx*ny, nx*ny));
-#     for inputs,_ in dataloader:
-#         inputs = inputs.cpu().detach().numpy();
-#         for i in range(inputs.shape[0]):
-#             img = inputs[i,0,:,:];
-#             h_img = wh.walsh_ordered2(img, H1d);
-#             Norm_Variable = np.reshape(h_img-Mean_had, (nx*ny,1));
-#             Cov_had += Norm_Variable*np.transpose(Norm_Variable);
-#             n = n+1
-#         print(f'Covariance:  {n} / (less than) {tot_num} images', end='\r')
-#     print()
-
-#     #-- Normalize & save
-#     Cov_had = Cov_had/(n-1);
-#     np.save(root / Path('Cov_{}x{}'.format(nx,ny)+'.npy'), Cov_had)
-
-# %% delete ? Deprecated ?
-
-# def abs_walsh(dataloader, device):
-
-#     # Estimate tot_num
-#     inputs, classes = next(iter(dataloader))
-#     #inputs = inputs.cpu().detach().numpy();
-#     (batch_size, channels, nx, ny) = inputs.shape;
-#     tot_num = len(dataloader)*batch_size;
-
-#     # Init
-#     n = 0
-#     output = torch.zeros((nx,ny),dtype=torch.float32)
-#     H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
-
-#     # Send to device (e.g., cuda)
-#     output = output.to(device)
-#     H = torch.from_numpy(H).to(device)
-
-#     # Accumulate over all images in dataset
-#     for inputs,_ in dataloader:
-#         inputs = inputs.to(device);
-#         n = n + inputs.shape[0]
-#         trans = wh.walsh2_torch(inputs,H);
-#         trans = torch.abs(trans)
-#         output = output.add(torch.sum(trans,0))
-#         print(f'Abs:  {n} / (less than) {tot_num} images', end='\n')
-#     print('', end='\n')
-
-#     #-- Normalize
-#     output = output/n;
-#     output = torch.squeeze(output)
-
-#     return output
-
-# %% delete ? Deprecated ?
-
-# def Stat_had(dataloader, root):
-#     """
-#         Computes Mean Hadamard Image over the whole dataset +
-#         Covariance Matrix Amongst the coefficients
-#     """
-
-#     inputs, classes = next(iter(dataloader))
-#     inputs = inputs.cpu().detach().numpy();
-#     (batch_size, channels, nx, ny) = inputs.shape;
-#     tot_num = len(dataloader)*batch_size;
-
-#     Mean_had = np.zeros((nx, ny));
-#     for inputs,labels in dataloader:
-#         inputs = inputs.cpu().detach().numpy();
-#         for i in range(inputs.shape[0]):
-#             img = inputs[i,0,:,:];
-#             H = wh.walsh_matrix(len(img))
-#             h_img = wh.walsh2(img,H)/len(img)
-#             Mean_had += h_img;
-#     Mean_had = Mean_had/tot_num;
-
-#     Cov_had = np.zeros((nx*ny, nx*ny));
-#     for inputs,labels in dataloader:
-#         inputs = inputs.cpu().detach().numpy();
-#         for i in range(inputs.shape[0]):
-#             img = inputs[i,0,:,:];
-#             H = wh.walsh_matrix(len(img))
-#             h_img = wh.walsh2(img,H)/len(img)
-#             Norm_Variable = np.reshape(h_img-Mean_had, (nx*ny,1));
-#             Cov_had += Norm_Variable*np.transpose(Norm_Variable);
-#     Cov_had = Cov_had/(tot_num-1);
-
-#     np.save(root+'Cov_{}x{}'.format(nx,ny)+'.npy', Cov_had)
-#     np.savetxt(root+'Cov_{}x{}'.format(nx,ny)+'.txt', Cov_had)
-
-#     np.save(root+'Average_{}x{}'.format(nx,ny)+'.npy', Mean_had)
-#     np.savetxt(root+'Average_{}x{}'.format(nx,ny)+'.txt', Mean_had)
-#     cv2.imwrite(root+'Average_{}x{}'.format(nx,ny)+'.png', Mean_had) #Needs conversion to Uint8!
-#     return Mean_had, Cov_had
-
-
-# %% Keep or delete?
-def optim_had(dataloader, root):
-    """Computes image that ranks the hadamard coefficients"""
-    inputs, classes = next(iter(dataloader))
-    inputs = inputs.cpu().detach().numpy()
-    (batch_size, channels, nx, ny) = inputs.shape
-
-    tot_num = len(dataloader) * batch_size
-    Cumulated_had = np.zeros((nx, ny))
-    # Iterate over data.
-    for inputs, labels in dataloader:
-        inputs = inputs.cpu().detach().numpy()
-        for i in range(inputs.shape[0]):
-            img = inputs[i, 0, :, :]
-            H = wh.walsh_matrix(len(img))
-            h_img = wh.walsh2(img, H) / len(img)
-            h_img = np.abs(h_img) / tot_num
-            Cumulated_had += h_img
-
-    Cumulated_had = Cumulated_had / np.max(Cumulated_had) * 255
-    np.save(root + "{}x{}".format(nx, ny) + ".npy", Cumulated_had)
-    np.savetxt(root + "{}x{}".format(nx, ny) + ".txt", Cumulated_had)
-    im = Image.fromarray(Cumulated_had)
-    im.save(root + "{}x{}".format(nx, ny) + ".png")
-    return Cumulated_had
-
+#%%
 
 def Cov2Var(Cov: np.ndarray, out_shape=None):
     r"""
@@ -1313,123 +1216,3 @@ def img2mask(Ord, M):
     ranked_data = np.reshape(rankdata(-Ord, method="ordinal"), (nx, ny))
     msk[np.absolute(ranked_data) > M] = 0
     return msk
-
-
-# %% What for? Still in use? Ask Antonio?
-def stat_mean_coef_from_model(dataloader, device, model_exp):
-    # A rediscuter avec Nicolas
-    # Get dimensions and estimate total number of images in the dataset
-    inputs, classes = next(iter(dataloader))
-    (ny, nh) = mdt.size()
-
-    mean = torch.zeros(nh).to(device)
-    #
-    for inputs, _ in dataloader:
-        inputs = inputs.to(device)
-        trans = torch.matmul(inputs, model_exp)  # .cpu()
-        mean = mean.add(torch.sum(trans, [0, 1]))
-    mean_vect = np.abs(np.transpose(mean.cpu().detach().numpy()))
-    # mean = mean/mean.max()
-    return mean_vect
-
-
-def mea_abs_model(dataloader, device, model, root):
-    # Get dimensions and estimate total number of images in the dataset
-    inputs, classes = next(iter(dataloader))
-    (nx, nh) = model.size()
-    tot_num = len(dataloader)
-    (b, ny, nx) = inputs.size()
-    # 1. Mean
-
-    # Init
-    n = 0
-    mean = torch.zeros(nh).to(device)
-
-    # Accumulate sum over all images in dataset
-    for inputs, _ in dataloader:
-        inputs = inputs.to(device)
-        trans = torch.abs(torch.matmul(inputs, model))  # .cpu()
-        mean = mean.add(torch.sum(trans, [0, 1]))
-        # print
-        n += inputs.shape[0]
-    # print(f'Mean:  {n} / (less than) {tot_num} images', end='\n')
-    print("", end="\n")
-
-    # Normalize
-    mean = mean / (n * ny)
-    # print(mean.size())
-    mean = torch.squeeze(mean)
-    # torch.save(mean, root+'Average_{}x{}'.format(nx,ny)+'.pth')
-
-    path = root / Path("W_Average_abs_Nx{}_Nh{}".format(nx, nh) + ".npy")
-    # if not root.exists():
-    #    root.mkdir()
-    np.save(path, mean.cpu().detach().numpy())
-
-    return mean
-
-
-def stat_model(dataloader, device, model, root):
-    # Get dimensions and estimate total number of images in the dataset
-    inputs, classes = next(iter(dataloader))
-    (nx, nh) = model.size()
-    tot_num = len(dataloader)
-    (b, ny, nx) = inputs.size()
-    # 1. Mean
-
-    # Init
-    n = 0
-    mean = torch.zeros(nh).to(device)
-
-    # Accumulate sum over all images in dataset
-    for inputs, _ in dataloader:
-        inputs = inputs.to(device)
-        trans = torch.matmul(inputs, model)  # .cpu()
-        mean = mean.add(torch.sum(trans, [0, 1]))
-        # print
-        n += inputs.shape[0]
-    # print(f'Mean:  {n} / (less than) {tot_num} images', end='\n')
-    print("", end="\n")
-
-    # Normalize
-    mean = mean / (n * ny)
-    # print(mean.size())
-    mean = torch.squeeze(mean)
-    # torch.save(mean, root+'Average_{}x{}'.format(nx,ny)+'.pth')
-
-    path = root / Path("W_Average_Nx{}_Nh{}".format(nx, nh) + ".npy")
-    # if not root.exists():
-    #    root.mkdir()
-    np.save(path, mean.cpu().detach().numpy())
-
-    # 2. Covariance
-
-    # Init
-    n = 0
-    cov = torch.zeros((nh, nh), dtype=torch.float32)
-    cov = cov.to(device)
-
-    # Accumulate (im - mu)*(im - mu)^T over all images in dataset
-    for inputs, _ in dataloader:
-        inputs = inputs.to(device)
-        trans = torch.matmul(inputs, model)
-        # print(trans.size())
-        for i in range(ny):
-            im_mu = trans[0, i] - mean
-
-            cov += torch.matmul(im_mu.reshape(nh, 1), im_mu.reshape(1, nh))
-        # print
-        n += inputs.shape[0]
-        # print(f'Cov:  {n} / (less than) {tot_num} images', end='\n')
-    print("", end="\n")
-
-    # Normalize
-    cov = cov / ((n * ny) - 1)
-    # torch.save(cov, root+'Cov_{}x{}'.format(nx,ny)+'.pth') # todo?
-
-    path = root / Path("W_Cov_Nx{}_Nh{}".format(nx, nh) + ".npy")
-    # if not root.exists():
-    #    root.mkdir()
-    np.save(path, cov.cpu().detach().numpy())
-
-    return mean, cov
