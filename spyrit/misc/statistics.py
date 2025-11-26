@@ -26,7 +26,7 @@ def data_loaders_imagenet(
     shuffle=False,
     get_size: str = "original",
     normalize=True,
-    **rcrop_kwargs
+    **rcrop_kwargs,
 ):
     r"""
     Args:
@@ -50,21 +50,23 @@ def data_loaders_imagenet(
             - 'rcrop': random crop
             - 'resize': resize
             - 'ccrop': center crop
-            
+
         :attr:`normalize`: The output of torchvision datasets are images in the range [0, 1]. Setting :attr:`normalize` to True sends them to the range [-1, 1]. When :attr:`normalize` is False, the images are left in the range [0, 1].
-        
+
         :attr:`rcrop_kwargs`: Aditional argumen for random crop
 
     .. note::
 
         The output of torchvision datasets are RGB images that are converted into grayscale images.
     """
-    
+
     # random crop default keyword arguments
-    defaultKwargs = { 'size': (img_size, img_size), 
-                     'pad_if_needed': True, 
-                     'padding_mode': 'edge' }
-    rcrop_kwargs = { **defaultKwargs, **rcrop_kwargs }
+    defaultKwargs = {
+        "size": (img_size, img_size),
+        "pad_if_needed": True,
+        "padding_mode": "edge",
+    }
+    rcrop_kwargs = {**defaultKwargs, **rcrop_kwargs}
 
     transform_normalize = (
         torchvision.transforms.Normalize([0.5], [0.5])
@@ -79,7 +81,7 @@ def data_loaders_imagenet(
             [
                 torchvision.transforms.functional.to_grayscale,
                 torchvision.transforms.RandomCrop(
-                    **rcrop_kwargs#pad_if_needed=True, padding_mode="edge"
+                    **rcrop_kwargs  # pad_if_needed=True, padding_mode="edge"
                 ),
                 torchvision.transforms.ToTensor(),
                 transform_normalize,
@@ -766,7 +768,7 @@ def stat_imagenet(
     device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
     normalize=True,
     ext="npy",
-    **rcrop_kwargs
+    **rcrop_kwargs,
 ):
     """
     Args:
@@ -796,7 +798,7 @@ def stat_imagenet(
             - 'npy' for numpy (default),
             - 'pt' for pytorch,
             - do not save files otherwise.
-        
+
         :attr:`rcrop_kwargs`: Aditional argument for random crop
 
 
@@ -814,13 +816,14 @@ def stat_imagenet(
         seed=7,
         get_size=get_size,
         normalize=normalize,
-        **rcrop_kwargs
+        **rcrop_kwargs,
     )
 
     dataloader = dataloaders["train"]
 
     # Compute mean and covariance
     time_start = time.perf_counter()
+    
     mean, cov = stat_2(dataloader, device, stat_root, n_loop, ext)
     
     if not stat_root.exists():
