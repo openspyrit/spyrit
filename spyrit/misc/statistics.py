@@ -26,6 +26,7 @@ def data_loaders_imagenet(
     shuffle=False,
     get_size: str = "original",
     normalize=True,
+    **rcrop_kwargs
 ):
     r"""
     Args:
@@ -46,17 +47,24 @@ def data_loaders_imagenet(
         :attr:`get_size`: specifies how images of size :attr:`img_size` are
         obtained
 
-            - 'original': random crop with padding
+            - 'rcrop': random crop
             - 'resize': resize
             - 'ccrop': center crop
-            - 'rcrop': random crop
-
+            
         :attr:`normalize`: The output of torchvision datasets are images in the range [0, 1]. Setting :attr:`normalize` to True sends them to the range [-1, 1]. When :attr:`normalize` is False, the images are left in the range [0, 1].
+        
+        :attr:`rcrop_kwargs`: Aditional argumen for random crop
 
     .. note::
 
         The output of torchvision datasets are RGB images that are converted into grayscale images.
     """
+    
+    # random crop default keyword arguments
+    defaultKwargs = { 'size': (img_size, img_size), 
+                     'pad_if_needed': True, 
+                     'padding_mode': 'edge' }
+    rcrop_kwargs = { **defaultKwargs, **rcrop_kwargs }
 
     transform_normalize = (
         torchvision.transforms.Normalize([0.5], [0.5])
@@ -64,14 +72,14 @@ def data_loaders_imagenet(
         else torch.nn.Identity()
     )
 
-    if get_size == "original":
+    if get_size == "rcrop":
         torch.manual_seed(seed)  # reproductibility of random transform
         #
         transform = torchvision.transforms.Compose(
             [
                 torchvision.transforms.functional.to_grayscale,
                 torchvision.transforms.RandomCrop(
-                    size=(img_size, img_size), pad_if_needed=True, padding_mode="edge"
+                    **rcrop_kwargs#pad_if_needed=True, padding_mode="edge"
                 ),
                 torchvision.transforms.ToTensor(),
                 transform_normalize,
@@ -99,17 +107,17 @@ def data_loaders_imagenet(
             ]
         )
 
-    elif get_size == "rcrop":
-        torch.manual_seed(seed)  # reproductibility of random transform
-        #
-        transform = torchvision.transforms.Compose(
-            [
-                torchvision.transforms.functional.to_grayscale,
-                torchvision.transforms.RandomCrop(size=(img_size, img_size)),
-                torchvision.transforms.ToTensor(),
-                transform_normalize,
-            ]
-        )
+    # elif get_size == "rcrop":
+    #     torch.manual_seed(seed)  # reproductibility of random transform
+    #     #
+    #     transform = torchvision.transforms.Compose(
+    #         [
+    #             torchvision.transforms.functional.to_grayscale,
+    #             torchvision.transforms.RandomCrop(size=(img_size, img_size)),
+    #             torchvision.transforms.ToTensor(),
+    #             transform_normalize,
+    #         ]
+    #     )
 
     # train set
     trainset = torchvision.datasets.ImageFolder(root=train_root, transform=transform)
@@ -770,6 +778,7 @@ def stat_imagenet(
     device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
     normalize=True,
     ext="npy",
+    **rcrop_kwargs
 ):
     """
     Args:
@@ -799,6 +808,8 @@ def stat_imagenet(
             - 'npy' for numpy (default),
             - 'pt' for pytorch,
             - do not save files otherwise.
+        
+        :attr:`rcrop_kwargs`: Aditional argument for random crop
 
 
     Example:
@@ -815,13 +826,17 @@ def stat_imagenet(
         seed=7,
         get_size=get_size,
         normalize=normalize,
+        **rcrop_kwargs
     )
 
     dataloader = dataloaders["train"]
 
     # Compute mean and covariance
     time_start = time.perf_counter()
-    mean, cov = stat_2(dataloader, device, stat_root, n_loop, ext)
+    # mean, cov = stat_2(dataloader, device, stat_root, n_loop, ext)
+    
+    if not stat_root.exists():
+        stat_root.mkdir(parents=True, exist_ok=True)
 
     time_elapsed = time.perf_counter() - time_start
 
@@ -834,33 +849,33 @@ def stat_imagenet(
     )
     plt.savefig(stat_root / f"images_{img_size}x{img_size}.png")
 
-    # plot and save a few covariances
-    i1 = int(img_size * img_size / 10)
-    i2 = int(img_size * img_size / 5)
-    i3 = int(img_size * img_size // 2 + img_size // 2)
+    # # plot and save a few covariances
+    # i1 = int(img_size * img_size / 10)
+    # i2 = int(img_size * img_size / 5)
+    # i3 = int(img_size * img_size // 2 + img_size // 2)
 
-    im1 = cov[i1, :].reshape(img_size, img_size).cpu()
-    im2 = cov[i2, :].reshape(img_size, img_size).cpu()
-    im3 = cov[i3, :].reshape(img_size, img_size).cpu()
-    im4 = torch.diag(cov).reshape(img_size, img_size).cpu()
+    # im1 = cov[i1, :].reshape(img_size, img_size).cpu()
+    # im2 = cov[i2, :].reshape(img_size, img_size).cpu()
+    # im3 = cov[i3, :].reshape(img_size, img_size).cpu()
+    # im4 = torch.diag(cov).reshape(img_size, img_size).cpu()
 
-    imagepanel(
-        im1,
-        im2,
-        im3,
-        im4,
-        "",
-        f"cov ({i1}-th row)",
-        f"cov ({i2}-th row)",
-        f"cov ({i3}-th row)",
-        "var (diagonal)",
-    )
+    # imagepanel(
+    #     im1,
+    #     im2,
+    #     im3,
+    #     im4,
+    #     "",
+    #     f"cov ({i1}-th row)",
+    #     f"cov ({i2}-th row)",
+    #     f"cov ({i3}-th row)",
+    #     "var (diagonal)",
+    # )
 
-    plt.savefig(stat_root / f"cov_{img_size}x{img_size}.png")
+    # plt.savefig(stat_root / f"cov_{img_size}x{img_size}.png")
 
-    # plot and save mean
-    imagesc(mean.detach().cpu(), "mean image")
-    plt.savefig(stat_root / f"mean_{img_size}x{img_size}.png")
+    # # plot and save mean
+    # imagesc(mean.detach().cpu(), "mean image")
+    # plt.savefig(stat_root / f"mean_{img_size}x{img_size}.png")
 
 
 def stat_2(dataloader, device, root, n_loop: int = 1, ext="npy"):
