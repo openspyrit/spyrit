@@ -823,9 +823,9 @@ def stat_imagenet(
 
     # Compute mean and covariance
     time_start = time.perf_counter()
-    
+
     mean, cov = stat_2(dataloader, device, stat_root, n_loop, ext)
-    
+
     if not stat_root.exists():
         stat_root.mkdir(parents=True, exist_ok=True)
 
