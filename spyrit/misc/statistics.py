@@ -61,12 +61,12 @@ def data_loaders_imagenet(
     """
 
     # random crop default keyword arguments
-    defaultKwargs = {
+    default_kwargs = {
         "size": (img_size, img_size),
         "pad_if_needed": True,
         "padding_mode": "edge",
     }
-    rcrop_kwargs = {**defaultKwargs, **rcrop_kwargs}
+    rcrop_kwargs = {**default_kwargs, **rcrop_kwargs}
 
     transform_normalize = (
         torchvision.transforms.Normalize([0.5], [0.5])
