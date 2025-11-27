@@ -53,7 +53,7 @@ def data_loaders_imagenet(
 
         :attr:`normalize`: The output of torchvision datasets are images in the range [0, 1]. Setting :attr:`normalize` to True sends them to the range [-1, 1]. When :attr:`normalize` is False, the images are left in the range [0, 1].
 
-        :attr:`rcrop_kwargs`: Aditional argumen for random crop
+        :attr:`rcrop_kwargs`: Additional arguments for random crop
 
     .. note::
 
