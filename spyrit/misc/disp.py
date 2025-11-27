@@ -150,6 +150,8 @@ def imagesc(
     colormap=None,
     show=True,
     figsize=None,
+    fig=None,
+    ax=None,
     cbar_pos=None,
     title_fontsize=16,
     **kwargs,
@@ -190,6 +192,7 @@ def imagesc(
 
     if colormap is None:
         colormap = plt.cm.gray
+
     elif isinstance(colormap, numbers.Number):
         if "gamma" in kwargs:
             gamma = kwargs["gamma"]
@@ -197,22 +200,19 @@ def imagesc(
             gamma = 0.6
         colormap = wavelength_to_colormap(colormap, gamma=gamma)
 
-    fig = plt.figure(figsize=figsize)
-    ax = fig.add_subplot(1, 1, 1)
-    plt.imshow(Img, cmap=colormap)
-    plt.title(title, fontsize=title_fontsize)
-    divider = make_axes_locatable(ax)
+    if fig is None:
+        fig = plt.figure(figsize=figsize)
 
-    from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+    if ax is None:
+        ax = fig.add_subplot(1, 1, 1)
+
+    pos = ax.imshow(Img, cmap=colormap)
 
     if cbar_pos == "bottom":
-        cax = inset_axes(
-            ax, width="100%", height="5%", loc="lower center", borderpad=-5
-        )
-        plt.colorbar(cax=cax, orientation="horizontal")
+        fig.colorbar(pos, ax=ax, location="bottom", orientation="horizontal")
     else:
-        cax = plt.axes([0.85, 0.1, 0.075, 0.8])
-        plt.colorbar(cax=cax, orientation="vertical")
+        fig.colorbar(pos, ax=ax, location="right", orientation="vertical")
+    ax.set_title(title, fontsize=title_fontsize)
 
     # fig.tight_layout() # it raises warnings in some cases
     if show is True:
