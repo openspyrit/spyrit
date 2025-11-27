@@ -973,8 +973,7 @@ def mean_2(
         torch.manual_seed(i)
         for inputs, _ in dataloader:
             inputs = inputs.to(device)
-            batched_sum = torch.sum(inputs, (0, 1))
-            mean += batched_sum
+            mean += torch.sum(inputs, (0, 1))
             # print
             n = n + inputs.shape[0]
             print(f"Mean:  {n} / (less than) {tot_num*n_loop} images", end="\n")
