@@ -109,6 +109,8 @@ def data_loaders_imagenet(
             ]
         )
 
+    else:
+        raise ValueError(f"Invalid get_size '{get_size}'. Must be one of: 'rcrop', 'resize', 'ccrop'")
     # train set
     trainset = torchvision.datasets.ImageFolder(root=train_root, transform=transform)
     trainloader = torch.utils.data.DataLoader(
