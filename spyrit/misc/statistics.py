@@ -24,7 +24,7 @@ def data_loaders_imagenet(
     batch_size: int = 512,
     seed: int = 7,
     shuffle=False,
-    get_size: str = "original",
+    get_size: str = "rcrop",
     normalize=True,
     **rcrop_kwargs,
 ):
