@@ -214,25 +214,6 @@ def imagesc(
         fig.colorbar(pos, ax=ax, location="right", orientation="vertical")
     ax.set_title(title, fontsize=title_fontsize)
 
-    # divider = make_axes_locatable(ax)
-
-    # fig = plt.figure(figsize=figsize)
-    # ax = fig.add_subplot(1, 1, 1)
-    # plt.imshow(Img, cmap=colormap)
-    # plt.title(title, fontsize=title_fontsize)
-    # divider = make_axes_locatable(ax)
-
-    # from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-
-    # if cbar_pos == "bottom":
-    #     cax = inset_axes(
-    #         ax, width="100%", height="5%", loc="lower center", borderpad=-5
-    #     )
-    #     plt.colorbar(cax=cax, orientation="horizontal")
-    # else:
-    #     cax = plt.axes([0.85, 0.1, 0.075, 0.8])
-    #     plt.colorbar(cax=cax, orientation="vertical")
-
     # fig.tight_layout() # it raises warnings in some cases
     if show is True:
         plt.show()
