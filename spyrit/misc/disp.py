@@ -148,7 +148,7 @@ def imagesc(
     Img,
     title="",
     colormap=None,
-    show=True,
+    show=False,
     figsize=None,
     fig=None,
     ax=None,
@@ -227,6 +227,8 @@ def imagecomp(
     title2="",
     colormap1=plt.cm.gray,
     colormap2=plt.cm.gray,
+    show=False
+    
 ):
     f, (ax1, ax2) = plt.subplots(1, 2)
     im1 = ax1.imshow(Img1, cmap=colormap1)
@@ -240,7 +242,9 @@ def imagecomp(
     cax = plt.axes([0.915, 0.3, 0.025, 0.4])
     plt.colorbar(im2, cax=cax)
     plt.subplots_adjust(left=0.08, wspace=0.5, top=0.9, right=0.9)
-    plt.show()
+    
+    if show:
+        plt.show()
 
 
 def imagepanel(
@@ -257,6 +261,7 @@ def imagepanel(
     colormap2=plt.cm.gray,
     colormap3=plt.cm.gray,
     colormap4=plt.cm.gray,
+    show=False
 ):
     fig, axarr = plt.subplots(2, 2, figsize=(20, 10))
     plt.suptitle(suptitle, fontsize=16)
@@ -282,7 +287,8 @@ def imagepanel(
     plt.colorbar(im4, cax=cax)
 
     plt.subplots_adjust(left=0.08, wspace=0.5, top=0.9, right=0.9)
-    plt.show()
+    if show:
+        plt.show()
 
 
 def plot(x, y, title="", xlabel="", ylabel="", color="black"):
