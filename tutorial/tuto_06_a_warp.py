@@ -129,7 +129,7 @@ def pulsation(t):
 
 # Choose which transformation to use (try different ones!)
 time_vector = torch.linspace(0, 2 * T, n_frames)
-transformation_function = translation  # Change this to 'translation', 'rotation', or 'pulsation' to try others
+transformation_function = pulsation  # Change this to 'translation', 'rotation', or 'pulsation' to try others
 
 def_field = AffineDeformationField(transformation_function, time_vector, img_shape, dtype=dtype, device=device)
 

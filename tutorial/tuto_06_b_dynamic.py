@@ -208,7 +208,8 @@ with torch.no_grad():
   
   
 
-    # %% Dynamic measurement simulation - Method comparison
+    # %% [markdown]
+    # Dynamic measurement simulation - Method comparison
     """
     We extend the different measurements operators from the static case (see tuto_01_*.py) to dynamic scenes.
 
@@ -221,6 +222,8 @@ with torch.no_grad():
     # %% METHOD 1: DynamicLinear (General purpose)
     print("\n=== Testing DynamicLinear ===")
     from spyrit.core.meas import DynamicLinear
+
+    H_split = meas_op_stat.A  # Measurement matrix (positive + negative patterns)
 
     meas_op = DynamicLinear(H=H_split, time_dim=time_dim, meas_dims=(-2, -1), 
                            img_shape=img_shape, meas_shape=meas_shape, 
@@ -239,7 +242,7 @@ with torch.no_grad():
     from spyrit.core.meas import DynamicLinearSplit
 
     # Create difference patterns (positive - negative)
-    H = H_split[::2] - H_split[1::2]
+    H = meas_op_stat.H
     print(f"  Split patterns shape: {H.shape}")
 
     meas_op = DynamicLinearSplit(H=H, time_dim=time_dim, meas_dims=(-2, -1), 
