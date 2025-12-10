@@ -2099,7 +2099,7 @@ class DynamicLinear(Linear):
         motion: DeformationField,
         mode: str = "bilinear",
         warping: str = "image",
-        verbose: bool = False
+        verbose: bool = False 
     ) -> None:
         r"""Builds the dynamic forward operator :math:`H_{\rm{dyn}}`.
 
@@ -2433,6 +2433,7 @@ class DynamicLinear(Linear):
                 torch.cuda.empty_cache()
 
             det = self._calc_det(def_field)
+            det = det.reshape((det.shape[0], -1))
 
             meas_pattern = meas_pattern.reshape(
                 meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1]
@@ -2469,9 +2470,7 @@ class DynamicLinear(Linear):
             if self.device.type == 'cuda':
                 torch.cuda.empty_cache()
                 
-            H_dyn = det.reshape((det.shape[0], -1)) * H_dyn.reshape(
-                (H_dyn.shape[0], -1)
-            )
+            H_dyn = H_dyn.reshape((H_dyn.shape[0], -1)) * det
             
             del det
             
@@ -2508,25 +2507,29 @@ class DynamicLinear(Linear):
         # Memory-efficient gradient computation
         # Compute gradients for v1
         diff_v1_dim1 = torch.diff(v1, dim=1)
-        ones_v1_dim1 = torch.ones(n_frames, 1, v1.shape[2], device=v1.device, dtype=v1.dtype)
-        dy_v1 = torch.cat([diff_v1_dim1, ones_v1_dim1], dim=1)
-        del diff_v1_dim1, ones_v1_dim1
+        # ones_v1_dim1 = torch.ones(n_frames, 1, v1.shape[2], device=v1.device, dtype=v1.dtype)
+        last_v1_dim1 = diff_v1_dim1[:, -1:, :].clone() # replicate last difference
+        dy_v1 = torch.cat([diff_v1_dim1, last_v1_dim1], dim=1)
+        del diff_v1_dim1, last_v1_dim1
         
         diff_v1_dim2 = torch.diff(v1, dim=2)
-        ones_v1_dim2 = torch.ones(n_frames, v1.shape[1], 1, device=v1.device, dtype=v1.dtype)
-        dx_v1 = torch.cat([diff_v1_dim2, ones_v1_dim2], dim=2)
-        del diff_v1_dim2, ones_v1_dim2, v1
+        # ones_v1_dim2 = torch.ones(n_frames, v1.shape[1], 1, device=v1.device, dtype=v1.dtype)
+        last_v1_dim2 = diff_v1_dim2[:, :, -1:].clone() # replicate last difference
+        dx_v1 = torch.cat([diff_v1_dim2, last_v1_dim2], dim=2)
+        del diff_v1_dim2, last_v1_dim2, v1
         
         # Compute gradients for v2
         diff_v2_dim1 = torch.diff(v2, dim=1)
-        ones_v2_dim1 = torch.ones(n_frames, 1, v2.shape[2], device=v2.device, dtype=v2.dtype)
-        dy_v2 = torch.cat([diff_v2_dim1, ones_v2_dim1], dim=1)
-        del diff_v2_dim1, ones_v2_dim1
+        # ones_v2_dim1 = torch.ones(n_frames, 1, v2.shape[2], device=v2.device, dtype=v2.dtype)
+        last_v2_dim1 = diff_v2_dim1[:, -1:, :].clone() # replicate last difference
+        dy_v2 = torch.cat([diff_v2_dim1, last_v2_dim1], dim=1)
+        del diff_v2_dim1, last_v2_dim1
         
         diff_v2_dim2 = torch.diff(v2, dim=2)
-        ones_v2_dim2 = torch.ones(n_frames, v2.shape[1], 1, device=v2.device, dtype=v2.dtype)
-        dx_v2 = torch.cat([diff_v2_dim2, ones_v2_dim2], dim=2)
-        del diff_v2_dim2, ones_v2_dim2, v2
+        # ones_v2_dim2 = torch.ones(n_frames, v2.shape[1], 1, device=v2.device, dtype=v2.dtype)
+        last_v2_dim2 = diff_v2_dim2[:, :, -1:].clone() # replicate last difference
+        dx_v2 = torch.cat([diff_v2_dim2, last_v2_dim2], dim=2)
+        del diff_v2_dim2, last_v2_dim2, v2
 
         # Compute determinant
         det = dx_v1 * dy_v2 - dx_v2 * dy_v1

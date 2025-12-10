@@ -630,6 +630,12 @@ def save_field_video(def_field, out_path, n_frames, step=5, fps=30, figsize=(6, 
     scale_factor = (np.array(def_field.img_shape) - 1)
     field = (field + 1) / 2 * scale_factor
 
+    # rotate field to 180 degrees to match our SP convention (np.rot90 only reorders samples)
+    field[..., 0] = (l - 1) - field[..., 0]
+    field[..., 1] = (l - 1) - field[..., 1]
+    x1 = (l - 1) - x1
+    x2 = (l - 1) - x2
+
     # Prepare figure and initial quiver (use absolute pixel coords)
     fig_q, ax_q = plt.subplots(figsize=figsize)
     ax_q.set_aspect("equal")
