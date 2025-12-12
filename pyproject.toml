@@ -43,7 +43,6 @@ dependencies = [
         "scipy",
         "torch",
         "torchvision",
-        "Pillow",
         "PyWavelets",
         "sympy",
         "astropy",
