@@ -752,7 +752,8 @@ class ElasticDeformation(DeformationField):
             dummy_input = torch.empty([1, *img_shape], device=device, dtype=dtype)
             # Note: ElasticTransform needs to be created with the correct parameters
             elastic_transform = v2.ElasticTransform(alpha, sigma)
-            displacement = elastic_transform._get_params(dummy_input)["displacement"][0, :, :, :]
+            # displacement = elastic_transform._get_params(dummy_input)["displacement"][0, :, :, :]  # old
+            displacement = elastic_transform.make_params([dummy_input])["displacement"][0, :, :, :]
             grid[i * n_interpolation] += displacement.to(device=device, dtype=dtype)
 
         # Define Gaussian convolution operator

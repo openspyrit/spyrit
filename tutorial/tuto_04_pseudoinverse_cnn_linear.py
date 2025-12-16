@@ -203,7 +203,7 @@ with torch.no_grad():
     x_rec_cnn = pinv_net.reconstruct(y)
 
 ###############################################################################
-# We finally plot the plot results
+# We finally plot the results
 
 import matplotlib.pyplot as plt
 from spyrit.misc.disp import add_colorbar, noaxis

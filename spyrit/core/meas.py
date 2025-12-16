@@ -2119,8 +2119,10 @@ class DynamicLinear(Linear):
 
         .. important::
             There are two ways of building the dynamic matrix, namely :attr:`warping='pattern'` or :attr:`warping='image'`.
-            The input deformation field :attr:`motion` needs to be respectively the *direct* or the *inverse* deformation field,
-            as defined in the :func:`spyrit.core.warp` module.
+            When :attr:`warping='pattern'`, the input deformation field :attr:`motion` needs to be respectively the *inverse* 
+            deformation field that compensates the motion. 
+            When :attr:`warping='image'`, the input deformation field :attr:`motion` needs to be the *direct*
+            deformation field that induces the motion.
             
             **Reminder**: When looking at the images vectors as continuous functions from :math:`\mathbb{R}^2` to :math:`\mathbb{R}`, 
             we define the **direct** deformation as the function :math:`u \colon \mathbb{Z}^3 \mapsto \mathbb{R}^2` such that, 
@@ -2129,7 +2131,7 @@ class DynamicLinear(Linear):
             .. math::
                 x_{t=k}(i, j) = x_{t=1}(u(t=k, i, j))
 
-            The *inverse* deformation field is defined as :math:`v=u^{-1}`.
+            The **inverse** deformation field is defined as :math:`v=u^{-1}`.
 
         .. note::
             Warping sharp patterns introduces a bias in the model due to interpolation artifacts. 
@@ -2137,8 +2139,8 @@ class DynamicLinear(Linear):
 
         Args:
             :attr:`motion` (DeformationField): Deformation field representing the
-            scene motion. Need to pass the inverse deformation field when
-            :attr:`warping` is set to 'image', and the direct deformation field when
+            scene motion. Need to pass the direct deformation field when
+            :attr:`warping` is set to 'image', and the inverse deformation field when
             :attr:`warping` is set to 'pattern'.
 
             :attr:`mode` (str): Interpolation mode for constructing the dynamic matrix. Defaults to 'bilinear'.
@@ -2485,7 +2487,7 @@ class DynamicLinear(Linear):
         
 
     def _calc_det(self, def_field):
-        r"""Computes the determinant of the deformation field. 
+        r"""Computes the determinant of a deformation field. 
         It is used for building the dynamic matrix with pattern warping.
 
         Args:
@@ -3008,7 +3010,7 @@ class DynamicLinearSplit(DynamicLinear):
 
         where 
         :math:`x_{t=1, ..., 2M} \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest, 
-        :math:`1 \in \mathbb{R}^{2M \times N}` is the splitted static acquisition matrix, 
+        :math:`A \in \mathbb{R}^{2M \times N}` is the splitted static acquisition matrix, 
         :math:`x \in \mathbb{R}^L` is the reference frame defined over an extended field-of-view, and
         :math:`A_{\rm{dyn}} \in \mathbb{R}^{M \times L}` is the splitted dynamic forward operator that compensates the motion.
 
@@ -3019,8 +3021,10 @@ class DynamicLinearSplit(DynamicLinear):
 
         .. important::
             There are two ways of building the dynamic matrix, namely :attr:`warping='pattern'` or :attr:`warping='image'`.
-            The input deformation field :attr:`motion` needs to be respectively the *direct* or the *inverse* deformation field,
-            as defined in the :func:`spyrit.core.warp` module.
+            When :attr:`warping='pattern'`, the input deformation field :attr:`motion` needs to be respectively the *inverse* 
+            deformation field that compensates the motion. 
+            When :attr:`warping='image'`, the input deformation field :attr:`motion` needs to be the *direct*
+            deformation field that induces the motion.
             
             **Reminder**: When looking at the images vectors as continuous functions from :math:`\mathbb{R}^2` to :math:`\mathbb{R}`, 
             we define the **direct** deformation as the function :math:`u \colon \mathbb{Z}^3 \mapsto \mathbb{R}^2` such that, 
@@ -3045,8 +3049,8 @@ class DynamicLinearSplit(DynamicLinear):
 
         Args:
             :attr:`motion` (DeformationField): Deformation field representing the
-            scene motion. Need to pass the inverse deformation field when
-            :attr:`warping` is set to 'image', and the direct deformation field when
+            scene motion. Need to pass the deformation field when
+            :attr:`warping` is set to 'image', and the inverse deformation field when
             :attr:`warping` is set to 'pattern'.
 
             :attr:`mode` (str): Interpolation mode for constructing the dynamic matrix. Defaults to 'bilinear'.
@@ -3232,7 +3236,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
     .. note::
         The splitting of the :math:`k^{\rm{th}}` 2D pattern into its positive and negative parts is given by splitting 1D patterns as:
         
-        ..math::
+        .. math::
             H[k, :]^{+} = H_{1d}^{+}[r_k, :] \otimes H_{1d}^{+}[:, c_k] + H_{1d}^{-}[r_k, :] \otimes H_{1d}^{-}[:, c_k] \\
             H[k, :]^{-} = H_{1d}^{+}[r_k, :] \otimes H_{1d}^{-}[:, c_k] + H_{1d}^{-}[r_k, :] \otimes H_{1d}^{+}[:, c_k]
 
