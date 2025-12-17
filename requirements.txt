@@ -8,7 +8,6 @@ imutils
 PyWavelets
 wget
 sympy
-astropy
 tensorboard
 sphinx_gallery
 sphinx_rtd_theme

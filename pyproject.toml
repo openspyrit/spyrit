@@ -45,7 +45,6 @@ dependencies = [
         "torchvision",
         "PyWavelets",
         "sympy",
-        "astropy",
         "requests",
         "tqdm",
         "girder-client",
