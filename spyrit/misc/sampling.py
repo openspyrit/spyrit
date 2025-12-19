@@ -392,18 +392,19 @@ def reorder(meas: np.ndarray, Perm_acq: np.ndarray, Perm_rec: np.ndarray) -> np.
 
     return meas
 
-def define_order(n: int,order: str,pdf: bool = False):
-    '''
-    Creation of a Hadamard pattern order 
+
+def define_order(n: int, order: str, pdf: bool = False):
+    """
+    Creation of a Hadamard pattern order
 
     Parameters
     ----------
     n : int
-        Dimension. (Patterns of size n by n) 
+        Dimension. (Patterns of size n by n)
     order : string
         Type of order.
     pdf : bool, optional
-        If True the function returns a normalised PDF such that the sum of the values of the 
+        If True the function returns a normalised PDF such that the sum of the values of the
         output tensor is equal to one.
         If False the output is the rank associated to each pattern. The default is False.
 
@@ -412,98 +413,104 @@ def define_order(n: int,order: str,pdf: bool = False):
     torch.tensor
         tensor of size n by n containing the PDF or ranks.
 
-    '''
-    
+    """
+
     H = walsh_matrix_2d(n)
-    order_list = ['Sequency','TV','CC','Variance']
-    
+    order_list = ["Sequency", "TV", "CC", "Variance"]
+
     if order not in order_list:
         raise ValueError(f"Order must be in {order_list}")
-        
+
     N = n**2
-    h = [H[i].reshape(n,n) for i in range(N)]
-    
-    if order == 'Sequency':
+    h = [H[i].reshape(n, n) for i in range(N)]
+
+    if order == "Sequency":
 
         freq = torch.zeros(N)
-        
+
         for i in range(N):
-            freq_x = torch.sum(torch.diff(h[i], dim=1) != 0, dim =1)[0]  # Number of sign changes per row
-            freq_y = torch.sum(torch.diff(h[i], dim=0) != 0, dim =0)[0]  # Number of sign changes per column
+            freq_x = torch.sum(torch.diff(h[i], dim=1) != 0, dim=1)[
+                0
+            ]  # Number of sign changes per row
+            freq_y = torch.sum(torch.diff(h[i], dim=0) != 0, dim=0)[
+                0
+            ]  # Number of sign changes per column
             freq[i] = freq_x + freq_y
-            
-        freq_score = (1/(freq + 1e-8)) # Give highest score (weight) to lowest frequencies
-        freq_score[0] = 1 # Avoid too high value due to the division by zero
-        
+
+        freq_score = 1 / (
+            freq + 1e-8
+        )  # Give highest score (weight) to lowest frequencies
+        freq_score[0] = 1  # Avoid too high value due to the division by zero
+
         if pdf is False:
-            freq_rank = torch.argsort(freq_score,descending=True)
+            freq_rank = torch.argsort(freq_score, descending=True)
             freq_order = torch.zeros(N)
             for i in range(N):
                 freq_order[freq_rank[i]] = i
-            return freq_order.reshape(n,n)
+            return freq_order.reshape(n, n)
         else:
-            return (freq_score/freq_score.sum()).reshape(n,n) 
-        
-    elif order == 'TV':
+            return (freq_score / freq_score.sum()).reshape(n, n)
+
+    elif order == "TV":
         TV = []
         for i in range(N):
-            dx = h[i][:,1:] - h[i][:,:-1]
-            dy = h[i][1:,:] - h[i][:-1,:]
-        
-            TV.append(torch.sqrt(dx[:-1,:]**2 + dy[:,:-1]**2).sum())
+            dx = h[i][:, 1:] - h[i][:, :-1]
+            dy = h[i][1:, :] - h[i][:-1, :]
+
+            TV.append(torch.sqrt(dx[:-1, :] ** 2 + dy[:, :-1] ** 2).sum())
         TV = torch.tensor(TV)
-        
-        score_tv = 1/(TV + 1e-8)
-        score_tv[0] = 1 
-        
+
+        score_tv = 1 / (TV + 1e-8)
+        score_tv[0] = 1
+
         if pdf is False:
-            TV_rank = torch.argsort(score_tv,descending=True)
+            TV_rank = torch.argsort(score_tv, descending=True)
             TV_order = torch.zeros(N)
             for i in range(N):
                 TV_order[TV_rank[i]] = i
-            return TV_order.reshape(n,n)
+            return TV_order.reshape(n, n)
         else:
-            return (score_tv/score_tv.sum()).reshape(n,n)
-        
-    elif order == 'CC':
+            return (score_tv / score_tv.sum()).reshape(n, n)
+
+    elif order == "CC":
         CC_values = torch.zeros(N)
 
         for i in range(N):
-        
+
             patt = np.asarray(h[i])
-            binary = (patt>0).astype(int)
+            binary = (patt > 0).astype(int)
             labeled, num = label(binary)
-            if i==0:
+            if i == 0:
                 num = 0
             CC_values[i] = num
-        
-        score_CC = 1/(CC_values + 1e-8)
+
+        score_CC = 1 / (CC_values + 1e-8)
         score_CC[0] = 1
-        
+
         if pdf is False:
-            CC_rank = torch.argsort(score_CC,descending=True)
+            CC_rank = torch.argsort(score_CC, descending=True)
             CC_order = torch.zeros(N)
             for i in range(N):
                 CC_order[CC_rank[i]] = i
-            return CC_order.reshape(n,n)
+            return CC_order.reshape(n, n)
         else:
-            return (score_CC/score_CC.sum()).reshape(n,n)
-        
-    elif order == 'Variance':
-        #The order matrix corresponding is obtained by computing the variance of the Hadamard coefficients of the images belonging to the ImageNet 2012 dataset.
+            return (score_CC / score_CC.sum()).reshape(n, n)
 
-        #First, we download the covariance matrix from our warehouse. The covariance was computed from the ImageNet 2012 dataset and has a size of (64*64, 64*64).
+    elif order == "Variance":
+        # The order matrix corresponding is obtained by computing the variance of the Hadamard coefficients of the images belonging to the ImageNet 2012 dataset.
+
+        # First, we download the covariance matrix from our warehouse. The covariance was computed from the ImageNet 2012 dataset and has a size of (64*64, 64*64).
         from spyrit.misc.load_data import download_girder
-        
+
         # url of the warehouse
         url = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
         dataId = "672207cbf03a54733161e95d"  # for reconstruction (imageNet, 64)
         data_folder = "./stat/"
         cov_name = "Cov_64x64.pt"
-        
+
         # download the covariance matrix and get the file path
         file_abs_path = download_girder(url, dataId, data_folder, cov_name)
-        
+
         try:
             # Load covariance matrix for "variance subsampling"
             Cov = torch.load(file_abs_path, weights_only=True)
@@ -513,24 +520,22 @@ def define_order(n: int,order: str,pdf: bool = False):
             Cov = torch.eye(64 * 64)
             print(f"Cov matrix {cov_name} not found! Set to the identity")
 
-
-
         from spyrit.core.torch import Cov2Var
-        
+
         Ord_variance = Cov2Var(Cov)
-        
+
         if pdf is False:
-            Var_rank = torch.argsort(Ord_variance.flatten(),descending=True)
+            Var_rank = torch.argsort(Ord_variance.flatten(), descending=True)
             Var_order = torch.zeros(N)
             for i in range(N):
                 Var_order[Var_rank[i]] = i
-            return Var_order.reshape(n,n)
+            return Var_order.reshape(n, n)
         else:
-            return  Ord_variance/Ord_variance.sum()
-        
-    
-def sampling_map_from_order(order,M):
-    '''
+            return Ord_variance / Ord_variance.sum()
+
+
+def sampling_map_from_order(order, M):
+    """
     Generatre a sampling map from a given order (ranking) and number of measurements
 
     Parameters
@@ -545,20 +550,23 @@ def sampling_map_from_order(order,M):
     s_map : torch.tensor
         n by n binary sampling map.
 
-    '''
-    if (torch.sum(order)-1)<1e-6:
-        raise ValueError('order must be a ranking of the patterns not a PDF.')
-        
-    if M > order.shape[0]**2:
-        raise ValueError('The number of measurements M must be lower than the number of patterns')
-        
+    """
+    if (torch.sum(order) - 1) < 1e-6:
+        raise ValueError("order must be a ranking of the patterns not a PDF.")
+
+    if M > order.shape[0] ** 2:
+        raise ValueError(
+            "The number of measurements M must be lower than the number of patterns"
+        )
+
     s_map = torch.zeros_like(order)
-    s_map[order < M] = 1 
-    
+    s_map[order < M] = 1
+
     return s_map
 
-def sampling_map_VDS(pdf,M,seed=0):
-    '''
+
+def sampling_map_VDS(pdf, M, seed=0):
+    """
     Define a VDS sampling scheme that follows a PDF.
 
     Parameters
@@ -575,22 +583,27 @@ def sampling_map_VDS(pdf,M,seed=0):
     sampling_map : torch.tensor
         Sampling map.
 
-    '''
+    """
     torch.manual_seed(seed)
-    
+
     n = pdf.shape[0]
     N = n**2
-    
-    samp = torch.multinomial(pdf.reshape(N)[1:],M-1,replacement=False)+1
-    samp = torch.cat((torch.tensor([0]),samp)) # Force the selection of the first pattern
-    
-    sampling_map = torch.zeros(n,n)
+
+    samp = torch.multinomial(pdf.reshape(N)[1:], M - 1, replacement=False) + 1
+    samp = torch.cat(
+        (torch.tensor([0]), samp)
+    )  # Force the selection of the first pattern
+
+    sampling_map = torch.zeros(n, n)
     sampling_map.reshape(N)[samp] = 1
-    
+
     return sampling_map
 
-def sampling_map_multilevel_VDS(pdf,M,levels,J=3,wave='sym8',mode='periodization',seed=0):
-    '''
+
+def sampling_map_multilevel_VDS(
+    pdf, M, levels, J=3, wave="sym8", mode="periodization", seed=0
+):
+    """
     Generation of a sampling map following a Multilevel VDS sampling scheme
 
     Parameters
@@ -615,75 +628,83 @@ def sampling_map_multilevel_VDS(pdf,M,levels,J=3,wave='sym8',mode='periodization
     sampling_map : torch.tensor
         Multilevel sampling map.
 
-    '''
-    n = pdf.shape[0] 
+    """
+    n = pdf.shape[0]
     N = n**2
     H = walsh_matrix_2d(n)
-    
-    dwt = DWTForward(J=J,wave=wave,mode=mode)
 
-    
-    lvl_sizes = torch.zeros(levels) # number of elements in each level
-    lvl_maps = torch.zeros(levels,n,n)
-    selected = 0 # Number of elements already selected
-    
-    mu_kl = torch.zeros(levels,J+1) # Local coherences per sampling and wavelet levels
-    
-    sampling_map = torch.zeros(n,n)
-    m_k = torch.zeros(levels) # Number of measurements in each level
+    dwt = DWTForward(J=J, wave=wave, mode=mode)
+
+    lvl_sizes = torch.zeros(levels)  # number of elements in each level
+    lvl_maps = torch.zeros(levels, n, n)
+    selected = 0  # Number of elements already selected
+
+    mu_kl = torch.zeros(
+        levels, J + 1
+    )  # Local coherences per sampling and wavelet levels
+
+    sampling_map = torch.zeros(n, n)
+    m_k = torch.zeros(levels)  # Number of measurements in each level
     selected = 0
-    
-    for k in range(levels):
-        lvl_sizes[k] = (n/(2**(levels-k-1)))**2 
-        lvl_sizes[k] -= torch.sum(lvl_sizes[:k])
-        
-        mask_basis = torch.zeros(N)
-        mask_basis[selected:selected+int(lvl_sizes[k])] = 1
-        selected += int(lvl_sizes[k])
-        
-        
-        lvl_maps[k] = sort_by_significance(mask_basis,pdf).reshape(n,n)
 
-        H_k = H[lvl_maps[k].reshape(N).int()==1] # Selection of the patterns in the desired level
-        
-        mu_loc = torch.zeros(int(lvl_sizes[k]),J+1) # Local coherences inside each level
-        
+    for k in range(levels):
+        lvl_sizes[k] = (n / (2 ** (levels - k - 1))) ** 2
+        lvl_sizes[k] -= torch.sum(lvl_sizes[:k])
+
+        mask_basis = torch.zeros(N)
+        mask_basis[selected : selected + int(lvl_sizes[k])] = 1
+        selected += int(lvl_sizes[k])
+
+        lvl_maps[k] = sort_by_significance(mask_basis, pdf).reshape(n, n)
+
+        H_k = H[
+            lvl_maps[k].reshape(N).int() == 1
+        ]  # Selection of the patterns in the desired level
+
+        mu_loc = torch.zeros(
+            int(lvl_sizes[k]), J + 1
+        )  # Local coherences inside each level
+
         for i in range(int(lvl_sizes[k])):
-            coeffs = dwt(H_k[i].reshape(n,n).unsqueeze(0).unsqueeze(0))
-            mu_loc[i,0] = torch.max(abs(coeffs[0]))
+            coeffs = dwt(H_k[i].reshape(n, n).unsqueeze(0).unsqueeze(0))
+            mu_loc[i, 0] = torch.max(abs(coeffs[0]))
             for j in range(J):
-                mu_loc[i,j+1] = torch.max(abs(coeffs[1][2-j]))
-                
-        for l in range(J+1):
-            mu_kl[k,l] = torch.max(abs(mu_loc[:,l]))
-            m_k[k] += mu_kl[k,l] * 2**(l+1)
-            
-    m = m_k/m_k.sum() * M # Normalise to have a total of M measurements
+                mu_loc[i, j + 1] = torch.max(abs(coeffs[1][2 - j]))
+
+        for l in range(J + 1):
+            mu_kl[k, l] = torch.max(abs(mu_loc[:, l]))
+            m_k[k] += mu_kl[k, l] * 2 ** (l + 1)
+
+    m = m_k / m_k.sum() * M  # Normalise to have a total of M measurements
     selected_idx = torch.tensor([])
     for k in range(levels):
         if m[k] > lvl_sizes[k]:
             remaining = m[k] - lvl_sizes[k]
             m[k] = int(lvl_sizes[k])
-            m[k+1] += int(remaining)
-            
+            m[k + 1] += int(remaining)
+
         m[k] = round(float(m[k]))
-        
+
         # Set of indices in the level
-        level_idx = torch.nonzero(lvl_maps[k].reshape(N),as_tuple=False)
+        level_idx = torch.nonzero(lvl_maps[k].reshape(N), as_tuple=False)
         # Draw uniformly the desired number of indices in this set
-        Omega_k_idx = torch.multinomial(torch.ones(int(lvl_sizes[k]))/lvl_sizes[k],int(m[k]),replacement=False)
+        Omega_k_idx = torch.multinomial(
+            torch.ones(int(lvl_sizes[k])) / lvl_sizes[k], int(m[k]), replacement=False
+        )
         # Apply the mask to select the indices
         Omega_k = level_idx[Omega_k_idx.long()]
         # Concatenate the list of selected indices in all levels
-        selected_idx = torch.cat((selected_idx,Omega_k))
+        selected_idx = torch.cat((selected_idx, Omega_k))
 
-    sampling_map.reshape(N)[selected_idx.long()] = 1       
-    
+    sampling_map.reshape(N)[selected_idx.long()] = 1
+
     return sampling_map
 
-    
-def reorder_from_sampling_map(meas: np.ndarray, Ord_acq: np.ndarray, s_map: np.ndarray) -> np.ndarray:
-    '''
+
+def reorder_from_sampling_map(
+    meas: np.ndarray, Ord_acq: np.ndarray, s_map: np.ndarray
+) -> np.ndarray:
+    """
     Reorder splitted measurements following a sampling map
 
     Parameters
@@ -700,27 +721,29 @@ def reorder_from_sampling_map(meas: np.ndarray, Ord_acq: np.ndarray, s_map: np.n
     meas_rec : np.ndarray
         Rordered measurement vector.
 
-    '''
-    
+    """
+
     s_map = s_map.flatten()
-    N = meas.shape[0]//2
+    N = meas.shape[0] // 2
     C = meas.shape[1]
-    N_rec = int(s_map[s_map==1].shape[0]) # Number of patterns used for reconstruction
-    
-    # Pass from acquisition order to natural order    
+    N_rec = int(
+        s_map[s_map == 1].shape[0]
+    )  # Number of patterns used for reconstruction
+
+    # Pass from acquisition order to natural order
     # If some patterns have not been acquired, their slots are filled with zeros
-    meas_nat = np.zeros((2*N,C))
+    meas_nat = np.zeros((2 * N, C))
     for i, j in enumerate(Ord_acq):
-        meas_nat[2*j] = meas[2*i]
-        meas_nat[2*j+1] = meas[2*i+1]
+        meas_nat[2 * j] = meas[2 * i]
+        meas_nat[2 * j + 1] = meas[2 * i + 1]
 
     # Pass from natural order to reconstruction order
-    meas_rec = np.zeros((2*N_rec,C))
-    j=0
+    meas_rec = np.zeros((2 * N_rec, C))
+    j = 0
     for i, val in enumerate(s_map):
         if val == 1:
-            meas_rec[2*j] = meas_nat[2*i]
-            meas_rec[2*j+1] = meas_nat[2*i+1]
+            meas_rec[2 * j] = meas_nat[2 * i]
+            meas_rec[2 * j + 1] = meas_nat[2 * i + 1]
             j += 1
-        
+
     return meas_rec
