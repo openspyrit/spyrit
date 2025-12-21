@@ -7,9 +7,10 @@ This tutorial demonstrates how to create and apply deformation fields to
 simulate motion in images using the SpyRIT library.
 
 Topics covered:
-1. Creating affine deformation fields (translation, rotation, scaling)
-2. Creating elastic deformation fields for realistic motion
-3. Visualizing deformed image sequences
+
+    1. Creating affine deformation fields (translation, rotation, scaling)
+    2. Creating elastic deformation fields for realistic motion
+    3. Visualizing deformed image sequences
 
 .. image:: ../fig/tuto06_brain_rotation.png
    :width: 600
@@ -18,11 +19,7 @@ Topics covered:
 
 """
 
-# %% 
-# Import bib
-# -----------------------------------------------------------------------------
-
-###############################################################################
+# %% Import bib
 import torch
 import torchvision
 import matplotlib.pyplot as plt

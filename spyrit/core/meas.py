@@ -1951,7 +1951,7 @@ class DynamicLinear(Linear):
         :math:`(M, N)` initialized as :math:`H`.
 
         :attr:`H_dyn` (torch.tensor): Dynamic measurement matrix :math:`H_{\rm{dyn}}` of shape.
-        :math:`(M, L)`. Must be set using the method :meth:`build_H_dyn` before being accessed.
+        :math:`(M, L)`. Must be set using the method :meth:`build_dynamic_forward` before being accessed.
 
 
     Example: 
@@ -2031,7 +2031,7 @@ class DynamicLinear(Linear):
         except AttributeError as e:
             raise AttributeError(
                 "The dynamic measurement matrix H_dyn has not been set yet. "
-                + "Please call build_H_dyn() before accessing the attribute H_dyn."
+                + "Please call build_dynamic_forward() before accessing the attribute H_dyn."
             ) from e
         
     
@@ -2191,7 +2191,7 @@ class DynamicLinear(Linear):
             del self._param_H_dyn_pinv
             warnings.warn(
                 "The dynamic measurement matrix pseudo-inverse H_pinv has "
-                + "been deleted. Please call self.build_H_dyn_pinv() to "
+                + "been deleted. Please call self.build_dynamic_forward_pinv() to "
                 + "recompute it.",
                 UserWarning,
             )
@@ -2543,7 +2543,6 @@ class DynamicLinear(Linear):
 
         return det
 
-
     def measure_H_dyn(self, x: torch.tensor) -> torch.tensor:
         r"""Simulates noiseless dynamic measurements with the dynamic matrix
 
@@ -2557,7 +2556,7 @@ class DynamicLinear(Linear):
 
         .. warning::
             This supposes the dynamic measurement matrix :math:`H_{\rm{dyn}}` has been set using the
-            :meth:`build_H_dyn()` method. An error will be raised otherwise.
+            :meth:`build_dynamic_forward()` method. An error will be raised otherwise.
 
         Args:
             :attr:`x` (torch.tensor): Batch of reference (static) signals. The
@@ -2584,7 +2583,7 @@ class DynamicLinear(Linear):
 
         .. warning::
             This supposes the dynamic measurement matrix :math:`H_{\rm{dyn}}` has been set using the
-            :meth:`build_H_dyn()` method. An error will be raised otherwise.
+            :meth:`build_dynamic_forward()` method. An error will be raised otherwise.
 
         Args:
             :attr:`x` (torch.tensor): Batch of reference (static) signals. The
@@ -2612,7 +2611,7 @@ class DynamicLinear(Linear):
 
         .. warning:: 
             This supposes the dynamic measurement matrix :math:`H_{\rm{dyn}}` has been 
-            set using the :meth:`build_H_dyn()` method. An error will be raised otherwise.
+            set using the :meth:`build_dynamic_forward()` method. An error will be raised otherwise.
 
         Args:
             :attr:`m` (:class:`torch.tensor`): A batch of measurement
@@ -2901,13 +2900,13 @@ class DynamicLinearSplit(DynamicLinear):
 
     @property
     def A_dyn(self) -> torch.tensor:
-        """Splitted dynamic measurement matrix computed with the call to build_H_dyn"""
+        """Splitted dynamic measurement matrix computed with the call to build_dynamic_forward"""
         try:
             return self._param_H_dyn.data
         except AttributeError as e:
             raise AttributeError(
                 "The dynamic measurement matrix H_dyn has not been set yet. "
-                + "Please call build_H_dyn() before accessing the attribute H_dyn_diff."
+                + "Please call build_dynamic_forward() before accessing the attribute H_dyn_diff."
             ) from e
 
     @property
@@ -2920,7 +2919,7 @@ class DynamicLinearSplit(DynamicLinear):
         except AttributeError as e:
             raise AttributeError(
                 "The dynamic measurement matrix H_dyn has not been set yet. "
-                + "Please call build_H_dyn() before accessing the attribute H_dyn_diff."
+                + "Please call build_dynamic_forward() before accessing the attribute H_dyn_diff."
             ) from e
     
     def measure(self, x: torch.tensor) -> torch.tensor:
@@ -3085,7 +3084,7 @@ class DynamicLinearSplit(DynamicLinear):
 
         .. warning:: 
             This supposes the dynamic measurement matrix :math:`A_{\rm{dyn}}` has been 
-            set using the :meth:`build_H_dyn()` method. An error will be raised otherwise.
+            set using the :meth:`build_dynamic_forward()` method. An error will be raised otherwise.
 
         .. note::
             The acquisition matrix :math:`A_{\rm{dyn}}` is given by :attr:`self.A_dyn`.
@@ -3118,7 +3117,7 @@ class DynamicLinearSplit(DynamicLinear):
 
         .. warning:: 
             This supposes the dynamic measurement matrix :math:`H_{\rm{dyn}}` has been 
-            set using the :meth:`build_H_dyn()` method. An error will be raised otherwise.
+            set using the :meth:`build_dynamic_forward()` method. An error will be raised otherwise.
 
         .. note::
             The acquisition matrix :math:`H_{\rm{dyn}}` is given by :attr:`self.H_dyn`.
@@ -3204,6 +3203,63 @@ class DynamicLinearSplit(DynamicLinear):
 
         """
         x = self.measure_H(x)
+        x = self.noise_model(x)
+        return x
+    
+    def measure_A_dyn(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulates noiseless dynamic measurements with the splitted dynamic matrix
+
+        .. math::
+            y = A_{\rm{dyn}} x
+
+        where :math:`A_{\rm{dyn}} \in \mathbb{R}^{2 M \times L}` is the dynamic acquisition matrix, 
+        :math:`x \in \mathbb{R}^L` is the reference signal of interest, 
+        :math:`M` is the number of measurements, and 
+        :math:`L` is the dimension of the signal (with extended FOV).
+
+        .. warning::
+            This supposes the dynamic measurement matrix :math:`A_{\rm{dyn}}` has been set using the
+            :meth:`build_dynamic_forward()` method. An error will be raised otherwise.
+
+        Args:
+            :attr:`x` (torch.tensor): Batch of reference (static) signals. The
+            dimensions indexed by :attr:`self.meas_dims` must match the measurement
+            shape :attr:`self.img_shape`.
+
+        Returns:
+            torch.tensor: Measurement of the input signal. It has shape :math:`(*, M)` where :math:`*`
+            denotes all the dimensions that are not included in :attr:`self.meas_dims`
+        """
+        x = self.vectorize(x)  # don't need to crop because A_dyn has extended FOV
+        x = torch.einsum("mn,...n->...m", self.A_dyn, x)
+        return x
+    
+    def forward_A_dyn(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulates noisy dynamic measurements with the splitted dynamic matrix
+
+        .. math::
+            y = \mathcal{N}\left(A_{\rm{dyn}} x \right)
+
+        where :math:`A_{\rm{dyn}} \in \mathbb{R}^{2 M \times L}` is the dynamic acquisition matrix, 
+        :math:`x \in \mathbb{R}^L` is the reference signal of interest, 
+        :math:`M` is the number of measurements, and 
+        :math:`L` is the dimension of the signal (with extended FOV).
+
+        .. warning::
+            This supposes the dynamic measurement matrix :math:`A_{\rm{dyn}}` has been set using the
+            :meth:`build_dynamic_forward()` method. An error will be raised otherwise.
+
+        Args:
+            :attr:`x` (torch.tensor): Batch of reference (static) signals. The
+            dimensions indexed by :attr:`self.meas_dims` must match the measurement
+            shape :attr:`self.img_shape`.
+
+        Returns:
+            torch.tensor: Measurement of the input signal. It has shape :math:`(*, M)` where :math:`*`
+            denotes all the dimensions that are not included in :attr:`self.meas_dims`
+        """
+        x = self.vectorize(x)  # don't need to crop because A_dyn has extended FOV
+        x = torch.einsum("mn,...n->...m", self.A_dyn, x)
         x = self.noise_model(x)
         return x
 

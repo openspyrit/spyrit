@@ -250,9 +250,12 @@ def plot_hs(strategy, img, wav, suptitle=None, save_fig=False,
         
         # Display the grayscale image with spectral colormap
         im = ax.imshow(img[:, :, i], cmap=spectral_cmap)
-        slice_or_bin = "Slice" if strategy == 'slice' else "Bin"
-        ax.set_title(f"{slice_or_bin} {i+1} ({wavelength_nm:.0f} nm)")
+        ax.set_title(f"{wavelength_nm:.0f} nm")
         ax.axis('off')
+
+        if save_fig:
+            plt.imsave(Path(results_root) / data_folder / f"{strategy}_lambda_{int(wavelength_nm)}nm.pdf",
+                       img[:, :, i], cmap=spectral_cmap)
         
         # Add colorbar with spectral colormap, closer to the axis
         cax = fig.add_axes([ax.get_position().x1 + 0.005, 
