@@ -192,7 +192,7 @@ def generate_colormap(wavelength: float, img_size: int = 256,
 
 def plot_hs(strategy, img, wav, suptitle=None, save_fig=False,
              results_root=None, data_folder=None, colorbar_format=None):
-    """Plot hyperspectral data with wavelength-aware colormaps.
+    r"""Plot hyperspectral data with wavelength-aware colormaps.
     
     Creates a grid of subplots showing each spectral band with a colormap that
     corresponds to the wavelength color. Each band is displayed with a custom
@@ -220,11 +220,7 @@ def plot_hs(strategy, img, wav, suptitle=None, save_fig=False,
     
     Returns:
         None: Displays the plot and optionally saves it.
-    
-    Example:
-        >>> wav = np.array([450, 500, 550, 600, 650, 700])
-        >>> data = np.random.rand(64, 64, 6)
-        >>> plot_hs('bin', data, 6, wav, suptitle='Test Data')
+        
     """
     # Validate save parameters
     if save_fig and (results_root is None or data_folder is None):
@@ -254,7 +250,10 @@ def plot_hs(strategy, img, wav, suptitle=None, save_fig=False,
         ax.axis('off')
 
         if save_fig:
-            plt.imsave(Path(results_root) / data_folder / f"{strategy}_lambda_{int(wavelength_nm)}nm.pdf",
+            path_fig = Path(results_root) / data_folder / Path(f'{n_wav}_slices')
+            Path(path_fig).mkdir(parents=True, exist_ok=True)
+
+            plt.imsave(path_fig / f"{strategy}_lambda_{int(wavelength_nm)}nm.pdf",
                        img[:, :, i], cmap=spectral_cmap)
         
         # Add colorbar with spectral colormap, closer to the axis
@@ -272,8 +271,6 @@ def plot_hs(strategy, img, wav, suptitle=None, save_fig=False,
         axes[i // n_cols, i % n_cols].axis('off')
 
     if save_fig:
-        path_fig = Path(results_root) / data_folder
-        path_fig.mkdir(parents=True, exist_ok=True)
         plt.savefig(path_fig / f"hs_{strategy}_{suptitle}.pdf", bbox_inches='tight')
 
     plt.suptitle(suptitle, fontsize=16) if suptitle else None

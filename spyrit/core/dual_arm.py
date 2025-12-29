@@ -911,7 +911,7 @@ class MotionFieldProjector(nn.Module):
             self._visualize_deformation_field(res, x1_sp, x2_sp, n_frames)
 
         # Normalize coordinates to [-1, 1] range
-        res = (res + amp_max) / l * 2 - 1
+        res = (res + amp_max) / (l-1) * 2 - 1 
         self.def_field_cmos = res
 
 
@@ -989,19 +989,21 @@ class MotionFieldProjector(nn.Module):
         if self.config.frame_ref >= n_frames:
             raise ValueError(f"Reference frame {self.config.frame_ref} >= number of frames {n_frames}")
 
-        # Create identity grid for reference
-        interval = torch.linspace(0, l - 1, l, dtype=self.config.dtype)
+        # Create identity grid for reference on the same device/dtype as the deformation field
+        device = self.def_field_cmos.device
+        interval = torch.linspace(0, l - 1, l, dtype=self.config.dtype, device=device)
         x1, x2 = torch.meshgrid(interval, interval, indexing='xy')
-        x1_norm = x1 / l * 2 - 1
-        x2_norm = x2 / l * 2 - 1
+
+        x1_norm = x1 / (l-1) * 2 - 1
+        x2_norm = x2 / (l-1) * 2 - 1
 
         # Calculate reference deformation
         dx1_ref = self.def_field_cmos[self.config.frame_ref, 0, :, :] - x1_norm
         dx2_ref = self.def_field_cmos[self.config.frame_ref, 1, :, :] - x2_norm
-        
+
         # Subtract reference deformation from all frames
-        self.def_field_cmos[:, 0, :, :] -= dx1_ref
-        self.def_field_cmos[:, 1, :, :] -= dx2_ref
+        self.def_field_cmos[:, 0, :, :] = self.def_field_cmos[:, 0, :, :] - dx1_ref
+        self.def_field_cmos[:, 1, :, :] = self.def_field_cmos[:, 1, :, :] - dx2_ref
 
     def interpolate_between_frames(self) -> None:
         """

@@ -1,21 +1,21 @@
 r"""
 06.a. Deformation fields
 ==========================================
-.. _tuto_06_deformation_fields:
+.. _tuto_06a_warp:
 
 This tutorial demonstrates how to create and apply deformation fields to
 simulate motion in images using the SpyRIT library.
+
+.. image:: ../fig/tuto9.png
+   :width: 600
+   :align: center
+   :alt: Overview of the dynamic pipeline
 
 Topics covered:
 
     1. Creating affine deformation fields (translation, rotation, scaling)
     2. Creating elastic deformation fields for realistic motion
     3. Visualizing deformed image sequences
-
-.. image:: ../fig/tuto06_brain_rotation.png
-   :width: 600
-   :align: center
-   :alt: Brain rotation example
 
 """
 

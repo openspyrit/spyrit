@@ -556,7 +556,7 @@ def save_motion_video(x_motion, out_path, amp_max=0, fps=820):
 
         mn, mx = frame_wide.min(), frame_wide.max()
 
-        frame = frame_wide[amp_max:h - amp_max, amp_max:w - amp_max]
+        frame = frame_wide[amp_max:h_crop+amp_max, amp_max:w_crop+amp_max]
 
         if mx > mn:
             frame8 = ((frame - mn) / (mx - mn) * 255.0).astype('uint8')

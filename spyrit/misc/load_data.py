@@ -81,6 +81,7 @@ def download_girder(
     hex_ids: Union[str, list[str]],
     local_folder: str,
     file_names: Union[str, list[str]] = None,
+    gc_type="file",
 ):
     """
     Downloads data from a Girder server and saves it locally.
@@ -145,13 +146,19 @@ def download_girder(
 
         if name is None:
             # get the file name
-            name = gc.getFile(id)["name"]
+            if gc_type == "file":
+                name = gc.getFile(id)["name"]
+            elif gc_type == "folder":
+                name = gc.getFolder(id)["name"]
 
         # check the file exists
         if not os.path.exists(os.path.join(local_folder, name)):
             # connect to the server to download the file
             print(f"Downloading {name}... ", end="\r")
-            gc.downloadFile(id, os.path.join(local_folder, name))
+            if gc_type == "file":
+                gc.downloadFile(id, os.path.join(local_folder, name))
+            elif gc_type == "folder":
+                gc.downloadFolderRecursive(id, os.path.join(local_folder, name))
             print(f"Downloading {name}... done.")
 
         else:

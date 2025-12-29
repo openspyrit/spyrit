@@ -2336,7 +2336,7 @@ class DynamicLinear(Linear):
             
             # Memory optimization: Check if we need chunked processing
             sparse_size = (self.img_h + kernel_width) * (self.img_w + kernel_width) + 1
-            max_memory_per_tensor = 4e8  # ~400MB limit per tensor
+            max_memory_per_tensor = 2e8  # ~200MB limit per tensor
             expected_size = n_frames * kernel_n_pts * sparse_size * meas_dxy.element_size()
             
             if expected_size > max_memory_per_tensor:
