@@ -406,7 +406,7 @@ def define_order(n: int, order: str, pdf: bool = False):
     pdf : bool, optional
         If True the function returns a normalised PDF such that the sum of the values of the
         output tensor is equal to one.
-        If False the output is the rank associated to each pattern. The default is False.
+        If False the output is the ranking associated to each pattern. The default is False.
 
     Returns
     -------
@@ -415,6 +415,9 @@ def define_order(n: int, order: str, pdf: bool = False):
 
     """
 
+    if not isinstance(n,int) or n<=0 or (n & (n-1)) != 0:
+        raise ValueError(f"n must be an integer power of 2, got {n}")
+    
     H = walsh_matrix_2d(n)
     order_list = ["Sequency", "TV", "CC", "Variance"]
 
@@ -515,7 +518,7 @@ def define_order(n: int, order: str, pdf: bool = False):
             # Load covariance matrix for "variance subsampling"
             Cov = torch.load(file_abs_path, weights_only=True)
             print(f"Cov matrix {cov_name} loaded")
-        except:
+        except( FileNotFoundError, OSError, RuntimeError):
             # Set to the identity if not found for "naive subsampling"
             Cov = torch.eye(64 * 64)
             print(f"Cov matrix {cov_name} not found! Set to the identity")
@@ -533,15 +536,16 @@ def define_order(n: int, order: str, pdf: bool = False):
         else:
             return Ord_variance / Ord_variance.sum()
 
-
-def sampling_map_from_order(order, M):
-    """
-    Generatre a sampling map from a given order (ranking) and number of measurements
+        
+    
+def sampling_map_from_order(order: torch.tensor,M: int):
+    '''
+    Generate a sampling map from a given order (ranking) and number of measurements
 
     Parameters
     ----------
     order : torch.tensor
-        n by n matrix containing the rankings (order) correponding to each Hadamard pattern.
+        n by n matrix containing the rankings (order) corresponding to each Hadamard pattern.
     M : int
         Number of measurements.
 
@@ -550,23 +554,22 @@ def sampling_map_from_order(order, M):
     s_map : torch.tensor
         n by n binary sampling map.
 
-    """
-    if (torch.sum(order) - 1) < 1e-6:
-        raise ValueError("order must be a ranking of the patterns not a PDF.")
+    '''
 
-    if M > order.shape[0] ** 2:
-        raise ValueError(
-            "The number of measurements M must be lower than the number of patterns"
-        )
-
+    if (torch.sum(order)-1)<1e-6:
+        raise ValueError('order must be a ranking of the patterns not a PDF.')
+        
+    if M > order.shape[0]**2:
+        raise ValueError('The number of measurements M must be lower or equal than the number of patterns')
+        
     s_map = torch.zeros_like(order)
     s_map[order < M] = 1
 
     return s_map
 
 
-def sampling_map_VDS(pdf, M, seed=0):
-    """
+def sampling_map_VDS(pdf: torch.tensor,M: int,seed: int =0):
+    '''
     Define a VDS sampling scheme that follows a PDF.
 
     Parameters
@@ -583,7 +586,10 @@ def sampling_map_VDS(pdf, M, seed=0):
     sampling_map : torch.tensor
         Sampling map.
 
-    """
+    '''
+    if M < 1:
+        raise ValueError(f"M must be >= 1, got {M}")
+        
     torch.manual_seed(seed)
 
     n = pdf.shape[0]
@@ -599,11 +605,8 @@ def sampling_map_VDS(pdf, M, seed=0):
 
     return sampling_map
 
-
-def sampling_map_multilevel_VDS(
-    pdf, M, levels, J=3, wave="sym8", mode="periodization", seed=0
-):
-    """
+def sampling_map_multilevel_VDS(pdf: torch.tensor,M: int,levels: int,J: int =3,wave: str ='sym8',mode: str ='periodization',seed: int=0):
+    '''
     Generation of a sampling map following a Multilevel VDS sampling scheme
 
     Parameters
@@ -611,7 +614,7 @@ def sampling_map_multilevel_VDS(
     pdf : torch.tensor
         PDF (or order) used to dicriminate the sampling levels.
     M : int
-        Total numbe rof measurements.
+        Total number of measurements.
     levels : int
         Number of sampling levels.
     J : int, optional
@@ -628,24 +631,25 @@ def sampling_map_multilevel_VDS(
     sampling_map : torch.tensor
         Multilevel sampling map.
 
-    """
-    n = pdf.shape[0]
+    '''
+    torch.manual_seed(seed)
+    
+    n = pdf.shape[0] 
     N = n**2
     H = walsh_matrix_2d(n)
 
+
     dwt = DWTForward(J=J, wave=wave, mode=mode)
-
-    lvl_sizes = torch.zeros(levels)  # number of elements in each level
-    lvl_maps = torch.zeros(levels, n, n)
-    selected = 0  # Number of elements already selected
-
-    mu_kl = torch.zeros(
-        levels, J + 1
-    )  # Local coherences per sampling and wavelet levels
-
-    sampling_map = torch.zeros(n, n)
-    m_k = torch.zeros(levels)  # Number of measurements in each level
-    selected = 0
+    
+    lvl_sizes = torch.zeros(levels) # number of elements in each level
+    lvl_maps = torch.zeros(levels,n,n)
+    selected = 0 # Number of elements already selected
+    
+    mu_kl = torch.zeros(levels,J+1) # Local coherences per sampling and wavelet levels
+    
+    sampling_map = torch.zeros(n,n)
+    m_k = torch.zeros(levels) # Number of measurements in each level
+    
 
     for k in range(levels):
         lvl_sizes[k] = (n / (2 ** (levels - k - 1))) ** 2
@@ -675,15 +679,22 @@ def sampling_map_multilevel_VDS(
             mu_kl[k, l] = torch.max(abs(mu_loc[:, l]))
             m_k[k] += mu_kl[k, l] * 2 ** (l + 1)
 
-    m = m_k / m_k.sum() * M  # Normalise to have a total of M measurements
+    m = m_k/m_k.sum() * M # Normalise to have a total of M measurements
+    m = torch.round(m)
+    
+    # Due to the rounding operation there might be slight mismatch that we must
+    # fix between m and M
+    if int(torch.sum(m)) < M:
+        m[0] += M - int(torch.sum(m))
+    if int(torch.sum(m)) > M:
+        m[levels-1] -= int(torch.sum(m)) - M
+        
     selected_idx = torch.tensor([])
     for k in range(levels):
         if m[k] > lvl_sizes[k]:
             remaining = m[k] - lvl_sizes[k]
             m[k] = int(lvl_sizes[k])
             m[k + 1] += int(remaining)
-
-        m[k] = round(float(m[k]))
 
         # Set of indices in the level
         level_idx = torch.nonzero(lvl_maps[k].reshape(N), as_tuple=False)
@@ -724,7 +735,6 @@ def reorder_from_sampling_map(
     """
 
     s_map = s_map.flatten()
-    N = meas.shape[0] // 2
     C = meas.shape[1]
     N_rec = int(
         s_map[s_map == 1].shape[0]
@@ -732,7 +742,9 @@ def reorder_from_sampling_map(
 
     # Pass from acquisition order to natural order
     # If some patterns have not been acquired, their slots are filled with zeros
-    meas_nat = np.zeros((2 * N, C))
+
+    meas_nat = np.zeros((2*len(s_map),C))
+
     for i, j in enumerate(Ord_acq):
         meas_nat[2 * j] = meas[2 * i]
         meas_nat[2 * j + 1] = meas[2 * i + 1]
