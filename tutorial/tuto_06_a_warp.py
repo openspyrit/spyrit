@@ -311,6 +311,7 @@ n_frames_display = 5
 
 if thumbnail:
     # plot few frames as thumbnails
+    # sphinx_gallery_thumbnail_number = 4
     plt.figure(figsize=(8, 8))
     n_rows, n_cols = 1, 4
     for frame in range(n_frames):
