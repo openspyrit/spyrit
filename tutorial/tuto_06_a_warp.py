@@ -6,7 +6,7 @@ r"""
 This tutorial demonstrates how to create and apply deformation fields to
 simulate motion in images using the SpyRIT library.
 
-.. image:: ../fig/tuto9.png
+.. image:: ../fig/tuto06a_network.png
    :width: 600
    :align: center
    :alt: Overview of the dynamic pipeline

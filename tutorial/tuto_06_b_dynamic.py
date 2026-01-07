@@ -6,7 +6,7 @@ r"""
 This tutorial demonstrates how to reconstruct dynamic scenes using single-pixel imaging
 with the SpyRIT library.
 
-.. image:: ../fig/tuto9.png
+.. image:: ../fig/tuto06b_network.png
    :width: 600
    :align: center
    :alt: Overview of the dynamic pipeline
@@ -354,7 +354,7 @@ print(f"\nVisualizing dynamic matrix evolution...")
 H_dyn_diff_np = torch2numpy(meas_op.H_dyn)
 
 # plot few patterns
-# sphinx_gallery_thumbnail_number = 6
+# sphinx_gallery_thumbnail_number = 5
 n_frames_display = 500
 
 plt.figure(figsize=(8, 8))
