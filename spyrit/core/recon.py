@@ -316,6 +316,16 @@ class PinvNet(_PrebuiltFullNet):
     reconstruction module contains a preprocessing operator, a pseudo inverse
     operator, and a denoising operator.
 
+    The reconstruction operator computes the pseudo-inverse solution to the
+    linear problem :math:`y = Ax`, where :math:`y` are the preprocessed
+    measurements, :math:`A` is the measurement matrix, and :math:`x` is the
+    image to reconstruct. The pseudo-inverse is defined as
+
+    .. math::
+        \hat{x} = A^\dagger y
+
+    where :math:`A^\dagger` denotes the Moore-Penrose pseudo-inverse of :math:`A`.
+
     The optional keyword arguments passed at initialization are fed in the
     pseudo inverse operator. This way, the regularization can be controlled
     directly from the :class:`PinvNet` constructor.
@@ -449,6 +459,17 @@ class DCNet(_PrebuiltFullNet):
     The reconstruction module contains a preprocessing operator, a Tikhonov
     regularization :class:`spyrit.core.inverse.TikhonovMeasurementPriorDiag` reconstruction
     operator, and a denoising operator.
+
+    The reconstruction operator estimates :math:`x` from preprocessed measurements
+    :math:`m` by approximately minimizing
+
+    .. math::
+        \|m - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}
+
+    where :math:`x_0\in\mathbb{R}^N` is a mean image prior,
+    :math:`\Sigma\in\mathbb{R}^{N\times N}` is a covariance prior, and
+    :math:`\Sigma_\alpha\in\mathbb{R}^{M\times M}` is the measurement noise
+    covariance.
 
     Args:
         :attr:`acqu`: Acquisition operator (see :class:`~spyrit.core.meas.HadamSplit2d`)
@@ -604,6 +625,19 @@ class TikhoNet(_PrebuiltFullNet):
     The measurement module only contains the acquisition operator. The
     reconstruction module contains a preprocessing operator, a Tikhonov inverse
     operator, and a denoising operator.
+
+    The reconstruction operator estimates the signal :math:`x` from preprocessed
+    measurements :math:`y` by minimizing
+
+    .. math::
+        \| y - Ax \|^2_{\Gamma^{-1}} + \|x\|^2_{\Sigma^{-1}}
+
+    where :math:`A` is the measurement matrix, :math:`\Gamma` is the covariance
+    of the noise, and :math:`\Sigma` is the signal covariance prior. The solution
+    is computed as
+
+    .. math::
+        \hat{x} = \Sigma A^\top (A \Sigma A^\top + \Gamma)^{-1} y
 
     The optional keyword arguments passed at initialization are fed in the
     :class:`Tikhonov` operator. This way, the regularization can be controlled
