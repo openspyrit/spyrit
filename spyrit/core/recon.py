@@ -316,15 +316,23 @@ class PinvNet(_PrebuiltFullNet):
     reconstruction module contains a preprocessing operator, a pseudo inverse
     operator, and a denoising operator.
 
-    The reconstruction operator computes the pseudo-inverse solution to the
-    linear problem :math:`y = Ax`, where :math:`y` are the preprocessed
-    measurements, :math:`A` is the measurement matrix, and :math:`x` is the
-    image to reconstruct. The pseudo-inverse is defined as
+    This is a two-step reconstruction method. The first step computes the 
+    pseudo-inverse solution to the linear problem :math:`y = Ax`, where 
+    :math:`y` are the preprocessed measurements, :math:`A` is the measurement 
+    matrix, and :math:`x` is the image to reconstruct:
 
     .. math::
-        \hat{x} = A^\dagger y
+        \tilde{x} = A^\dagger y
 
     where :math:`A^\dagger` denotes the Moore-Penrose pseudo-inverse of :math:`A`.
+    
+    The second step applies a learnable denoising operator :math:`\mathcal{D}_\theta` 
+    to the output of the first step:
+
+    .. math::
+        \hat{x} = \mathcal{D}_\theta(\tilde{x})
+
+    where :math:`\theta` are the learnable parameters of the denoising network.
 
     The optional keyword arguments passed at initialization are fed in the
     pseudo inverse operator. This way, the regularization can be controlled
@@ -460,8 +468,9 @@ class DCNet(_PrebuiltFullNet):
     regularization :class:`spyrit.core.inverse.TikhonovMeasurementPriorDiag` reconstruction
     operator, and a denoising operator.
 
-    The reconstruction operator estimates :math:`x` from preprocessed measurements
-    :math:`m` by approximately minimizing
+    This is a two-step reconstruction method. The first step estimates 
+    :math:`\tilde{x}` from preprocessed measurements :math:`m` by approximately 
+    minimizing
 
     .. math::
         \|m - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}
@@ -470,6 +479,14 @@ class DCNet(_PrebuiltFullNet):
     :math:`\Sigma\in\mathbb{R}^{N\times N}` is a covariance prior, and
     :math:`\Sigma_\alpha\in\mathbb{R}^{M\times M}` is the measurement noise
     covariance.
+    
+    The second step applies a learnable denoising operator :math:`\mathcal{D}_\theta` 
+    to the output of the first step:
+
+    .. math::
+        \hat{x} = \mathcal{D}_\theta(\tilde{x})
+
+    where :math:`\theta` are the learnable parameters of the denoising network.
 
     Args:
         :attr:`acqu`: Acquisition operator (see :class:`~spyrit.core.meas.HadamSplit2d`)
@@ -626,8 +643,8 @@ class TikhoNet(_PrebuiltFullNet):
     reconstruction module contains a preprocessing operator, a Tikhonov inverse
     operator, and a denoising operator.
 
-    The reconstruction operator estimates the signal :math:`x` from preprocessed
-    measurements :math:`y` by minimizing
+    This is a two-step reconstruction method. The first step estimates the signal 
+    :math:`\tilde{x}` from preprocessed measurements :math:`y` by minimizing
 
     .. math::
         \| y - Ax \|^2_{\Gamma^{-1}} + \|x\|^2_{\Sigma^{-1}}
@@ -637,7 +654,15 @@ class TikhoNet(_PrebuiltFullNet):
     is computed as
 
     .. math::
-        \hat{x} = \Sigma A^\top (A \Sigma A^\top + \Gamma)^{-1} y
+        \tilde{x} = \Sigma A^\top (A \Sigma A^\top + \Gamma)^{-1} y
+
+    The second step applies a learnable denoising operator :math:`\mathcal{D}_\theta` 
+    to the output of the first step:
+
+    .. math::
+        \hat{x} = \mathcal{D}_\theta(\tilde{x})
+
+    where :math:`\theta` are the learnable parameters of the denoising network.
 
     The optional keyword arguments passed at initialization are fed in the
     :class:`Tikhonov` operator. This way, the regularization can be controlled
