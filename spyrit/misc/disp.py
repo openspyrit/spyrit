@@ -25,7 +25,7 @@ def display_vid(video, fps, title="", colormap=plt.cm.gray):
     video is a numpy array of shape [nb_frames, 1, nx, ny]
     """
     plt.ion()
-    (nb_frames, channels, nx, ny) = video.shape
+    nb_frames, channels, nx, ny = video.shape
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     for i in range(nb_frames):
@@ -45,7 +45,7 @@ def display_rgb_vid(video, fps, title=""):
     video is a numpy array of shape [nb_frames, 3, nx, ny]
     """
     plt.ion()
-    (nb_frames, channels, nx, ny) = video.shape
+    nb_frames, channels, nx, ny = video.shape
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     for i in range(nb_frames):
@@ -352,7 +352,7 @@ def vid2batch(root, img_dim, start_frame, end_frame):
     frame_nb = 0
     output_batch = torch.zeros(1, end_frame - start_frame, 1, img_dim, img_dim)
     while True:
-        (grabbed, frame) = stream.read()
+        grabbed, frame = stream.read()
         if not grabbed:
             break
 
