@@ -293,7 +293,7 @@ def stat_psnr(
     """
     # Get dimensions and estimate total number of images in the dataset
     inputs, _ = next(iter(dataloader))
-    (b, c, nx, ny) = inputs.shape
+    b, c, nx, ny = inputs.shape
 
     if num_batchs is None:
         tot_num = len(dataloader) * b
@@ -380,7 +380,7 @@ def stat_ssim(
     """
     # Get dimensions and estimate total number of images in the dataset
     inputs, _ = next(iter(dataloader))
-    (b, c, nx, ny) = inputs.shape
+    b, c, nx, ny = inputs.shape
     tot_num = len(dataloader) * b
 
     # just in case...
@@ -518,7 +518,7 @@ def stat_walsh(dataloader, device, root, n_loop=1):
     """
     # Get dimensions and estimate total number of images in the dataset
     inputs, _ = next(iter(dataloader))
-    (_, _, nx, ny) = inputs.shape
+    _, _, nx, ny = inputs.shape
 
     # --------------------------------------------------------------------------
     # 1. Mean
@@ -561,7 +561,7 @@ def mean_walsh(dataloader, device, n_loop=1):
 
     # Get dimensions and estimate total number of images in the dataset
     inputs, _ = next(iter(dataloader))
-    (b, c, nx, ny) = inputs.shape
+    b, c, nx, ny = inputs.shape
     tot_num = len(dataloader) * b
 
     # Init
@@ -604,7 +604,7 @@ def cov_walsh(dataloader, mean, device, n_loop=1):
 
     # Get dimensions and estimate total number of images in the dataset
     inputs, _ = next(iter(dataloader))
-    (b, c, nx, ny) = inputs.shape
+    b, c, nx, ny = inputs.shape
     tot_num = len(dataloader) * b
 
     # H = wh.walsh_matrix(nx).astype(np.float32, copy=False)
@@ -641,7 +641,7 @@ def cov_walsh(dataloader, mean, device, n_loop=1):
 def stat_fwalsh_S(dataloader, device, root):  # NOT validated!
     # Get dimensions and estimate total number of images in the dataset
     inputs, classes = next(iter(dataloader))
-    (b, c, nx, ny) = inputs.shape
+    b, c, nx, ny = inputs.shape
     tot_num = len(dataloader) * b
 
     # 1. Mean
@@ -900,7 +900,7 @@ def stat_2(dataloader, device, root, n_loop: int = 1, ext="npy"):
     """
     # Get dimensions and estimate total number of images in the dataset
     inputs, _ = next(iter(dataloader))
-    (_, _, nx, ny) = inputs.shape
+    _, _, nx, ny = inputs.shape
 
     # --------------------------------------------------------------------------
     # 1. Mean
@@ -960,7 +960,7 @@ def mean_2(
 
     # Get dimensions and estimate total number of images in the dataset
     inputs, _ = next(iter(dataloader))
-    (b, _, nx, ny) = inputs.shape
+    b, _, nx, ny = inputs.shape
     tot_num = len(dataloader) * b
 
     # Init
@@ -1013,7 +1013,7 @@ def cov_2(
 
     # Get dimensions and estimate total number of images in the dataset
     inputs, _ = next(iter(dataloader))
-    (b, c, nx, ny) = inputs.shape
+    b, c, nx, ny = inputs.shape
     tot_num = len(dataloader) * b
 
     # Covariance --------------------------------------------------------------
@@ -1058,7 +1058,7 @@ def stat_1(dataloader, device, root, n_loop=1):
     """
     # Get dimensions and estimate total number of images in the dataset
     inputs, _ = next(iter(dataloader))
-    (_, _, nx, ny) = inputs.shape
+    _, _, nx, ny = inputs.shape
 
     # --------------------------------------------------------------------------
     # 1. Mean
@@ -1103,7 +1103,7 @@ def mean_1(dataloader, device, n_loop=1):
 
     # Get dimensions and estimate total number of images in the dataset
     inputs, _ = next(iter(dataloader))
-    (b, _, nx, ny) = inputs.shape
+    b, _, nx, ny = inputs.shape
     tot_num = len(dataloader) * b
 
     # Init
@@ -1146,7 +1146,7 @@ def cov_1(dataloader, mean, device, n_loop=1):
 
     # Get dimensions and estimate total number of images in the dataset
     inputs, _ = next(iter(dataloader))
-    (b, _, nx, ny) = inputs.shape
+    b, _, nx, ny = inputs.shape
     tot_num = len(dataloader) * b
 
     H = wh.walsh_matrix(ny).astype(np.float32, copy=False)
@@ -1164,7 +1164,7 @@ def cov_1(dataloader, mean, device, n_loop=1):
         torch.manual_seed(i)
         for inputs, _ in dataloader:
             inputs = inputs.to(device)
-            (b, c, _, _) = inputs.shape
+            b, c, _, _ = inputs.shape
             inputs = inputs.view(-1, nx, ny)  # shape (b*c, nx, ny)
             #
             dev = (inputs - mean).mT
@@ -1225,7 +1225,7 @@ def img2mask(Ord, M):
     """
     Returns subsampling mask from order matrix
     """
-    (nx, ny) = Ord.shape
+    nx, ny = Ord.shape
     msk = np.ones((nx, ny))
     ranked_data = np.reshape(rankdata(-Ord, method="ordinal"), (nx, ny))
     msk[np.absolute(ranked_data) > M] = 0

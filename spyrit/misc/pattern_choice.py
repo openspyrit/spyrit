@@ -19,7 +19,6 @@ import copy
 from abc import ABC, abstractmethod
 import pywt
 
-
 ########################################################################
 # 1. Define Abstract Pattern Class
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -53,7 +52,7 @@ class Patterns(ABC):
         return self.P, self.T
 
     def set_measurement_matrix(self):
-        (next_P, next_T) = eval(self.method + "(self.Q, self.dyn)")
+        next_P, next_T = eval(self.method + "(self.Q, self.dyn)")
         self.P = next_P
         self.T = next_T
 
@@ -195,7 +194,7 @@ class Optimized_patterns(Patterns):
 
 def Fourier(def_matrix, par=0, lvl=1):
     I = int(np.sum(def_matrix))
-    (nx, ny) = def_matrix.shape
+    nx, ny = def_matrix.shape
     Q = nn.Conv2d(1, 2 * I, kernel_size=nx, stride=1, padding=0)
     Q.bias.data = torch.zeros(2 * I)
     ind = np.nonzero(def_matrix)
@@ -218,7 +217,7 @@ def Fourier(def_matrix, par=0, lvl=1):
 
 def Hadamard(def_matrix, par=0, lvl=1):
     I = int(np.sum(def_matrix))
-    (nx, ny) = def_matrix.shape
+    nx, ny = def_matrix.shape
 
     Q = nn.Conv2d(1, I, kernel_size=nx, stride=1, padding=0)
     Q.bias.data = torch.zeros(I)
@@ -242,7 +241,7 @@ def Hadamard(def_matrix, par=0, lvl=1):
 
 def Haar(def_matrix, par=0, lvl=1):
     I = int(np.sum(def_matrix))
-    (nx, ny) = def_matrix.shape
+    nx, ny = def_matrix.shape
     wave = "Haar"
     md = "periodization"
 
@@ -274,7 +273,7 @@ def Haar(def_matrix, par=0, lvl=1):
 
 def Daubechies(def_matrix, par=2, lvl=1):
     I = int(np.sum(def_matrix))
-    (nx, ny) = def_matrix.shape
+    nx, ny = def_matrix.shape
     wave = "db" + str(par)
     md = "periodization"
 
@@ -314,7 +313,7 @@ def Daubechies(def_matrix, par=2, lvl=1):
 
 def Fourier_opt(M, par=0, lvl=1):
     I = int(np.sum(def_matrix))
-    (nx, ny) = def_matrix.shape
+    nx, ny = def_matrix.shape
     Q = nn.Conv2d(1, 2 * I, kernel_size=nx, stride=1, padding=0)
     Q.bias.data = torch.zeros(2 * I)
     ind = np.nonzero(def_matrix)
@@ -337,7 +336,7 @@ def Fourier_opt(M, par=0, lvl=1):
 
 def Hadamard_opt(M, par=0, lvl=1):
     I = int(np.sum(def_matrix))
-    (nx, ny) = def_matrix.shape
+    nx, ny = def_matrix.shape
 
     Q = nn.Conv2d(1, I, kernel_size=nx, stride=1, padding=0)
     Q.bias.data = torch.zeros(I)
@@ -361,7 +360,7 @@ def Hadamard_opt(M, par=0, lvl=1):
 
 def Haar_opt(M, par=0, lvl=1):
     I = int(np.sum(def_matrix))
-    (nx, ny) = def_matrix.shape
+    nx, ny = def_matrix.shape
     wave = "Haar"
     md = "periodization"
 
@@ -393,7 +392,7 @@ def Haar_opt(M, par=0, lvl=1):
 
 def Daubechies_opt(M, par=2, lvl=1):
     I = int(np.sum(def_matrix))
-    (nx, ny) = def_matrix.shape
+    nx, ny = def_matrix.shape
     wave = "db" + str(par)
     md = "periodization"
 
