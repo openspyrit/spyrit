@@ -316,17 +316,17 @@ class PinvNet(_PrebuiltFullNet):
     reconstruction module contains a preprocessing operator, a pseudo inverse
     operator, and a denoising operator.
 
-    This is a two-step reconstruction method [1]_. The first step computes the 
-    pseudo-inverse solution to the linear problem :math:`y = Ax`, where 
-    :math:`y` are the preprocessed measurements, :math:`A` is the measurement 
+    This is a two-step reconstruction method [1]_. The first step computes the
+    pseudo-inverse solution to the linear problem :math:`y = Ax`, where
+    :math:`y` are the preprocessed measurements, :math:`A` is the measurement
     matrix, and :math:`x` is the image to reconstruct:
 
     .. math::
         \tilde{x} = A^\dagger y
 
     where :math:`A^\dagger` denotes the Moore-Penrose pseudo-inverse of :math:`A`.
-    
-    The second step applies a learnable neural network :math:`\mathcal{G}_\theta` 
+
+    The second step applies a learnable neural network :math:`\mathcal{G}_\theta`
     to the output of the first step:
 
     .. math::
@@ -339,8 +339,8 @@ class PinvNet(_PrebuiltFullNet):
     directly from the :class:`PinvNet` constructor.
 
     References:
-        .. [1] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros, 
-           "SPyRiT 3.0: an open source package for single-pixel imaging based on 
+        .. [1] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros,
+           "SPyRiT 3.0: an open source package for single-pixel imaging based on
            deep learning," *Optics Express*, Vol. 33, Issue 13, pp. 27988-28005 (2025).
            https://doi.org/10.1364/OE.559227
 
@@ -474,8 +474,8 @@ class DCNet(_PrebuiltFullNet):
     regularization :class:`spyrit.core.inverse.TikhonovMeasurementPriorDiag` reconstruction
     operator, and a denoising operator.
 
-    This is a two-step reconstruction method [1]_. The first step estimates 
-    :math:`\tilde{x}` from preprocessed measurements :math:`m` by approximately 
+    This is a two-step reconstruction method [1]_. The first step estimates
+    :math:`\tilde{x}` from preprocessed measurements :math:`m` by approximately
     minimizing
 
     .. math::
@@ -485,8 +485,8 @@ class DCNet(_PrebuiltFullNet):
     :math:`\Sigma\in\mathbb{R}^{N\times N}` is a covariance prior, and
     :math:`\Sigma_\alpha\in\mathbb{R}^{M\times M}` is the measurement noise
     covariance.
-    
-    The second step applies a learnable neural network :math:`\mathcal{G}_\theta` 
+
+    The second step applies a learnable neural network :math:`\mathcal{G}_\theta`
     to the output of the first step:
 
     .. math::
@@ -495,8 +495,8 @@ class DCNet(_PrebuiltFullNet):
     where :math:`\theta` are the learnable parameters of the neural network.
 
     References:
-        .. [1] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros, 
-           "SPyRiT 3.0: an open source package for single-pixel imaging based on 
+        .. [1] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros,
+           "SPyRiT 3.0: an open source package for single-pixel imaging based on
            deep learning," *Optics Express*, Vol. 33, Issue 13, pp. 27988-28005 (2025).
            https://doi.org/10.1364/OE.559227
 
@@ -655,7 +655,7 @@ class TikhoNet(_PrebuiltFullNet):
     reconstruction module contains a preprocessing operator, a Tikhonov inverse
     operator, and a denoising operator.
 
-    This is a two-step reconstruction method [1]_. The first step estimates the signal 
+    This is a two-step reconstruction method [1]_. The first step estimates the signal
     :math:`\tilde{x}` from preprocessed measurements :math:`y` by minimizing
 
     .. math::
@@ -668,7 +668,7 @@ class TikhoNet(_PrebuiltFullNet):
     .. math::
         \tilde{x} = \Sigma A^\top (A \Sigma A^\top + \Gamma)^{-1} y
 
-    The second step applies a learnable neural network :math:`\mathcal{G}_\theta` 
+    The second step applies a learnable neural network :math:`\mathcal{G}_\theta`
     to the output of the first step:
 
     .. math::
@@ -681,8 +681,8 @@ class TikhoNet(_PrebuiltFullNet):
     directly from the :class:`TikhoNet` constructor.
 
     References:
-        .. [1] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros, 
-           "SPyRiT 3.0: an open source package for single-pixel imaging based on 
+        .. [1] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros,
+           "SPyRiT 3.0: an open source package for single-pixel imaging based on
            deep learning," *Optics Express*, Vol. 33, Issue 13, pp. 27988-28005 (2025).
            https://doi.org/10.1364/OE.559227
 
