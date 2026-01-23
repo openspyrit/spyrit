@@ -502,13 +502,25 @@ class DCNet(_PrebuiltFullNet):
 
     2. Tikhonov regularization
 
+    The solution is approximated by:
+
+    .. math::
+        x^{\text{Tik}} = x_0 + F^{-1} \begin{bmatrix} m_1 \\ m_2\end{bmatrix}
+
+    where :math:`m_1 = D_1(D_1 + \Sigma_\alpha)^{-1} (\tilde{m} - GF x_0)`,
+    :math:`m_2 = \Sigma_{21} \Sigma_1^{-1} m_1`,
+    :math:`\Sigma = \begin{bmatrix} \Sigma_1 & \Sigma_{21}^\top \\ \Sigma_{21} & \Sigma_2\end{bmatrix}`,
+    and :math:`D_1 =\text{Diag}(\Sigma_1)`.
+
+    This is an approximation to the solution of the following minimization problem:
+
     .. math::
         x^{\text{Tik}} = \arg\min_x \|\tilde{m} - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}
 
     where :math:`x_0\in\mathbb{R}^N` is a mean image prior,
     :math:`\Sigma\in\mathbb{R}^{N\times N}` is a covariance prior,
     :math:`\Sigma_\alpha\in\mathbb{R}^{M\times M}` is the measurement noise covariance,
-    :math:`F` is a transform operator, and :math:`G` is a subsampling operator.
+    :math:`F` is a transform operator (e.g., Hadamard), and :math:`G` is a subsampling operator.
 
     3. Denoising/artefact correction
 
