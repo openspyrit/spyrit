@@ -503,7 +503,7 @@ class DCNet(_PrebuiltFullNet):
     2. Tikhonov regularization
 
     .. math::
-        x^{\text{Tik}} = \arg\min_x \|GF\tilde{m} - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}
+        x^{\text{Tik}} = \arg\min_x \|\tilde{m} - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}
 
     where :math:`x_0\in\mathbb{R}^N` is a mean image prior,
     :math:`\Sigma\in\mathbb{R}^{N\times N}` is a covariance prior,
@@ -543,13 +543,13 @@ class DCNet(_PrebuiltFullNet):
 
         :attr:`prep`: Preprocessing operator initialized as :attr:`prep`
 
-        :attr:`tikho`: Tikhonv regularization operator initialized as a
+        :attr:`tikho`: Tikhonov regularization operator initialized as a
         :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag` operator.
 
         :attr:`denoi`: Image denoising operator initialized as :attr:`denoi`
 
         :attr:`recon_modules` (nn.Sequential): Reconstruction modules. Contains
-        the preprocessing operator, the Tikhonov regularizaiton operator, and
+        the preprocessing operator, the Tikhonov regularization operator, and
         the denoising operator.
 
     Input / Output:
