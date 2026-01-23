@@ -505,7 +505,7 @@ class DCNet(_PrebuiltFullNet):
     .. math::
         x^{\text{dc}} = x_0 + F^{-1} \begin{bmatrix} m_1 \\ m_2\end{bmatrix} \text{  with } m_1 = \text{Diag}(\Sigma_1)(\text{Diag}(\Sigma_1) + \Sigma_\alpha)^{-1} (\tilde{m} - GF x_0) \text{  and }m_2 = \Sigma_{21} \text{Diag}(\Sigma_1)^{-1} m_1.
 
-    
+
     This approximates:
 
     .. math::
