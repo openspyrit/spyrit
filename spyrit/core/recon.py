@@ -309,24 +309,24 @@ class PositiveParameters(nn.Module):
 class PinvNet(_PrebuiltFullNet):
     r"""A :class:`FullNet` with a pseudo inverse-based reconstruction module.
 
-    It simulates noisy measurements 
-    
+    It simulates noisy measurements
+
     .. math::
         y =\mathcal{N}\left(Ax\right),
 
     where :math:`\mathcal{N}` represents a noise operator (e.g., Gaussian), :math:`A` is the acquisition matrix, :math:`x` is the signal of interest.
-    
+
     It estimates the signal from the noisy measurements in three steps [1]_:
-        
+
     1. Preprocessing of the measurements:
-            
+
     .. math::
         \tilde{m} = By,
-            
+
     where :math:`B` represents a preprocessing step.
-                
+
     2. Pseudo-inverse reconstruction
-          
+
     .. math::
         x^\dagger = H^\dagger \tilde{m},
 
@@ -376,8 +376,8 @@ class PinvNet(_PrebuiltFullNet):
         :math:`h` and :math:`w` the height and width of the images.
 
         :attr:`output`: Reconstructed images with shape :math:`(b,c,h,w)`.
-        
-    
+
+
     References:
         .. [1] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros,
            "SPyRiT 3.0: an open source package for single-pixel imaging based on
@@ -398,7 +398,7 @@ class PinvNet(_PrebuiltFullNet):
         torch.Size([10, 1, 32, 32])
 
         Same as above with preprocessing (unsplitting). Note the arguments that are passed to the pseudo inverse operator to work on the H matrix and reshape the output.
-            
+
         >>> import spyrit.core.meas as meas
         >>> import spyrit.core.recon as recon
         >>> import spyrit.core.prep as sprep
