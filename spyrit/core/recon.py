@@ -307,70 +307,65 @@ class PositiveParameters(nn.Module):
 
 # =============================================================================
 class PinvNet(_PrebuiltFullNet):
-    r"""Pre-built :class:`FullNet` that uses a pseudo inverse.
+    r"""A :class:`FullNet` with a pseudo inverse-based reconstruction module.
 
-    As a :class:`FullNet`, this network has two modules: one for measurements
-    and one for reconstruction.
+    It simulates noisy measurements 
+    
+    .. math::
+        y =\mathcal{N}\left(Ax\right),
 
-    The measurement module only contains the acquisition operator. The
-    reconstruction module contains a preprocessing operator, a pseudo inverse
-    operator, and a denoising operator.
+    where :math:`\mathcal{N}` represents a noise operator (e.g., Gaussian), :math:`A` is the acquisition matrix, :math:`x` is the signal of interest.
+    
+    It estimates the signal from the noisy measurements in three steps [1]_:
+        
+    1. Preprocessing of the measurements:
+            
+    .. math::
+        \tilde{m} = By,
+            
+    where :math:`B` represents a preprocessing step.
+                
+    2. Pseudo-inverse reconstruction
+          
+    .. math::
+        x^\dagger = H^\dagger \tilde{m},
 
-    This is a two-step reconstruction method [1]_. The first step computes the
-    pseudo-inverse solution to the linear problem :math:`y = Ax`, where
-    :math:`y` are the preprocessed measurements, :math:`A` is the measurement
-    matrix, and :math:`x` is the image to reconstruct:
+    where :math:`H^\dagger` denotes the Moore-Penrose pseudo-inverse of :math:`H=BA`.
+
+    3. Denoising/artefact correction
 
     .. math::
-        \tilde{x} = A^\dagger y
+        \hat{x} = \mathcal{G}_\theta(x^\dagger)
 
-    where :math:`A^\dagger` denotes the Moore-Penrose pseudo-inverse of :math:`A`.
+    where :math:`\mathcal{G}_\theta` is a neural network with learnable parameters :math:`\theta`.
 
-    The second step applies a learnable neural network :math:`\mathcal{G}_\theta`
-    to the output of the first step:
-
-    .. math::
-        \hat{x} = \mathcal{G}_\theta(\tilde{x})
-
-    where :math:`\theta` are the learnable parameters of the neural network.
-
-    The optional keyword arguments passed at initialization are fed in the
-    pseudo inverse operator. This way, the regularization can be controlled
-    directly from the :class:`PinvNet` constructor.
-
-    References:
-        .. [1] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros,
-           "SPyRiT 3.0: an open source package for single-pixel imaging based on
-           deep learning," *Optics Express*, Vol. 33, Issue 13, pp. 27988-28005 (2025).
-           https://doi.org/10.1364/OE.559227
 
     Args:
         :attr:`acqu` (:mod:`spyrit.core.meas`): Acquisition operator
 
         :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator.
-        Defaults to no preprocesing (i.e., :class:`~spyrit.core.prep.Identity`).
+        Defaults to no preprocessing (i.e., :class:`spyrit.core.prep.Identity`).
 
         :attr:`denoi` (:obj:`torch.nn.Module`, optional): Image denoising
-        operator. Defaults to no denoising (i.e., to :class:`~torch.nn.Identity`).
+        operator. Defaults to no denoising (i.e., to :class:`torch.nn.Identity`).
 
-        **pinv_kwargs: Optional keyword arguments passed to the pseudo inverse
+        :attr:`**pinv_kwargs`: Optional keyword arguments passed to the pseudo inverse
         operator (see :class:`spyrit.core.inverse.PseudoInverse`).
 
     Attributes:
-        :attr:`acqu` (:mod:`spyrit.core.meas`): Acquisition operator.
+        :attr:`acqu` (:mod:`spyrit.core.meas`): Acquisition operator :math:`\mathcal{N}\circ A`.
 
-        :attr:`acqu_modules` (:obj:`torch.nn.Sequential`): Measurement modules. Only contains
-        the acquisition operator.
+        :attr:`acqu_modules` (:obj:`torch.nn.Sequential`): Acquisition modules. Contains only :attr:`acqu`.
 
-        :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator.
+        :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator :math:`B`.
 
-        :attr:`pinv` (:class:`spyrit.core.inverse.PseudoInverse`): Pseudo inverse operator.
+        :attr:`pinv` (:class:`spyrit.core.inverse.PseudoInverse`): Pseudo inverse operator :math:`H^\dagger`.
 
-        :attr:`denoi` (:obj:`torch.nn.Module`): Image denoising operator.
+        :attr:`denoi` (:obj:`torch.nn.Module`): Image denoising operator :math:`\mathcal{G}_\theta\circ H^\dagger \circ B`.
 
-        :attr:`recon_modules` (:obj:`torch.nn.Sequential`): Reconstruction modules. Contains
+        :attr:`recon_modules` (:obj:`torch.nn.Sequential`): Reconstruction module. Contains
         the preprocessing operator, the pseudo inverse operator, and the denoising
-        operator.
+        operator, i.e., :math:`\mathcal{G}_\theta\circ H^\dagger \circ B`.
 
         :attr:`pinv_kwargs` (dict): Optional keyword arguments passed to the
         pseudo inverse operator.
@@ -381,18 +376,42 @@ class PinvNet(_PrebuiltFullNet):
         :math:`h` and :math:`w` the height and width of the images.
 
         :attr:`output`: Reconstructed images with shape :math:`(b,c,h,w)`.
+        
+    
+    References:
+        .. [1] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros,
+           "SPyRiT 3.0: an open source package for single-pixel imaging based on
+           deep learning," *Optics Express*, Vol. 33, Issue 13, pp. 27988-28005 (2025).
+           https://doi.org/10.1364/OE.559227
 
     Example:
         >>> import spyrit.core.meas as meas
         >>> import spyrit.core.recon as recon
         >>> acqu = meas.HadamSplit2d(32)
         >>> pinv = recon.PinvNet(acqu)
+        >>> x = torch.rand(10, 1, 32, 32)
+        >>> y = pinv.acquire(x)
+        >>> z = pinv.reconstruct(y)
+        >>> print(y.shape)
+        torch.Size([10, 1, 2048])
+        >>> print(z.shape)
+        torch.Size([10, 1, 32, 32])
 
-    Example with a regularized pseudo inverse:
+        Same as above with preprocessing (unsplitting). Note the arguments that are passed to the pseudo inverse operator to work on the H matrix and reshape the output.
+            
         >>> import spyrit.core.meas as meas
         >>> import spyrit.core.recon as recon
+        >>> import spyrit.core.prep as sprep
         >>> acqu = meas.HadamSplit2d(32)
-        >>> pinv = recon.PinvNet(acqu, use_fast_pinv=False, store_H_pinv=True, regularization='H1', eta=1e-6, img_shape=(32, 32))
+        >>> prep = sprep.Unsplit()
+        >>> pinv = recon.PinvNet(acqu, prep, use_fast_pinv=True, reshape_output=True)
+        >>> x = torch.rand(10, 1, 32, 32)
+        >>> y = pinv.acquire(x)
+        >>> z = pinv.reconstruct(y)
+        >>> print(y.shape)
+        torch.Size([10, 1, 2048])
+        >>> print(z.shape)
+        torch.Size([10, 1, 32, 32])
     """
 
     def __init__(
