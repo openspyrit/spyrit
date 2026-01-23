@@ -500,32 +500,22 @@ class DCNet(_PrebuiltFullNet):
 
     where :math:`B` represents a preprocessing step.
 
-    2. Tikhonov regularization
-
-    The solution is approximated by:
+    2. Denoised completion. We assume that the preprocessed measurements are obtained by subsampling a full transform, i.e., :math:`BA = GF` where :math:`F` is a "full" (e.g., Hadamard) transform and :math:`G` is a subsampling operator. Then, given the covariance of the noise :math:`\Sigma_\alpha`, the covariance of the full measurements :math:`\Sigma = \left[ \begin{smallmatrix} \Sigma_1 & \Sigma_{21}^\top \\ \Sigma_{21} & \Sigma_2\end{smallmatrix}\right]` and the mean of the signal :math:`x_0`, denoised completion is obtained as
 
     .. math::
-        x^{\text{Tik}} = x_0 + F^{-1} \begin{bmatrix} m_1 \\ m_2\end{bmatrix}
+        x^{\text{dc}} = x_0 + F^{-1} \begin{bmatrix} m_1 \\ m_2\end{bmatrix} \text{  with } m_1 = \text{Diag}(\Sigma_1)(\text{Diag}(\Sigma_1) + \Sigma_\alpha)^{-1} (\tilde{m} - GF x_0) \text{  and }m_2 = \Sigma_{21} \text{Diag}(\Sigma_1)^{-1} m_1.
 
-    where :math:`m_1 = D_1(D_1 + \Sigma_\alpha)^{-1} (\tilde{m} - GF x_0)`,
-    :math:`m_2 = \Sigma_{21} \Sigma_1^{-1} m_1`,
-    :math:`\Sigma = \begin{bmatrix} \Sigma_1 & \Sigma_{21}^\top \\ \Sigma_{21} & \Sigma_2\end{bmatrix}`,
-    and :math:`D_1 =\text{Diag}(\Sigma_1)`.
-
-    This is an approximation to the solution of the following minimization problem:
+    
+    This approximates:
 
     .. math::
-        x^{\text{Tik}} = \arg\min_x \|\tilde{m} - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}
+        \arg\min_x \|\tilde{m} - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}.
 
-    where :math:`x_0\in\mathbb{R}^N` is a mean image prior,
-    :math:`\Sigma\in\mathbb{R}^{N\times N}` is a covariance prior,
-    :math:`\Sigma_\alpha\in\mathbb{R}^{M\times M}` is the measurement noise covariance,
-    :math:`F` is a transform operator (e.g., Hadamard), and :math:`G` is a subsampling operator.
 
     3. Denoising/artefact correction
 
     .. math::
-        \hat{x} = \mathcal{G}_\theta(x^{\text{Tik}})
+        \hat{x} = \mathcal{G}_\theta(x^{\text{dc}}),
 
     where :math:`\mathcal{G}_\theta` is a neural network with learnable parameters :math:`\theta`.
 
@@ -537,21 +527,20 @@ class DCNet(_PrebuiltFullNet):
            https://doi.org/10.1364/OE.559227
 
     Args:
-        :attr:`acqu`: Acquisition operator (see :class:`~spyrit.core.meas.HadamSplit2d`)
+        :attr:`acqu`: Acquisition operator :math:`\mathcal{N}\circ A` (e.g., see :class:`~spyrit.core.meas.HadamSplit2d`).
 
-        :attr:`prep`: Preprocessing operator (see :class:`~spyrit.core.prep`)
+        :attr:`prep`: Preprocessing operator :math:`B` (see :class:`~spyrit.core.prep`).
 
-        :attr:`sigma`: Measurement covariance prior (for details, see the
-        :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag()` class)
+        :attr:`sigma`: Measurement covariance :math:`\Sigma` (for details, see       :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag()`).
 
         :attr:`denoi` (optional): Image denoising operator
-        (see :class:`~spyrit.core.nnet`). Default :class:`~spyrit.core.nnet.Identity`
+        (see :class:`~spyrit.core.nnet`) :math:`\mathcal{G}_\theta`. Default :class:`~spyrit.core.nnet.Identity`.
 
     Attributes:
         :attr:`acqu`: Acquisition operator initialized as :attr:`acqu`
 
-        :attr:`acqu_modules` (nn.Sequential): Measurement modules. Only contains
-        the acquisition operator.
+        :attr:`acqu_modules` (nn.Sequential): Measurement module. Only contains
+        :attr:`acqu`.
 
         :attr:`prep`: Preprocessing operator initialized as :attr:`prep`
 
