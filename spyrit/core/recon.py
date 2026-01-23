@@ -341,13 +341,13 @@ class PinvNet(_PrebuiltFullNet):
 
 
     Args:
-        :attr:`acqu` (:mod:`spyrit.core.meas`): Acquisition operator
+        :attr:`acqu` (:mod:`spyrit.core.meas`): Acquisition operator :math:`\mathcal{N}\circ A`.
 
-        :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator.
+        :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator :math:`B`.
         Defaults to no preprocessing (i.e., :class:`spyrit.core.prep.Identity`).
 
         :attr:`denoi` (:obj:`torch.nn.Module`, optional): Image denoising
-        operator. Defaults to no denoising (i.e., to :class:`torch.nn.Identity`).
+        operator :math:`\mathcal{G}_\theta`. Defaults to no denoising (i.e., to :class:`torch.nn.Identity`).
 
         :attr:`**pinv_kwargs`: Optional keyword arguments passed to the pseudo inverse
         operator (see :class:`spyrit.core.inverse.PseudoInverse`).
