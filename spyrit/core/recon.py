@@ -482,36 +482,41 @@ class PinvNet(_PrebuiltFullNet):
 
 # =============================================================================
 class DCNet(_PrebuiltFullNet):
-    r"""Pre-built :class:`FullNet` that uses a :class:`~spyrit.core.inverse.TikhonovMeasurementPriorDiag` reconstruction operator.
+    r"""A :class:`FullNet` with a Tikhonov-based reconstruction module.
 
-    As a :class:`FullNet`, this network has two modules: one for the measurements
-    and one for the reconstruction.
-
-    The measurement module only contains the acquisition operator. The acquisition
-    operator must be a :class:`spyrit.core.meas.HadamSplit2d` operator.
-    The reconstruction module contains a preprocessing operator, a Tikhonov
-    regularization :class:`spyrit.core.inverse.TikhonovMeasurementPriorDiag` reconstruction
-    operator, and a denoising operator.
-
-    This is a two-step reconstruction method [1]_. The first step estimates
-    :math:`\tilde{x}` from preprocessed measurements :math:`m` by approximately
-    minimizing
+    It simulates noisy measurements
 
     .. math::
-        \|m - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}
+        y =\mathcal{N}\left(Ax\right),
+
+    where :math:`\mathcal{N}` represents a noise operator (e.g., Poisson), :math:`A` is the acquisition matrix, :math:`x` is the signal of interest.
+
+    It estimates the signal from the noisy measurements in three steps [1]_:
+
+    1. Preprocessing of the measurements:
+
+    .. math::
+        \tilde{m} = By,
+
+    where :math:`B` represents a preprocessing step.
+
+    2. Tikhonov regularization
+
+    .. math::
+        x^{\text{Tik}} = \arg\min_x \|GF\tilde{m} - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}
 
     where :math:`x_0\in\mathbb{R}^N` is a mean image prior,
-    :math:`\Sigma\in\mathbb{R}^{N\times N}` is a covariance prior, and
-    :math:`\Sigma_\alpha\in\mathbb{R}^{M\times M}` is the measurement noise
-    covariance.
+    :math:`\Sigma\in\mathbb{R}^{N\times N}` is a covariance prior,
+    :math:`\Sigma_\alpha\in\mathbb{R}^{M\times M}` is the measurement noise covariance,
+    :math:`F` is a transform operator, and :math:`G` is a subsampling operator.
 
-    The second step applies a learnable neural network :math:`\mathcal{G}_\theta`
-    to the output of the first step:
+    3. Denoising/artefact correction
 
     .. math::
-        \hat{x} = \mathcal{G}_\theta(\tilde{x})
+        \hat{x} = \mathcal{G}_\theta(x^{\text{Tik}})
 
-    where :math:`\theta` are the learnable parameters of the neural network.
+    where :math:`\mathcal{G}_\theta` is a neural network with learnable parameters :math:`\theta`.
+
 
     References:
         .. [1] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros,
