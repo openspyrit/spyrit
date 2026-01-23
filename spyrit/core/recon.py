@@ -361,7 +361,7 @@ class PinvNet(_PrebuiltFullNet):
 
         :attr:`pinv` (:class:`spyrit.core.inverse.PseudoInverse`): Pseudo inverse operator :math:`H^\dagger`.
 
-        :attr:`denoi` (:obj:`torch.nn.Module`): Image denoising operator :math:`\mathcal{G}_\theta\circ H^\dagger \circ B`.
+        :attr:`denoi` (:obj:`torch.nn.Module`): Image denoising operator :math:`\mathcal{G}_\theta`.
 
         :attr:`recon_modules` (:obj:`torch.nn.Sequential`): Reconstruction module. Contains
         the preprocessing operator, the pseudo inverse operator, and the denoising
