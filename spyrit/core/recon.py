@@ -501,19 +501,19 @@ class DCNet(_PrebuiltFullNet):
     where :math:`B` represents a preprocessing step.
 
     2. Denoised completion:
-    
+
     .. math::
         x^{\text{dc}} = R^{\text{dc}}(\Sigma,\Sigma_\alpha,x_0)(\tilde{m}).
-        
+
     where the linear reconstruction operator :math:`B` depends on the covariance of the noise :math:`\Sigma_\alpha`, the covariance of the full measurements :math:`\Sigma` and the mean of the signal :math:`x_0`.
-    
+
     .. note::
-        
+
         We assume that the preprocessed measurements are obtained by subsampling a full transform, i.e., :math:`BA = GF` where :math:`F` is a "full" (e.g., Hadamard) transform and :math:`G` is a subsampling operator. Denoised completion approximates:
 
         .. math::
-            \arg\min_x \|\tilde{m} - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}. 
-            
+            \arg\min_x \|\tilde{m} - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}.
+
         For details, see :class:`~spyrit.core.inverse.TikhonovMeasurementPriorDiag` and the :meth:`~spyrit.core.inverse.TikhonovMeasurementPriorDiag.forward()` method.
 
     3. Denoising/artefact correction
