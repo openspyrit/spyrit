@@ -505,7 +505,7 @@ class DCNet(_PrebuiltFullNet):
     .. math::
         x^{\text{dc}} = R^{\text{dc}}(\Sigma,\Sigma_\alpha,x_0)(\tilde{m}).
 
-    where the linear reconstruction operator :math:`B` depends on the covariance of the noise :math:`\Sigma_\alpha`, the covariance of the full measurements :math:`\Sigma` and the mean of the signal :math:`x_0`.
+    where the linear reconstruction operator :math:`R^{\text{dc}}` depends on the covariance of the noise :math:`\Sigma_\alpha`, the covariance of the full measurements :math:`\Sigma` and the mean of the signal :math:`x_0`.
 
     .. note::
 
