@@ -622,7 +622,7 @@ def sampling_map_multilevel_VDS(
     Parameters
     ----------
     pdf : torch.tensor
-        PDF (or order) used to dicriminate the sampling levels.
+        PDF (or order) used to discriminate the sampling levels.
     M : int
         Total number of measurements.
     levels : int
@@ -735,12 +735,12 @@ def reorder_from_sampling_map(
     Ord_acq : np.ndarray
         (N,) Array containing the indices of the patterns corresponding to each measurement.
     s_map : np.ndarray
-        (n,n) array containg the sampling map.
+        (n,n) array containing the sampling map.
 
     Returns
     -------
     meas_rec : np.ndarray
-        Rordered measurement vector.
+        Reordered measurement vector.
 
     """
 
