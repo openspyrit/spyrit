@@ -23,7 +23,7 @@ copyright = "2021, Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombe
 author = "Antonio Tomas Lorente Mur - Nicolas Ducros - Sebastien Crombez - Thomas Baudier - Romain Phan"
 
 # The full version, including alpha/beta/rc tags
-release = "2.4.0"
+release = "3.0.2"
 
 # -- General configuration ---------------------------------------------------
 
