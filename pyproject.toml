@@ -42,6 +42,7 @@ dependencies = [
         "matplotlib",
         "scipy",
         "torch",
+        "pytorch_wavelets",
         "torchvision",
         "PyWavelets",
         "sympy",
