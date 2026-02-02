@@ -1924,7 +1924,7 @@ class DynamicLinear(Linear):
         :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
         of two integers representing the height and width of the image. If not
         specified, the shape is taken as equal to `meas_shape`. Setting this
-        value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
+        value is particularly useful when using an extended field of view [MaMiccai24]_.
 
         :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. 
         Defaults to `torch.nn.Identity()`.
@@ -1966,11 +1966,14 @@ class DynamicLinear(Linear):
         >>> print(m.shape)
         torch.Size([1, 3, 400])
 
-    Reference:
-    .. _MICCAI24:
-        [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
-        Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
-        without Warping the Patterns. 2024. hal-04533981
+    References:
+        [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October). 
+        Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
+        Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284). 
+        Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
+
+        [MaTip26]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025). 
+        Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 
     """
 
@@ -1985,7 +1988,7 @@ class DynamicLinear(Linear):
         noise_model: nn.Module = nn.Identity(),
         white_acq: torch.tensor = None,
         dtype: torch.dtype = torch.float32,
-        device: torch.device = torch.device("cpu"),
+        device: torch.device = torch.device("cpu")
     ):
         super().__init__(
             H,
@@ -2153,9 +2156,14 @@ class DynamicLinear(Linear):
             None. The dynamic measurement matrix is stored in the attribute :attr:`self.H_dyn`.
 
         References:
-            [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
-            Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
-            without Warping the Patterns. 2024. hal-04533981
+            [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October). 
+            Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
+            Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284). 
+            Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
+
+            [MaTip26]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025). 
+            Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
+
         """
 
         # Deprecate boolean 'warping' values: accept only 'image' or 'pattern' going forward.
@@ -2602,7 +2610,8 @@ class DynamicLinear(Linear):
     def adjoint(self, m: torch.tensor, unvectorize=False) -> torch.tensor:
         r"""Apply adjoint of matrix :math:`H_{\rm{dyn}}`.
 
-        It computes 
+        It computes
+
         .. math::
             x = H_{\rm{dyn}}^\top m, 
 
@@ -2771,7 +2780,7 @@ class DynamicLinearSplit(DynamicLinear):
     Given a matrix :math:`H`, we define the positive DMD patterns :math:`A`
     from the positive and negative components :math:`H`. 
     In practice, the even rows of :math:`A` contain the positive components of :math:`H`, 
-    while odd rows of :math:`A` contain the negative components of :math:`H.
+    while odd rows of :math:`A` contain the negative components of :math:`H`.
 
     .. math::
         \begin{cases}
@@ -2807,7 +2816,7 @@ class DynamicLinearSplit(DynamicLinear):
         :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
         of two integers representing the height and width of the image. If not
         specified, the shape is taken as equal to `meas_shape`. Setting this
-        value is particularly useful when using an :ref:`extended field of view <_MICCAI24>`.
+        value is particularly useful when using an extended field of view [MaMiccai24]_.
 
         :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. 
         Defaults to `torch.nn.Identity()`.
@@ -2862,10 +2871,14 @@ class DynamicLinearSplit(DynamicLinear):
         torch.Size([1, 3, 800])
 
     Reference:
-    .. _MICCAI24:
-        [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
-        Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
-        without Warping the Patterns. 2024. hal-04533981
+        [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October). 
+        Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
+        Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284). 
+        Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
+
+        [MaTip26]_(Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025). 
+            Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
+
     """
 
     def __init__(
@@ -3062,9 +3075,14 @@ class DynamicLinearSplit(DynamicLinear):
             None. The dynamic measurement matrix is stored in the attribute :attr:`self.A_dyn`.
 
         References:
-            [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
-            Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
-            without Warping the Patterns. 2024. hal-04533981
+            [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October). 
+            Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
+            Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284). 
+            Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
+
+            [MaTip26]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025). 
+            Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
+
         """
 
         # redefine to update doc for splitted measurements
@@ -3329,7 +3347,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         :attr:`device` (:obj:`torch.device`, optional): Device of the measurement matrix.
         Defaults to `torch.device("cpu")`.
 
-    .. note:
+    .. note::
         The argument :attr:`order` is particularly useful when rearranging the
         measurements by decreasing variance. The variance matrix can simply be
         put as `order`.
@@ -3379,10 +3397,6 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
             )
 
     Reference:
-    .. _MICCAI24:
-        [MaBP24] (MICCAI 2024 paper #883) Thomas Maitre, Elie Bretin, Romain Phan, Nicolas Ducros,
-        Michaël Sdika. Dynamic Single-Pixel Imaging on an Extended Field of View
-        without Warping the Patterns. 2024. hal-04533981
     """
 
     def __init__(

@@ -45,15 +45,13 @@ class DeformationField(nn.Module):
         (-1, -1) corresponds to the center of the top-left pixel.
 
     Args:
-        :attr:`field` (torch.tensor):
-        *Deformation field* :math:`u` of shape :math:`(n\_frames,h,w,2)`,
+        :attr:`field` (torch.tensor): Deformation field :math:`u` of shape :math:`(n\_frames,h,w,2)`,
         where :math:`n\_frames` is the number of deformation frames, :math:`h` and :math:`w` 
         are the height and width of the deformation field. 
         For accuracy reasons, it is recommended the dtype to be `torch.float64`.
 
     Attributes:
-        :attr:`self.field` (torch.tensor):
-        *Deformation field* :math:`u` of shape :math:`(n\_frames,h,w,2)`.
+        :attr:`self.field` (torch.tensor): Deformation field :math:`u` of shape :math:`(n\_frames,h,w,2)`.
 
         :attr:`self.n_frames` (int): Number of frames in the video.
 
@@ -70,8 +68,9 @@ class DeformationField(nn.Module):
         :func:`torch.nn.functional.affine_grid` to ensure the corners of the
         image are aligned with the corners of the grid.
 
-    Example: 
-        Storing a 90 degrees counter-clockwise rotation for 2x2 image. 
+    Example:
+        Storing a 90 degrees counter-clockwise rotation for 2x2 image.
+
         >>> u = torch.tensor([[[[ 1, -1], [ 1, 1]], [[-1, -1], [-1, 1]]]])
         >>> field = DeformationField(u)
         >>> print(field.field)
@@ -151,22 +150,18 @@ class DeformationField(nn.Module):
         and :math:`n1` (excluded).
 
         Args:
-            :attr:`img` (torch.tensor):
-            Batch of 2D images to deform of shape :math:`(c, h, w)` or :math:`(b, c, h, w)`, where
-            :math:`b` is the number of images in the batch, :math:`c` is the
-            number of channels, and :math:`h` and :math:`w`
-            are the height and width of the images.
+            :attr:`img` (torch.tensor): Batch of 2D images to deform of shape :math:`(c, h, w)` 
+            or :math:`(b, c, h, w)`, where:math:`b` is the number of images in the batch, 
+            :math:`c` is the number of channels, and :math:`h` and :math:`w` are the height
+            and width of the images.
 
-            :attr:`n0` (int, optional):
-            The index of the first frame to use in the *deformation
+            :attr:`n0` (int, optional): The index of the first frame to use in the *deformation
             field*. Defaults to 0.
 
-            :attr:`n1` (int, optional):
-            The index of the first frame to exclude in the *deformation
+            :attr:`n1` (int, optional): The index of the first frame to exclude in the *deformation
             field*. If None, the last available frame is used. Defaults to None.
 
-            :attr:`mode` (str, optional):
-            The interpolation mode to use. It must be one of the following:
+            :attr:`mode` (str, optional): The interpolation mode to use. It must be one of the following:
             'nearest', 'bilinear', 'bicubic', 'biquintic'. The `nearest`,
             `bilinear`, and `bicubic` modes are directly supported by the
             function :func:`torch.nn.functional.grid_sample`. The `biquintic` mode
@@ -177,12 +172,11 @@ class DeformationField(nn.Module):
             contain values outside the original range.
 
         .. note::
-            If :math:`n0 < n1`, :attr:`field` is sliced
-            as follows: ``field[n0:n1, :, :, :]``
+            If :math:`n0 < n1`, :attr:`field` is sliced as follows: ``field[n0:n1, :, :, :]``
 
         .. note::
-            If :math:`n0 > n1`, :attr:`field` is sliced
-            "backwards". The first frame of the warped animation corresponds to
+            If :math:`n0 > n1`, :attr:`field` is sliced"backwards". 
+            The first frame of the warped animation corresponds to
             the index :math:`n0`, and the last frame corresponds to the index
             :math:`n1+1`. This behavior is identical to slicing a list with a
             step of -1.
