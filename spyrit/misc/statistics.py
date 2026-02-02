@@ -237,6 +237,7 @@ def transform_gray_norm(img_size, normalize=True):
     )
     return transform
 
+
 def transform_norm(img_size, normalize=True):
     """
     Args:

@@ -387,58 +387,68 @@ def pre_process_video(video, crop_patch, kernel_size):
     return output_batch
 
 
-def contrib_map(H_dyn: np.ndarray, n: int, save_figs: bool = False, 
-                path_fig: Union[str, Path] = '', show_fig: bool = True) -> np.ndarray:
+def contrib_map(
+    H_dyn: np.ndarray,
+    n: int,
+    save_figs: bool = False,
+    path_fig: Union[str, Path] = "",
+    show_fig: bool = True,
+) -> np.ndarray:
     """
     Generate a contribution map showing measurement pattern coverage.
-    
+
     Args:
         H_dyn: Dynamic measurement matrix.
         n: Image size (assuming square images).
         save_figs: Whether to save the figure.
         path_fig: Path to save the figure.
         show_fig: Whether to display the figure.
-        
+
     Returns:
         Contribution map as numpy array.
     """
     _, L = H_dyn.shape
     l = int(np.sqrt(L))
-    
+
     if l * l != L:
         raise ValueError(f"Matrix dimension L={L} is not a perfect square")
-    
+
     # Create contribution map
     contrib = np.where(H_dyn != 0, 1, 0)
     contrib_image = np.sum(contrib, axis=0)
-    contrib_image = contrib_image.reshape((l, l)) / (n ** 2)
+    contrib_image = contrib_image.reshape((l, l)) / (n**2)
     contrib_image = np.rot90(contrib_image, 2)  # Account for rotation in SP POV
-    
+
     # Create visualization
     plt.figure(figsize=(8, 6))
     plt.imshow(contrib_image, cmap="hot")
     cbar = plt.colorbar(fraction=0.047, pad=0.01, format="%.1f")
     cbar.ax.tick_params(labelsize=15)
     plt.title("Contribution Map", fontsize=16)
-    
+
     if save_figs and path_fig:
-        plt.axis('off')
-        plt.savefig(str(path_fig), bbox_inches='tight', dpi=300)
+        plt.axis("off")
+        plt.savefig(str(path_fig), bbox_inches="tight", dpi=300)
 
     if show_fig:
         plt.show()
     else:
         plt.close()
-    
+
     return contrib_image
 
 
-def error_map(img1: np.ndarray, img2: np.ndarray, save_figs: bool = False, 
-              path_fig: Union[str, Path] = '', show_fig: bool = True, 
-              title: str = "Error Map") -> np.ndarray:
+def error_map(
+    img1: np.ndarray,
+    img2: np.ndarray,
+    save_figs: bool = False,
+    path_fig: Union[str, Path] = "",
+    show_fig: bool = True,
+    title: str = "Error Map",
+) -> np.ndarray:
     """
     Compute and visualize error map between two images.
-    
+
     Args:
         img1: First image.
         img2: Second image.
@@ -446,96 +456,107 @@ def error_map(img1: np.ndarray, img2: np.ndarray, save_figs: bool = False,
         path_fig: Path to save the figure.
         show_fig: Whether to display the figure.
         title: Title for the plot.
-        
+
     Returns:
         Error map as numpy array.
-        
+
     Raises:
         ValueError: If images have different shapes.
     """
     if img1.shape != img2.shape:
         raise ValueError(f"Image shapes don't match: {img1.shape} vs {img2.shape}")
-    
+
     # Normalize images to [0, 1]
-    img1_normalized = (img1 - img1.min()) / (img1.max() - img1.min()) if img1.max() != img1.min() else np.zeros_like(img1)
-    img2_normalized = (img2 - img2.min()) / (img2.max() - img2.min()) if img2.max() != img2.min() else np.zeros_like(img2)
+    img1_normalized = (
+        (img1 - img1.min()) / (img1.max() - img1.min())
+        if img1.max() != img1.min()
+        else np.zeros_like(img1)
+    )
+    img2_normalized = (
+        (img2 - img2.min()) / (img2.max() - img2.min())
+        if img2.max() != img2.min()
+        else np.zeros_like(img2)
+    )
 
     error = img1_normalized - img2_normalized
-    
+
     plt.figure(figsize=(8, 6))
-    plt.imshow(error, cmap='Spectral')
+    plt.imshow(error, cmap="Spectral")
     cbar = plt.colorbar(fraction=0.047, pad=0.01, format="%.2f")
     cbar.ax.tick_params(labelsize=15)
     plt.title(title, fontsize=16)
-    plt.axis('off')
+    plt.axis("off")
 
     if save_figs and path_fig:
-        plt.savefig(str(path_fig), bbox_inches='tight', dpi=300)
+        plt.savefig(str(path_fig), bbox_inches="tight", dpi=300)
 
     if show_fig:
         plt.show()
     else:
         plt.close()
-        
+
     return error
 
 
-def blue_box(f: np.ndarray, amp_max: int = 0, box_color: Tuple[int, int, int] = (0, 0, 255)) -> np.ndarray:
+def blue_box(
+    f: np.ndarray, amp_max: int = 0, box_color: Tuple[int, int, int] = (0, 0, 255)
+) -> np.ndarray:
     """
     Add a colored box overlay to an image for visualization purposes.
-    
+
     Args:
         f: Input grayscale or RGB image.
         amp_max: Offset from image borders for the box.
         box_color: RGB color for the box (default: blue).
-        
+
     Returns:
         RGB image with colored box overlay.
-        
+
     Raises:
         ValueError: If amp_max is too large for the image size.
     """
     if amp_max * 2 >= min(f.shape[0], f.shape[1]):
         raise ValueError(f"amp_max={amp_max} is too large for image shape {f.shape}")
-    
+
     # Normalize to 8-bit and create RGB image
-    f_normalized = (f - f.min()) / (f.max() - f.min()) if f.max() != f.min() else np.zeros_like(f)
+    f_normalized = (
+        (f - f.min()) / (f.max() - f.min()) if f.max() != f.min() else np.zeros_like(f)
+    )
     f_255 = (f_normalized * 255).astype(np.uint8)
 
     if len(f.shape) == 2:
         f_rgb = np.stack([f_255] * 3, axis=2)
     elif len(f.shape) == 3:
         f_rgb = f_255
-    
+
     if amp_max == 0:
         return f_rgb
-    
+
     r, g, b = box_color
-    
+
     # Draw box borders
     # Top and bottom borders
     f_rgb[amp_max, amp_max:-amp_max] = [r, g, b]
-    f_rgb[-amp_max-1, amp_max:-amp_max] = [r, g, b]
-    
+    f_rgb[-amp_max - 1, amp_max:-amp_max] = [r, g, b]
+
     # Left and right borders
     f_rgb[amp_max:-amp_max, amp_max] = [r, g, b]
-    f_rgb[amp_max:-amp_max, -amp_max-1] = [r, g, b]
+    f_rgb[amp_max:-amp_max, -amp_max - 1] = [r, g, b]
 
     return f_rgb
-
 
 
 def get_frame(movie_path: Union[str, Path], frame_number: int = 0) -> np.ndarray:
     """
     Extract a specific frame from a video file.
-    
+
     Args:
         movie_path: Path to the video file.
         frame_number: Frame number to extract (0-indexed).
-        
+
     Returns:
         Grayscale frame as numpy array.
-        
+
     Raises:
         FileNotFoundError: If video file doesn't exist.
         ValueError: If frame cannot be read or video is invalid.
@@ -543,7 +564,7 @@ def get_frame(movie_path: Union[str, Path], frame_number: int = 0) -> np.ndarray
     movie_path = Path(movie_path)
     if not movie_path.exists():
         raise FileNotFoundError(f"Video file not found: {movie_path}")
-    
+
     cap = cv2.VideoCapture(str(movie_path))
 
     if not cap.isOpened():
@@ -553,11 +574,13 @@ def get_frame(movie_path: Union[str, Path], frame_number: int = 0) -> np.ndarray
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     if frame_number >= total_frames:
         cap.release()
-        raise ValueError(f"Frame {frame_number} not available. Video has {total_frames} frames.")
+        raise ValueError(
+            f"Frame {frame_number} not available. Video has {total_frames} frames."
+        )
 
     # Set frame position directly (more efficient than iterating)
     cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
-    
+
     ret, frame = cap.read()
     cap.release()
 
@@ -590,7 +613,7 @@ def save_motion_video(x_motion, out_path, amp_max=0, fps=820):
     if n_wav != 1 and n_wav != 3:
         raise ValueError(f"save_motion_video expects 1 or 3 channels, got {n_wav}")
 
-    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+    fourcc = cv2.VideoWriter_fourcc(*"MJPG")
     writer = cv2.VideoWriter(str(out_path), fourcc, fps, (w_crop, h_crop), True)
     if not writer.isOpened():
         raise RuntimeError("cv2 VideoWriter failed to open")
@@ -599,12 +622,12 @@ def save_motion_video(x_motion, out_path, amp_max=0, fps=820):
 
         mn, mx = frame_wide.min(), frame_wide.max()
 
-        frame = frame_wide[amp_max:h_crop+amp_max, amp_max:w_crop+amp_max]
+        frame = frame_wide[amp_max : h_crop + amp_max, amp_max : w_crop + amp_max]
 
         if mx > mn:
-            frame8 = ((frame - mn) / (mx - mn) * 255.0).astype('uint8')
+            frame8 = ((frame - mn) / (mx - mn) * 255.0).astype("uint8")
         else:
-            frame8 = (frame * 0).astype('uint8')
+            frame8 = (frame * 0).astype("uint8")
         # frame_bgr = cv2.cvtColor(frame8, cv2.COLOR_GRAY2BGR)
         frame_bgr = cv2.cvtColor(frame8, cv2.COLOR_RGB2BGR)
         writer.write(frame_bgr)
@@ -612,7 +635,20 @@ def save_motion_video(x_motion, out_path, amp_max=0, fps=820):
     print(f"Saved motion video to {out_path}")
 
 
-def save_field_video(def_field, out_path, n_frames, step=5, fps=30, figsize=(6, 6), dpi=200, scale=1, fs=16, amp_max=0, box_color='blue', box_linewidth=2):
+def save_field_video(
+    def_field,
+    out_path,
+    n_frames,
+    step=5,
+    fps=30,
+    figsize=(6, 6),
+    dpi=200,
+    scale=1,
+    fs=16,
+    amp_max=0,
+    box_color="blue",
+    box_linewidth=2,
+):
     r"""
     Save deformation field as a quiver video.
 
@@ -641,7 +677,7 @@ def save_field_video(def_field, out_path, n_frames, step=5, fps=30, figsize=(6, 
         raise ValueError("step must be >= 1")
     if fps <= 0:
         raise ValueError("fps must be > 0")
-    
+
     if not isinstance(def_field, DeformationField):
         raise ValueError("def_field must be a DeformationField object")
 
@@ -670,7 +706,7 @@ def save_field_video(def_field, out_path, n_frames, step=5, fps=30, figsize=(6, 
     field = field_full[indices][:, ::step, ::step, :]
 
     # normalize to absolute pixel coordinates
-    scale_factor = (np.array(def_field.img_shape) - 1)
+    scale_factor = np.array(def_field.img_shape) - 1
     field = (field + 1) / 2 * scale_factor
 
     # rotate field to 180 degrees to match our SP convention (np.rot90 only reorders samples)
@@ -703,7 +739,14 @@ def save_field_video(def_field, out_path, n_frames, step=5, fps=30, figsize=(6, 
         width = x_max - x_min
         height = y_max - y_min
 
-        rect = Rectangle((x_min, y_min), width, height, fill=False, edgecolor=box_color, linewidth=box_linewidth)
+        rect = Rectangle(
+            (x_min, y_min),
+            width,
+            height,
+            fill=False,
+            edgecolor=box_color,
+            linewidth=box_linewidth,
+        )
         ax_q.add_patch(rect)
 
     # Try writing MP4

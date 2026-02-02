@@ -169,48 +169,50 @@ def download_girder(
     return abs_paths[0] if len(abs_paths) == 1 else abs_paths
 
 
-
-def read_acquisition(data_root: Path, data_folder: str, 
-                    data_file_prefix: str) -> Tuple[dict, np.ndarray]:
+def read_acquisition(
+    data_root: Path, data_folder: str, data_file_prefix: str
+) -> Tuple[dict, np.ndarray]:
     """
     Read acquisition data and metadata from experimental files.
-    
+
     Args:
         data_root: Root directory of the data.
         data_folder: Folder containing the data.
         data_file_prefix: Prefix of the data files.
-        
+
     Returns:
         Tuple of (acquisition_parameters, measurement_data).
-        
+
     Raises:
         FileNotFoundError: If metadata or data files are not found.
     """
     try:
         from spas.metadata2 import read_metadata, read_metadata_2arms
     except ImportError:
-        raise ImportError("Single-pixel acquisition software (SPAS) package is required to read metadata. Please install it (see https://github.com/openspyrit/spas).")
+        raise ImportError(
+            "Single-pixel acquisition software (SPAS) package is required to read metadata. Please install it (see https://github.com/openspyrit/spas)."
+        )
 
     data_root = Path(data_root)
-    
+
     # Read metadata
     meta_path = data_root / data_folder / f"{data_file_prefix}_metadata.json"
     if not meta_path.exists():
         raise FileNotFoundError(f"Metadata file not found: {meta_path}")
-    
+
     try:
         metadata = read_metadata_2arms(meta_path)
     except Exception:
         print("Falling back to single-arm metadata reader")
         metadata = read_metadata(meta_path)
-   
+
     # Read spectral data
     data_path = data_root / data_folder / f"{data_file_prefix}_spectraldata.npz"
     if not data_path.exists():
         raise FileNotFoundError(f"Spectral data file not found: {data_path}")
-    
+
     raw = np.load(data_path)
-    meas = raw['spectral_data']
+    meas = raw["spectral_data"]
 
     return metadata, meas
 
@@ -221,7 +223,7 @@ def generate_synthetic_tumors(
 ) -> torch.Tensor:
     """
     Creates synthetic Gaussian tumors to a tensor of shape (batch, n_wav, *img_shape).
-    
+
     Args:
         x (torch.Tensor): Input tensor of shape (batch, n_wav, *img_shape)
         tumor_params (List[dict]): List of tumor parameters. Each dict should contain:
@@ -231,30 +233,30 @@ def generate_synthetic_tumors(
             - 'amplitude': Amplitude of the tumor
             - 'channels': List of channel indices to add the tumor to (if None, adds to all channels)
             - 'angle' (optional): Rotation angle in degrees (counter-clockwise). Default is 0.
-        
+
     Returns:
         torch.Tensor: Tensor with synthetic tumors added
     """
     dtype = x.dtype
     device = x.device
-    
+
     _, n_wav, h, w = x.shape
-    
+
     tumors = torch.zeros_like(x, dtype=dtype, device=device)
-    
+
     # Create coordinate grids
     y_axis = torch.arange(h, dtype=dtype, device=device)
     x_axis = torch.arange(w, dtype=dtype, device=device)
-    yy, xx = torch.meshgrid(y_axis, x_axis, indexing='ij')
-    
+    yy, xx = torch.meshgrid(y_axis, x_axis, indexing="ij")
+
     for tumor_param in tumor_params:
-        center = tumor_param['center']
-        sigma_x = float(tumor_param['sigma_x'])
-        sigma_y = float(tumor_param['sigma_y'])
-        amplitude = float(tumor_param['amplitude'])
-        channels = tumor_param.get('channels', None)
+        center = tumor_param["center"]
+        sigma_x = float(tumor_param["sigma_x"])
+        sigma_y = float(tumor_param["sigma_y"])
+        amplitude = float(tumor_param["amplitude"])
+        channels = tumor_param.get("channels", None)
         # Optional rotation angle in degrees (default 0). Positive rotates counter-clockwise.
-        angle_deg = float(tumor_param.get('angle', 0.0))
+        angle_deg = float(tumor_param.get("angle", 0.0))
         theta = math.radians(angle_deg)
 
         # Coordinates relative to center
@@ -273,12 +275,12 @@ def generate_synthetic_tumors(
 
         # Generate rotated ellipsoidal Gaussian
         gauss = amplitude * torch.exp(
-            -(x_rot ** 2 / (2 * sigma_x ** 2) + y_rot ** 2 / (2 * sigma_y ** 2))
+            -(x_rot**2 / (2 * sigma_x**2) + y_rot**2 / (2 * sigma_y**2))
         )
 
         if channels is None:
             channels = list(range(n_wav))
 
         tumors[:, channels, :, :] += gauss.unsqueeze(0).unsqueeze(0)
-                
+
     return tumors, torch.clamp(x + tumors, 0.0, 1.0)
