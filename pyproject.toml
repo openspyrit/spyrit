@@ -24,7 +24,7 @@ find = {}  # Scanning implicit namespaces is active by default
 
 [project]
 name = "spyrit"
-version = "3.0.2"
+version = "3.0.3"
 dynamic = ["readme"]
 authors = [{name = "Nicolas Ducros", email = "Nicolas.Ducros@insa-lyon.fr"}]
 description = "Toolbox for deep image reconstruction"
@@ -42,13 +42,10 @@ dependencies = [
         "matplotlib",
         "scipy",
         "torch",
+        "pytorch_wavelets",
         "torchvision",
-        "Pillow",
         "PyWavelets",
-        "wget",
         "sympy",
-        "imageio",
-        "astropy",
         "requests",
         "tqdm",
         "girder-client",

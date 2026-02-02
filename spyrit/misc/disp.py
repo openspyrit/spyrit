@@ -10,10 +10,12 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import torch
 import math
+import numbers
 import cv2
 from pathlib import Path
 from typing import Tuple, List, Optional, Union
 
+from spyrit.misc.color import wavelength_to_colormap
 from spyrit.core.warp import DeformationField
 
 
@@ -22,7 +24,7 @@ def display_vid(video, fps, title="", colormap=plt.cm.gray):
     video is a numpy array of shape [nb_frames, 1, nx, ny]
     """
     plt.ion()
-    (nb_frames, channels, nx, ny) = video.shape
+    nb_frames, channels, nx, ny = video.shape
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     for i in range(nb_frames):
@@ -42,7 +44,7 @@ def display_rgb_vid(video, fps, title=""):
     video is a numpy array of shape [nb_frames, 3, nx, ny]
     """
     plt.ion()
-    (nb_frames, channels, nx, ny) = video.shape
+    nb_frames, channels, nx, ny = video.shape
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     for i in range(nb_frames):
@@ -144,36 +146,72 @@ def uint8(dsp):
 def imagesc(
     Img,
     title="",
-    colormap=plt.cm.gray,
-    show=True,
+    colormap=None,
+    show=False,
     figsize=None,
+    fig=None,
+    ax=None,
     cbar_pos=None,
     title_fontsize=16,
+    **kwargs,
 ):
     """
-    imagesc(IMG) Display image Img with scaled colors with greyscale
-    colormap and colorbar
-    imagesc(IMG, title=ttl) Display image Img with scaled colors with
-    greyscale colormap and colorbar, with the title ttl
-    imagesc(IMG, title=ttl, colormap=cmap) Display image Img with scaled colors
-    with colormap and colorbar specified by cmap (choose between 'plasma',
-    'jet', and 'grey'), with the title ttl
+    Display image data with scaled colors, a colormap, and a colorbar, similar to
+    MATLAB's `imagesc` function.
+
+    This function acts as a wrapper around `matplotlib.pyplot.imshow` with
+    custom handling for the colormap and colorbar placement.
+
+    Args:
+        Img (array-like): The 2D array or image data to be displayed.
+        title (str, optional): The title for the plot. Defaults to an empty string.
+        colormap (str, int, or Colormap, optional): The colormap to use.
+            - If **None** (default), uses Matplotlib's default **'gray'** colormap.
+            - If **str**, it should be a valid Matplotlib colormap name (e.g., 'plasma', 'jet', 'viridis').
+            - If **int** or **float**, it is treated as a wavelength (in nm) and is passed
+              to the function `wavelength_to_colormap(colormap, gamma=0.6)` from `spyrit.misc.color`
+              to generate a custom colormap.
+            - If a **Matplotlib Colormap object**, it is used directly.
+        show (bool, optional): If **True** (default), calls `plt.show()` to display the plot.
+        figsize (tuple, optional): A tuple (width, height) specifying the figure size
+        in inches. Passed to `plt.figure()`. Defaults to None.
+
+        cbar_pos (str, optional): Position of the colorbar.
+            - If **"bottom"**, the colorbar is placed horizontally below the image.
+            - If **None** (default) or any other value, the colorbar is placed
+              vertically to the right of the image.
+        title_fontsize (int, optional): Font size for the plot title. Defaults to 16.
+        **kwargs: Additional keyword arguments.
+            - gamma (float, optional): The gamma correction factor when `colormap` is a wavelength (numeric).
+              Defaults to 0.6.
+
+    Returns:
+        None: The function primarily displays the plot via Matplotlib.
     """
-    fig = plt.figure(figsize=figsize)
-    ax = fig.add_subplot(1, 1, 1)
-    plt.imshow(Img, cmap=colormap)
-    plt.title(title, fontsize=title_fontsize)
-    divider = make_axes_locatable(ax)
-    from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
+    if colormap is None:
+        colormap = plt.cm.gray
+
+    elif isinstance(colormap, numbers.Number):
+        if "gamma" in kwargs:
+            gamma = kwargs["gamma"]
+        else:
+            gamma = 0.6
+        colormap = wavelength_to_colormap(colormap, gamma=gamma)
+
+    if fig is None:
+        fig = plt.figure(figsize=figsize)
+
+    if ax is None:
+        ax = fig.add_subplot(1, 1, 1)
+
+    pos = ax.imshow(Img, cmap=colormap)
 
     if cbar_pos == "bottom":
-        cax = inset_axes(
-            ax, width="100%", height="5%", loc="lower center", borderpad=-5
-        )
-        plt.colorbar(cax=cax, orientation="horizontal")
+        fig.colorbar(pos, ax=ax, location="bottom", orientation="horizontal")
     else:
-        cax = plt.axes([0.85, 0.1, 0.075, 0.8])
-        plt.colorbar(cax=cax, orientation="vertical")
+        fig.colorbar(pos, ax=ax, location="right", orientation="vertical")
+    ax.set_title(title, fontsize=title_fontsize)
 
     # fig.tight_layout() # it raises warnings in some cases
     if show is True:
@@ -188,6 +226,7 @@ def imagecomp(
     title2="",
     colormap1=plt.cm.gray,
     colormap2=plt.cm.gray,
+    show=False,
 ):
     f, (ax1, ax2) = plt.subplots(1, 2)
     im1 = ax1.imshow(Img1, cmap=colormap1)
@@ -201,7 +240,9 @@ def imagecomp(
     cax = plt.axes([0.915, 0.3, 0.025, 0.4])
     plt.colorbar(im2, cax=cax)
     plt.subplots_adjust(left=0.08, wspace=0.5, top=0.9, right=0.9)
-    plt.show()
+
+    if show:
+        plt.show()
 
 
 def imagepanel(
@@ -218,6 +259,7 @@ def imagepanel(
     colormap2=plt.cm.gray,
     colormap3=plt.cm.gray,
     colormap4=plt.cm.gray,
+    show=False,
 ):
     fig, axarr = plt.subplots(2, 2, figsize=(20, 10))
     plt.suptitle(suptitle, fontsize=16)
@@ -243,7 +285,8 @@ def imagepanel(
     plt.colorbar(im4, cax=cax)
 
     plt.subplots_adjust(left=0.08, wspace=0.5, top=0.9, right=0.9)
-    plt.show()
+    if show:
+        plt.show()
 
 
 def plot(x, y, title="", xlabel="", ylabel="", color="black"):
@@ -313,7 +356,7 @@ def vid2batch(root, img_dim, start_frame, end_frame):
     frame_nb = 0
     output_batch = torch.zeros(1, end_frame - start_frame, 1, img_dim, img_dim)
     while True:
-        (grabbed, frame) = stream.read()
+        grabbed, frame = stream.read()
         if not grabbed:
             break
 

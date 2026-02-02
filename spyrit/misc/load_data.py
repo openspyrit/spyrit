@@ -15,7 +15,7 @@ Created on Wed Jan 15 17:06:19 2020
 import os
 import glob
 import numpy as np
-import PIL
+import matplotlib.pyplot as plt
 import math
 
 import torch
@@ -36,8 +36,8 @@ def load_data_recon_3D(Path_files, list_files, Nl, Nc, Nh):
 
     for i in range(0, 2 * Nh, 2):
         Data[:, :, i // 2] = np.rot90(
-            np.array(PIL.Image.open(Path_files + list_files[i]))
-        ) - np.rot90(np.array(PIL.Image.open(Path_files + list_files[i + 1])))
+            np.array(plt.imread(Path_files + list_files[i]))
+        ) - np.rot90(np.array(plt.imread(Path_files + list_files[i + 1])))
 
     return Data
 
@@ -49,9 +49,9 @@ def load_data_Comp_1D_old(Path_files, list_files, Nh, Nl, Nc):
 
     for i in range(0, 2 * Nh, 2):
         Data[:, i // 2] = Sum_coll(
-            np.rot90(np.array(PIL.Image.open(Path_files + list_files[i])), 3), Nl, Nc
+            np.rot90(np.array(plt.imread(Path_files + list_files[i])), 3), Nl, Nc
         ) - Sum_coll(
-            np.rot90(np.array(PIL.Image.open(Path_files + list_files[i + 1])), 3),
+            np.rot90(np.array(plt.imread(Path_files + list_files[i + 1])), 3),
             Nl,
             Nc,
         )
@@ -66,11 +66,11 @@ def load_data_Comp_1D_new(Path_files, list_files, Nh, Nl, Nc):
 
     for i in range(0, 2 * Nh, 2):
         Data[:, i // 2] = Sum_coll(
-            np.rot90(np.array(PIL.Image.open(Path_files + list_files[i + 1])), 3),
+            np.rot90(np.array(plt.imread(Path_files + list_files[i + 1])), 3),
             Nl,
             Nc,
         ) - Sum_coll(
-            np.rot90(np.array(PIL.Image.open(Path_files + list_files[i])), 3), Nl, Nc
+            np.rot90(np.array(plt.imread(Path_files + list_files[i])), 3), Nl, Nc
         )
 
     return Data

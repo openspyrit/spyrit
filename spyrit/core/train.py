@@ -766,7 +766,7 @@ def visualize_conv_layers(conv_layer, suptitle="", colormap=plt.cm.gray):
     conv_filters = params[0]
     conv_filters = conv_filters.cpu().detach().numpy()
     plt.ion()
-    (nb_filters, entry_channels, s_x, s_y) = conv_filters.shape
+    nb_filters, entry_channels, s_x, s_y = conv_filters.shape
 
     fig, axarr = plt.subplots(2, 4, figsize=(20, 10))
     # plt.suptitle(suptitle, fontsize=16);
