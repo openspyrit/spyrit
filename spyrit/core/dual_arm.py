@@ -15,13 +15,11 @@ import torch
 import torch.nn as nn
 import warnings
 from dataclasses import dataclass
-from typing import Tuple, Optional, List, Union
+from typing import Tuple, Optional, Union
 from pathlib import Path
 import torch.nn as nn
 import time
 import math
-
-from IPython.display import clear_output
 
 from spyrit.misc.disp import torch2numpy
 from spyrit.core.meas import HadamSplit2d
@@ -827,8 +825,7 @@ class MotionFieldProjector(nn.Module):
         return x1_new, x2_new
     
 
-    def estim_motion_from_CMOS(self, warping: str, amp_max: int = 0, 
-                              show_deform_field: bool = False) -> None:
+    def estim_motion_from_CMOS(self, warping: str, amp_max: int = 0) -> None:
         """
         Estimate motion field from CMOS camera data.
         
@@ -837,7 +834,6 @@ class MotionFieldProjector(nn.Module):
             estimation software. It is the same warping parameter as in Dynamic classes
             from `spyrit.core.meas`.
             amp_max: Maximum amplitude for coordinate offset, due to the extended field of view.
-            show_deform_field: Whether to visualize the deformation field.
             
         Raises:
             FileNotFoundError: If required files are not found.
@@ -906,10 +902,6 @@ class MotionFieldProjector(nn.Module):
         frame0 = torch.stack((x1_sp, x2_sp), dim=0).unsqueeze(0)
         res = torch.cat((frame0, res), dim=0)  # cat is more efficient than concatenate
 
-        # Visualize deformation field if requested
-        if show_deform_field:
-            self._visualize_deformation_field(res, x1_sp, x2_sp, n_frames)
-
         # Normalize coordinates to [-1, 1] range
         res = (res + amp_max) / (l-1) * 2 - 1 
         self.def_field_cmos = res
@@ -935,40 +927,6 @@ class MotionFieldProjector(nn.Module):
                 (H[2, 0] * u[:, 0, :, :] + H[2, 1] * u[:, 1, :, :] + H[2, 2])
         
         return u1_sp, u2_sp
-    
-
-    def _visualize_deformation_field(self, res: torch.Tensor, x1_sp: torch.Tensor, 
-                                   x2_sp: torch.Tensor, n_frames: int) -> None:
-        """
-        Visualize the computed deformation field.
-        
-        Args:
-            res: Deformation field results.
-            x1_sp: X coordinates in SP space.
-            x2_sp: Y coordinates in SP space.
-            n_frames: Number of frames.
-        """
-        step = max(1, self.config.n // 6)  # Adjust step for quiver plot density
-        res_np = torch2numpy(res[:, :, ::step, ::step])
-        x1_sp_np = torch2numpy(x1_sp[::step, ::step])
-        x2_sp_np = torch2numpy(x2_sp[::step, ::step])
-
-        plt.figure(figsize=(10, 8))
-        for f in range(n_frames - 1):
-            plt.clf()
-            plt.quiver(
-                x1_sp_np, -x2_sp_np, 
-                (res_np[f, 0, :, :] - x1_sp_np),
-                -(res_np[f, 1, :, :] - x2_sp_np), 
-                angles="xy", scale_units='xy', scale=1
-            )
-            plt.title(f"Deformation Field - Frame {f}", fontsize=16)
-            plt.xlabel("X coordinate")
-            plt.ylabel("Y coordinate")
-            plt.pause(0.01)
-            clear_output(wait=True)
-        plt.close()
-
 
     def def_reference(self) -> None:
         """
