@@ -1955,16 +1955,17 @@ class DynamicLinear(Linear):
 
 
     Example: 
+        >>> import torch
+        >>> from spyrit.core.meas import DynamicLinear
+        >>> from spyrit.core.noise import Poisson
+        >>> 
         >>> x = torch.rand([1, 400, 3, 50, 50])  # dummy RGB video with 400 frames of size 50x50
         >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
         >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50))
         >>> print(meas_op)
         DynamicLinear(
-          (noise_model): Identity()
+        (noise_model): Identity()
         )
-        >>> m = meas_op(x)  # simulate dynamic measurements
-        >>> print(m.shape)
-        torch.Size([1, 3, 400])
 
     References:
         [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October). 
@@ -2061,6 +2062,25 @@ class DynamicLinear(Linear):
         Returns:
             :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
             all the dimensions of the input tensor that are not included in :attr:`self.meas_dims`.
+
+        Example: 
+            >>> import torch
+            >>> from spyrit.core.meas import DynamicLinear
+            >>> from spyrit.core.noise import Poisson
+            >>>
+            >>> x = torch.rand([1, 400, 3, 50, 50])  # dummy RGB video with 400 frames of size 50x50
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50))
+            >>> print(meas_op)
+            DynamicLinear(
+            (noise_model): Poisson()
+            )
+            >>> m = meas_op.measure(x)  # simulate noiseless dynamic measurements
+            >>> print(m.shape)
+            torch.Size([1, 3, 400])
+
         """
         x = spytorch.center_crop(x, self.meas_shape)
         # vectorize with the time dimension being the second-to-last dimension
@@ -2092,6 +2112,26 @@ class DynamicLinear(Linear):
         Returns:
             :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
             all the dimensions of the input tensor that are not included in :attr:`self.meas_dims`.
+
+        Example: 
+            >>> import torch
+            >>> from spyrit.core.meas import DynamicLinear
+            >>> from spyrit.core.noise import Poisson
+            >>>
+            >>> x = torch.rand([1, 400, 3, 50, 50])  # dummy RGB video with 400 frames of size 50x50
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
+            >>> print(meas_op)
+            DynamicLinear(
+            (noise_model): Poisson()
+            )
+            >>>
+            >>> m = meas_op(x)  # simulate noisy dynamic measurements
+            >>> print(m.shape)
+            torch.Size([1, 3, 400])
+
         """
         x = self.measure(x)
         x = self.noise_model(x)
@@ -2154,6 +2194,29 @@ class DynamicLinear(Linear):
 
         Returns:
             None. The dynamic measurement matrix is stored in the attribute :attr:`self.H_dyn`.
+
+        Example: 
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.warp import DeformationField
+            >>> from spyrit.core.meas import DynamicLinear       
+            >>>
+            >>> def_field = DeformationField(torch.rand([400, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
+            >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
+            >>> x_motion = def_field(x)  # dummy video obtained by warping x with def_field
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>>
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
+            >>> print(meas_op)
+            DynamicLinear(
+            (noise_model): Poisson()
+            )
+            >>>
+            >>> meas_op.build_dynamic_forward(def_field)
+            >>> print(meas_op.H_dyn.shape)
+            torch.Size([400, 2500])
 
         References:
             [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October). 
@@ -2573,6 +2636,31 @@ class DynamicLinear(Linear):
 
         Returns:
             torch.tensor: Measurement of the input signal. It has shape (..., M).
+        
+        Example: 
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.warp import DeformationField
+            >>> from spyrit.core.meas import DynamicLinear
+            >>>
+            >>> def_field = DeformationField(torch.rand([400, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
+            >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
+            >>> x_motion = def_field(x)  # dummy video obtained by warping x with def_field
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>>
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
+            >>> print(meas_op)
+            DynamicLinear(
+            (noise_model): Poisson()
+            )
+            >>>
+            >>> meas_op.build_dynamic_forward(def_field)
+            >>> m = meas_op.measure_H_dyn(x)  # simulate noiseless dynamic measurements from dynamic matrix
+            >>> print(m.shape)
+            torch.Size([1, 3, 400])
+
         """
         x = self.vectorize(x)  # don't need to crop because H_dyn has extended FOV
         x = torch.einsum("mn,...n->...m", self.H_dyn, x)
@@ -2601,6 +2689,31 @@ class DynamicLinear(Linear):
         Returns:
             torch.tensor: Measurement of the input signal. It has shape :math:`(*, M)` where :math:`*`
             denotes all the dimensions that are not included in :attr:`self.meas_dims`
+
+        Example: 
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.warp import DeformationField
+            >>> from spyrit.core.meas import DynamicLinear       
+            >>>
+            >>> def_field = DeformationField(torch.rand([400, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
+            >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
+            >>> x_motion = def_field(x)  # dummy video obtained by warping x with def_field
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>>
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
+            >>> print(meas_op)
+            DynamicLinear(
+            (noise_model): Poisson()
+            )
+            >>>
+            >>> meas_op.build_dynamic_forward(def_field)
+            >>> m = meas_op.forward_H_dyn(x)  # simulate noisy dynamic measurements from dynamic matrix
+            >>> print(m.shape)
+            torch.Size([1, 3, 400])
+
         """
         x = self.vectorize(x)  # don't need to crop because H_dyn has extended FOV
         x = torch.einsum("mn,...n->...m", self.H_dyn, x)
@@ -2634,6 +2747,31 @@ class DynamicLinear(Linear):
             :attr:`unvectorize` is :obj:`True`, :math:`x` is reshaped such that
             the dimensions :attr:`self.meas_dims` match the measurement shape
             :attr:`self.meas_shape`.
+
+        Example: 
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.warp import DeformationField
+            >>> from spyrit.core.meas import DynamicLinear       
+            >>>
+            >>> def_field = DeformationField(torch.rand([400, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
+            >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
+            >>> x_motion = def_field(x)  # dummy video obtained by warping x with def_field
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>>
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
+            >>> print(meas_op)
+            DynamicLinear(
+            (noise_model): Poisson()
+            )
+            >>>
+            >>> meas_op.build_dynamic_forward(def_field)
+            >>> m = meas_op(x_motion)  # simulate noisy dynamic measurements
+            >>> H_dyn_adj_x = meas_op.adjoint(m)  # apply adjoint of dynamic measurement matrix
+            >>> print(H_dyn_adj_x.shape)
+            torch.Size([1, 3, 2500])
 
         """ 
         m = torch.einsum("mn,...m->...n", self.H_dyn, m)
@@ -2764,7 +2902,7 @@ class DynamicLinearSplit(DynamicLinear):
     Therefore, we acquire
 
     .. math::
-        m = \mathcal{N}\left(\text{diag}(A x_{t=1,..., 2M})\right),
+        y = \mathcal{N}\left(\text{diag}(A x_{t=1,..., 2M})\right),
 
     where :math:`A \colon\, \mathbb{R}_+^{2M\times N}` is the acquisition
     matrix that contains positive DMD patterns, 
@@ -2859,6 +2997,9 @@ class DynamicLinearSplit(DynamicLinear):
 
 
     Example:
+        >>> import torch
+        >>> from spyrit.core.meas import DynamicLinearSplit
+        >>>
         >>> x = torch.rand([1, 2*400, 3, 50, 50])  # dummy RGB video with 800 frames of size 50x50
         >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
         >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50))
@@ -2866,9 +3007,6 @@ class DynamicLinearSplit(DynamicLinear):
         DynamicLinearSplit(
           (noise_model): Identity()
         )
-        >>> m = meas_op(x)  # simulate dynamic measurements
-        >>> print(m.shape)
-        torch.Size([1, 3, 800])
 
     Reference:
         [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October). 
@@ -2941,7 +3079,7 @@ class DynamicLinearSplit(DynamicLinear):
         It acquires
 
         .. math::
-            m = \text{diag}(A x_{t=1, ..., 2M}),
+            y = \text{diag}(A x_{t=1, ..., 2M}),
 
         where :math:`A \in \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns, 
         :math:`x \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest, 
@@ -2963,6 +3101,25 @@ class DynamicLinearSplit(DynamicLinear):
 
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`2\*self.M`.
+
+        Example:
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.meas import DynamicLinearSplit
+            >>>  
+            >>> x = torch.rand([1, 2*400, 3, 50, 50])  # dummy RGB video with 800 frames of size 50x50
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
+            >>> print(meas_op)
+            DynamicLinearSplit(
+                (noise_model): Poisson()
+            )
+            >>>
+            >>> y = meas_op.measure(x)  # simulate noiseless dynamic measurements
+            >>> print(y.shape)
+            torch.Size([1, 3, 800])
 
         """
         x = spytorch.center_crop(x, self.meas_shape)
@@ -3001,6 +3158,25 @@ class DynamicLinearSplit(DynamicLinear):
 
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`self.M`.
+
+        Example:
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.meas import DynamicLinearSplit
+            >>>
+            >>> x = torch.rand([1, 2*400, 3, 50, 50])  # dummy RGB video with 800 frames of size 50x50
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
+            >>> print(meas_op)
+            DynamicLinearSplit(
+                (noise_model): Poisson()
+            )
+            >>>
+            >>> m = meas_op.measure_H(x)  # simulate noiseless dynamic measurements from matrix H
+            >>> print(m.shape)
+            torch.Size([1, 3, 400])
 
         """
         x = x.movedim(self.time_dim, 0)
@@ -3057,8 +3233,6 @@ class DynamicLinearSplit(DynamicLinear):
             The attribute :attr:`H_dyn` applies the differential strategy **after** motion compensation to avoid
             an additional error term [ref journal].  
 
-
-
         Args:
             :attr:`motion` (DeformationField): Deformation field representing the
             scene motion. Need to pass the deformation field when
@@ -3073,6 +3247,31 @@ class DynamicLinearSplit(DynamicLinear):
 
         Returns:
             None. The dynamic measurement matrix is stored in the attribute :attr:`self.A_dyn`.
+
+        Example: 
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.warp import DeformationField
+            >>> from spyrit.core.meas import DynamicLinearSplit      
+            >>>
+            >>> def_field = DeformationField(torch.rand([800, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
+            >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
+            >>> x_motion = def_field(x)  # dummy video obtained by warping x with def_field
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>>
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
+            >>> print(meas_op)
+            DynamicLinearSplit(
+            (noise_model): Poisson()
+            )
+            >>>
+            >>> meas_op.build_dynamic_forward(def_field)
+            >>> print(meas_op.A_dyn.shape)
+            torch.Size([800, 2500])
+            >>> print(meas_op.H_dyn.shape)
+            torch.Size([400, 2500])
 
         References:
             [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October). 
@@ -3115,6 +3314,32 @@ class DynamicLinearSplit(DynamicLinear):
         Returns:
             :class:`torch.tensor`: A batch of signals :math:`x` with shape :math:`(*, N)`
             where :math:`*` is the same as for :attr:`m`.
+
+        Example: 
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.warp import DeformationField
+            >>> from spyrit.core.meas import DynamicLinearSplit      
+            >>>
+            >>> def_field = DeformationField(torch.rand([800, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
+            >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
+            >>> x_motion = def_field(x)  # dummy video obtained by warping x with def_field
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>>
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
+            >>> print(meas_op)
+            DynamicLinearSplit(
+            (noise_model): Poisson()
+            )
+            >>>
+            >>> meas_op.build_dynamic_forward(def_field)
+            >>> y = meas_op(x_motion)  # simulate noisy dynamic measurements
+            >>> A_dyn_adj_x = meas_op.adjoint(y)  # apply adjoint of dynamic measurement matrix
+            >>> print(A_dyn_adj_x.shape)
+            torch.Size([1, 3, 2500])
+
         """
         y = torch.einsum("mn,...m->...n", self.A_dyn, y)
         if unvectorize:
@@ -3149,6 +3374,32 @@ class DynamicLinearSplit(DynamicLinear):
             shape :math:`(*, L)` where :math:`*` is the same as for :attr:`m`. If :attr:`unvectorize` 
             is :obj:`True`, :math:`x` is reshaped such that the dimensions :attr:`self.meas_dims` have
             shape :attr:`self.img_shape`.
+
+        Example: 
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.warp import DeformationField
+            >>> from spyrit.core.meas import DynamicLinearSplit      
+            >>>
+            >>> def_field = DeformationField(torch.rand([800, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
+            >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
+            >>> x_motion = def_field(x)  # dummy video obtained by warping x with def_field
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>>
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
+            >>> print(meas_op)
+            DynamicLinearSplit(
+            (noise_model): Poisson()
+            )
+            >>>
+            >>> meas_op.build_dynamic_forward(def_field)
+            >>> m = meas_op.measure_H(x_motion)  # simulate noiseless dynamic measurements from matrix H
+            >>> H_dyn_adj_x = meas_op.adjoint_H_dyn(m)  # apply adjoint of dynamic measurement matrix (with differential strategy)
+            >>> print(H_dyn_adj_x.shape)
+            torch.Size([1, 3, 2500])
+
         """
         return super().adjoint(m, unvectorize=unvectorize)
 
@@ -3182,6 +3433,26 @@ class DynamicLinearSplit(DynamicLinear):
 
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`2\*self.M`.
+
+        Example: 
+            >>> import torch
+            >>> from spyrit.core.meas import DynamicLinearSplit
+            >>> from spyrit.core.noise import Poisson
+            >>>
+            >>> x = torch.rand([1, 800, 3, 50, 50])  # dummy RGB video with 400 frames of size 50x50
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
+            >>> print(meas_op)
+            DynamicLinearSplit(
+            (noise_model): Poisson()
+            )
+            >>>
+            >>> y = meas_op(x)  # simulate noisy dynamic measurements
+            >>> print(y.shape)
+            torch.Size([1, 3, 800])
+
         """
 
         # it is ok to use super().forward, because measure method has been redefined
@@ -3219,6 +3490,25 @@ class DynamicLinearSplit(DynamicLinear):
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`self.M`.
 
+        Example: 
+            >>> import torch
+            >>> from spyrit.core.meas import DynamicLinearSplit
+            >>> from spyrit.core.noise import Poisson
+            >>>
+            >>> x = torch.rand([1, 800, 3, 50, 50])  # dummy RGB video with 400 frames of size 50x50
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
+            >>> print(meas_op)
+            DynamicLinearSplit(
+            (noise_model): Poisson()
+            )
+            >>>
+            >>> m = meas_op.forward_H(x)  # simulate noisy dynamic measurements
+            >>> print(m.shape)
+            torch.Size([1, 3, 400])
+
         """
         x = self.measure_H(x)
         x = self.noise_model(x)
@@ -3247,6 +3537,31 @@ class DynamicLinearSplit(DynamicLinear):
         Returns:
             torch.tensor: Measurement of the input signal. It has shape :math:`(*, M)` where :math:`*`
             denotes all the dimensions that are not included in :attr:`self.meas_dims`
+
+        Example: 
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.warp import DeformationField
+            >>> from spyrit.core.meas import DynamicLinearSplit    
+            >>>
+            >>> def_field = DeformationField(torch.rand([800, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
+            >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
+            >>> x_motion = def_field(x)  # dummy video obtained by warping x with def_field
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>>
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
+            >>> print(meas_op)
+            DynamicLinearSplit(
+            (noise_model): Poisson()
+            )
+            >>>
+            >>> meas_op.build_dynamic_forward(def_field)
+            >>> y = meas_op.measure_A_dyn(x)  # simulate noiseless dynamic measurements from splitted dynamic matrix A_dyn
+            >>> print(y.shape)
+            torch.Size([1, 3, 800])
+
         """
         x = self.vectorize(x)  # don't need to crop because A_dyn has extended FOV
         x = torch.einsum("mn,...n->...m", self.A_dyn, x)
@@ -3275,6 +3590,31 @@ class DynamicLinearSplit(DynamicLinear):
         Returns:
             torch.tensor: Measurement of the input signal. It has shape :math:`(*, M)` where :math:`*`
             denotes all the dimensions that are not included in :attr:`self.meas_dims`
+
+        Example: 
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.warp import DeformationField
+            >>> from spyrit.core.meas import DynamicLinearSplit    
+            >>>
+            >>> def_field = DeformationField(torch.rand([800, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
+            >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
+            >>> x_motion = def_field(x)  # dummy video obtained by warping x with def_field
+            >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
+            >>>
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
+            >>> print(meas_op)
+            DynamicLinearSplit(
+            (noise_model): Poisson()
+            )
+            >>>
+            >>> meas_op.build_dynamic_forward(def_field)
+            >>> y = meas_op.forward_A_dyn(x)  # simulate noisy dynamic measurements from splitted dynamic matrix A_dyn
+            >>> print(y.shape)
+            torch.Size([1, 3, 800])
+
         """
         x = self.vectorize(x)  # don't need to crop because A_dyn has extended FOV
         x = torch.einsum("mn,...n->...m", self.A_dyn, x)
@@ -3387,16 +3727,28 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
         :attr:`indices` (:class:`torch.tensor`): Indices used to reorder the measurement vector. It is used by the method :meth:`reindex()`.
 
-
     Example:
+        >>> import torch
+        >>> from spyrit.core.meas import DynamicHadamSplit2d
+        >>>
         >>> order = torch.rand([32,32])
-        >>> meas_op = DynamicHadamSplit2d(time_dim=1, h=32, M=32**2, order=order)
+        >>> # acquisition with 2 * 32 ** 2 splitted Hadamard patterns of size 32x32.
+        >>> meas_op = DynamicHadamSplit2d(time_dim=1, h=32, M=32**2, order=order, img_shape=(40, 40))
         >>> print(meas_op)
         DynamicHadamSplit2d(
-            (noise_model): Identity()
-            )
+          (noise_model): Identity()
+        )
 
     Reference:
+        [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October). 
+        Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
+        Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284). 
+        Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
+
+        [MaTip26]_(Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025). 
+            Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
+
+
     """
 
     def __init__(
@@ -3526,10 +3878,30 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         where 
         :math:`A_{1d} \in \mathbb{R}_+^{2h\times h}` contains the positive and negative components of a 1d Hadamard matrix, 
         :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
-        :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
+        :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix 
+        used to generate the 2d Hadamard pattern used at time :math:`t=k`.
 
+        Example:
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.meas import DynamicHadamSplit2d
+            >>>
+            >>> x = torch.rand([1, 2 * 32**2, 3, 40, 40])  # dummy RGB video with 2 * 32**2 frames of size 40x40
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicHadamSplit2d(time_dim=1, h=32, M=32**2, img_shape=(40, 40), 
+            >>>                               noise_model=noise_op)  # acquisition with 2*M splitted Hadamard patterns of size hxh.
+            >>> print(meas_op)
+            DynamicHadamSplit2d(
+                (noise_model): Poisson()
+            )
+            >>>
+            >>> y = meas_op.measure(x)  # simulate noiseless dynamic measurements
+            >>> print(y.shape)
+            torch.Size([1, 3, 2048])
         
         """
+
         if self.fast:
             x = spytorch.center_crop(x, self.meas_shape)
 
@@ -3538,7 +3910,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
             if time_and_meas_dims != time_and_last_dims:
                 x = torch.movedim(x, time_and_meas_dims, time_and_last_dims)
 
-            return self.fast_measure(x)
+            return self._fast_measure(x)
         else:
             return super().measure(x)
 
@@ -3554,9 +3926,27 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         where 
         :math:`H_{1d} \in \mathbb{R}^{h\times h}` is the 1d Hadamard matrix, 
         :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
-        :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
+        :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of 
+        the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
 
-        
+        Example:
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.meas import DynamicHadamSplit2d
+            >>>
+            >>> x = torch.rand([1, 2 * 32**2, 3, 40, 40])  # dummy RGB video with 2 * 32**2 frames of size 40x40
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicHadamSplit2d(time_dim=1, h=32, M=32**2, img_shape=(40, 40), noise_model=noise_op)  # acquisition with 2*M splitted Hadamard patterns of size hxh.
+            >>> print(meas_op)
+            DynamicHadamSplit2d(
+                (noise_model): Poisson()
+            )
+            >>>
+            >>> m = meas_op.measure_H(x)  # simulate noiseless dynamic measurements from matrix H
+            >>> print(m.shape)
+            torch.Size([1, 3, 1024])
+
         """
         if self.fast:
             x = x.movedim(self.time_dim, 0)
@@ -3570,11 +3960,11 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
             if time_and_meas_dims != time_and_last_dims:
                 x = torch.movedim(x, time_and_meas_dims, time_and_last_dims)
 
-            return self.fast_measure_H(x)
+            return self._fast_measure_H(x)
         else:
             return super().measure_H(x)
 
-    def fast_measure(self, x: torch.tensor) -> torch.tensor:
+    def _fast_measure(self, x: torch.tensor) -> torch.tensor:
         r"""Simulates noiseless measurements leveraging the Kronecker structure of the 2d splitted Hadamard transform A.
 
         Each measurement is acquired as, for :math:`k \in \{1, ..., 2M\}`:
@@ -3588,7 +3978,6 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
         :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
 
-        
         """
         pattern_indices = self.indices[:self.M]
         
@@ -3627,7 +4016,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         
         return y
 
-    def fast_measure_H(self, x: torch.tensor) -> torch.tensor:
+    def _fast_measure_H(self, x: torch.tensor) -> torch.tensor:
         r"""Simulates noiseless measurements leveraging the Kronecker structure of the 2d splitted Hadamard transform H.
 
         Each measurement is acquired as, for :math:`k \in \{1, ..., M\}`:
@@ -3673,8 +4062,6 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
         :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
 
-        
-        
         Args:
             :attr:`x` (:class:`torch.tensor`): Video signal :math:`x` whose
             dimensions :attr:`self.meas_dims` must be of shape :attr:`self.meas_shape` 
@@ -3682,6 +4069,24 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`2\*self.M`.
+
+        Example:
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.meas import DynamicHadamSplit2d
+            >>>
+            >>> x = torch.rand([1, 2 * 32**2, 3, 40, 40])  # dummy RGB video with 2 * 32**2 frames of size 40x40
+            >>> alpha = 5  # noise level
+            >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
+            >>> meas_op = DynamicHadamSplit2d(time_dim=1, h=32, M=32**2, img_shape=(40, 40), noise_model=noise_op)  # acquisition with 2*M splitted Hadamard patterns of size hxh.
+            >>> print(meas_op)
+            DynamicHadamSplit2d(
+                (noise_model): Poisson()
+            )
+            >>>
+            >>> y = meas_op(x)  # simulate noisy dynamic measurements
+            >>> print(y.shape)
+            torch.Size([1, 3, 2048])
         """
 
         # it is ok to use super().forward, because measure method has been redefined
@@ -3709,6 +4114,24 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`self.M`.
+
+        Example:
+            >>> import torch
+            >>> from spyrit.core.noise import Poisson
+            >>> from spyrit.core.meas import DynamicHadamSplit2d
+            >>>
+            >>> x = torch.rand([1, 2 * 32**2, 3, 40, 40])  # dummy RGB video with 2 * 32**2 frames of size 40x40
+            >>> noise_op = torch.nn.Identity()  # We can't use Poisson here because measurements from H can be negative
+            >>> meas_op = DynamicHadamSplit2d(time_dim=1, h=32, M=32**2, img_shape=(40, 40), noise_model=noise_op)  # acquisition with 2*M splitted Hadamard patterns of size hxh.
+            >>> print(meas_op)
+            DynamicHadamSplit2d(
+                (noise_model): Identity()
+            )
+            >>>
+            >>> m = meas_op.forward_H(x)  # simulate noisy dynamic measurements from matrix H
+            >>> print(m.shape)
+            torch.Size([1, 3, 1024])
+
         """
 
         # it is ok to use super().forward_H, because measure_H method has been redefined
