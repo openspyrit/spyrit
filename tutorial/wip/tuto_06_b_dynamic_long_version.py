@@ -43,12 +43,10 @@ from spyrit.misc.load_data import download_girder
 
 import spyrit.core.torch as spytorch
 from spyrit.core.noise import Poisson
-from spyrit.core.prep import Unsplit 
+from spyrit.core.prep import Unsplit
 from spyrit.core.warp import AffineDeformationField
 
-
-
-#%% 
+# %%
 # Set parameters
 # -----------------------------------------------------------------------------
 
@@ -61,10 +59,10 @@ from spyrit.core.warp import AffineDeformationField
 #   - M: Total number of measurements per frame
 
 img_size = 88  # Full image side's size in pixels
-n = 64         # Measurement pattern side's size in pixels (Field of View)
-und = 1        # Undersampling factor (1 = full sampling)
+n = 64  # Measurement pattern side's size in pixels (Field of View)
+und = 1  # Undersampling factor (1 = full sampling)
 
-M = n ** 2 // und  # Number of (positive, negative) measurements
+M = n**2 // und  # Number of (positive, negative) measurements
 
 print(f"Image size: {img_size}x{img_size}")
 print(f"Measurement FOV: {n}x{n}")
@@ -72,25 +70,25 @@ print(f"Measurements: {M}")
 
 # Dataset parameters
 i = 0  # Image index (modify to change the image)
-spyritPath = '../data/data_online/'
+spyritPath = "../data/data_online/"
 imgs_path = os.path.join(spyritPath, "spyrit/")
 
 # Computation parameters
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-dtype = torch.float32          # High precision for reconstruction stability
-simu_interp = 'bilinear'       # Interpolation for motion simulation
-mode = 'bilinear'              # Interpolation for building forward operator
+dtype = torch.float32  # High precision for reconstruction stability
+simu_interp = "bilinear"  # Interpolation for motion simulation
+mode = "bilinear"  # Interpolation for building forward operator
 
-time_dim = 1                   # Time dimension index in tensors
+time_dim = 1  # Time dimension index in tensors
 
 # Derived parameters
 meas_shape = (n, n)
 img_shape = (img_size, img_size)
-amp_max = (img_shape[0] - meas_shape[0]) // 2  # Border size for centering FOV 
+amp_max = (img_shape[0] - meas_shape[0]) // 2  # Border size for centering FOV
 
-# %% 
+# %%
 # Load an image
 # -----------------------------------------------------------------------------
 
@@ -98,7 +96,7 @@ amp_max = (img_shape[0] - meas_shape[0]) // 2  # Border size for centering FOV
 # Download an RGB brain surface image from Tomoradio's warehouse if needed.
 
 url_tomoradio = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
-data_root = Path('../data/data_online/2025_dynamic')   # local path to data
+data_root = Path("../data/data_online/2025_dynamic")  # local path to data
 imgs_path = data_root / Path("images/")
 id_files = [
     "69248e3204d23f6e964b16b7",  # brain_surface_colorized.png
@@ -125,7 +123,7 @@ print(f"Shape of input images: {x_healthy.shape}")
 x = (x_healthy - x_healthy.min()) / (x_healthy.max() - x_healthy.min())
 
 i = 0  # image index
-x = x[i:i+1, :, :, :].to(dtype=dtype, device=device)
+x = x[i : i + 1, :, :, :].to(dtype=dtype, device=device)
 n_wav = x.shape[1]
 
 x_plot = x.moveaxis(1, -1).squeeze().cpu().numpy()
@@ -136,7 +134,7 @@ if n_wav == 1:
 plt.show()
 
 
-# %% 
+# %%
 # Define motion model and deformation fields
 # -----------------------------------------------------------------------------
 
@@ -148,15 +146,17 @@ plt.show()
 #   - Forward field: for simulation & reconstruction with image warping
 #   - Inverse field: for reconstruction with pattern warping
 
-a = 0.2          # Scaling amplitude
-T = 1000         # Period of motion cycle
+a = 0.2  # Scaling amplitude
+T = 1000  # Period of motion cycle
 
 print(f"Motion parameters:")
 print(f"  Amplitude: {a:.2f}")
 print(f"  Period: {T} time units")
 
+
 def s(t):
-    return 1 + a * math.sin(t * 2 * math.pi / T) 
+    return 1 + a * math.sin(t * 2 * math.pi / T)
+
 
 def f(t):
     return torch.tensor(
@@ -168,15 +168,17 @@ def f(t):
         dtype=dtype,
     )
 
+
 def f_inv(t):
-        return torch.tensor(
-            [
-                [s(t), 0, 0],
-                [0, 1 / s(t), 0],
-                [0, 0, 1],
-            ],
-            dtype=dtype,
-        )
+    return torch.tensor(
+        [
+            [s(t), 0, 0],
+            [0, 1 / s(t), 0],
+            [0, 0, 1],
+        ],
+        dtype=dtype,
+    )
+
 
 # Create time vector for 2*M frames (positive + negative measurements)
 n_frames = 2 * M
@@ -184,13 +186,17 @@ time_vector = torch.linspace(0, 2 * T, n_frames)
 print(f"Time vector: {n_frames} frames from 0 to {2*T}ms")
 
 # Create instances of affine deformation fields
-def_field = AffineDeformationField(f, time_vector, img_shape, dtype=dtype, device=device)
-def_field_inv = AffineDeformationField(f_inv, time_vector, img_shape, dtype=dtype, device=device)
+def_field = AffineDeformationField(
+    f, time_vector, img_shape, dtype=dtype, device=device
+)
+def_field_inv = AffineDeformationField(
+    f_inv, time_vector, img_shape, dtype=dtype, device=device
+)
 
 print(f"Created deformation fields with shape: {def_field.field.shape}")
 
 
-# %% 
+# %%
 # Apply the deformation field to create a dynamic image sequence
 #
 # This simulates how the scene changes over time during acquisition.
@@ -200,7 +206,7 @@ x_motion = x_motion.moveaxis(time_dim, 1)
 print(f"Dynamic sequence shape: {x_motion.shape}")
 print(f"Generated {x_motion.shape[1]} frames for acquisition simulation")
 
-# %% 
+# %%
 # Display few frames
 # -----------------------------------------------------------------------------
 #
@@ -217,14 +223,23 @@ for frame in range(n_frames):
     if n_frame >= n_frames or frame >= n_rows * n_cols:
         break
     plt.subplot(n_rows, n_cols, frame + 1)
-    plt.imshow(x_motion[0, n_frame, :, amp_max:img_size-amp_max, amp_max:img_size-amp_max].moveaxis(0, -1).view(*meas_shape, n_wav).cpu().numpy(), cmap="gray")  # in X
+    plt.imshow(
+        x_motion[
+            0, n_frame, :, amp_max : img_size - amp_max, amp_max : img_size - amp_max
+        ]
+        .moveaxis(0, -1)
+        .view(*meas_shape, n_wav)
+        .cpu()
+        .numpy(),
+        cmap="gray",
+    )  # in X
     plt.title("frame %d" % (n_frame), fontsize=12)
-    plt.axis('off')
+    plt.axis("off")
 plt.tight_layout()
 plt.show()
 
 
-# %% 
+# %%
 # Create measurement patterns using Hadamard basis
 # -----------------------------------------------------------------------------
 #
@@ -239,7 +254,7 @@ H_split = meas_op_stat.A  # Measurement matrix (positive + negative patterns)
 print(f"Hadamard patterns shape: {H_split.shape}")
 print(f"  {H_split.shape[0]} patterns total ({M} positive + {M} negative)")
 
-# %% 
+# %%
 # Configure noise model
 #
 # Set up noise model for realistic acquisition simulation (see tuto_02_noise.py).
@@ -253,12 +268,13 @@ alpha = 50  # Noise parameter (higher = less noise)
 noise_op = torch.nn.Identity()  # No noise for clear demonstration
 # noise_op = Poisson(alpha=alpha, g=1 / alpha)  # Uncomment for Poisson noise
 
-noise_type = "No noise" if isinstance(noise_op, torch.nn.Identity) else f"Poisson (α={alpha})"
+noise_type = (
+    "No noise" if isinstance(noise_op, torch.nn.Identity) else f"Poisson (α={alpha})"
+)
 print(f"Noise model: {noise_type}")
 
 
-
-# %% 
+# %%
 # Dynamic measurement simulation - Method comparison
 # -----------------------------------------------------------------------------
 #
@@ -266,10 +282,10 @@ print(f"Noise model: {noise_type}")
 #
 # Compare different measurement operators for dynamic scenes:
 #   1. DynamicLinear: General purpose, flexible but slower
-#   2. DynamicLinearSplit: Optimized for split measurements  
+#   2. DynamicLinearSplit: Optimized for split measurements
 #   3. DynamicHadamSplit2d: Specialized for Hadamard patterns
 
-# %% 
+# %%
 # METHOD 1: DynamicLinear (General purpose)
 
 print("\n=== Testing DynamicLinear ===")
@@ -277,9 +293,16 @@ from spyrit.core.meas import DynamicLinear
 
 H_split = meas_op_stat.A  # Measurement matrix (positive + negative patterns)
 
-meas_op = DynamicLinear(H=H_split, time_dim=time_dim, meas_dims=(-2, -1), 
-                        img_shape=img_shape, meas_shape=meas_shape, 
-                        noise_model=noise_op, dtype=dtype, device=device)
+meas_op = DynamicLinear(
+    H=H_split,
+    time_dim=time_dim,
+    meas_dims=(-2, -1),
+    img_shape=img_shape,
+    meas_shape=meas_shape,
+    noise_model=noise_op,
+    dtype=dtype,
+    device=device,
+)
 
 t1 = time.time()
 y1 = meas_op(x_motion)
@@ -289,7 +312,7 @@ print(f"  Computation time: {t2 - t1:.3f}s")
 print(f"  Output shape: {y1.shape}")
 
 
-# %% 
+# %%
 # METHOD 2: DynamicLinearSplit (Optimized for split measurements)
 
 print("\n=== Testing DynamicLinearSplit ===")
@@ -299,9 +322,16 @@ from spyrit.core.meas import DynamicLinearSplit
 H = meas_op_stat.H
 print(f"  Split patterns shape: {H.shape}")
 
-meas_op = DynamicLinearSplit(H=H, time_dim=time_dim, meas_dims=(-2, -1), 
-                            img_shape=img_shape, meas_shape=meas_shape, 
-                            noise_model=noise_op, dtype=dtype, device=device)
+meas_op = DynamicLinearSplit(
+    H=H,
+    time_dim=time_dim,
+    meas_dims=(-2, -1),
+    img_shape=img_shape,
+    meas_shape=meas_shape,
+    noise_model=noise_op,
+    dtype=dtype,
+    device=device,
+)
 
 t1 = time.time()
 y1 = meas_op(x_motion)
@@ -311,16 +341,25 @@ print(f"  Computation time: {t2 - t1:.3f}s")
 print(f"  Output shape: {y1.shape}")
 
 
-# %% 
+# %%
 # METHOD 3: DynamicHadamSplit2d (Specialized for Hadamard, fastest)
 
 print("\n=== Testing DynamicHadamSplit2d ===")
 from spyrit.core.meas import DynamicHadamSplit2d
 
-meas_op = DynamicHadamSplit2d(time_dim=time_dim, h=n, M=M, order=None,
-                                fast=True, reshape_output=False, img_shape=img_shape,
-                                noise_model=noise_op, white_acq=None,
-                                dtype=dtype, device=device)
+meas_op = DynamicHadamSplit2d(
+    time_dim=time_dim,
+    h=n,
+    M=M,
+    order=None,
+    fast=True,
+    reshape_output=False,
+    img_shape=img_shape,
+    noise_model=noise_op,
+    white_acq=None,
+    dtype=dtype,
+    device=device,
+)
 
 t1 = time.time()
 y1 = meas_op(x_motion)
@@ -331,7 +370,7 @@ print(f"  Output shape: {y1.shape}")
 print(f"  This operator will be used for reconstruction.")
 
 
-# %% 
+# %%
 # Process measurements for reconstruction
 # -----------------------------------------------------------------------------
 #
@@ -345,7 +384,7 @@ print(f"  Raw measurements shape: {y1.shape}")
 print(f"  Processed measurements shape: {y2.shape}")
 
 
-# %% 
+# %%
 # Static reconstruction baseline
 # -----------------------------------------------------------------------------
 #
@@ -357,7 +396,7 @@ x_stat = meas_op_stat.fast_pinv(y2)
 print(f"Static reconstruction shape: {x_stat.shape}")
 
 # Quick quality check for static reconstruction
-x_ref_fov = x[0, :, amp_max:n+amp_max, amp_max:n+amp_max]
+x_ref_fov = x[0, :, amp_max : n + amp_max, amp_max : n + amp_max]
 static_psnr = score.psnr(torch2numpy(x_stat), torch2numpy(x_ref_fov))
 print(f"Static reconstruction PSNR: {static_psnr:.2f} dB")
 
@@ -367,7 +406,7 @@ plt.title("Static Reconstruction \n (strong artifacts due to motion)")
 plt.axis("off")
 plt.show()
 
-# %% 
+# %%
 # Build dynamic system matrix
 # -----------------------------------------------------------------------------
 #
@@ -383,43 +422,51 @@ plt.show()
 print(f"\n=== Dynamic System Matrix Construction ===")
 
 # Reconstruction configuration
-in_X = False       # Reconstruct in extended FOV (False) or SPC FOV only (True)  
-warping = 'image'    # Use pattern or image warping approach
+in_X = False  # Reconstruct in extended FOV (False) or SPC FOV only (True)
+warping = "image"  # Use pattern or image warping approach
 
 print(f"Configuration:")
-print(f"  Reconstruction space: {r'SPC FOV $X$' if in_X else r'Extended FOV $X_{ext}$'}")
-print(f"  Warping mode: {'Pattern warping' if warping == 'pattern' else 'Image warping'}")
+print(
+    f"  Reconstruction space: {r'SPC FOV $X$' if in_X else r'Extended FOV $X_{ext}$'}"
+)
+print(
+    f"  Warping mode: {'Pattern warping' if warping == 'pattern' else 'Image warping'}"
+)
 # Build the dynamic system matrix
-if warping == 'pattern':
+if warping == "pattern":
     print("Building H_dyn using pattern warping (inverse deformation)...")
-    meas_op.build_dynamic_forward(def_field_inv, warping=warping, mode=mode, verbose=False)
+    meas_op.build_dynamic_forward(
+        def_field_inv, warping=warping, mode=mode, verbose=False
+    )
 else:
     print("Building H_dyn using image warping (forward deformation)...")
     meas_op.build_dynamic_forward(def_field, warping=warping, mode=mode, verbose=False)
 
 H_dyn = meas_op.H_dyn
-print(f"Dynamic system matrix (differential strategy AFTER motion compensation) shape: {H_dyn.shape}")
+print(
+    f"Dynamic system matrix (differential strategy AFTER motion compensation) shape: {H_dyn.shape}"
+)
 
 # Adapt system matrix based on reconstruction space
 if in_X:
     print("Extracting SPC FOV region from full system matrix by dropping columns...")
     reco_shape = meas_shape
     H_dyn = H_dyn.reshape((H_dyn.shape[0], img_size, img_size))
-    H_dyn = H_dyn[:, amp_max:n+amp_max, amp_max:n+amp_max]
-    H_dyn = H_dyn.reshape((H_dyn.shape[0], n ** 2))
+    H_dyn = H_dyn[:, amp_max : n + amp_max, amp_max : n + amp_max]
+    H_dyn = H_dyn.reshape((H_dyn.shape[0], n**2))
 else:
     reco_shape = img_shape
 
 print(f"Final system matrix shape: {H_dyn.shape}")
 print(f"Reconstruction will be in {reco_shape} space")
 
-    
-# %% 
+
+# %%
 # Verify forward model accuracy
 # -----------------------------------------------------------------------------
 #
 # Test the dynamic forward model by computing the residual of the forward model.
-# Without measurement noise and using dtype=float64, the residual should be very small (\approx 1e-12). 
+# Without measurement noise and using dtype=float64, the residual should be very small (\approx 1e-12).
 
 A_dyn_x = meas_op.forward_A_dyn(x)
 residual_norm = torch.norm(y1 - A_dyn_x).item()
@@ -433,9 +480,9 @@ print(f"  Relative error: {relative_error:.2e}")
 # Visualize residual pattern (averaged over spectral channels)
 plt.figure(figsize=(10, 7))
 residual_2d = abs(y1 - A_dyn_x).mean(dim=1).squeeze().cpu().numpy().reshape((2 * n, n))
-plt.imshow(residual_2d, cmap='Spectral')
+plt.imshow(residual_2d, cmap="Spectral")
 plt.colorbar(fraction=0.046, pad=0.04)
-plt.title(f'Forward Model Residual |y - H_dyn·x| \n Max: {residual_2d.max():.2e}')
+plt.title(f"Forward Model Residual |y - H_dyn·x| \n Max: {residual_2d.max():.2e}")
 plt.show()
 
 
@@ -444,13 +491,13 @@ plt.show()
 # -----------------------------------------------------------------------------
 #
 # Visualize the contribution each measurements to the pixel reconstruction in percentage.
-# All measurements were used to recover the white pixel, whereas only a few measurements 
+# All measurements were used to recover the white pixel, whereas only a few measurements
 # contributed to the reddish pixels reconstruction.
 
 contrib = contrib_map(H_dyn.cpu().numpy(), n)
 
 
-# %% 
+# %%
 # Display few dynamic patterns
 # -----------------------------------------------------------------------------
 #
@@ -474,12 +521,12 @@ for frame in range(n_frames):
     else:
         plt.imshow(H_dyn_diff_np[n_frame].reshape(img_shape), cmap="gray")  # in X_{ext}
     plt.title("frame %d" % (2 * n_frame), fontsize=12)
-    plt.axis('off')
+    plt.axis("off")
 plt.tight_layout()
 plt.show()
 
 
-# %% 
+# %%
 # Prepare for reconstruction
 # -----------------------------------------------------------------------------
 #
@@ -491,8 +538,8 @@ print("Moving to CPU for optimized linear algebra...")
 H_dyn = H_dyn.cpu()
 y2 = y2.cpu()
 
-# %% 
-# Analyze system conditioning  
+# %%
+# Analyze system conditioning
 # -----------------------------------------------------------------------------
 #
 # Compute singular values to understand the inverse problem difficulty.
@@ -510,7 +557,7 @@ print(f"  Minimum: {sigma_min:.2e}")
 print(f"  Condition number: {condition_number:.2e}")
 
 
-# %% 
+# %%
 # Configure regularization
 # -----------------------------------------------------------------------------
 #
@@ -518,8 +565,8 @@ print(f"  Condition number: {condition_number:.2e}")
 # Options:
 #   - 'L2': Identity matrix (Tikhonov regularization)
 #   - 'H1': First-order finite differences (smoothing prior)
-    
-type_reg = 'H1'  # Regularization type
+
+type_reg = "H1"  # Regularization type
 
 print(f"\nSetting up {type_reg} regularization...")
 
@@ -528,7 +575,7 @@ if type_reg == "H1":
     Dx, Dy = spytorch.neumann_boundary(reco_shape)
     D2 = Dx.T @ Dx + Dy.T @ Dy
     print("  Using edge-preserving H1 regularization")
-elif type_reg == 'L2':
+elif type_reg == "L2":
     # Simple L2 regularization
     D2 = torch.eye(reco_shape[0] * reco_shape[1])
     print("  Using Tikhonov L2 regularization")
@@ -536,7 +583,7 @@ elif type_reg == 'L2':
 D2 = D2.to(dtype=dtype)
 print(f"  Regularization matrix shape: {D2.shape}")
 
-# %% 
+# %%
 # Solve regularized reconstruction problem
 # -----------------------------------------------------------------------------
 #
@@ -552,13 +599,15 @@ print(f"\n=== Dynamic Reconstruction ===")
 print(r"Regularization parameter \eta: {eta:.1e}")
 
 start_time = time.time()
-x_dyn = torch.linalg.solve(H_dyn.T @ H_dyn + eta * sigma_max ** 2 * D2,  H_dyn.T @ y2.moveaxis(1, -1))
+x_dyn = torch.linalg.solve(
+    H_dyn.T @ H_dyn + eta * sigma_max**2 * D2, H_dyn.T @ y2.moveaxis(1, -1)
+)
 solve_time = time.time() - start_time
 
 print(f"Reconstruction completed in {solve_time:.2f}s")
 print(f"Solution shape: {x_dyn.shape}")
 
-# %% 
+# %%
 # Visualize reconstruction results
 # -----------------------------------------------------------------------------
 #
@@ -573,39 +622,46 @@ fig, ax = plt.subplots(1, 3, figsize=(16, 5))
 # Original reference image
 ref_img = x.view(n_wav, *reco_shape).moveaxis(0, -1).cpu().numpy()
 if reco_shape != img_shape:
-    ref_img = x[0, :, amp_max:n+amp_max, amp_max:n+amp_max].moveaxis(0, -1).cpu().numpy()
+    ref_img = (
+        x[0, :, amp_max : n + amp_max, amp_max : n + amp_max]
+        .moveaxis(0, -1)
+        .cpu()
+        .numpy()
+    )
 
-im0 = ax[0].imshow(ref_img, cmap='gray')
-ax[0].set_title('Reference Image', fontsize=14)
-ax[0].axis('off')
+im0 = ax[0].imshow(ref_img, cmap="gray")
+ax[0].set_title("Reference Image", fontsize=14)
+ax[0].axis("off")
 if n_wav == 1:
     fig.colorbar(im0, ax=ax[0], fraction=0.046, pad=0.04)
 
-# Static reconstruction 
+# Static reconstruction
 if in_X:
     static_img = x_stat.view(n_wav, *reco_shape).moveaxis(0, -1).cpu().numpy()
 else:
     # Embed static reconstruction in full image size
     static_img = torch.zeros((*img_shape, n_wav), dtype=dtype, device=device)
-    static_img[amp_max:n+amp_max, amp_max:n+amp_max] = x_stat.view(n_wav, *meas_shape).moveaxis(0, -1)
+    static_img[amp_max : n + amp_max, amp_max : n + amp_max] = x_stat.view(
+        n_wav, *meas_shape
+    ).moveaxis(0, -1)
 
-im1 = ax[1].imshow(static_img.cpu().numpy(), cmap='gray')
-ax[1].set_title('Static Reconstruction \n (Ignores Motion)', fontsize=14)
-ax[1].axis('off')
+im1 = ax[1].imshow(static_img.cpu().numpy(), cmap="gray")
+ax[1].set_title("Static Reconstruction \n (Ignores Motion)", fontsize=14)
+ax[1].axis("off")
 if n_wav == 1:
     fig.colorbar(im1, ax=ax[1], fraction=0.046, pad=0.04)
 
 # Dynamic reconstruction
-im2 = ax[2].imshow(x_dyn_plot.cpu().numpy(), cmap='gray')
-ax[2].set_title('Dynamic Reconstruction \n (Motion Compensated)', fontsize=14)
-ax[2].axis('off')
+im2 = ax[2].imshow(x_dyn_plot.cpu().numpy(), cmap="gray")
+ax[2].set_title("Dynamic Reconstruction \n (Motion Compensated)", fontsize=14)
+ax[2].axis("off")
 if n_wav == 1:
     fig.colorbar(im2, ax=ax[2], fraction=0.046, pad=0.04)
 
 plt.tight_layout()
 plt.show()
 
-#%% Quantitative evaluation
+# %% Quantitative evaluation
 # -----------------------------------------------------------------------------
 #
 # Compute image quality metrics to quantify reconstruction improvement.
@@ -615,13 +671,19 @@ plt.show()
 if in_X:
     x_dyn_in_X = x_dyn_plot
 else:
-    x_dyn_in_X = x_dyn_plot[amp_max:n+amp_max, amp_max:n+amp_max]
-    
-x_ref_in_X = x[0, :, amp_max:n+amp_max, amp_max:n+amp_max].moveaxis(0, -1)
+    x_dyn_in_X = x_dyn_plot[amp_max : n + amp_max, amp_max : n + amp_max]
+
+x_ref_in_X = x[0, :, amp_max : n + amp_max, amp_max : n + amp_max].moveaxis(0, -1)
 
 # Calculate metrics for both reconstructions
-psnr_static = score.psnr(torch2numpy(x_stat.view(n_wav, *meas_shape).moveaxis(0, -1)), torch2numpy(x_ref_in_X))
-ssim_static = score.ssim(torch2numpy(x_stat.view(n_wav, *meas_shape).moveaxis(0, -1)), torch2numpy(x_ref_in_X))
+psnr_static = score.psnr(
+    torch2numpy(x_stat.view(n_wav, *meas_shape).moveaxis(0, -1)),
+    torch2numpy(x_ref_in_X),
+)
+ssim_static = score.ssim(
+    torch2numpy(x_stat.view(n_wav, *meas_shape).moveaxis(0, -1)),
+    torch2numpy(x_ref_in_X),
+)
 
 psnr_dynamic = score.psnr(torch2numpy(x_dyn_in_X), torch2numpy(x_ref_in_X))
 ssim_dynamic = score.ssim(torch2numpy(x_dyn_in_X), torch2numpy(x_ref_in_X))
@@ -634,10 +696,12 @@ print(f"{'Dynamic':<25} {psnr_dynamic:<12.2f} {ssim_dynamic:.3f}")
 
 improvement = psnr_dynamic - psnr_static
 
-print(f"Dynamic reconstruction achieved a PSNR improvement of {improvement:.2f} dB over static reconstruction.")
+print(
+    f"Dynamic reconstruction achieved a PSNR improvement of {improvement:.2f} dB over static reconstruction."
+)
 
 
-# %% 
+# %%
 # Generate dynamic reconstruction sequence
 # -----------------------------------------------------------------------------
 #
@@ -647,12 +711,14 @@ print(f"Dynamic reconstruction achieved a PSNR improvement of {improvement:.2f} 
 print(f"\n=== Generating Dynamic Sequence ===")
 print("Warping reconstructed reference through deformation field...")
 
-x_dyn_video = def_field(x_dyn.view(1, *reco_shape, n_wav).moveaxis(-1, 1), 0, 2 * M, mode=simu_interp)
-x_dyn_video = x_dyn_video.moveaxis(time_dim, 1) 
+x_dyn_video = def_field(
+    x_dyn.view(1, *reco_shape, n_wav).moveaxis(-1, 1), 0, 2 * M, mode=simu_interp
+)
+x_dyn_video = x_dyn_video.moveaxis(time_dim, 1)
 
 print(f"Generated dynamic sequence shape: {x_dyn_video.shape}")
 
-# %% 
+# %%
 # Visualize dynamic reconstruction sequence
 # -----------------------------------------------------------------------------
 #
@@ -669,14 +735,23 @@ for frame in range(n_frames):
     if n_frame >= n_frames or frame >= n_rows * n_cols:
         break
     plt.subplot(n_rows, n_cols, frame + 1)
-    plt.imshow(x_dyn_video[0, n_frame, :, amp_max:img_size-amp_max, amp_max:img_size-amp_max].moveaxis(0, -1).view(*meas_shape, n_wav).cpu().numpy(), cmap="gray")  # in X
+    plt.imshow(
+        x_dyn_video[
+            0, n_frame, :, amp_max : img_size - amp_max, amp_max : img_size - amp_max
+        ]
+        .moveaxis(0, -1)
+        .view(*meas_shape, n_wav)
+        .cpu()
+        .numpy(),
+        cmap="gray",
+    )  # in X
     plt.title("frame %d" % (n_frame), fontsize=12)
-    plt.axis('off')
+    plt.axis("off")
 plt.tight_layout()
 plt.show()
 
 
-# %% 
+# %%
 # ===== Tutorial Complete =====
 # -----------------------------------------------------------------------------
 #

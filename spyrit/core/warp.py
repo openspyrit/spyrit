@@ -2,7 +2,7 @@
 This module contains classes that are used to warp images according to
 a deformation field. Let :math:`t_0 \in \mathbb{R_+}`,
 :math:`f(t_0, x, y): \mathbb{R}^2 \mapsto \mathbb{R}^2` be a reference scene
-and :math:`u(t, x, y): \mathbb{R}^3 \mapsto \mathbb{R}^2` be a deformation field. 
+and :math:`u(t, x, y): \mathbb{R}^3 \mapsto \mathbb{R}^2` be a deformation field.
 These classes compute the moving scene:
 
 .. math::
@@ -26,8 +26,8 @@ from torchvision.transforms import v2
 # =============================================================================
 class DeformationField(nn.Module):
     # =========================================================================
-    r""" Stores a discrete deformation field :math:`u` of shape :math:`(n\_frames,h,w,2)`.
-    
+    r"""Stores a discrete deformation field :math:`u` of shape :math:`(n\_frames,h,w,2)`.
+
     The deformations has :math:`n\_frames` is the number of frames, and its height and width
     are denoted by :math:`h` and :math:`w`. The last dimension contains the x
     and y coordinates of the deformation field w.r.t the reference time :math:`t_0`.
@@ -95,8 +95,8 @@ class DeformationField(nn.Module):
             self._field = nn.Parameter(field.detach().clone(), requires_grad=False)
             # Move device tracker to same device as field
             self._device_tracker = nn.Parameter(
-                torch.tensor([0.0], device=field.device, dtype=field.dtype), 
-                requires_grad=False
+                torch.tensor([0.0], device=field.device, dtype=field.dtype),
+                requires_grad=False,
             )
 
         self.warn_range = False  # warn the user if the field goes beyond +/-2
@@ -129,11 +129,13 @@ class DeformationField(nn.Module):
     @property
     def device(self) -> torch.device:
         return self._device_tracker.device
-    
+
     @property
     def dtype(self) -> torch.dtype:
         """Get the dtype of the deformation field."""
-        return self._field.dtype if hasattr(self, '_field') else self._device_tracker.dtype
+        return (
+            self._field.dtype if hasattr(self, "_field") else self._device_tracker.dtype
+        )
 
     def forward(
         self,
@@ -143,10 +145,10 @@ class DeformationField(nn.Module):
         mode: str = "bilinear",
     ) -> torch.tensor:
         r"""
-        Generates a video from a batch of 2D images according to the 
+        Generates a video from a batch of 2D images according to the
         *deformation field* :math:`u`.
 
-        The deformation is taken between the frames :math:`n0` (included) 
+        The deformation is taken between the frames :math:`n0` (included)
         and :math:`n1` (excluded).
 
         Args:
@@ -183,11 +185,11 @@ class DeformationField(nn.Module):
 
         .. note::
             If the number of pixels is different in the image and the field,
-            the field is interpolated to match the image size (see the 
+            the field is interpolated to match the image size (see the
             behavior of :func:`torch.nn.functional.grid_sample`).
 
         .. note::
-            If the input image three dimensional, a batch dimension is added in the first dimension. 
+            If the input image three dimensional, a batch dimension is added in the first dimension.
 
         Returns:
             :attr:`output` (torch.tensor):
@@ -196,7 +198,7 @@ class DeformationField(nn.Module):
             image in the batch is deformed according to the *deformation
             field* :math:`u`.
 
-        Example: 
+        Example:
             Rotating a 2x2 grayscale image by 90 degrees counter-clockwise, using one frame:
 
             >>> u = torch.tensor([[[[ 1., -1.], [ 1., 1.]], [[-1., -1.], [-1., 1.]]]])
@@ -237,9 +239,7 @@ class DeformationField(nn.Module):
         img_frames = img.reshape(1, b * c, h, w).expand(n_frames, -1, -1, -1)
 
         # Ensure dtype compatibility for grid_sample
-        warped_frames = self._grid_sample(
-            img_frames, sel_grid_frames, mode
-        )
+        warped_frames = self._grid_sample(img_frames, sel_grid_frames, mode)
         # has shape (n_frames, b*c, h, w), make it (b, n_frames, c, h, w)
         warped_frames = warped_frames.reshape(n_frames, b, c, h, w).moveaxis(0, 1)
         if no_batch:
@@ -247,8 +247,8 @@ class DeformationField(nn.Module):
         return warped_frames
 
     def _grid_sample(self, img_frames, grid_frames, mode):
-        """Warp frames of 2D images with a deformation field. 
-        Each image of the collection will get a different deformation. 
+        """Warp frames of 2D images with a deformation field.
+        Each image of the collection will get a different deformation.
         This function matches the behavior of nn.functional.grid_sample.
 
         Inputs:
@@ -305,17 +305,19 @@ class DeformationField(nn.Module):
                         clip=False,
                     )
 
-            return torch.from_numpy(out).to(device=img_frames.device, dtype=img_frames.dtype)
+            return torch.from_numpy(out).to(
+                device=img_frames.device, dtype=img_frames.dtype
+            )
 
         else:
             # Ensure both tensors are on the same device and compatible dtypes
             if img_frames.device != grid_frames.device:
                 grid_frames = grid_frames.to(device=img_frames.device)
-            
+
             # For grid_sample, we need to ensure the grid is float32 or float64
             if grid_frames.dtype not in [torch.float32, torch.float64]:
                 grid_frames = grid_frames.float()
-            
+
             out = nn.functional.grid_sample(
                 img_frames,
                 grid_frames,
@@ -367,11 +369,11 @@ class DeformationField(nn.Module):
 class AffineDeformationField(DeformationField):
     # =========================================================================
     r"""Stores and applies affine deformation fields defined by transformation matrices.
-    
-    This class generates video sequences by warping images according to time-varying affine 
-    transformations. It constructs a discrete *deformation field* :math:`u` from 
+
+    This class generates video sequences by warping images according to time-varying affine
+    transformations. It constructs a discrete *deformation field* :math:`u` from
     a user-defined function that returns 3x3 affine transformation matrices at different time points.
-    
+
     The forward call generates a video warping the input image according to the deformation field :math:`u = v^{-1}`.
 
     .. math::
@@ -396,8 +398,8 @@ class AffineDeformationField(DeformationField):
         and more ressource demanding.
 
     Args:
-        :attr:`func` (Callable[[float], torch.tensor]): Function of one parameter (time) that returns a tensor 
-        of shape :math:`(3,3)` representing an affine homogeneous transformation matrix. This matrix corresponds 
+        :attr:`func` (Callable[[float], torch.tensor]): Function of one parameter (time) that returns a tensor
+        of shape :math:`(3,3)` representing an affine homogeneous transformation matrix. This matrix corresponds
         to the *deformation field* :math:`u`.
 
         :attr:`time_vector` (torch.tensor): Vector of time points at which the transformation function is evaluated
@@ -406,8 +408,8 @@ class AffineDeformationField(DeformationField):
         :attr:`img_shape` (tuple): Shape of the image to be warped, i.e. :math:`(h,w)`, where :math:`h` and :math:`w`
         are the height and width of the image respectively.
 
-        :attr:`dtype` (torch.dtype, optional): Data type of the deformation field tensor. 
-        For accuracy reasons, it is recommended to use `torch.float64`. 
+        :attr:`dtype` (torch.dtype, optional): Data type of the deformation field tensor.
+        For accuracy reasons, it is recommended to use `torch.float64`.
         Defaults to `torch.float32`.
 
         :attr:`device` (torch.device, optional): Device on which the deformation field tensor is stored.
@@ -419,20 +421,20 @@ class AffineDeformationField(DeformationField):
 
         :attr:`self.field` (torch.tensor):*Deformation field* :math:`u` of shape :math:`(n\_frames,h,w,2)`.
 
-        :attr:`self.time_vector` (torch.tensor): Vector of time points at which the function is evaluated to generate 
+        :attr:`self.time_vector` (torch.tensor): Vector of time points at which the function is evaluated to generate
         the deformation field.
 
         :attr:`self.n_frames` (int): Number of frames in the video.
 
-        :attr:`self.img_shape` (tuple): Shape of the image to be warped, i.e. :math:`(h,w)`, where :math:`h` and :math:`w` 
+        :attr:`self.img_shape` (tuple): Shape of the image to be warped, i.e. :math:`(h,w)`, where :math:`h` and :math:`w`
         are the height and width of the image respectively.
 
         :attr:`self.img_h` (int): Height of the image to be warped in pixels.
 
         :attr:`self.img_w` (int): Width of the image to be warped in pixels.
 
-        :attr:`self.align_corners` (bool): Always True. This argument is passed to the functions 
-        :func:`torch.nn.functional.grid_sample` and :func:`torch.nn.functional.affine_grid` 
+        :attr:`self.align_corners` (bool): Always True. This argument is passed to the functions
+        :func:`torch.nn.functional.grid_sample` and :func:`torch.nn.functional.affine_grid`
         to ensure the corners of the image are aligned with the corners of the grid.
 
     Example 1: Progressive scaling
@@ -453,7 +455,7 @@ class AffineDeformationField(DeformationField):
         >>> def_field = AffineDeformationField(rotation, time_vector, (128, 128))
         >>> print(def_field.field.shape)
         torch.Size([30, 128, 128, 2])
-        
+
     """
 
     def __init__(
@@ -462,17 +464,18 @@ class AffineDeformationField(DeformationField):
         time_vector: torch.tensor,
         img_shape: tuple,
         dtype: torch.dtype = torch.float32,
-        device: torch.device = torch.device('cpu'),
+        device: torch.device = torch.device("cpu"),
     ) -> None:
 
-        self._align_corners = True  
+        self._align_corners = True
         self.func = func
         self.time_vector = time_vector
 
-        field = self._generate_grid_frames(img_shape, time_vector, func, dtype=dtype, device=device)
+        field = self._generate_grid_frames(
+            img_shape, time_vector, func, dtype=dtype, device=device
+        )
 
         super().__init__(field)
-
 
     def _generate_grid_frames(
         self,
@@ -480,11 +483,11 @@ class AffineDeformationField(DeformationField):
         time_vector: torch.tensor,
         func,
         dtype: torch.dtype = torch.float32,
-        device: torch.device = torch.device('cpu')
+        device: torch.device = torch.device("cpu"),
     ) -> torch.tensor:
-        r"""Generates the deformation field 
+        r"""Generates the deformation field
 
-        This function is called by the constructor to generate the deformation field as 
+        This function is called by the constructor to generate the deformation field as
         a tensor of shape:math:`(n\_frames, h, w, 2)` from  the affine transformation
         matrix at the desired time points. It is not meant to be called directly.
 
@@ -507,21 +510,16 @@ class AffineDeformationField(DeformationField):
         """
         # get a batch of matrices of shape (n_frames, 2, 3)
         mat_frames = torch.stack(
-            [
-                func(t.item())[:2, :]  # need only the first 2 rows
-                for t in time_vector
-            ]
+            [func(t.item())[:2, :] for t in time_vector]  # need only the first 2 rows
         )
-        
+
         # Ensure matrices are on the correct device and dtype
         mat_frames = mat_frames.to(dtype=dtype, device=device)
 
         # use them to generate the grid
         grid_frames = nn.functional.affine_grid(
             mat_frames,
-            torch.Size(
-                (len(time_vector), 1, *grid_shape)
-            ),  # n_channels has no effect
+            torch.Size((len(time_vector), 1, *grid_shape)),  # n_channels has no effect
             align_corners=self._align_corners,
         )
         return grid_frames
@@ -535,7 +533,7 @@ class AffineDeformationField(DeformationField):
     ) -> torch.tensor:
         r"""Generates a video from a batch of 2D images according to the *deformation field* :math:`u`.
 
-        The deformation is taken between the frames :math:`n0` (included) 
+        The deformation is taken between the frames :math:`n0` (included)
         and :math:`n1` (excluded).
 
         Args:
@@ -577,7 +575,7 @@ class AffineDeformationField(DeformationField):
 
         .. note::
             If the number of pixels is different in the image and the field,
-            the field is interpolated to match the image size (see the 
+            the field is interpolated to match the image size (see the
             behavior of :func:`torch.nn.functional.grid_sample`).
 
         Returns:
@@ -647,7 +645,7 @@ class ElasticDeformation(DeformationField):
         the constructor of :class:`torchvision.transforms.v2.ElasticTransform`.
 
         sigma (float): Smoothness of displacements in the spatial domain. This
-        argument is passed to the constructor of 
+        argument is passed to the constructor of
         :class:`torchvision.transforms.v2.ElasticTransform`.
 
         img_shape (tuple): Shape of the deformation field, i.e. :math:`(h,w)`,
@@ -690,19 +688,21 @@ class ElasticDeformation(DeformationField):
     """
 
     def __init__(
-        self, 
-        alpha, 
-        sigma, 
-        img_shape, 
-        n_frames, 
-        n_interpolation, 
+        self,
+        alpha,
+        sigma,
+        img_shape,
+        n_frames,
+        n_interpolation,
         dtype=torch.float32,
-        device=torch.device('cpu')
-    ): 
+        device=torch.device("cpu"),
+    ):
 
-        field = self._generate_grid_frames(img_shape, n_frames, n_interpolation, alpha, sigma, dtype, device)
+        field = self._generate_grid_frames(
+            img_shape, n_frames, n_interpolation, alpha, sigma, dtype, device
+        )
         field = field.to(dtype=dtype, device=device)
-        
+
         super().__init__(field)
 
         # Set additional attributes (after init)
@@ -716,14 +716,15 @@ class ElasticDeformation(DeformationField):
 
         sigma_t = 3 * self.n_interpolation / 4
         var_dz = 1 / 3
-        var_gdz = var_dz / (4 * math.pi * self.sigma ** 2)
-        std = self.alpha * (var_gdz / (2 * math.pi ** 0.5 * sigma_t)) ** 0.5
+        var_gdz = var_dz / (4 * math.pi * self.sigma**2)
+        std = self.alpha * (var_gdz / (2 * math.pi**0.5 * sigma_t)) ** 0.5
 
         return std
 
-
-    def _generate_grid_frames(self, img_shape, n_frames, n_interpolation, alpha, sigma, dtype, device):
-        r"""Generates the frames of the elastic deformation field of shape :math:`(n_frames, h, w, 2)`. """
+    def _generate_grid_frames(
+        self, img_shape, n_frames, n_interpolation, alpha, sigma, dtype, device
+    ):
+        r"""Generates the frames of the elastic deformation field of shape :math:`(n_frames, h, w, 2)`."""
 
         # create base frame between -1 and 1
         base_frame_i = torch.linspace(-1, 1, img_shape[0], dtype=dtype, device=device)
@@ -747,7 +748,9 @@ class ElasticDeformation(DeformationField):
             # Note: ElasticTransform needs to be created with the correct parameters
             elastic_transform = v2.ElasticTransform(alpha, sigma)
             # displacement = elastic_transform._get_params(dummy_input)["displacement"][0, :, :, :]  # old
-            displacement = elastic_transform.make_params([dummy_input])["displacement"][0, :, :, :]
+            displacement = elastic_transform.make_params([dummy_input])["displacement"][
+                0, :, :, :
+            ]
             grid[i * n_interpolation] += displacement.to(device=device, dtype=dtype)
 
         # Define Gaussian convolution operator
@@ -757,7 +760,7 @@ class ElasticDeformation(DeformationField):
         )  # , std=self.sigma_time)
         gaussian_window /= gaussian_window.sum()
         Conv.weight = nn.Parameter(gaussian_window.view(1, 1, -1), requires_grad=False)
-        
+
         # Move Conv to correct device
         Conv = Conv.to(device=device)
 

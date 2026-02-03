@@ -83,10 +83,10 @@ from spyrit.core.warp import AffineDeformationField
 #   - M: Total number of measurements per frame
 
 img_size = 88  # Full image side's size in pixels
-n = 64         # Measurement pattern side's size in pixels (Field of View)
-und = 1        # Undersampling factor (1 = full sampling)
+n = 64  # Measurement pattern side's size in pixels (Field of View)
+und = 1  # Undersampling factor (1 = full sampling)
 
-M = n ** 2 // und  # Number of (positive, negative) measurements
+M = n**2 // und  # Number of (positive, negative) measurements
 
 print(f"Image size: {img_size}x{img_size}")
 print(f"Measurement FOV: {n}x{n}")
@@ -94,7 +94,7 @@ print(f"Measurements: {M}")
 
 # Dataset parameters
 i = 0  # Image index (modify to change the image)
-spyritPath = '../data/data_online/'
+spyritPath = "../data/data_online/"
 imgs_path = os.path.join(spyritPath, "spyrit/")
 
 # Computation parameters
@@ -105,19 +105,19 @@ dtype = torch.float32          # Low precision for tutorial stability, feel free
 simu_interp = 'bilinear'       # Interpolation for motion simulation
 reco_interp = 'bilinear'       # Interpolation for building forward operator
 
-time_dim = 1                   # Time dimension index in tensors
+time_dim = 1  # Time dimension index in tensors
 
 # Derived parameters
 meas_shape = (n, n)
 img_shape = (img_size, img_size)
-amp_max = (img_shape[0] - meas_shape[0]) // 2  # Border size for centering FOV 
+amp_max = (img_shape[0] - meas_shape[0]) // 2  # Border size for centering FOV
 
 # %% 
 # Load an image from Tomoradio's warehouse.
 
 # Download an RGB brain surface image.
 url_tomoradio = "https://tomoradio-warehouse.creatis.insa-lyon.fr/api/v1"
-data_root = Path('../data/data_online/2025_dynamic')   # local path to data
+data_root = Path("../data/data_online/2025_dynamic")  # local path to data
 imgs_path = data_root / Path("images/")
 id_files = [
     "69248e3204d23f6e964b16b7",  # brain_surface_colorized.png
@@ -158,7 +158,7 @@ plt.axis("off")
 plt.show()
 
 
-# %% 
+# %%
 # Define motion model and deformation fields
 # #############################################################################
 #
@@ -168,15 +168,17 @@ plt.show()
 #   - Forward field: for motion simulation & reconstruction with image warping
 #   - Inverse field: for reconstruction with pattern warping
 
-a = 0.2          # Scaling amplitude
-T = 1000         # Period of motion cycle
+a = 0.2  # Scaling amplitude
+T = 1000  # Period of motion cycle
 
 print(f"Motion parameters:")
 print(f"  Amplitude: {a:.2f}")
 print(f"  Period: {T} ms")
 
+
 def s(t):
-    return 1 + a * math.sin(t * 2 * math.pi / T) 
+    return 1 + a * math.sin(t * 2 * math.pi / T)
+
 
 def f(t):
     return torch.tensor(
@@ -188,15 +190,17 @@ def f(t):
         dtype=dtype,
     )
 
+
 def f_inv(t):
-        return torch.tensor(
-            [
-                [s(t), 0, 0],
-                [0, 1 / s(t), 0],
-                [0, 0, 1],
-            ],
-            dtype=dtype,
-        )
+    return torch.tensor(
+        [
+            [s(t), 0, 0],
+            [0, 1 / s(t), 0],
+            [0, 0, 1],
+        ],
+        dtype=dtype,
+    )
+
 
 # Create time vector for 2*M frames (positive + negative measurements)
 n_frames = 2 * M
@@ -204,8 +208,12 @@ time_vector = torch.linspace(0, 2 * T, n_frames)
 print(f"Time vector: {n_frames} frames from 0 to {2*T}ms")
 
 # Create instances of affine deformation fields
-def_field = AffineDeformationField(f, time_vector, img_shape, dtype=dtype, device=device)
-def_field_inv = AffineDeformationField(f_inv, time_vector, img_shape, dtype=dtype, device=device)
+def_field = AffineDeformationField(
+    f, time_vector, img_shape, dtype=dtype, device=device
+)
+def_field_inv = AffineDeformationField(
+    f_inv, time_vector, img_shape, dtype=dtype, device=device
+)
 
 print(f"Created deformation fields with shape: {def_field.field.shape}")
 
@@ -231,14 +239,23 @@ for frame in range(n_frames):
     if n_frame >= n_frames or frame >= n_rows * n_cols:
         break
     plt.subplot(n_rows, n_cols, frame + 1)
-    plt.imshow(x_motion[0, n_frame, :, amp_max:img_size-amp_max, amp_max:img_size-amp_max].moveaxis(0, -1).view(*meas_shape, n_wav).cpu().numpy(), cmap="gray")  # in X
+    plt.imshow(
+        x_motion[
+            0, n_frame, :, amp_max : img_size - amp_max, amp_max : img_size - amp_max
+        ]
+        .moveaxis(0, -1)
+        .view(*meas_shape, n_wav)
+        .cpu()
+        .numpy(),
+        cmap="gray",
+    )  # in X
     plt.title("frame %d" % (n_frame), fontsize=12)
-    plt.axis('off')
+    plt.axis("off")
 plt.tight_layout()
 plt.show()
 
 
-# %% 
+# %%
 # Dynamic measurement simulation
 # #############################################################################
 #
@@ -282,7 +299,7 @@ print(f"  Raw measurements shape: {y1.shape}")
 print(f"  Processed measurements shape: {y2.shape}")
 
 
-# %% 
+# %%
 # Static reconstruction baseline
 # #############################################################################
 #
@@ -298,7 +315,7 @@ x_stat = meas_op_stat.fast_pinv(y2)
 print(f"Static reconstruction shape: {x_stat.shape}")
 
 # Quick quality check for static reconstruction
-x_ref_fov = x[0, :, amp_max:n+amp_max, amp_max:n+amp_max]
+x_ref_fov = x[0, :, amp_max : n + amp_max, amp_max : n + amp_max]
 static_psnr = score.psnr(torch2numpy(x_stat), torch2numpy(x_ref_fov))
 print(f"Static reconstruction PSNR: {static_psnr:.2f} dB")
 
@@ -319,7 +336,7 @@ D2 = D2.to(dtype=dtype)
 
 print(f"Regularization matrix shape: {D2.shape}")
 
-# %% 
+# %%
 # Build dynamic system matrix
 # #############################################################################
 #
@@ -348,8 +365,8 @@ print(f"Dynamic system matrix (differential strategy AFTER motion compensation) 
 #   after motion compensation [MaTip26]_.
 #
 
-    
-# %% 
+
+# %%
 # Verify forward model accuracy
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
@@ -394,7 +411,7 @@ for frame in range(n_frames):
     plt.subplot(n_rows, n_cols, frame + 1)
     plt.imshow(H_dyn_diff_np[n_frame].reshape(img_shape), cmap="gray", vmin=-1, vmax=1)  # in X_{ext}
     plt.title("frame %d" % (2 * n_frame), fontsize=12)
-    plt.axis('off')
+    plt.axis("off")
 plt.tight_layout()
 plt.show()
 
@@ -585,7 +602,7 @@ if n_wav == 1:
 
 
 
-# %% 
+# %%
 # Results overview
 # #############################################################################
 #
@@ -606,9 +623,11 @@ ax[0, 0].axis('off')
 if n_wav == 1:
     fig.colorbar(im0, ax=ax[0, 0], fraction=0.046, pad=0.04)
 
-# Static reconstruction 
+# Static reconstruction
 static_img = torch.zeros((*img_shape, n_wav), dtype=dtype, device=device)
-static_img[amp_max:n+amp_max, amp_max:n+amp_max] = x_stat.view(n_wav, *meas_shape).moveaxis(0, -1)
+static_img[amp_max : n + amp_max, amp_max : n + amp_max] = x_stat.view(
+    n_wav, *meas_shape
+).moveaxis(0, -1)
 
 im1 = ax[0, 1].imshow(static_img.cpu().numpy(), cmap='gray')
 ax[0, 1].set_title('Static Reconstruction \n (Ignores Motion)', fontsize=18)
@@ -633,7 +652,7 @@ if n_wav == 1:
 plt.tight_layout()
 plt.show()
 
-#%% 
+# %%
 # Compute image quality metrics to quantify reconstruction improvement.
 # Metrics are computed in the FOV region for fair comparison.
 
@@ -644,8 +663,14 @@ x_dyn_wf_in_X = x_dyn_wf_plot[amp_max:n+amp_max, amp_max:n+amp_max]
 x_ref_in_X = x[0, :, amp_max:n+amp_max, amp_max:n+amp_max].moveaxis(0, -1)
 
 # Calculate metrics for both reconstructions
-psnr_static = score.psnr(torch2numpy(x_stat.view(n_wav, *meas_shape).moveaxis(0, -1)), torch2numpy(x_ref_in_X))
-ssim_static = score.ssim(torch2numpy(x_stat.view(n_wav, *meas_shape).moveaxis(0, -1)), torch2numpy(x_ref_in_X))
+psnr_static = score.psnr(
+    torch2numpy(x_stat.view(n_wav, *meas_shape).moveaxis(0, -1)),
+    torch2numpy(x_ref_in_X),
+)
+ssim_static = score.ssim(
+    torch2numpy(x_stat.view(n_wav, *meas_shape).moveaxis(0, -1)),
+    torch2numpy(x_ref_in_X),
+)
 
 psnr_dynamic_wp = score.psnr(torch2numpy(x_dyn_wp_in_X), torch2numpy(x_ref_in_X))
 ssim_dynamic_wp = score.ssim(torch2numpy(x_dyn_wp_in_X), torch2numpy(x_ref_in_X))

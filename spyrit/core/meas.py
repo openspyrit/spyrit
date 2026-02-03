@@ -30,8 +30,6 @@ from spyrit.core.warp import DeformationField
 import spyrit.core.torch as spytorch
 
 
-
-
 # =============================================================================
 class Linear(nn.Module):
     r"""
@@ -41,11 +39,11 @@ class Linear(nn.Module):
         m =\mathcal{N}\left(Hx\right),
 
     where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian),
-    :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest, 
+    :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal of interest,
     :math:`M` is the number of measurements, and :math:`N` is the dimension of the signal.
 
     .. important::
-        The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array 
+        The vector :math:`x \in \mathbb{R}^N` represents a multi-dimensional array
         (e.g, an image :math:`X \in \mathbb{R}^{N_1 \times N_2}` with :math:`N = N_1 \times N_2`).
 
     Args:
@@ -63,7 +61,7 @@ class Linear(nn.Module):
         dimensions of the multi-dimensional array :math:`X` (e.g., `(-2,-1)`
         when `len(meas_shape)`).
 
-        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. 
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
         Defaults to = `torch.nn.Identity()`.
 
     Attributes:
@@ -92,6 +90,7 @@ class Linear(nn.Module):
           (noise_model): Identity()
         )
     """
+
     def __init__(
         self,
         H: torch.tensor,
@@ -146,7 +145,7 @@ class Linear(nn.Module):
     @property
     def device(self) -> torch.device:
         # if we have a split object, it has a A matrix
-        if self.H.device == getattr(self, 'A', self.H).device:
+        if self.H.device == getattr(self, "A", self.H).device:
             return self.H.device
         else:
             raise RuntimeError(
@@ -156,7 +155,7 @@ class Linear(nn.Module):
     @property
     def dtype(self) -> torch.dtype:
         # if we have a split object, it has a A matrix
-        if self.H.dtype == getattr(self, 'A', self.H).dtype:
+        if self.H.dtype == getattr(self, "A", self.H).dtype:
             return self.H.dtype
         else:
             raise RuntimeError(
@@ -185,9 +184,9 @@ class Linear(nn.Module):
         .. math::
             m = Hx,
 
-        where :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix, 
-        :math:`x \in \mathbb{R}^N` is the signal of interest, 
-        :math:`M` is the number of measurements, and 
+        where :math:`H\in\mathbb{R}^{M\times N}` is the acquisition matrix,
+        :math:`x \in \mathbb{R}^N` is the signal of interest,
+        :math:`M` is the number of measurements, and
         :math:`N` is the dimension of the signal.
 
         .. note::
@@ -302,7 +301,7 @@ class Linear(nn.Module):
         if self.meas_dims != self.last_dims:
             input = torch.movedim(input, self.last_dims, self.meas_dims)
         return input
-    
+
     def adjoint(self, m: torch.tensor, unvectorize=False):
         r"""Apply adjoint of matrix H.
 
@@ -367,7 +366,6 @@ class Linear(nn.Module):
             m = self.unvectorize(m)
         return m
 
-
     def vectorize(self, input: torch.tensor) -> torch.tensor:
         r"""Flatten the measured dimensions.
 
@@ -399,7 +397,6 @@ class Linear(nn.Module):
         input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
         return input
 
-
     def unvectorize(self, input: torch.tensor) -> torch.tensor:
         r"""Unflatten the measured dimensions.
 
@@ -430,7 +427,6 @@ class Linear(nn.Module):
         if self.meas_dims != self.last_dims:
             input = torch.movedim(input, self.last_dims, self.meas_dims)
         return input
-
 
 
 # =============================================================================
@@ -721,9 +717,9 @@ class FreeformLinear(Linear):
 # =============================================================================
 class LinearSplit(Linear):
     r"""
-    Simulate linear measurements by splitting an acquisition matrix 
-    :math:`H\in \mathbb{R}^{M\times N}` that contains negative values. 
-    In practice, only positive values can be implemented using a DMD. 
+    Simulate linear measurements by splitting an acquisition matrix
+    :math:`H\in \mathbb{R}^{M\times N}` that contains negative values.
+    In practice, only positive values can be implemented using a DMD.
     Therefore, we acquire
 
     .. math::
@@ -1878,23 +1874,21 @@ class HadamSplit2d(LinearSplit):
         return self.H.T / self.N
 
 
-
-
 # =============================================================================
 class DynamicLinear(Linear):
     r"""Simulates linear measurements of a moving scene
-     
+
     .. math::
         m = \mathcal{N}\left( \text{diag}(H x_{t=1, ..., M})\right),
 
-    where :math:`H\in\mathbb{R}^{M \times N}` is the acquisition matrix, 
-    :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal of interest, 
+    where :math:`H\in\mathbb{R}^{M \times N}` is the acquisition matrix,
+    :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal of interest,
     :math:`M` is both the number of measurements and the number of frames,
-    :math:`N` is the dimension of the signal within the field of view, 
+    :math:`N` is the dimension of the signal within the field of view,
     :math:`\text{diag}\colon\, \mathbb{R}^{M \times M} \to \mathbb{R}^M` extracts the diagonal of its input, and
     :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian).
 
-    
+
     .. warning::
         The current implementation only supports 2D spatial dimensions (i.e., images).
         Consequently, meas_shape and img_shape must be tuples of two integers.
@@ -1926,7 +1920,7 @@ class DynamicLinear(Linear):
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an extended field of view [MaMiccai24]_.
 
-        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. 
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
         Defaults to `torch.nn.Identity()`.
 
         :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
@@ -1941,10 +1935,10 @@ class DynamicLinear(Linear):
 
         :attr:`L` (int): Number of pixels in the extended field of view.
 
-        :attr:`meas_shape` (tuple): Shape of the underlying multi-dimensional 
+        :attr:`meas_shape` (tuple): Shape of the underlying multi-dimensional
         array :math:`x` over the field of view.
 
-        :attr:`img_shape` (tuple): Shape of the underlying multi-dimensional 
+        :attr:`img_shape` (tuple): Shape of the underlying multi-dimensional
         array :math:`x` over the extended field of view.
 
         :attr:`H` (:class:`torch.tensor`): Static measurement matrix of shape
@@ -2006,7 +2000,7 @@ class DynamicLinear(Linear):
             raise RuntimeError(
                 f"The time dimension must not be in the measurement dimensions. Found {self.time_dim} in {self.meas_dims}."
             )
-        
+
         if len(self.meas_shape) != 2:
             raise NotImplementedError(
                 "Currently only 2D spatial dimensions are supported."
@@ -2025,8 +2019,8 @@ class DynamicLinear(Linear):
     @property
     def recon_mode(self) -> str:
         """Interpolation mode used for reconstruction."""
-        return self._recon_mode        
-    
+        return self._recon_mode
+
     @property
     def H_dyn(self) -> torch.tensor:
         """Dynamic measurement matrix H_dyn."""
@@ -2037,28 +2031,27 @@ class DynamicLinear(Linear):
                 "The dynamic measurement matrix H_dyn has not been set yet. "
                 + "Please call build_dynamic_forward() before accessing the attribute H_dyn."
             ) from e
-        
-    
+
     def measure(self, x):
         r"""Simulates noiseless measurements.
 
         .. math::
             m = \text{diag}(H x_{t=1, ..., M}),
 
-        where :math:`H \in \mathbb{R}^{M \times N}` is the acquisition matrix, 
-        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal of interest, 
-        :math:`M` is both the number of measurements and frames, 
+        where :math:`H \in \mathbb{R}^{M \times N}` is the acquisition matrix,
+        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal of interest,
+        :math:`M` is both the number of measurements and frames,
         :math:`N` is the dimension of the signal in the field of view, and
         :math:`\text{diag}\colon\, \mathbb{R}^{M \times M} \to \mathbb{R}^M` extracts the diagonal of its input.
 
         .. note::
-            This method does not degrade measurement with noise. 
+            This method does not degrade measurement with noise.
             To do so, see :func:`~spyrit.core.meas.DynamicLinear.forward()`
 
         Args:
-            :attr:`x` (:class:`torch.tensor`): A batch of temporal signals whose time 
+            :attr:`x` (:class:`torch.tensor`): A batch of temporal signals whose time
             dimension matches :attr:`self.time_dim`, and measured dimensions matches :attr:`self.meas_dims`.
-        
+
         Returns:
             :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
             all the dimensions of the input tensor that are not included in :attr:`self.meas_dims`.
@@ -2088,27 +2081,27 @@ class DynamicLinear(Linear):
         # here index m is the number of mesurements, it is also the number of frames, ie. time dimension
         x = torch.einsum("mn,...mn->...m", self.H, x)
         return x
-    
+
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Simulates noisy dynamic measurements.
-        
+
         .. math::
             m = \mathcal{N}\left(\text{diag}(H x_{t=1, ..., M})\right),
 
-        where :math:`H \in \mathbb{R}^{M \times N}` is the acquisition matrix, 
-        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal of interest, 
-        :math:`M` is both the number of measurements and frames, 
+        where :math:`H \in \mathbb{R}^{M \times N}` is the acquisition matrix,
+        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal of interest,
+        :math:`M` is both the number of measurements and frames,
         :math:`N` is the dimension of the signal in the field of view, and
         :math:`\text{diag}\colon\, \mathbb{R}^{M \times M} \to \mathbb{R}^M` extracts the diagonal of its input.
 
         .. note::
-            This method degrades measurements with noise. 
+            This method degrades measurements with noise.
             To compute :math:`Hx_{t=1, ..., M}` only, see :func:`~spyrit.core.meas.DynamicLinear.measure()`.
 
         Args:
-            :attr:`x` (:class:`torch.tensor`): A batch of temporal signals whose time 
+            :attr:`x` (:class:`torch.tensor`): A batch of temporal signals whose time
             dimension matches :attr:`self.time_dim`, and measured dimensions matches :attr:`self.meas_dims`.
-        
+
         Returns:
             :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
             all the dimensions of the input tensor that are not included in :attr:`self.meas_dims`.
@@ -2142,42 +2135,42 @@ class DynamicLinear(Linear):
         motion: DeformationField,
         mode: str = "bilinear",
         warping: str = "image",
-        verbose: bool = False 
+        verbose: bool = False,
     ) -> None:
         r"""Builds the dynamic forward operator :math:`H_{\rm{dyn}}`.
 
         .. math::
             \text{diag}(H x_{t=1, ..., M}) = H_{\rm{dyn}} x,
 
-        where 
-        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal of interest, 
-        :math:`H \in \mathbb{R}^{M \times N}` is the static acquisition matrix, 
+        where
+        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal of interest,
+        :math:`H \in \mathbb{R}^{M \times N}` is the static acquisition matrix,
         :math:`x \in \mathbb{R}^L` is the reference frame defined over an extended field-of-view, and
         :math:`H_{\rm{dyn}} \in \mathbb{R}^{M \times L}` is the dynamic forward operator that compensates the motion.
 
         The dynamic measurement matrix :math:`H_{\rm{dyn}}` is obtained by **motion-compensation**
         to a reference time, leveraging known deformation field.
-         
+
         The output is stored in the attribute :attr:`self.H_dyn`.
 
         .. important::
             There are two ways of building the dynamic matrix, namely :attr:`warping='pattern'` or :attr:`warping='image'`.
-            When :attr:`warping='pattern'`, the input deformation field :attr:`motion` needs to be respectively the *inverse* 
-            deformation field that compensates the motion. 
+            When :attr:`warping='pattern'`, the input deformation field :attr:`motion` needs to be respectively the *inverse*
+            deformation field that compensates the motion.
             When :attr:`warping='image'`, the input deformation field :attr:`motion` needs to be the *direct*
             deformation field that induces the motion.
-            
-            **Reminder**: When looking at the images vectors as continuous functions from :math:`\mathbb{R}^2` to :math:`\mathbb{R}`, 
-            we define the **direct** deformation as the function :math:`u \colon \mathbb{Z}^3 \mapsto \mathbb{R}^2` such that, 
+
+            **Reminder**: When looking at the images vectors as continuous functions from :math:`\mathbb{R}^2` to :math:`\mathbb{R}`,
+            we define the **direct** deformation as the function :math:`u \colon \mathbb{Z}^3 \mapsto \mathbb{R}^2` such that,
             for :math:`k \in \{1, ..., M\}` and :math:`(i, j) \in \mathbb{Z}^2`,
-            
+
             .. math::
                 x_{t=k}(i, j) = x_{t=1}(u(t=k, i, j))
 
             The **inverse** deformation field is defined as :math:`v=u^{-1}`.
 
         .. note::
-            Warping sharp patterns introduces a bias in the model due to interpolation artifacts. 
+            Warping sharp patterns introduces a bias in the model due to interpolation artifacts.
             We recommend to exploit the image regularity by setting :attr:`warping='image'`.
 
         Args:
@@ -2188,7 +2181,7 @@ class DynamicLinear(Linear):
 
             :attr:`mode` (str): Interpolation mode for constructing the dynamic matrix. Defaults to 'bilinear'.
 
-            :attr:`warping` (str): Choose between 'image' or 'pattern'. This parameter decides whether to warp 
+            :attr:`warping` (str): Choose between 'image' or 'pattern'. This parameter decides whether to warp
             the patterns or the (unknown) image to recover when building the dynamic measurement matrix.
             Defaults to 'image'.
 
@@ -2242,7 +2235,6 @@ class DynamicLinear(Linear):
         if not isinstance(warping, str) or warping not in ("image", "pattern"):
             raise ValueError("warping must be either 'image' or 'pattern'")
 
-
         if self.img_shape != motion.img_shape:
             raise RuntimeError(
                 "The measurement operator img_shape must be the same as the motion field."
@@ -2283,9 +2275,9 @@ class DynamicLinear(Linear):
 
         if self.white_acq is not None:
             # for eventual spatial gain
-            meas_pattern *= self.white_acq.ravel().unsqueeze(0)  
+            meas_pattern *= self.white_acq.ravel().unsqueeze(0)
 
-        if warping == 'image':
+        if warping == "image":
             # drawings of the kernels for bilinear and bicubic 'interpolation'
             #   00    point      01
             #    +------+--------+
@@ -2315,9 +2307,9 @@ class DynamicLinear(Linear):
             kernel_size = self._spline(torch.tensor([0]), mode).shape[1]
             kernel_width = kernel_size - 1
             kernel_n_pts = kernel_size**2
-            
+
             # Memory optimization: Clear CUDA cache before large allocations
-            if self.device.type == 'cuda':
+            if self.device.type == "cuda":
                 torch.cuda.empty_cache()
 
             # PART 1: SEPARATE THE INTEGER AND DECIMAL PARTS OF THE FIELD
@@ -2342,7 +2334,7 @@ class DynamicLinear(Linear):
             # dx.shape = dy.shape = (n_frames, meas_h, meas_w)
 
             del def_field
-            if self.device.type == 'cuda':
+            if self.device.type == "cuda":
                 torch.cuda.empty_cache()
 
             # evaluate the spline at the decimal part
@@ -2350,10 +2342,10 @@ class DynamicLinear(Linear):
                 "iajk,ibjk->iabjk", self._spline(dy, mode), self._spline(dx, mode)
             ).reshape(n_frames, kernel_n_pts, self.N)
             # shape (n_frames, kernel_n_pts, meas_h*meas_w)
-            
+
             # Memory optimization: explicitly delete large intermediate tensors
             del dx, dy
-            if self.device.type == 'cuda':
+            if self.device.type == "cuda":
                 torch.cuda.empty_cache()
 
             # PART 2: FLATTEN THE INDICES
@@ -2388,9 +2380,9 @@ class DynamicLinear(Linear):
                 def_field_00[..., 0]
                 + def_field_00[..., 1] * (self.img_w + kernel_width),
             ).reshape(n_frames, self.N)
-            
+
             del def_field_00, mask
-            if self.device.type == 'cuda':
+            if self.device.type == "cuda":
                 torch.cuda.empty_cache()
 
             # PART 3: WARP H MATRIX WITH FLATTENED INDICES
@@ -2399,32 +2391,42 @@ class DynamicLinear(Linear):
             if verbose:
                 print("Part 3: building H_dyn matrix with flattened indices")
 
-            meas_dxy = (
-                meas_pattern.reshape(n_frames, 1, self.N).to(dxy.dtype) * dxy
-            )
+            meas_dxy = meas_pattern.reshape(n_frames, 1, self.N).to(dxy.dtype) * dxy
 
             del dxy, meas_pattern
-            
+
             # Memory optimization: Check if we need chunked processing
             sparse_size = (self.img_h + kernel_width) * (self.img_w + kernel_width) + 1
             max_memory_per_tensor = 2e8  # ~200MB limit per tensor
-            expected_size = n_frames * kernel_n_pts * sparse_size * meas_dxy.element_size()
-            
+            expected_size = (
+                n_frames * kernel_n_pts * sparse_size * meas_dxy.element_size()
+            )
+
             if expected_size > max_memory_per_tensor:
                 if verbose:
-                    print(f"Using chunked processing to avoid OOM (tensor is expected to be {expected_size/1e9:.2f} GB)")
-                
+                    print(
+                        f"Using chunked processing to avoid OOM (tensor is expected to be {expected_size/1e9:.2f} GB)"
+                    )
+
                 # Process in smaller chunks
-                chunk_size = max(1, int(max_memory_per_tensor / (kernel_n_pts * sparse_size * meas_dxy.element_size())))
+                chunk_size = max(
+                    1,
+                    int(
+                        max_memory_per_tensor
+                        / (kernel_n_pts * sparse_size * meas_dxy.element_size())
+                    ),
+                )
                 if verbose:
                     print(f"Processing {n_frames} frames in chunks of {chunk_size}")
                 H_dyn_chunks = []
-                
+
                 for i in range(0, n_frames, chunk_size):
                     end_idx = min(i + chunk_size, n_frames)
                     chunk_frames = end_idx - i
                     if verbose:
-                        print(f"Processing chunk {i//chunk_size + 1}/{(n_frames + chunk_size - 1)//chunk_size}: frames {i} to {end_idx-1}")
+                        print(
+                            f"Processing chunk {i//chunk_size + 1}/{(n_frames + chunk_size - 1)//chunk_size}: frames {i} to {end_idx-1}"
+                        )
 
                     # Create smaller tensor for this chunk
                     meas_dxy_sorted_chunk = torch.zeros(
@@ -2432,37 +2434,43 @@ class DynamicLinear(Linear):
                         dtype=meas_dxy.dtype,
                         device=self.device,
                     )
-                    
+
                     # add at flattened_indices the values of meas_dxy for this chunk
                     meas_dxy_sorted_chunk.scatter_add_(
-                        2, 
-                        flattened_indices[i:end_idx].unsqueeze(1).expand_as(meas_dxy[i:end_idx]), 
-                        meas_dxy[i:end_idx]
+                        2,
+                        flattened_indices[i:end_idx]
+                        .unsqueeze(1)
+                        .expand_as(meas_dxy[i:end_idx]),
+                        meas_dxy[i:end_idx],
                     )
-                    
+
                     # drop last column (trash)
                     meas_dxy_sorted_chunk = meas_dxy_sorted_chunk[:, :, :-1]
-                    
+
                     # FOLD THE MATRIX for this chunk
                     fold = nn.Fold(
                         output_size=self.img_shape,
                         kernel_size=(kernel_size, kernel_size),
                         padding=kernel_width,
                     )
-                    H_dyn_chunk = fold(meas_dxy_sorted_chunk).reshape(chunk_frames, self.L)
-                    H_dyn_chunks.append(H_dyn_chunk.clone())  # Clone to ensure memory is copied
-                    
+                    H_dyn_chunk = fold(meas_dxy_sorted_chunk).reshape(
+                        chunk_frames, self.L
+                    )
+                    H_dyn_chunks.append(
+                        H_dyn_chunk.clone()
+                    )  # Clone to ensure memory is copied
+
                     # Clean up chunk memory
                     del meas_dxy_sorted_chunk, H_dyn_chunk
-                    if self.device.type == 'cuda':
+                    if self.device.type == "cuda":
                         torch.cuda.empty_cache()
-                
+
                 # Concatenate all chunks
                 H_dyn = torch.cat(H_dyn_chunks, dim=0)
                 del H_dyn_chunks
                 if verbose:
                     print("Chunked processing completed successfully")
-                
+
             else:
                 if verbose:
                     print("Using standard processing (tensor fits in memory)")
@@ -2476,10 +2484,10 @@ class DynamicLinear(Linear):
                 meas_dxy_sorted.scatter_add_(
                     2, flattened_indices.unsqueeze(1).expand_as(meas_dxy), meas_dxy
                 )
-                
+
                 # drop last column (trash)
                 meas_dxy_sorted = meas_dxy_sorted[:, :, :-1]
-                
+
                 # PART 4: FOLD THE MATRIX
                 # _________________________________________________________________
                 # define operator
@@ -2492,17 +2500,19 @@ class DynamicLinear(Linear):
 
                 # Memory optimization: Clean up after folding
                 del meas_dxy_sorted
-            
+
             # Clean up remaining variables
             del flattened_indices, meas_dxy
-            if self.device.type == 'cuda':
+            if self.device.type == "cuda":
                 torch.cuda.empty_cache()
 
-        elif warping == 'pattern':
-            print('Be careful to use the inverse deformation field when warping patterns.')
-            
+        elif warping == "pattern":
+            print(
+                "Be careful to use the inverse deformation field when warping patterns."
+            )
+
             # Memory optimization: Clear cache before warping operations
-            if self.device.type == 'cuda':
+            if self.device.type == "cuda":
                 torch.cuda.empty_cache()
 
             det = self._calc_det(def_field)
@@ -2511,14 +2521,14 @@ class DynamicLinear(Linear):
             meas_pattern = meas_pattern.reshape(
                 meas_pattern.shape[0], 1, self.meas_shape[0], self.meas_shape[1]
             )
-            
+
             # Memory optimization: Use in-place operations when possible
             meas_pattern_ext = torch.zeros(
                 (meas_pattern.shape[0], 1, self.img_shape[0], self.img_shape[1]),
                 dtype=motion.field.dtype,  # Use correct dtype from start
-                device=self.device
+                device=self.device,
             )
-            
+
             amp_max_h = (self.img_shape[0] - self.meas_shape[0]) // 2
             amp_max_w = (self.img_shape[1] - self.meas_shape[1]) // 2
             meas_pattern_ext[
@@ -2527,7 +2537,7 @@ class DynamicLinear(Linear):
                 amp_max_h : self.meas_shape[0] + amp_max_h,
                 amp_max_w : self.meas_shape[1] + amp_max_w,
             ] = meas_pattern
-            
+
             del meas_pattern
 
             H_dyn = nn.functional.grid_sample(
@@ -2537,28 +2547,31 @@ class DynamicLinear(Linear):
                 padding_mode="zeros",
                 align_corners=True,
             )
-            
+
             # Memory optimization: Clean up before final computation
             del meas_pattern_ext
-            if self.device.type == 'cuda':
+            if self.device.type == "cuda":
                 torch.cuda.empty_cache()
-                
+
             H_dyn = H_dyn.reshape((H_dyn.shape[0], -1)) * det
-            
+
             del det
-            
-        self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(self.device) # store in _param_H_dyn
-        
+
+        self._param_H_dyn = nn.Parameter(H_dyn, requires_grad=False).to(
+            self.device
+        )  # store in _param_H_dyn
+
         # Memory optimization: Clean up H_dyn variable (data is now in parameter)
         del H_dyn
-        if self.device.type == 'cuda':
+        if self.device.type == "cuda":
             torch.cuda.empty_cache()
             if verbose:
-                print(f"Final memory after storing H_dyn: {torch.cuda.memory_allocated()/1024**3:.2f} GB")
-        
+                print(
+                    f"Final memory after storing H_dyn: {torch.cuda.memory_allocated()/1024**3:.2f} GB"
+                )
 
     def _calc_det(self, def_field):
-        r"""Computes the determinant of a deformation field. 
+        r"""Computes the determinant of a deformation field.
         It is used for building the dynamic matrix with pattern warping.
 
         Args:
@@ -2567,12 +2580,12 @@ class DynamicLinear(Linear):
 
         Returns:
             :class:`torch.tensor`: The determinant for each frame of the
-            deformation field, it has shape (t, h, w).        
+            deformation field, it has shape (t, h, w).
         """
         # Memory optimization: Clear cache before computation
-        if self.device.type == 'cuda':
+        if self.device.type == "cuda":
             torch.cuda.empty_cache()
-            
+
         # def_field of shape (n_frames, img_shape[0], img_shape[1], 2) in range [0, h-1] x [0, w-1]
         v1, v2 = def_field[:, :, :, 0], def_field[:, :, :, 1]
         n_frames = def_field.shape[0]
@@ -2581,35 +2594,35 @@ class DynamicLinear(Linear):
         # Compute gradients for v1
         diff_v1_dim1 = torch.diff(v1, dim=1)
         # ones_v1_dim1 = torch.ones(n_frames, 1, v1.shape[2], device=v1.device, dtype=v1.dtype)
-        last_v1_dim1 = diff_v1_dim1[:, -1:, :].clone() # replicate last difference
+        last_v1_dim1 = diff_v1_dim1[:, -1:, :].clone()  # replicate last difference
         dy_v1 = torch.cat([diff_v1_dim1, last_v1_dim1], dim=1)
         del diff_v1_dim1, last_v1_dim1
-        
+
         diff_v1_dim2 = torch.diff(v1, dim=2)
         # ones_v1_dim2 = torch.ones(n_frames, v1.shape[1], 1, device=v1.device, dtype=v1.dtype)
-        last_v1_dim2 = diff_v1_dim2[:, :, -1:].clone() # replicate last difference
+        last_v1_dim2 = diff_v1_dim2[:, :, -1:].clone()  # replicate last difference
         dx_v1 = torch.cat([diff_v1_dim2, last_v1_dim2], dim=2)
         del diff_v1_dim2, last_v1_dim2, v1
-        
+
         # Compute gradients for v2
         diff_v2_dim1 = torch.diff(v2, dim=1)
         # ones_v2_dim1 = torch.ones(n_frames, 1, v2.shape[2], device=v2.device, dtype=v2.dtype)
-        last_v2_dim1 = diff_v2_dim1[:, -1:, :].clone() # replicate last difference
+        last_v2_dim1 = diff_v2_dim1[:, -1:, :].clone()  # replicate last difference
         dy_v2 = torch.cat([diff_v2_dim1, last_v2_dim1], dim=1)
         del diff_v2_dim1, last_v2_dim1
-        
+
         diff_v2_dim2 = torch.diff(v2, dim=2)
         # ones_v2_dim2 = torch.ones(n_frames, v2.shape[1], 1, device=v2.device, dtype=v2.dtype)
-        last_v2_dim2 = diff_v2_dim2[:, :, -1:].clone() # replicate last difference
+        last_v2_dim2 = diff_v2_dim2[:, :, -1:].clone()  # replicate last difference
         dx_v2 = torch.cat([diff_v2_dim2, last_v2_dim2], dim=2)
         del diff_v2_dim2, last_v2_dim2, v2
 
         # Compute determinant
         det = dx_v1 * dy_v2 - dx_v2 * dy_v1
-        
+
         # Clean up
         del dx_v1, dy_v1, dx_v2, dy_v2
-        if self.device.type == 'cuda':
+        if self.device.type == "cuda":
             torch.cuda.empty_cache()
 
         return det
@@ -2620,9 +2633,9 @@ class DynamicLinear(Linear):
         .. math::
             m = H_{\rm{dyn}} x
 
-        where :math:`H_{\rm{dyn}} \in \mathbb{R}^{M \times L}` is the dynamic acquisition matrix, 
-        :math:`x \in \mathbb{R}^L` is the reference signal of interest, 
-        :math:`M` is the number of measurements, and 
+        where :math:`H_{\rm{dyn}} \in \mathbb{R}^{M \times L}` is the dynamic acquisition matrix,
+        :math:`x \in \mathbb{R}^L` is the reference signal of interest,
+        :math:`M` is the number of measurements, and
         :math:`L` is the dimension of the signal (with extended FOV).
 
         .. warning::
@@ -2665,16 +2678,16 @@ class DynamicLinear(Linear):
         x = self.vectorize(x)  # don't need to crop because H_dyn has extended FOV
         x = torch.einsum("mn,...n->...m", self.H_dyn, x)
         return x
-    
+
     def forward_H_dyn(self, x: torch.tensor) -> torch.tensor:
         r"""Simulates noisy dynamic measurements with the dynamic matrix
 
         .. math::
             m = \mathcal{N}\left(H_{\rm{dyn}} x \right)
 
-        where :math:`H_{\rm{dyn}} \in \mathbb{R}^{M \times L}` is the dynamic acquisition matrix, 
-        :math:`x \in \mathbb{R}^L` is the reference signal of interest, 
-        :math:`M` is the number of measurements, and 
+        where :math:`H_{\rm{dyn}} \in \mathbb{R}^{M \times L}` is the dynamic acquisition matrix,
+        :math:`x \in \mathbb{R}^L` is the reference signal of interest,
+        :math:`M` is the number of measurements, and
         :math:`L` is the dimension of the signal (with extended FOV).
 
         .. warning::
@@ -2719,20 +2732,20 @@ class DynamicLinear(Linear):
         x = torch.einsum("mn,...n->...m", self.H_dyn, x)
         x = self.noise_model(x)
         return x
-    
+
     def adjoint(self, m: torch.tensor, unvectorize=False) -> torch.tensor:
         r"""Apply adjoint of matrix :math:`H_{\rm{dyn}}`.
 
         It computes
 
         .. math::
-            x = H_{\rm{dyn}}^\top m, 
+            x = H_{\rm{dyn}}^\top m,
 
         where :math:`H_{\rm{dyn}}^\top \in\mathbb{R}^{L \times M}` is the adjoint of the
         dynamic acquisition matrix, :math:`m \in \mathbb{R}^M` is the measurement vector.
 
-        .. warning:: 
-            This supposes the dynamic measurement matrix :math:`H_{\rm{dyn}}` has been 
+        .. warning::
+            This supposes the dynamic measurement matrix :math:`H_{\rm{dyn}}` has been
             set using the :meth:`build_dynamic_forward()` method. An error will be raised otherwise.
 
         Args:
@@ -2779,15 +2792,15 @@ class DynamicLinear(Linear):
             m = self.unvectorize(m)
         return m
 
-    def vectorize(self, input:torch.tensor) -> torch.tensor:
+    def vectorize(self, input: torch.tensor) -> torch.tensor:
         r"""Flatten the measured dimensions.
-        
+
         The tensor is flattened at the indicated `self.meas_dims` dimensions. The
         collapsed dimensions are then moved to the last dimension of the output tensor.
         The time dimension is moved to the second-to-last position.
-        
+
         Input:
-            input (:class:`torch.tensor`): A tensor whose dimensions given by :attr:`self.meas_dims` 
+            input (:class:`torch.tensor`): A tensor whose dimensions given by :attr:`self.meas_dims`
             have shape :attr:`self.meas_shape`.
 
         Output:
@@ -2800,28 +2813,30 @@ class DynamicLinear(Linear):
         """
         # concatenate time and measurement dimensions
         time_and_meas_dims = torch.Size([self.time_dim, *self.meas_dims])
-        time_and_last_dims = torch.Size(list(range(-len(self.meas_shape)-1, 0)))
+        time_and_last_dims = torch.Size(list(range(-len(self.meas_shape) - 1, 0)))
         # move only if necessary
         if time_and_meas_dims != time_and_last_dims:
             input = torch.movedim(input, time_and_meas_dims, time_and_last_dims)
         # flatten the last measured dimensions
         # input = input.reshape(*input.shape[: -self.meas_ndim], self.N)
-        input = input.reshape(*input.shape[: -self.meas_ndim], -1)   # this way it works even for img_shape and meas_shape
+        input = input.reshape(
+            *input.shape[: -self.meas_ndim], -1
+        )  # this way it works even for img_shape and meas_shape
         return input
 
-    def unvectorize(self, input:torch.tensor) -> torch.tensor:
+    def unvectorize(self, input: torch.tensor) -> torch.tensor:
         r"""Unflatten the measured dimensions.
 
         This method expands the last dimension into the measurement or image
-        shape (:attr:`self.meas_shape` or :attr:`self.img_shape`), and then moves the 
+        shape (:attr:`self.meas_shape` or :attr:`self.img_shape`), and then moves the
         expanded dimensions to their original positions as defined by :attr:`self.meas_dims`.
 
         Input:
-            :class:`input` (:class:`torch.tensor`): A tensor of shape (:attr:`*, self.N`) 
+            :class:`input` (:class:`torch.tensor`): A tensor of shape (:attr:`*, self.N`)
             or (:attr:`*, self.L`) where * denotes any batch size.
 
         Output:
-            :class:`torch.tensor`: A tensor whose dimensions given by :attr:`self.meas_dims` 
+            :class:`torch.tensor`: A tensor whose dimensions given by :attr:`self.meas_dims`
             have shape :attr:`self.meas_shape` or :attr:`self.img_shape`.
 
         Raises:
@@ -2837,15 +2852,13 @@ class DynamicLinear(Linear):
         elif input.shape[-1] == self.L:
             unflattened_shape = self.img_shape
         else:
-            raise ValueError(
-                "Input of unvectorize has unexpected size in its last dim"
-                )
+            raise ValueError("Input of unvectorize has unexpected size in its last dim")
 
         # unflatten the last dimension
-        input = input.reshape(*input.shape[: -1], *unflattened_shape)
+        input = input.reshape(*input.shape[:-1], *unflattened_shape)
         # compare the dimensions
         time_and_meas_dims = torch.Size(self.time_dim, self.meas_dims)
-        time_and_last_dims = torch.Size(list(range(-len(unflattened_shape)-1, 0)))
+        time_and_last_dims = torch.Size(list(range(-len(unflattened_shape) - 1, 0)))
         # move dimensions if necessary
         if time_and_meas_dims != time_and_last_dims:
             input = torch.movedim(input, time_and_last_dims, time_and_meas_dims)
@@ -2889,30 +2902,29 @@ class DynamicLinear(Linear):
                 + "bicubic or schaum."
             )
         return ans.to(self.device)
-    
 
 
 # =============================================================================
 class DynamicLinearSplit(DynamicLinear):
     # =========================================================================
     r"""
-    Simulates linear measurements of a moving scene by splitting an acquisition matrix 
-    :math:`H \in \mathbb{R}^{M \times N}` that contains negative values. 
-    In practice, only positive values can be implemented using a DMD. 
+    Simulates linear measurements of a moving scene by splitting an acquisition matrix
+    :math:`H \in \mathbb{R}^{M \times N}` that contains negative values.
+    In practice, only positive values can be implemented using a DMD.
     Therefore, we acquire
 
     .. math::
         y = \mathcal{N}\left(\text{diag}(A x_{t=1,..., 2M})\right),
 
     where :math:`A \colon\, \mathbb{R}_+^{2M\times N}` is the acquisition
-    matrix that contains positive DMD patterns, 
-    :math:`x_{t=1,..., 2M} \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest, 
-    :math:`2M` is both the number of DMD patterns (positives and negatives) 
-    and the number of frames, 
+    matrix that contains positive DMD patterns,
+    :math:`x_{t=1,..., 2M} \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest,
+    :math:`2M` is both the number of DMD patterns (positives and negatives)
+    and the number of frames,
     :math:`N` is the dimension of the signal within the field of view,
-    :math:`\text{diag}\colon\, \mathbb{R}^{2M \times 2M} \to \mathbb{R}^{2M}` 
+    :math:`\text{diag}\colon\, \mathbb{R}^{2M \times 2M} \to \mathbb{R}^{2M}`
     extracts the diagonal of its input, and
-    :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` 
+    :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}`
     represents a noise operator (e.g., Gaussian).
 
     Given a matrix :math:`H`, we define the positive DMD patterns :math:`A`
@@ -2956,7 +2968,7 @@ class DynamicLinearSplit(DynamicLinear):
         specified, the shape is taken as equal to `meas_shape`. Setting this
         value is particularly useful when using an extended field of view [MaMiccai24]_.
 
-        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`. 
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
         Defaults to `torch.nn.Identity()`.
 
         :attr:`white_acq` (torch.tensor, optional): Eventual spatial gain resulting from
@@ -2977,10 +2989,10 @@ class DynamicLinearSplit(DynamicLinear):
 
         :attr:`L` (int): Number of pixels in the extended field of view.
 
-        :attr:`meas_shape` (tuple): Shape of the underlying multi-dimensional 
+        :attr:`meas_shape` (tuple): Shape of the underlying multi-dimensional
         array :math:`x` over the field of view.
 
-        :attr:`img_shape` (tuple): Shape of the underlying multi-dimensional 
+        :attr:`img_shape` (tuple): Shape of the underlying multi-dimensional
         array :math:`x` over the extended field of view.
 
         :attr:`H` (:class:`torch.tensor`): Static measurement matrix of shape
@@ -3034,14 +3046,21 @@ class DynamicLinearSplit(DynamicLinear):
     ):
         # call constructor of DynamicLinear
         super().__init__(
-            H, time_dim, meas_shape, meas_dims, img_shape, noise_model=noise_model,
-            white_acq=white_acq, dtype=dtype, device=device
+            H,
+            time_dim,
+            meas_shape,
+            meas_dims,
+            img_shape,
+            noise_model=noise_model,
+            white_acq=white_acq,
+            dtype=dtype,
+            device=device,
         )
-                
+
         # split positive and negative components
         pos, neg = nn.functional.relu(self.H), nn.functional.relu(-self.H)
         A = torch.cat([pos, neg], 1).reshape(2 * self.M, self.N)
-        
+
         # A is built from self.H which is cast to device and dtype
         self.A = nn.Parameter(A, requires_grad=False)
 
@@ -3062,8 +3081,8 @@ class DynamicLinearSplit(DynamicLinear):
 
     @property
     def H_dyn(self) -> torch.tensor:
-        """Dynamic measurement matrix H_dyn_diff that adopts the differential 
-        measurement strategy as described in [ref_journal], 
+        """Dynamic measurement matrix H_dyn_diff that adopts the differential
+        measurement strategy as described in [ref_journal],
         i.e., `H_dyn[0] - H_dyn[1]`, `H_dyn[2] - H_dyn[3]`, etc."""
         try:
             return self._param_H_dyn.data[::2] - self._param_H_dyn.data[1::2]
@@ -3072,7 +3091,7 @@ class DynamicLinearSplit(DynamicLinear):
                 "The dynamic measurement matrix H_dyn has not been set yet. "
                 + "Please call build_dynamic_forward() before accessing the attribute H_dyn_diff."
             ) from e
-    
+
     def measure(self, x: torch.tensor) -> torch.tensor:
         r"""Simulates noiseless dynamic measurements from matrix A.
 
@@ -3081,19 +3100,19 @@ class DynamicLinearSplit(DynamicLinear):
         .. math::
             y = \text{diag}(A x_{t=1, ..., 2M}),
 
-        where :math:`A \in \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns, 
-        :math:`x \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest, 
-        :math:`2M` is the number of DMD patterns and the number of frames, 
+        where :math:`A \in \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns,
+        :math:`x \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest,
+        :math:`2M` is the number of DMD patterns and the number of frames,
         :math:`N` is the dimension of the signal, and
-        :math:`\text{diag}\colon\, \mathbb{R}^{2M \times 2M} \to \mathbb{R}^{2M}` 
+        :math:`\text{diag}\colon\, \mathbb{R}^{2M \times 2M} \to \mathbb{R}^{2M}`
         extracts the diagonal of its input.
 
-        Given a matrix :math:`H \in \mathbb{R}^{M\times N}`, 
+        Given a matrix :math:`H \in \mathbb{R}^{M\times N}`,
         we define the positive DMD patterns :math:`A` from the positive and negative components of :math:`H`.
 
         .. note::
             The acquisition matrix :math:`A` is given by :attr:`self.A`.
-        
+
         Args:
             :attr:`x` (:class:`torch.tensor`): Batch of temporal signals :math:`x` whose
             time dimensions :matches :attr:`self.time_dim` and measured dimensions matches
@@ -3137,12 +3156,12 @@ class DynamicLinearSplit(DynamicLinear):
         .. math::
             m = \text{diag}(H x_{t=1, ..., M}),
 
-        where :math:`H \in \mathbb{R}^{M\times N}` is the measurement matrix (that may contain negative values), 
-        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal obtained from 
-        averaging the positive and negative frames of :math:`x_{t=1, ..., 2M}`, 
-        :math:`M` is the number of DMD patterns, 
+        where :math:`H \in \mathbb{R}^{M\times N}` is the measurement matrix (that may contain negative values),
+        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal obtained from
+        averaging the positive and negative frames of :math:`x_{t=1, ..., 2M}`,
+        :math:`M` is the number of DMD patterns,
         :math:`N` is the dimension of the signal, and
-        :math:`\text{diag}\colon\, \mathbb{R}^{M \times M} \to \mathbb{R}^{M}` 
+        :math:`\text{diag}\colon\, \mathbb{R}^{M \times M} \to \mathbb{R}^{M}`
         extracts the diagonal of its input.
 
         .. note::
@@ -3150,7 +3169,7 @@ class DynamicLinearSplit(DynamicLinear):
 
         .. note::
             Here the number of frames is 2M and the number of measurements is M.
-        
+
         Args:
             :attr:`x` (:class:`torch.tensor`): Batch of temporal signals :math:`x` whose
             time dimensions :matches :attr:`self.time_dim` and measured dimensions matches
@@ -3183,55 +3202,55 @@ class DynamicLinearSplit(DynamicLinear):
         x = (x[::2] + x[1::2]) / 2
         x = x.movedim(0, self.time_dim)
         return super().measure(x)
-    
+
     def build_dynamic_forward(
         self,
         motion: DeformationField,
         mode: str = "bilinear",
         warping: str = "image",
-        verbose: bool = False
+        verbose: bool = False,
     ) -> None:
         r"""Builds the dynamic forward operator :math:`A_{\rm{dyn}}`.
 
         .. math::
             \text{diag}(A x_{t=1, ..., 2M}) = A_{\rm{dyn}} x,
 
-        where 
-        :math:`x_{t=1, ..., 2M} \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest, 
-        :math:`A \in \mathbb{R}^{2M \times N}` is the splitted static acquisition matrix, 
+        where
+        :math:`x_{t=1, ..., 2M} \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest,
+        :math:`A \in \mathbb{R}^{2M \times N}` is the splitted static acquisition matrix,
         :math:`x \in \mathbb{R}^L` is the reference frame defined over an extended field-of-view, and
         :math:`A_{\rm{dyn}} \in \mathbb{R}^{M \times L}` is the splitted dynamic forward operator that compensates the motion.
 
         The dynamic measurement matrix :math:`A_{\rm{dyn}}` is obtained by **motion-compensation**
         to a reference time, leveraging known deformation field.
-         
+
         The output is stored in the attribute :attr:`self.A_dyn`.
 
         .. important::
             There are two ways of building the dynamic matrix, namely :attr:`warping='pattern'` or :attr:`warping='image'`.
-            When :attr:`warping='pattern'`, the input deformation field :attr:`motion` needs to be respectively the *inverse* 
-            deformation field that compensates the motion. 
+            When :attr:`warping='pattern'`, the input deformation field :attr:`motion` needs to be respectively the *inverse*
+            deformation field that compensates the motion.
             When :attr:`warping='image'`, the input deformation field :attr:`motion` needs to be the *direct*
             deformation field that induces the motion.
-            
-            **Reminder**: When looking at the images vectors as continuous functions from :math:`\mathbb{R}^2` to :math:`\mathbb{R}`, 
-            we define the **direct** deformation as the function :math:`u \colon \mathbb{Z}^3 \mapsto \mathbb{R}^2` such that, 
+
+            **Reminder**: When looking at the images vectors as continuous functions from :math:`\mathbb{R}^2` to :math:`\mathbb{R}`,
+            we define the **direct** deformation as the function :math:`u \colon \mathbb{Z}^3 \mapsto \mathbb{R}^2` such that,
             for :math:`k \in \{1, ..., 2M\}` and :math:`(i, j) \in \mathbb{Z}^2`,
-            
+
             .. math::
                 x_{t=k}(i, j) = x_{t=1}(u(t=k, i, j))
 
             The *inverse* deformation field is defined as :math:`v=u^{-1}`.
 
         .. note::
-            Warping sharp patterns introduces a bias in the model due to interpolation artifacts. 
+            Warping sharp patterns introduces a bias in the model due to interpolation artifacts.
             We recommend to exploit the image regularity by setting :attr:`warping='image'`.
 
         .. note::
-            When working with splitted measurements, it is common practice to exploit the problem's linearity by using 
+            When working with splitted measurements, it is common practice to exploit the problem's linearity by using
             a differential measurement strategy. This allows to eliminate ambient light and dark current offsets.
             The attribute :attr:`H_dyn` applies the differential strategy **after** motion compensation to avoid
-            an additional error term [ref journal].  
+            an additional error term [ref journal].
 
         Args:
             :attr:`motion` (DeformationField): Deformation field representing the
@@ -3241,7 +3260,7 @@ class DynamicLinearSplit(DynamicLinear):
 
             :attr:`mode` (str): Interpolation mode for constructing the dynamic matrix. Defaults to 'bilinear'.
 
-            :attr:`warping` (str): Choose between 'image' or 'pattern'. This parameter decides whether to warp 
+            :attr:`warping` (str): Choose between 'image' or 'pattern'. This parameter decides whether to warp
             the patterns or the (unknown) image to recover when building the dynamic measurement matrix.
             Defaults to 'image'.
 
@@ -3286,7 +3305,7 @@ class DynamicLinearSplit(DynamicLinear):
 
         # redefine to update doc for splitted measurements
         super().build_dynamic_forward(motion, mode, warping, verbose)
-    
+
     def adjoint(self, y: torch.tensor, unvectorize=False):
         r"""Apply adjoint of matrix :math:`A_{\rm{dyn}}`.
 
@@ -3295,12 +3314,12 @@ class DynamicLinearSplit(DynamicLinear):
         .. math::
             x = A_{\rm{dyn}}^\top y,
 
-        where :math:`A_{\rm{dyn}} \in \mathbb{R}^{2M\times L}` is the 
-        dynamic acquisition matrix (that may contain negative values due to warping) 
+        where :math:`A_{\rm{dyn}} \in \mathbb{R}^{2M\times L}` is the
+        dynamic acquisition matrix (that may contain negative values due to warping)
         and :math:`y \in \mathbb{R}^{2M}` is a measurement vector.
 
-        .. warning:: 
-            This supposes the dynamic measurement matrix :math:`A_{\rm{dyn}}` has been 
+        .. warning::
+            This supposes the dynamic measurement matrix :math:`A_{\rm{dyn}}` has been
             set using the :meth:`build_dynamic_forward()` method. An error will be raised otherwise.
 
         .. note::
@@ -3308,7 +3327,7 @@ class DynamicLinearSplit(DynamicLinear):
             It may contains negative values due to warping.
 
         Args:
-            :attr:`y` (:class:`torch.tensor`): Measurement :math:`y` whose dimensions 
+            :attr:`y` (:class:`torch.tensor`): Measurement :math:`y` whose dimensions
             :attr:`self.meas_dims` must have shape :attr:`self.meas_shape`.
 
         Returns:
@@ -3354,12 +3373,12 @@ class DynamicLinearSplit(DynamicLinear):
         .. math::
             x = H_{\rm{dyn}}^\top m,
 
-        where :math:`H_{\rm{dyn}} \in \mathbb{R}^{M \times L}` is the 
-        dynamic acquisition matrix (that may contain negative values), 
+        where :math:`H_{\rm{dyn}} \in \mathbb{R}^{M \times L}` is the
+        dynamic acquisition matrix (that may contain negative values),
         :math:`m \in \mathbb{R}^M` is a measurement vector.
 
-        .. warning:: 
-            This supposes the dynamic measurement matrix :math:`H_{\rm{dyn}}` has been 
+        .. warning::
+            This supposes the dynamic measurement matrix :math:`H_{\rm{dyn}}` has been
             set using the :meth:`build_dynamic_forward()` method. An error will be raised otherwise.
 
         .. note::
@@ -3370,8 +3389,8 @@ class DynamicLinearSplit(DynamicLinear):
             :attr:`self.meas_dims` must have shape :attr:`self.meas_shape`.
 
         Returns:
-            A batch of signals :math:`x`. If :attr:`unvectorize` is :obj:`False`, :math:`x` has 
-            shape :math:`(*, L)` where :math:`*` is the same as for :attr:`m`. If :attr:`unvectorize` 
+            A batch of signals :math:`x`. If :attr:`unvectorize` is :obj:`False`, :math:`x` has
+            shape :math:`(*, L)` where :math:`*` is the same as for :attr:`m`. If :attr:`unvectorize`
             is :obj:`True`, :math:`x` is reshaped such that the dimensions :attr:`self.meas_dims` have
             shape :attr:`self.img_shape`.
 
@@ -3411,24 +3430,24 @@ class DynamicLinearSplit(DynamicLinear):
         .. math::
             m = \mathcal{N}\left(\text{diag}(A x_{t=1, ..., 2M})\right),
 
-        where :math:`A \in \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns, 
-        :math:`x \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest, 
-        :math:`2M` is the number of DMD patterns and the number of frames, 
+        where :math:`A \in \mathbb{R}_+^{2M\times N}` is the acquisition matrix that contains positive DMD patterns,
+        :math:`x \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest,
+        :math:`2M` is the number of DMD patterns and the number of frames,
         :math:`N` is the dimension of the signal,
-        :math:`\text{diag}\colon\, \mathbb{R}^{2M \times 2M} \to \mathbb{R}^{2M}` 
+        :math:`\text{diag}\colon\, \mathbb{R}^{2M \times 2M} \to \mathbb{R}^{2M}`
         extracts the diagonal of its input, and
-        :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}` 
+        :math:`\mathcal{N} \colon\, \mathbb{R}^{2M} \to \mathbb{R}^{2M}`
         represents a noise operator (e.g., Gaussian).
 
-        Given a matrix :math:`H \in \mathbb{R}^{M\times N}`, 
+        Given a matrix :math:`H \in \mathbb{R}^{M\times N}`,
         we define the positive DMD patterns :math:`A` from the positive and negative components of :math:`H`.
 
         .. note::
             The acquisition matrix :math:`A` is given by :attr:`self.A`.
-        
+
         Args:
             :attr:`x` (:class:`torch.tensor`): Video signal :math:`x` whose
-            dimensions :attr:`self.meas_dims` must be of shape :attr:`self.meas_shape` 
+            dimensions :attr:`self.meas_dims` must be of shape :attr:`self.meas_shape`
             and dimension :attr:`self.time_dim` must be of size :attr:`2 * self.M`.
 
         Returns:
@@ -3459,21 +3478,21 @@ class DynamicLinearSplit(DynamicLinear):
         return super().forward(x)
 
     def forward_H(self, x: torch.tensor) -> torch.tensor:
-        r""" Simulates noisy dynamic measurements from matrix H.
+        r"""Simulates noisy dynamic measurements from matrix H.
 
         It acquires
 
         .. math::
             m = \mathcal{N}\left(\text{diag}(H x_{t=1, ..., M})\right),
 
-        where :math:`H \in \mathbb{R}^{M\times N}` is the measurement matrix (that may contain negative values), 
-        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal obtained from 
-        averaging the positive and negative frames of :math:`x_{t=1, ..., 2M}`, 
-        :math:`M` is the number of DMD patterns, 
+        where :math:`H \in \mathbb{R}^{M\times N}` is the measurement matrix (that may contain negative values),
+        :math:`x_{t=1, ..., M} \in \mathbb{R}^{N \times M}` is the temporal signal obtained from
+        averaging the positive and negative frames of :math:`x_{t=1, ..., 2M}`,
+        :math:`M` is the number of DMD patterns,
         :math:`N` is the dimension of the signal,
-        :math:`\text{diag}\colon\, \mathbb{R}^{M \times M} \to \mathbb{R}^{M}` 
+        :math:`\text{diag}\colon\, \mathbb{R}^{M \times M} \to \mathbb{R}^{M}`
         extracts the diagonal of its input, and
-        :math:`\mathcal{N} \colon\, \mathbb{R}^{M} \to \mathbb{R}^{M}` 
+        :math:`\mathcal{N} \colon\, \mathbb{R}^{M} \to \mathbb{R}^{M}`
         represents a noise operator (e.g., Gaussian).
 
         .. note::
@@ -3481,10 +3500,10 @@ class DynamicLinearSplit(DynamicLinear):
 
         .. note::
             Here the number of frames is 2M and the number of measurements is M.
-        
+
         Args:
             :attr:`x` (:class:`torch.tensor`): Video signal :math:`x` whose
-            dimensions :attr:`self.meas_dims` must be of shape :attr:`self.meas_shape` 
+            dimensions :attr:`self.meas_dims` must be of shape :attr:`self.meas_shape`
             and dimension :attr:`self.time_dim` must be of size :attr:`2 * self.M`.
 
         Returns:
@@ -3513,16 +3532,16 @@ class DynamicLinearSplit(DynamicLinear):
         x = self.measure_H(x)
         x = self.noise_model(x)
         return x
-    
+
     def measure_A_dyn(self, x: torch.tensor) -> torch.tensor:
         r"""Simulates noiseless dynamic measurements with the splitted dynamic matrix
 
         .. math::
             y = A_{\rm{dyn}} x
 
-        where :math:`A_{\rm{dyn}} \in \mathbb{R}^{2 M \times L}` is the dynamic acquisition matrix, 
-        :math:`x \in \mathbb{R}^L` is the reference signal of interest, 
-        :math:`M` is the number of measurements, and 
+        where :math:`A_{\rm{dyn}} \in \mathbb{R}^{2 M \times L}` is the dynamic acquisition matrix,
+        :math:`x \in \mathbb{R}^L` is the reference signal of interest,
+        :math:`M` is the number of measurements, and
         :math:`L` is the dimension of the signal (with extended FOV).
 
         .. warning::
@@ -3566,16 +3585,16 @@ class DynamicLinearSplit(DynamicLinear):
         x = self.vectorize(x)  # don't need to crop because A_dyn has extended FOV
         x = torch.einsum("mn,...n->...m", self.A_dyn, x)
         return x
-    
+
     def forward_A_dyn(self, x: torch.tensor) -> torch.tensor:
         r"""Simulates noisy dynamic measurements with the splitted dynamic matrix
 
         .. math::
             y = \mathcal{N}\left(A_{\rm{dyn}} x \right)
 
-        where :math:`A_{\rm{dyn}} \in \mathbb{R}^{2 M \times L}` is the dynamic acquisition matrix, 
-        :math:`x \in \mathbb{R}^L` is the reference signal of interest, 
-        :math:`M` is the number of measurements, and 
+        where :math:`A_{\rm{dyn}} \in \mathbb{R}^{2 M \times L}` is the dynamic acquisition matrix,
+        :math:`x \in \mathbb{R}^L` is the reference signal of interest,
+        :math:`M` is the number of measurements, and
         :math:`L` is the dimension of the signal (with extended FOV).
 
         .. warning::
@@ -3635,8 +3654,8 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
         y_k = \mathcal{N}\left( \sum_{i, j} A_{1d}[r_k, i] x_{t=k}[i, j] A_{1d}[j, c_k] \right),
 
-    where 
-    :math:`A_{1d} \in \mathbb{R}_+^{2h\times h}` contains the positive and negative components of a 1d Hadamard matrix, 
+    where
+    :math:`A_{1d} \in \mathbb{R}_+^{2h\times h}` contains the positive and negative components of a 1d Hadamard matrix,
     :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
     :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`,
     :math:`\mathcal{N} \colon\, \mathbb{R} \to \mathbb{R}` represents a noise operator (e.g., Gaussian).
@@ -3649,12 +3668,12 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
     .. note::
         The splitting of the :math:`k^{\rm{th}}` 2D pattern into its positive and negative parts is given by splitting 1D patterns as:
-        
+
         .. math::
             H[k, :]^{+} = H_{1d}^{+}[r_k, :] \otimes H_{1d}^{+}[:, c_k] + H_{1d}^{-}[r_k, :] \otimes H_{1d}^{-}[:, c_k] \\
             H[k, :]^{-} = H_{1d}^{+}[r_k, :] \otimes H_{1d}^{-}[:, c_k] + H_{1d}^{-}[r_k, :] \otimes H_{1d}^{+}[:, c_k]
 
-        
+
     Args:
         :attr:`time_dim` (int): dimension index in the input tensor :math:`x` that corresponds
         to time (i.e., the frames dimension).
@@ -3670,7 +3689,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
         :attr:`reshape_output` (bool, optional): Whether reshape the output of adjoint and pinv methods to images. If False, output are vectors.
 
-        :attr:`img_shape` (tuple): Shape of the underlying multi-dimensional 
+        :attr:`img_shape` (tuple): Shape of the underlying multi-dimensional
         array :math:`x` over the extended field of view. If None, is set to :math:`(h, h)`.
 
         :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
@@ -3704,7 +3723,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         :attr:`meas_dims` (torch.Size): Dimensions of the image the acquisition
         matrix applies to. Is equal to `(-2, -1)`.
 
-        :attr:`img_shape` (tuple): Shape of the underlying multi-dimensional 
+        :attr:`img_shape` (tuple): Shape of the underlying multi-dimensional
         array :math:`x` over the extended field of view.
 
         :attr:`H1d` (:class:`torch.tensor`): Static 1D Hadamard matrix of shape
@@ -3764,7 +3783,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         noise_model: nn.Module = nn.Identity(),
         white_acq: torch.tensor = None,
         dtype: torch.dtype = torch.float32,
-        device: torch.device = torch.device("cpu")  
+        device: torch.device = torch.device("cpu"),
     ):
         meas_dims = (-2, -1)
         meas_shape = (h, h)
@@ -3783,7 +3802,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
             noise_model=noise_model,
             white_acq=white_acq,
             dtype=dtype,
-            device=device
+            device=device,
         )
 
         if order is None:
@@ -3875,8 +3894,8 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
             y_k = \sum_{i, j} A_{1d}[r_k, i] x_{t=k}[i, j] A_{1d}[j, c_k],
 
-        where 
-        :math:`A_{1d} \in \mathbb{R}_+^{2h\times h}` contains the positive and negative components of a 1d Hadamard matrix, 
+        where
+        :math:`A_{1d} \in \mathbb{R}_+^{2h\times h}` contains the positive and negative components of a 1d Hadamard matrix,
         :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
         :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix 
         used to generate the 2d Hadamard pattern used at time :math:`t=k`.
@@ -3923,8 +3942,8 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
             m_k = \sum_{i, j} H_{1d}[r_k, i] x_{t=k}[i, j] H_{1d}[j, c_k],
 
-        where 
-        :math:`H_{1d} \in \mathbb{R}^{h\times h}` is the 1d Hadamard matrix, 
+        where
+        :math:`H_{1d} \in \mathbb{R}^{h\times h}` is the 1d Hadamard matrix,
         :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
         :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of 
         the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
@@ -3973,47 +3992,47 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
             y_k = \sum_{i, j} A_{1d}[r_k, i] x_{t=k}[i, j] A_{1d}[j, c_k],
 
-        where 
-        :math:`A_{1d} \in \mathbb{R}_+^{2h\times h}` contains the positive and negative components of a 1d Hadamard matrix, 
+        where
+        :math:`A_{1d} \in \mathbb{R}_+^{2h\times h}` contains the positive and negative components of a 1d Hadamard matrix,
         :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
         :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
 
         """
-        pattern_indices = self.indices[:self.M]
-        
+        pattern_indices = self.indices[: self.M]
+
         # Find indices to 2D coordinates in the Hadamard sampling map (for separable transform)
         row_indices = pattern_indices // self.h
         col_indices = pattern_indices % self.h
-        
+
         # Extract all required rows and columns from H1d
         H1d_rows = self.H1d[row_indices, :]  # shape (M, h)
         H1d_cols = self.H1d[:, col_indices]  # shape (h, M)
-        
+
         # Split the 1D patterns into positive and negative parts
-        H1d_rows_pos = nn.functional.relu(H1d_rows)   # shape (M, h)
+        H1d_rows_pos = nn.functional.relu(H1d_rows)  # shape (M, h)
         H1d_rows_neg = nn.functional.relu(-H1d_rows)  # shape (M, h)
-        H1d_cols_pos = nn.functional.relu(H1d_cols)   # shape (h, M)
+        H1d_cols_pos = nn.functional.relu(H1d_cols)  # shape (h, M)
         H1d_cols_neg = nn.functional.relu(-H1d_cols)  # shape (h, M)
 
         # For split 2D Hadamard: H_pos = H1d_row_pos \otimes H1d_col_pos + H1d_row_neg \otimes H1d_col_neg
         #                        H_neg = H1d_row_pos \otimes H1d_col_neg + H1d_row_neg \otimes H1d_col_pos
-        
+
         x_pos, x_neg = x[:, ::2], x[:, 1::2]
 
         # Compute the four separable components
-        m_pp = torch.einsum('th,btchw,wt->bct', H1d_rows_pos, x_pos, H1d_cols_pos)
-        m_nn = torch.einsum('th,btchw,wt->bct', H1d_rows_neg, x_pos, H1d_cols_neg)
-        m_pn = torch.einsum('th,btchw,wt->bct', H1d_rows_pos, x_neg, H1d_cols_neg)
-        m_np = torch.einsum('th,btchw,wt->bct', H1d_rows_neg, x_neg, H1d_cols_pos)
-        
+        m_pp = torch.einsum("th,btchw,wt->bct", H1d_rows_pos, x_pos, H1d_cols_pos)
+        m_nn = torch.einsum("th,btchw,wt->bct", H1d_rows_neg, x_pos, H1d_cols_neg)
+        m_pn = torch.einsum("th,btchw,wt->bct", H1d_rows_pos, x_neg, H1d_cols_neg)
+        m_np = torch.einsum("th,btchw,wt->bct", H1d_rows_neg, x_neg, H1d_cols_pos)
+
         # Combine to get positive and negative measurements
         y_pos = m_pp + m_nn
         y_neg = m_pn + m_np
-        
+
         # Interleave positive and negative measurements: [pos0, neg0, pos1, neg1, ...]
         y = torch.stack([y_pos, y_neg], dim=-1)  # shape (b, c, M, 2)
         y = y.reshape(*y.shape[:-2], 2 * self.M)  # shape (b, c, 2*M)
-        
+
         return y
 
     def _fast_measure_H(self, x: torch.tensor) -> torch.tensor:
@@ -4025,28 +4044,27 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
             m_k = \sum_{i, j} H_{1d}[r_k, i] x_{t=k}[i, j] H_{1d}[j, c_k],
 
-        where 
-        :math:`H_{1d} \in \mathbb{R}^{h\times h}` is the 1d Hadamard matrix, 
+        where
+        :math:`H_{1d} \in \mathbb{R}^{h\times h}` is the 1d Hadamard matrix,
         :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
         :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
-        
+
         """
-        pattern_indices = self.indices[:self.M]
-        
+        pattern_indices = self.indices[: self.M]
+
         # Find indices to 2D coordinates in the Hadamard sampling map (for separable transform)
         row_indices = pattern_indices // self.h
         col_indices = pattern_indices % self.h
-        
+
         # Extract all required rows and columns from H1d
         H1d_rows = self.H1d[row_indices, :]  # shape (M, h)
         H1d_cols = self.H1d[:, col_indices]  # shape (h, M)
-        
+
         # Vectorized separable 2D transform using the kronecker structure
         # x shape: (b, t, c, h, w) -> we want (b, c, t)
-        m = torch.einsum('th,btchw,wt->bct', H1d_rows, x, H1d_cols)
+        m = torch.einsum("th,btchw,wt->bct", H1d_rows, x, H1d_cols)
 
         return m
-    
 
     def forward(self, x: torch.tensor) -> torch.tensor:
         r"""Simulates noisy measurements leveraging the Kronecker structure of the 2d splitted Hadamard transform A.
@@ -4057,14 +4075,14 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
             y_k = \mathcal{N}\left( \sum_{i, j} A_{1d}[r_k, i] x_{t=k}[i, j] A_{1d}[j, c_k] \right),
 
-        where 
-        :math:`A_{1d} \in \mathbb{R}_+^{2h\times h}` contains the positive and negative components of a 1d Hadamard matrix, 
+        where
+        :math:`A_{1d} \in \mathbb{R}_+^{2h\times h}` contains the positive and negative components of a 1d Hadamard matrix,
         :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
         :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
 
         Args:
             :attr:`x` (:class:`torch.tensor`): Video signal :math:`x` whose
-            dimensions :attr:`self.meas_dims` must be of shape :attr:`self.meas_shape` 
+            dimensions :attr:`self.meas_dims` must be of shape :attr:`self.meas_shape`
             and dimension :attr:`self.time_dim` must be of size :attr:`2 * self.M`.
 
         Returns:
@@ -4093,7 +4111,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         return super().forward(x)
 
     def forward_H(self, x: torch.tensor) -> torch.tensor:
-        r""""Simulates noisy measurements leveraging the Kronecker structure of the 2d Hadamard transform H.
+        r""" "Simulates noisy measurements leveraging the Kronecker structure of the 2d Hadamard transform H.
 
         Each measurement is acquired as, for :math:`k \in \{1, ..., M\}`:
 
@@ -4101,15 +4119,15 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
             m_k = \mathcal{N}\left( \sum_{i, j} H_{1d}[r_k, i] x_{t=k}[i, j] H_{1d}[j, c_k] \right),
 
-        where 
-        :math:`H_{1d} \in \mathbb{R}^{h\times h}` is the 1d Hadamard matrix, 
+        where
+        :math:`H_{1d} \in \mathbb{R}^{h\times h}` is the 1d Hadamard matrix,
         :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
         :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
 
-        
+
         Args:
             :attr:`x` (:class:`torch.tensor`): Video signal :math:`x` whose
-            dimensions :attr:`self.meas_dims` must be of shape :attr:`self.meas_shape` 
+            dimensions :attr:`self.meas_dims` must be of shape :attr:`self.meas_shape`
             and dimension :attr:`self.time_dim` must be of size :attr:`2 * self.M`.
 
         Returns:
@@ -4136,5 +4154,3 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
 
         # it is ok to use super().forward_H, because measure_H method has been redefined
         return super().forward_H(x)
-
-    
