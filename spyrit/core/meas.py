@@ -1948,11 +1948,11 @@ class DynamicLinear(Linear):
         :math:`(M, L)`. Must be set using the method :meth:`build_dynamic_forward` before being accessed.
 
 
-    Example: 
+    Example:
         >>> import torch
         >>> from spyrit.core.meas import DynamicLinear
         >>> from spyrit.core.noise import Poisson
-        >>> 
+        >>>
         >>> x = torch.rand([1, 400, 3, 50, 50])  # dummy RGB video with 400 frames of size 50x50
         >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
         >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50))
@@ -1962,12 +1962,12 @@ class DynamicLinear(Linear):
         )
 
     References:
-        [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October). 
+        [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
         Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
-        Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284). 
+        Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284).
         Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
 
-        [MaTip26]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025). 
+        [MaTip26]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
         Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 
     """
@@ -1983,7 +1983,7 @@ class DynamicLinear(Linear):
         noise_model: nn.Module = nn.Identity(),
         white_acq: torch.tensor = None,
         dtype: torch.dtype = torch.float32,
-        device: torch.device = torch.device("cpu")
+        device: torch.device = torch.device("cpu"),
     ):
         super().__init__(
             H,
@@ -2056,7 +2056,7 @@ class DynamicLinear(Linear):
             :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
             all the dimensions of the input tensor that are not included in :attr:`self.meas_dims`.
 
-        Example: 
+        Example:
             >>> import torch
             >>> from spyrit.core.meas import DynamicLinear
             >>> from spyrit.core.noise import Poisson
@@ -2106,7 +2106,7 @@ class DynamicLinear(Linear):
             :class:`torch.tensor`: A batch of measurement of shape :math:`(*, M)` where * denotes
             all the dimensions of the input tensor that are not included in :attr:`self.meas_dims`.
 
-        Example: 
+        Example:
             >>> import torch
             >>> from spyrit.core.meas import DynamicLinear
             >>> from spyrit.core.noise import Poisson
@@ -2188,11 +2188,11 @@ class DynamicLinear(Linear):
         Returns:
             None. The dynamic measurement matrix is stored in the attribute :attr:`self.H_dyn`.
 
-        Example: 
+        Example:
             >>> import torch
             >>> from spyrit.core.noise import Poisson
             >>> from spyrit.core.warp import DeformationField
-            >>> from spyrit.core.meas import DynamicLinear       
+            >>> from spyrit.core.meas import DynamicLinear
             >>>
             >>> def_field = DeformationField(torch.rand([400, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
             >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
@@ -2212,12 +2212,12 @@ class DynamicLinear(Linear):
             torch.Size([400, 2500])
 
         References:
-            [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October). 
+            [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
             Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
-            Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284). 
+            Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284).
             Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
 
-            [MaTip26]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025). 
+            [MaTip26]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
             Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 
         """
@@ -2649,8 +2649,8 @@ class DynamicLinear(Linear):
 
         Returns:
             torch.tensor: Measurement of the input signal. It has shape (..., M).
-        
-        Example: 
+
+        Example:
             >>> import torch
             >>> from spyrit.core.noise import Poisson
             >>> from spyrit.core.warp import DeformationField
@@ -2703,11 +2703,11 @@ class DynamicLinear(Linear):
             torch.tensor: Measurement of the input signal. It has shape :math:`(*, M)` where :math:`*`
             denotes all the dimensions that are not included in :attr:`self.meas_dims`
 
-        Example: 
+        Example:
             >>> import torch
             >>> from spyrit.core.noise import Poisson
             >>> from spyrit.core.warp import DeformationField
-            >>> from spyrit.core.meas import DynamicLinear       
+            >>> from spyrit.core.meas import DynamicLinear
             >>>
             >>> def_field = DeformationField(torch.rand([400, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
             >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
@@ -2761,11 +2761,11 @@ class DynamicLinear(Linear):
             the dimensions :attr:`self.meas_dims` match the measurement shape
             :attr:`self.meas_shape`.
 
-        Example: 
+        Example:
             >>> import torch
             >>> from spyrit.core.noise import Poisson
             >>> from spyrit.core.warp import DeformationField
-            >>> from spyrit.core.meas import DynamicLinear       
+            >>> from spyrit.core.meas import DynamicLinear
             >>>
             >>> def_field = DeformationField(torch.rand([400, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
             >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
@@ -2786,7 +2786,7 @@ class DynamicLinear(Linear):
             >>> print(H_dyn_adj_x.shape)
             torch.Size([1, 3, 2500])
 
-        """ 
+        """
         m = torch.einsum("mn,...m->...n", self.H_dyn, m)
         if unvectorize:
             m = self.unvectorize(m)
@@ -2928,8 +2928,8 @@ class DynamicLinearSplit(DynamicLinear):
     represents a noise operator (e.g., Gaussian).
 
     Given a matrix :math:`H`, we define the positive DMD patterns :math:`A`
-    from the positive and negative components :math:`H`. 
-    In practice, the even rows of :math:`A` contain the positive components of :math:`H`, 
+    from the positive and negative components :math:`H`.
+    In practice, the even rows of :math:`A` contain the positive components of :math:`H`,
     while odd rows of :math:`A` contain the negative components of :math:`H`.
 
     .. math::
@@ -3021,12 +3021,12 @@ class DynamicLinearSplit(DynamicLinear):
         )
 
     Reference:
-        [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October). 
+        [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
         Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
-        Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284). 
+        Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284).
         Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
 
-        [MaTip26]_(Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025). 
+        [MaTip26]_(Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
             Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 
     """
@@ -3125,7 +3125,7 @@ class DynamicLinearSplit(DynamicLinear):
             >>> import torch
             >>> from spyrit.core.noise import Poisson
             >>> from spyrit.core.meas import DynamicLinearSplit
-            >>>  
+            >>>
             >>> x = torch.rand([1, 2*400, 3, 50, 50])  # dummy RGB video with 800 frames of size 50x50
             >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
             >>> alpha = 5  # noise level
@@ -3267,11 +3267,11 @@ class DynamicLinearSplit(DynamicLinear):
         Returns:
             None. The dynamic measurement matrix is stored in the attribute :attr:`self.A_dyn`.
 
-        Example: 
+        Example:
             >>> import torch
             >>> from spyrit.core.noise import Poisson
             >>> from spyrit.core.warp import DeformationField
-            >>> from spyrit.core.meas import DynamicLinearSplit      
+            >>> from spyrit.core.meas import DynamicLinearSplit
             >>>
             >>> def_field = DeformationField(torch.rand([800, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
             >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
@@ -3293,12 +3293,12 @@ class DynamicLinearSplit(DynamicLinear):
             torch.Size([400, 2500])
 
         References:
-            [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October). 
+            [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
             Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
-            Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284). 
+            Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284).
             Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
 
-            [MaTip26]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025). 
+            [MaTip26]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
             Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 
         """
@@ -3334,11 +3334,11 @@ class DynamicLinearSplit(DynamicLinear):
             :class:`torch.tensor`: A batch of signals :math:`x` with shape :math:`(*, N)`
             where :math:`*` is the same as for :attr:`m`.
 
-        Example: 
+        Example:
             >>> import torch
             >>> from spyrit.core.noise import Poisson
             >>> from spyrit.core.warp import DeformationField
-            >>> from spyrit.core.meas import DynamicLinearSplit      
+            >>> from spyrit.core.meas import DynamicLinearSplit
             >>>
             >>> def_field = DeformationField(torch.rand([800, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
             >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
@@ -3394,11 +3394,11 @@ class DynamicLinearSplit(DynamicLinear):
             is :obj:`True`, :math:`x` is reshaped such that the dimensions :attr:`self.meas_dims` have
             shape :attr:`self.img_shape`.
 
-        Example: 
+        Example:
             >>> import torch
             >>> from spyrit.core.noise import Poisson
             >>> from spyrit.core.warp import DeformationField
-            >>> from spyrit.core.meas import DynamicLinearSplit      
+            >>> from spyrit.core.meas import DynamicLinearSplit
             >>>
             >>> def_field = DeformationField(torch.rand([800, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
             >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
@@ -3453,7 +3453,7 @@ class DynamicLinearSplit(DynamicLinear):
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`2\*self.M`.
 
-        Example: 
+        Example:
             >>> import torch
             >>> from spyrit.core.meas import DynamicLinearSplit
             >>> from spyrit.core.noise import Poisson
@@ -3509,7 +3509,7 @@ class DynamicLinearSplit(DynamicLinear):
         Returns:
             :class:`torch.tensor`: Measurement vector :math:`m` of length :attr:`self.M`.
 
-        Example: 
+        Example:
             >>> import torch
             >>> from spyrit.core.meas import DynamicLinearSplit
             >>> from spyrit.core.noise import Poisson
@@ -3557,11 +3557,11 @@ class DynamicLinearSplit(DynamicLinear):
             torch.tensor: Measurement of the input signal. It has shape :math:`(*, M)` where :math:`*`
             denotes all the dimensions that are not included in :attr:`self.meas_dims`
 
-        Example: 
+        Example:
             >>> import torch
             >>> from spyrit.core.noise import Poisson
             >>> from spyrit.core.warp import DeformationField
-            >>> from spyrit.core.meas import DynamicLinearSplit    
+            >>> from spyrit.core.meas import DynamicLinearSplit
             >>>
             >>> def_field = DeformationField(torch.rand([800, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
             >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
@@ -3610,11 +3610,11 @@ class DynamicLinearSplit(DynamicLinear):
             torch.tensor: Measurement of the input signal. It has shape :math:`(*, M)` where :math:`*`
             denotes all the dimensions that are not included in :attr:`self.meas_dims`
 
-        Example: 
+        Example:
             >>> import torch
             >>> from spyrit.core.noise import Poisson
             >>> from spyrit.core.warp import DeformationField
-            >>> from spyrit.core.meas import DynamicLinearSplit    
+            >>> from spyrit.core.meas import DynamicLinearSplit
             >>>
             >>> def_field = DeformationField(torch.rand([800, 50, 50, 2]) * 2 - 1)  # dummy deformation field with 400 frames
             >>> x = torch.rand([1, 3, 50, 50])  # dummy RGB reference image of size 50x50
@@ -3759,12 +3759,12 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         )
 
     Reference:
-        [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October). 
+        [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
         Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
-        Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284). 
+        Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284).
         Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
 
-        [MaTip26]_(Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025). 
+        [MaTip26]_(Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
             Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 
 
@@ -3897,7 +3897,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         where
         :math:`A_{1d} \in \mathbb{R}_+^{2h\times h}` contains the positive and negative components of a 1d Hadamard matrix,
         :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
-        :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix 
+        :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of the 1d Hadamard matrix
         used to generate the 2d Hadamard pattern used at time :math:`t=k`.
 
         Example:
@@ -3908,7 +3908,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
             >>> x = torch.rand([1, 2 * 32**2, 3, 40, 40])  # dummy RGB video with 2 * 32**2 frames of size 40x40
             >>> alpha = 5  # noise level
             >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
-            >>> meas_op = DynamicHadamSplit2d(time_dim=1, h=32, M=32**2, img_shape=(40, 40), 
+            >>> meas_op = DynamicHadamSplit2d(time_dim=1, h=32, M=32**2, img_shape=(40, 40),
             >>>                               noise_model=noise_op)  # acquisition with 2*M splitted Hadamard patterns of size hxh.
             >>> print(meas_op)
             DynamicHadamSplit2d(
@@ -3918,7 +3918,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
             >>> y = meas_op.measure(x)  # simulate noiseless dynamic measurements
             >>> print(y.shape)
             torch.Size([1, 3, 2048])
-        
+
         """
 
         if self.fast:
@@ -3945,7 +3945,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         where
         :math:`H_{1d} \in \mathbb{R}^{h\times h}` is the 1d Hadamard matrix,
         :math:`x_{t=k} \in \mathbb{R}^{h \times h}` is :math:`k^{\rm{th}}` frame of the video,
-        :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of 
+        :math:`(r_k, c_k) = (\left \lfloor k / h \right\rfloor, k \bmod h)` are the row and column indices of
         the 1d Hadamard matrix used to generate the 2d Hadamard pattern used at time :math:`t=k`.
 
         Example:

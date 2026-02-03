@@ -38,14 +38,14 @@ from spyrit.misc.load_data import download_girder
 
 from spyrit.core.warp import AffineDeformationField, ElasticDeformation
 
-# %% 
+# %%
 # Set parameters:
 
 thumbnail = True  # True for displaying the motion as a thumbnail, False for a video visualization
 
-n = 64          # size of the FOV side in pixels
-img_size = 88   # full image side's size in pixels
-n_frames = 50   # number of frames in the dynamic sequence
+n = 64  # size of the FOV side in pixels
+img_size = 88  # full image side's size in pixels
+n_frames = 50  # number of frames in the dynamic sequence
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
@@ -59,7 +59,7 @@ fov_shape = (n, n)
 img_shape = (img_size, img_size)
 amp_max = (img_shape[0] - fov_shape[0]) // 2
 
-# %% 
+# %%
 # Load an image from Tomoradio's warehouse.
 
 # Download an RGB brain surface image.
@@ -98,32 +98,33 @@ plt.imshow(x_plot)
 if n_wav == 1:
     plt.colorbar(fraction=0.046, pad=0.04)
 plt.title("Reference image")
-plt.axis('off')
+plt.axis("off")
 plt.show()
 
 
 # %%
 # Affine deformation
 # #############################################################################
-# 
+#
 # Affine deformation examples:
-#   1. Translation (diagonal motion) 
+#   1. Translation (diagonal motion)
 #   2. Rotation (spinning motion)
 #   3. Surface-preserving scaling (pulsating motion)
-# 
-# .. important:: 
+#
+# .. important::
 #
 #       SpyRIT uses normalized coordinates [-1, 1].
 #
 #       To convert pixels to normalized: normalized = 2 * pixels / image_size
 
 
-# %% 
+# %%
 # 1. Translation (diagonal motion)
 # -----------------------------------------------------------------------------
 
 T = 1000  # time of a period
 time_vector = torch.linspace(0, 2 * T, n_frames)
+
 
 def translation(t):
     """Translation transformation - diagonal movement."""
@@ -146,7 +147,10 @@ def translation(t):
         dtype=dtype,
     )
 
-def_field = AffineDeformationField(translation, time_vector, img_shape, dtype=dtype, device=device)
+
+def_field = AffineDeformationField(
+    translation, time_vector, img_shape, dtype=dtype, device=device
+)
 
 # %%
 # Simulate motion
@@ -158,7 +162,7 @@ x_motion = x_motion.moveaxis(time_dim, 1)
 print("x_motion.shape:", x_motion.shape)
 
 
-# %% 
+# %%
 # Display deformation within the FOV
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -172,9 +176,22 @@ if thumbnail:
         if n_frame >= n_frames or frame >= n_rows * n_cols:
             break
         plt.subplot(n_rows, n_cols, frame + 1)
-        plt.imshow(x_motion[0, n_frame, :, amp_max:img_size-amp_max, amp_max:img_size-amp_max].moveaxis(0, -1).view(*fov_shape, n_wav).cpu().numpy(), cmap="gray")  # in X
+        plt.imshow(
+            x_motion[
+                0,
+                n_frame,
+                :,
+                amp_max : img_size - amp_max,
+                amp_max : img_size - amp_max,
+            ]
+            .moveaxis(0, -1)
+            .view(*fov_shape, n_wav)
+            .cpu()
+            .numpy(),
+            cmap="gray",
+        )  # in X
         plt.title("frame %d" % (n_frame), fontsize=18)
-        plt.axis('off')
+        plt.axis("off")
     plt.tight_layout()
     plt.show()
 else:
@@ -188,18 +205,34 @@ else:
         if n_frame >= n_frames:
             break
         plt.close()
-        plt.imshow(x_motion[0, n_frame, :, amp_max:img_size-amp_max, amp_max:img_size-amp_max].moveaxis(0, -1).view(*fov_shape, n_wav).cpu().numpy(), cmap="gray", vmin=x_min, vmax=x_max)  # in X
+        plt.imshow(
+            x_motion[
+                0,
+                n_frame,
+                :,
+                amp_max : img_size - amp_max,
+                amp_max : img_size - amp_max,
+            ]
+            .moveaxis(0, -1)
+            .view(*fov_shape, n_wav)
+            .cpu()
+            .numpy(),
+            cmap="gray",
+            vmin=x_min,
+            vmax=x_max,
+        )  # in X
         plt.suptitle("frame %d" % (n_frame), fontsize=16)
         plt.pause(0.1)
         clear_output(wait=True)
 
 
-# %% 
+# %%
 # 2. Rotation (spinning motion)
 # -----------------------------------------------------------------------------
 
 T = 1000  # time of a period
 time_vector = torch.linspace(0, 2 * T, n_frames)
+
 
 def rotation(t):
     """Rotation transformation - spinning motion."""
@@ -213,7 +246,10 @@ def rotation(t):
         dtype=dtype,
     )
 
-def_field = AffineDeformationField(rotation, time_vector, img_shape, dtype=dtype, device=device)
+
+def_field = AffineDeformationField(
+    rotation, time_vector, img_shape, dtype=dtype, device=device
+)
 
 # %%
 # Simulate motion
@@ -225,7 +261,7 @@ x_motion = x_motion.moveaxis(time_dim, 1)
 print("x_motion.shape:", x_motion.shape)
 
 
-# %% 
+# %%
 # Display deformation within the FOV
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -240,9 +276,22 @@ if thumbnail:
         if n_frame >= n_frames or frame >= n_rows * n_cols:
             break
         plt.subplot(n_rows, n_cols, frame + 1)
-        plt.imshow(x_motion[0, n_frame, :, amp_max:img_size-amp_max, amp_max:img_size-amp_max].moveaxis(0, -1).view(*fov_shape, n_wav).cpu().numpy(), cmap="gray")  # in X
+        plt.imshow(
+            x_motion[
+                0,
+                n_frame,
+                :,
+                amp_max : img_size - amp_max,
+                amp_max : img_size - amp_max,
+            ]
+            .moveaxis(0, -1)
+            .view(*fov_shape, n_wav)
+            .cpu()
+            .numpy(),
+            cmap="gray",
+        )  # in X
         plt.title("frame %d" % (n_frame), fontsize=18)
-        plt.axis('off')
+        plt.axis("off")
     plt.tight_layout()
     plt.show()
 else:
@@ -256,7 +305,22 @@ else:
         if n_frame >= n_frames:
             break
         plt.close()
-        plt.imshow(x_motion[0, n_frame, :, amp_max:img_size-amp_max, amp_max:img_size-amp_max].moveaxis(0, -1).view(*fov_shape, n_wav).cpu().numpy(), cmap="gray", vmin=x_min, vmax=x_max)  # in X
+        plt.imshow(
+            x_motion[
+                0,
+                n_frame,
+                :,
+                amp_max : img_size - amp_max,
+                amp_max : img_size - amp_max,
+            ]
+            .moveaxis(0, -1)
+            .view(*fov_shape, n_wav)
+            .cpu()
+            .numpy(),
+            cmap="gray",
+            vmin=x_min,
+            vmax=x_max,
+        )  # in X
         plt.suptitle("frame %d" % (n_frame), fontsize=16)
         plt.pause(0.1)
         clear_output(wait=True)
@@ -268,6 +332,7 @@ else:
 
 T = 1000  # time of a period
 time_vector = torch.linspace(0, 2 * T, n_frames)
+
 
 def s(t):
     a = 0.2  # amplitude in normalized coordinates
@@ -285,7 +350,10 @@ def pulsation(t):
         dtype=dtype,
     )
 
-def_field = AffineDeformationField(pulsation, time_vector, img_shape, dtype=dtype, device=device)
+
+def_field = AffineDeformationField(
+    pulsation, time_vector, img_shape, dtype=dtype, device=device
+)
 
 # %%
 # Simulate motion
@@ -312,9 +380,22 @@ if thumbnail:
         if n_frame >= n_frames or frame >= n_rows * n_cols:
             break
         plt.subplot(n_rows, n_cols, frame + 1)
-        plt.imshow(x_motion[0, n_frame, :, amp_max:img_size-amp_max, amp_max:img_size-amp_max].moveaxis(0, -1).view(*fov_shape, n_wav).cpu().numpy(), cmap="gray")  # in X
+        plt.imshow(
+            x_motion[
+                0,
+                n_frame,
+                :,
+                amp_max : img_size - amp_max,
+                amp_max : img_size - amp_max,
+            ]
+            .moveaxis(0, -1)
+            .view(*fov_shape, n_wav)
+            .cpu()
+            .numpy(),
+            cmap="gray",
+        )  # in X
         plt.title("frame %d" % (n_frame), fontsize=18)
-        plt.axis('off')
+        plt.axis("off")
     plt.tight_layout()
     plt.show()
 else:
@@ -353,7 +434,7 @@ else:
 # Random elastic deformation
 # #############################################################################
 #
-# Elastic deformation creates a non-parametric motion that can 
+# Elastic deformation creates a non-parametric motion that can
 # simulate tissue deformation or fluid motion.
 #
 # Parameters:
@@ -411,7 +492,7 @@ if thumbnail:
         )
         plt.imshow(x_frame, cmap="gray")  # in X
         plt.title("frame %d" % (n_frame), fontsize=18)
-        plt.axis('off')
+        plt.axis("off")
     plt.tight_layout()
     plt.show()
 else:
@@ -511,15 +592,17 @@ n_frame = 30
 plt.figure(figsize=(2, 2))
 step = 6  # change this to plot fewer or more arrows
 plt.quiver(
-    x1[::step, ::step], 
-    -x2[::step, ::step], 
+    x1[::step, ::step],
+    -x2[::step, ::step],
     (field[n_frame, ::step, ::step, 0] - x1[::step, ::step]),
-    -(field[n_frame, ::step, ::step, 1] - x2[::step, ::step]), 
-    angles="xy", scale_units='xy', scale=1
+    -(field[n_frame, ::step, ::step, 1] - x2[::step, ::step]),
+    angles="xy",
+    scale_units="xy",
+    scale=1,
 )
 # Make axes square so quiver arrows reflect image aspect ratio
 ax = plt.gca()
-ax.set_aspect('equal', adjustable='box')
+ax.set_aspect("equal", adjustable="box")
 ax.set_xlim([-1, 1])
 ax.set_ylim([-1, 1])
 ax.set_xticks([-1, 0, 1])

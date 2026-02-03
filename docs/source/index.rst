@@ -70,7 +70,7 @@ The list of contributors can be found `here <https://github.com/openspyrit/spyri
    :hidden:
 
    external_libraries
-   
+
 .. toctree::
    :maxdepth: 2
    :caption: References

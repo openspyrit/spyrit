@@ -909,7 +909,6 @@ class MotionFieldProjector(nn.Module):
         x2_new = (transformed_coords[1, :] / w).view_as(x2_sp)
 
         return x1_new, x2_new
-    
 
     def estim_motion_from_CMOS(self, warping: str, amp_max: int = 0) -> None:
         """
@@ -920,7 +919,7 @@ class MotionFieldProjector(nn.Module):
             estimation software. It is the same warping parameter as in Dynamic classes
             from `spyrit.core.meas`.
             amp_max: Maximum amplitude for coordinate offset, due to the extended field of view.
-            
+
         Raises:
             FileNotFoundError: If required files are not found.
         """
