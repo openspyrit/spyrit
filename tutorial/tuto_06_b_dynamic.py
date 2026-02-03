@@ -1,11 +1,12 @@
 r"""
-06.b. Dynamic reconstruction
+06.b. Dynamic acquisitions + reconstruction
 ==========================================
 .. _tuto_06b_dynamic:
 
-This tutorial demonstrates how to reconstruct dynamic scenes using single-pixel imaging
-with the SpyRIT library. It based on the :class:`spyrit.core.meas.DynamicHadamSplit2d` class of 
-the :mod:`spyrit.core.meas` submodule. 
+This tutorial shows how to simulate measurements of dynamic scenes 
+using the :mod:`spyrit.core.meas` submodule. It also  demonstrates how to reconstruct a clean
+image of the scene through motion compensation. 
+It based on the :class:`spyrit.core.meas.DynamicHadamSplit2d` class of the :mod:`spyrit.core.meas` submodule. 
 
 .. image:: ../fig/tuto06b_network.png
    :width: 600
@@ -41,8 +42,8 @@ i.e. such that
 
 .. warning::
     This tutorial assumes the reader is already familiar with the static measurements operators.
-    If not, we recommend starting with the :ref:`tuto_01a_acquisition_operators`,
-    :ref:`tuto_01b_splitting`, and :ref:`tuto_01c_HadamSplit2d` tutorials.
+    If not, we recommend starting with the tutorials :ref:`1a <tuto_acquisition_operators>`,
+    :ref:`1b <tuto_acquisition_operators_splitting>`, and :ref:`1c <tuto_acquisition_operators_HadamSplit2d>`.
 
    
 Key concepts:
@@ -161,7 +162,7 @@ plt.show()
 # Define motion model and deformation fields
 # #############################################################################
 #
-# We simulate a pulsating motion using affine transformations (see :ref:`tuto_06_a_warp`).
+# We simulate a pulsating motion using affine transformations (see :ref:`tutorial 6a <tuto_06a_warp>`).
 #
 # Both forward and inverse deformation fields are needed for the tutorial:
 #   - Forward field: for motion simulation & reconstruction with image warping

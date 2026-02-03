@@ -28,6 +28,11 @@ Each tutorial focuses on a specific submodule of the full pipeline.
 
 * :ref:`Tutorial 5 <sphx_glr_gallery_tuto_05_dcnet.py>` introduces the denoised completion network for the reconstruction of Poisson-corrupted subsampled measurements.
 
+* :ref:`Tutorial 6 <sphx_glr_gallery_tuto_06_a_warp.py>`.a demonstrates how to create and apply deformation fields to simulate motion from static images.
+
+* :ref:`Tutorial 6 <sphx_glr_gallery_tuto_06_b_dynamic.py>`.b shows how acquire measurements of a moving scene and how to reconstruct a clean image of the scene through motion-compensation.
+
+
 .. note::
 
   The Python script (*.py*) or Jupyter notebook (*.ipynb*) corresponding to each tutorial can be downloaded at the bottom of the page. The images used in these files can be found on `GitHub`_.
@@ -40,8 +45,6 @@ The tutorials below will gradually be updated to be compatible with SPyRiT 3 (wo
 * :ref:`Tutorial 7 <sphx_glr_gallery_tuto_07_drunet_split_measurements.py>` shows how to perform image reconstruction using a pretrained plug-and-play denoising network.
 
 * :ref:`Tutorial 8 <sphx_glr_gallery_tuto_08_lpgd_split_measurements.py>` shows how to perform image reconstruction using a learnt proximal gradient descent.
-
-* :ref:`Tutorial 9 <sphx_glr_gallery_tuto_09_dynamic.py>` explains motion simulation from an image, dynamic measurements and reconstruction.
 
 .. _GitHub: https://github.com/openspyrit/spyrit/tree/3895b5e61fb6d522cff5e8b32a36da89b807b081/tutorial/images/test
 
