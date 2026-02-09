@@ -46,8 +46,8 @@ class DeformationField(nn.Module):
 
     Args:
         :attr:`field` (torch.tensor): Deformation field :math:`u` of shape :math:`(n\_frames,h,w,2)`,
-        where :math:`n\_frames` is the number of deformation frames, :math:`h` and :math:`w` 
-        are the height and width of the deformation field. 
+        where :math:`n\_frames` is the number of deformation frames, :math:`h` and :math:`w`
+        are the height and width of the deformation field.
         For accuracy reasons, it is recommended the dtype to be `torch.float64`.
 
     Attributes:
@@ -152,8 +152,8 @@ class DeformationField(nn.Module):
         and :math:`n1` (excluded).
 
         Args:
-            :attr:`img` (torch.tensor): Batch of 2D images to deform of shape :math:`(c, h, w)` 
-            or :math:`(b, c, h, w)`, where:math:`b` is the number of images in the batch, 
+            :attr:`img` (torch.tensor): Batch of 2D images to deform of shape :math:`(c, h, w)`
+            or :math:`(b, c, h, w)`, where:math:`b` is the number of images in the batch,
             :math:`c` is the number of channels, and :math:`h` and :math:`w` are the height
             and width of the images.
 
@@ -177,7 +177,7 @@ class DeformationField(nn.Module):
             If :math:`n0 < n1`, :attr:`field` is sliced as follows: ``field[n0:n1, :, :, :]``
 
         .. note::
-            If :math:`n0 > n1`, :attr:`field` is sliced"backwards". 
+            If :math:`n0 > n1`, :attr:`field` is sliced"backwards".
             The first frame of the warped animation corresponds to
             the index :math:`n0`, and the last frame corresponds to the index
             :math:`n1+1`. This behavior is identical to slicing a list with a

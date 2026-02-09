@@ -3,10 +3,10 @@ r"""
 ==========================================
 .. _tuto_06b_dynamic:
 
-This tutorial shows how to simulate measurements of dynamic scenes 
+This tutorial shows how to simulate measurements of dynamic scenes
 using the :mod:`spyrit.core.meas` submodule. It also  demonstrates how to reconstruct a clean
-image of the scene through motion compensation. 
-It based on the :class:`spyrit.core.meas.DynamicHadamSplit2d` class of the :mod:`spyrit.core.meas` submodule. 
+image of the scene through motion compensation.
+It based on the :class:`spyrit.core.meas.DynamicHadamSplit2d` class of the :mod:`spyrit.core.meas` submodule.
 
 .. image:: ../fig/tuto06b_network.png
    :width: 600
@@ -19,23 +19,23 @@ We consider the inverse problem
     y = \text{diag}(A x_{t=1,..., 2M}),
 
 where :math:`A \colon\, \mathbb{R}_+^{2M\times N}` is the acquisition
-matrix that contains positive DMD patterns, 
-:math:`x_{t=1,..., 2M} \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest, 
-:math:`2M` is both the number of DMD patterns (positives and negatives) 
-and the number of frames, 
+matrix that contains positive DMD patterns,
+:math:`x_{t=1,..., 2M} \in \mathbb{R}^{N \times 2M}` is the temporal signal of interest,
+:math:`2M` is both the number of DMD patterns (positives and negatives)
+and the number of frames,
 :math:`N` is the dimension of the signal within the field of view,
-:math:`\text{diag}\colon\, \mathbb{R}^{2M \times 2M} \to \mathbb{R}^{2M}` 
+:math:`\text{diag}\colon\, \mathbb{R}^{2M \times 2M} \to \mathbb{R}^{2M}`
 extracts the diagonal of its input.
 
-Dynamic single-pixel imaging aims to reconstruct the temporal sequence :math:`x_{t=1,..., 2M}`. 
+Dynamic single-pixel imaging aims to reconstruct the temporal sequence :math:`x_{t=1,..., 2M}`.
 Our approach is based on motion-compensation. Assuming known motion during the acquisition, we build
-a new forward operator :math:`A_{\rm dyn}` that compensates the motion to a static reference frame :math:`x`, 
+a new forward operator :math:`A_{\rm dyn}` that compensates the motion to a static reference frame :math:`x`,
 i.e. such that
 
 .. math::
     \text{diag}(A x_{t=1,..., 2M}) = A_{\rm dyn} x.
 
-    
+
 .. important::
     The theory behind dynamic single-pixel imaging with motion compensation is detailed in
     [MaIsbi24]_, [MaMiccai24]_, [MaTip26]_.
@@ -45,9 +45,9 @@ i.e. such that
     If not, we recommend starting with the tutorials :ref:`1a <tuto_acquisition_operators>`,
     :ref:`1b <tuto_acquisition_operators_splitting>`, and :ref:`1c <tuto_acquisition_operators_HadamSplit2d>`.
 
-   
+
 Key concepts:
-    - Simulation of a **dynamic single-pixel acquisition** accounting for motion during the measurement process 
+    - Simulation of a **dynamic single-pixel acquisition** accounting for motion during the measurement process
     - Creation of a **dynamic forward operator** :math:`A_{\text{dyn}}` using motion compensation with pattern warping or image warping
     - Numerical evidence that image warping is better suited for unbiased simulations
     - Regularized reconstruction with finite differences
@@ -70,12 +70,10 @@ import spyrit.misc.metrics as score
 from spyrit.misc.load_data import download_girder
 
 import spyrit.core.torch as spytorch
-from spyrit.core.prep import Unsplit 
+from spyrit.core.prep import Unsplit
 from spyrit.core.warp import AffineDeformationField
 
-
-
-#%% 
+# %%
 # Set acquisition parameters:
 #   - img_size: Full image resolution (pixels)
 #   - n: Measurement pattern size (defines FOV)
@@ -101,9 +99,11 @@ imgs_path = os.path.join(spyritPath, "spyrit/")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-dtype = torch.float32          # Low precision for tutorial stability, feel free to use torch.float64 for better accuracy if memory allows
-simu_interp = 'bilinear'       # Interpolation for motion simulation
-reco_interp = 'bilinear'       # Interpolation for building forward operator
+dtype = (
+    torch.float32
+)  # Low precision for tutorial stability, feel free to use torch.float64 for better accuracy if memory allows
+simu_interp = "bilinear"  # Interpolation for motion simulation
+reco_interp = "bilinear"  # Interpolation for building forward operator
 
 time_dim = 1  # Time dimension index in tensors
 
@@ -112,7 +112,7 @@ meas_shape = (n, n)
 img_shape = (img_size, img_size)
 amp_max = (img_shape[0] - meas_shape[0]) // 2  # Border size for centering FOV
 
-# %% 
+# %%
 # Load an image from Tomoradio's warehouse.
 
 # Download an RGB brain surface image.
@@ -145,7 +145,7 @@ x = (x - x.min()) / (x.max() - x.min())
 n_wav = x.shape[1]
 
 
-# %% 
+# %%
 # Plot the reference image
 
 x_plot = x.moveaxis(1, -1).squeeze().cpu().numpy()
@@ -218,7 +218,7 @@ def_field_inv = AffineDeformationField(
 print(f"Created deformation fields with shape: {def_field.field.shape}")
 
 
-# %% 
+# %%
 # We apply the deformation field to create a dynamic image sequence
 
 x_motion = def_field(x, 0, n_frames, mode=simu_interp)
@@ -226,8 +226,8 @@ x_motion = x_motion.moveaxis(time_dim, 1)
 print(f"Dynamic sequence shape: {x_motion.shape}")
 print(f"Generated {x_motion.shape[1]} frames for acquisition simulation")
 
-# %% 
-# We display a few frames to visualize the motion. 
+# %%
+# We display a few frames to visualize the motion.
 
 # plot few frames
 n_frames_display = 1000
@@ -259,7 +259,7 @@ plt.show()
 # Dynamic measurement simulation
 # #############################################################################
 #
-# We simulate a dynamic single-pixel acquisition. 
+# We simulate a dynamic single-pixel acquisition.
 #
 # .. note::
 #    The dynamic measurement operator classes extend the static ones:
@@ -270,14 +270,23 @@ plt.show()
 #
 # We used the :class:`DynamicHadamSplit2d` class (specialized for Hadamard patterns) for this tutorial.
 #
-   
+
 
 from spyrit.core.meas import DynamicHadamSplit2d
 
-meas_op = DynamicHadamSplit2d(time_dim=time_dim, h=n, M=M, order=None,
-                                fast=True, reshape_output=False, img_shape=img_shape,
-                                noise_model=torch.nn.Identity(), white_acq=None,
-                                dtype=dtype, device=device)
+meas_op = DynamicHadamSplit2d(
+    time_dim=time_dim,
+    h=n,
+    M=M,
+    order=None,
+    fast=True,
+    reshape_output=False,
+    img_shape=img_shape,
+    noise_model=torch.nn.Identity(),
+    white_acq=None,
+    dtype=dtype,
+    device=device,
+)
 
 t1 = time.time()
 y1 = meas_op(x_motion)
@@ -287,8 +296,8 @@ print(f"Computation time: {t2 - t1:.3f}s")
 print(f"Output shape: {y1.shape}")
 
 
-# %% 
-# We preprocess measurements for reconstruction using the differential strategy 
+# %%
+# We preprocess measurements for reconstruction using the differential strategy
 # to combine the positive/negative measurements.
 
 prep_op = Unsplit()
@@ -326,7 +335,7 @@ plt.axis("off")
 plt.show()
 
 
-# %% 
+# %%
 # We set up regularization for the inverse problem with first-order finite differences (smoothing prior).
 # We use Neumann boundary conditions.
 
@@ -354,10 +363,14 @@ print(f"Regularization matrix shape: {D2.shape}")
 
 # Build the dynamic system matrix
 print("Building H_dyn using pattern warping (inverse deformation)...")
-meas_op.build_dynamic_forward(def_field_inv, warping='pattern', mode=reco_interp, verbose=False)
+meas_op.build_dynamic_forward(
+    def_field_inv, warping="pattern", mode=reco_interp, verbose=False
+)
 
 print(f"Dynamic system matrix shape: {meas_op.A_dyn.shape}")
-print(f"Dynamic system matrix (differential strategy AFTER motion compensation) shape: {meas_op.H_dyn.shape}")
+print(
+    f"Dynamic system matrix (differential strategy AFTER motion compensation) shape: {meas_op.H_dyn.shape}"
+)
 
 # %%
 # .. note::
@@ -371,7 +384,7 @@ print(f"Dynamic system matrix (differential strategy AFTER motion compensation) 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # Test the dynamic forward model by computing the residual of the forward model.
-# Without measurement noise and using dtype=float64, the residual should be very small (:math:`\approx` 1e-12) [MaMiccai24]_. 
+# Without measurement noise and using dtype=float64, the residual should be very small (:math:`\approx` 1e-12) [MaMiccai24]_.
 # When using the pattern warping approach, the forward model is non-zero, indicating a bias in the model.
 
 A_dyn_x = meas_op.forward_A_dyn(x)
@@ -386,14 +399,14 @@ print(f"  Relative error: {relative_error:.2e}")
 # Visualize residual pattern (averaged over spectral channels)
 plt.figure(figsize=(4, 6))
 residual_2d = abs(y1 - A_dyn_x).mean(dim=1).squeeze().cpu().numpy().reshape((2 * n, n))
-plt.imshow(residual_2d, cmap='Spectral')
-plt.colorbar(fraction=0.046*6/3, pad=0.04)
-plt.title(f'Forward Model Residual |y - A_dyn·x| \n Max: {residual_2d.max():.2e}')
+plt.imshow(residual_2d, cmap="Spectral")
+plt.colorbar(fraction=0.046 * 6 / 3, pad=0.04)
+plt.title(f"Forward Model Residual |y - A_dyn·x| \n Max: {residual_2d.max():.2e}")
 plt.tight_layout()
 plt.show()
 
 
-# %% 
+# %%
 # We display few dynamic patterns.
 
 print(f"\nVisualizing dynamic matrix evolution...")
@@ -409,15 +422,17 @@ for frame in range(n_frames):
     if n_frame >= n_frames or frame >= n_rows * n_cols:
         break
     plt.subplot(n_rows, n_cols, frame + 1)
-    plt.imshow(H_dyn_diff_np[n_frame].reshape(img_shape), cmap="gray", vmin=-1, vmax=1)  # in X_{ext}
+    plt.imshow(
+        H_dyn_diff_np[n_frame].reshape(img_shape), cmap="gray", vmin=-1, vmax=1
+    )  # in X_{ext}
     plt.title("frame %d" % (2 * n_frame), fontsize=12)
     plt.axis("off")
 plt.tight_layout()
 plt.show()
 
 
-# %% 
-# Analyze system conditioning  
+# %%
+# Analyze system conditioning
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # Move computations to CPU for optimized linear algebra.
@@ -459,7 +474,9 @@ print(f"\n=== Dynamic Reconstruction ===")
 print(f"Regularization parameter: {eta:.1e}")
 
 start_time = time.time()
-x_dyn_wp = torch.linalg.solve(H_dyn.T @ H_dyn + eta * sigma_max ** 2 * D2,  H_dyn.T @ y2.moveaxis(1, -1))
+x_dyn_wp = torch.linalg.solve(
+    H_dyn.T @ H_dyn + eta * sigma_max**2 * D2, H_dyn.T @ y2.moveaxis(1, -1)
+)
 solve_time = time.time() - start_time
 
 print(f"Reconstruction completed in {solve_time:.2f}s")
@@ -471,9 +488,11 @@ print(f"Solution shape: {x_dyn_wp.shape}")
 x_dyn_wp_plot = x_dyn_wp.view(*img_shape, n_wav)
 
 plt.figure(figsize=(6, 6))
-plt.imshow(x_dyn_wp_plot.cpu().numpy(), cmap='gray')
-plt.title('Dynamic Reconstruction \n (Motion Compensated with pattern warping)', fontsize=14)
-plt.axis('off')
+plt.imshow(x_dyn_wp_plot.cpu().numpy(), cmap="gray")
+plt.title(
+    "Dynamic Reconstruction \n (Motion Compensated with pattern warping)", fontsize=14
+)
+plt.axis("off")
 if n_wav == 1:
     plt.colorbar(fraction=0.046, pad=0.04)
 
@@ -484,17 +503,21 @@ if n_wav == 1:
 
 # Build the dynamic system matrix
 print("Building H_dyn using image warping (forward deformation)...")
-meas_op.build_dynamic_forward(def_field, warping='image', mode=reco_interp, verbose=False)
+meas_op.build_dynamic_forward(
+    def_field, warping="image", mode=reco_interp, verbose=False
+)
 
-print(f"Dynamic system matrix (differential strategy AFTER motion compensation) shape: {meas_op.H_dyn.shape}")
+print(
+    f"Dynamic system matrix (differential strategy AFTER motion compensation) shape: {meas_op.H_dyn.shape}"
+)
 
-    
-# %% 
+
+# %%
 # Verify forward model accuracy
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # Test the dynamic forward model by computing the residual of the forward model.
-# Without measurement noise and using dtype=float64, the residual should be very small (:math:`\approx` 1e-12) [MaMiccai24]_. 
+# Without measurement noise and using dtype=float64, the residual should be very small (:math:`\approx` 1e-12) [MaMiccai24]_.
 # When using the image warping approach, the forward model is almost zero, indicating no bias in the model.
 
 A_dyn_x = meas_op.forward_A_dyn(x)
@@ -509,14 +532,14 @@ print(f"  Relative error: {relative_error:.2e}")
 # Visualize residual pattern (averaged over spectral channels)
 plt.figure(figsize=(4, 6))
 residual_2d = abs(y1 - A_dyn_x).mean(dim=1).squeeze().cpu().numpy().reshape((2 * n, n))
-plt.imshow(residual_2d, cmap='Spectral')
+plt.imshow(residual_2d, cmap="Spectral")
 plt.colorbar(fraction=0.046 * 6 / 3, pad=0.04)
-plt.title(f'Forward Model Residual |y - A_dyn·x| \n Max: {residual_2d.max():.2e}')
+plt.title(f"Forward Model Residual |y - A_dyn·x| \n Max: {residual_2d.max():.2e}")
 plt.tight_layout()
 plt.show()
 
 
-# %% 
+# %%
 # We display few dynamic patterns
 
 print(f"\nVisualizing dynamic matrix evolution...")
@@ -532,15 +555,17 @@ for frame in range(n_frames):
     if n_frame >= n_frames or frame >= n_rows * n_cols:
         break
     plt.subplot(n_rows, n_cols, frame + 1)
-    plt.imshow(H_dyn_diff_np[n_frame].reshape(img_shape), cmap="gray", vmin=-1, vmax=1)  # in X_{ext}
+    plt.imshow(
+        H_dyn_diff_np[n_frame].reshape(img_shape), cmap="gray", vmin=-1, vmax=1
+    )  # in X_{ext}
     plt.title("frame %d" % (2 * n_frame), fontsize=12)
-    plt.axis('off')
+    plt.axis("off")
 plt.tight_layout()
 plt.show()
 
 
-# %% 
-# Analyze system conditioning  
+# %%
+# Analyze system conditioning
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # Move computations to CPU for optimized linear algebra.
@@ -582,7 +607,9 @@ print(f"\n=== Dynamic Reconstruction ===")
 print(f"Regularization parameter: {eta:.1e}")
 
 start_time = time.time()
-x_dyn_wf = torch.linalg.solve(H_dyn.T @ H_dyn + eta * sigma_max ** 2 * D2,  H_dyn.T @ y2.moveaxis(1, -1))
+x_dyn_wf = torch.linalg.solve(
+    H_dyn.T @ H_dyn + eta * sigma_max**2 * D2, H_dyn.T @ y2.moveaxis(1, -1)
+)
 solve_time = time.time() - start_time
 
 print(f"Reconstruction completed in {solve_time:.2f}s")
@@ -594,12 +621,13 @@ print(f"Solution shape: {x_dyn_wf.shape}")
 x_dyn_wf_plot = x_dyn_wf.view(*img_shape, n_wav)
 
 plt.figure(figsize=(6, 6))
-plt.imshow(x_dyn_wf_plot.cpu().numpy(), cmap='gray')
-plt.title('Dynamic Reconstruction \n (Motion Compensated with image warping)', fontsize=14)
-plt.axis('off')
+plt.imshow(x_dyn_wf_plot.cpu().numpy(), cmap="gray")
+plt.title(
+    "Dynamic Reconstruction \n (Motion Compensated with image warping)", fontsize=14
+)
+plt.axis("off")
 if n_wav == 1:
     plt.colorbar(fraction=0.046, pad=0.04)
-
 
 
 # %%
@@ -617,9 +645,9 @@ fig, ax = plt.subplots(2, 2, figsize=(10, 10))
 # Original reference image
 ref_img = x.view(n_wav, *img_shape).moveaxis(0, -1).cpu().numpy()
 
-im0 = ax[0, 0].imshow(ref_img, cmap='gray')
-ax[0, 0].set_title('Reference Image', fontsize=18)
-ax[0, 0].axis('off')
+im0 = ax[0, 0].imshow(ref_img, cmap="gray")
+ax[0, 0].set_title("Reference Image", fontsize=18)
+ax[0, 0].axis("off")
 if n_wav == 1:
     fig.colorbar(im0, ax=ax[0, 0], fraction=0.046, pad=0.04)
 
@@ -629,23 +657,23 @@ static_img[amp_max : n + amp_max, amp_max : n + amp_max] = x_stat.view(
     n_wav, *meas_shape
 ).moveaxis(0, -1)
 
-im1 = ax[0, 1].imshow(static_img.cpu().numpy(), cmap='gray')
-ax[0, 1].set_title('Static Reconstruction \n (Ignores Motion)', fontsize=18)
-ax[0, 1].axis('off')
+im1 = ax[0, 1].imshow(static_img.cpu().numpy(), cmap="gray")
+ax[0, 1].set_title("Static Reconstruction \n (Ignores Motion)", fontsize=18)
+ax[0, 1].axis("off")
 if n_wav == 1:
     fig.colorbar(im1, ax=ax[0, 1], fraction=0.046, pad=0.04)
 
 # Dynamic reconstruction with pattern warping
-im2 = ax[1, 0].imshow(x_dyn_wp_plot.cpu().numpy(), cmap='gray')
-ax[1, 0].set_title('Dynamic Reconstruction \n (pattern warping)', fontsize=18)
-ax[1, 0].axis('off')
+im2 = ax[1, 0].imshow(x_dyn_wp_plot.cpu().numpy(), cmap="gray")
+ax[1, 0].set_title("Dynamic Reconstruction \n (pattern warping)", fontsize=18)
+ax[1, 0].axis("off")
 if n_wav == 1:
     fig.colorbar(im2, ax=ax[1, 0], fraction=0.046, pad=0.04)
 
 # Dynamic reconstruction with image warping
-im3 = ax[1, 1].imshow(x_dyn_wf_plot.cpu().numpy(), cmap='gray')
-ax[1, 1].set_title('Dynamic Reconstruction \n (image warping)', fontsize=18)
-ax[1, 1].axis('off')
+im3 = ax[1, 1].imshow(x_dyn_wf_plot.cpu().numpy(), cmap="gray")
+ax[1, 1].set_title("Dynamic Reconstruction \n (image warping)", fontsize=18)
+ax[1, 1].axis("off")
 if n_wav == 1:
     fig.colorbar(im3, ax=ax[1, 1], fraction=0.046, pad=0.04)
 
@@ -657,10 +685,10 @@ plt.show()
 # Metrics are computed in the FOV region for fair comparison.
 
 # Extract FOV region for metric calculation
-x_dyn_wp_in_X = x_dyn_wp_plot[amp_max:n+amp_max, amp_max:n+amp_max]
-x_dyn_wf_in_X = x_dyn_wf_plot[amp_max:n+amp_max, amp_max:n+amp_max]
-    
-x_ref_in_X = x[0, :, amp_max:n+amp_max, amp_max:n+amp_max].moveaxis(0, -1)
+x_dyn_wp_in_X = x_dyn_wp_plot[amp_max : n + amp_max, amp_max : n + amp_max]
+x_dyn_wf_in_X = x_dyn_wf_plot[amp_max : n + amp_max, amp_max : n + amp_max]
+
+x_ref_in_X = x[0, :, amp_max : n + amp_max, amp_max : n + amp_max].moveaxis(0, -1)
 
 # Calculate metrics for both reconstructions
 psnr_static = score.psnr(
@@ -682,15 +710,21 @@ print(f"\n=== Quantitative Results (in the SPC FOV X) ===")
 print(f"{'Method':<25} {'PSNR (dB)':<12} {'SSIM'}")
 print("-" * 48)
 print(f"{'Static':<25} {psnr_static:<12.2f} {ssim_static:.3f}")
-print(f"{'Dynamic (pattern warping)':<25} {psnr_dynamic_wp:<12.2f} {ssim_dynamic_wp:.3f}")
+print(
+    f"{'Dynamic (pattern warping)':<25} {psnr_dynamic_wp:<12.2f} {ssim_dynamic_wp:.3f}"
+)
 print(f"{'Dynamic (image warping)':<25} {psnr_dynamic_wf:<12.2f} {ssim_dynamic_wf:.3f}")
 print("-" * 48 + "\n")
 
 improvement_wp = psnr_dynamic_wp - psnr_static
 improvement_wf = psnr_dynamic_wf - psnr_static
 
-print(f"Dynamic reconstruction (pattern warping) achieved a PSNR improvement of {improvement_wp:.2f} dB over static reconstruction.")
-print(f"Dynamic reconstruction (image warping) achieved a PSNR improvement of {improvement_wf:.2f} dB over static reconstruction.")
+print(
+    f"Dynamic reconstruction (pattern warping) achieved a PSNR improvement of {improvement_wp:.2f} dB over static reconstruction."
+)
+print(
+    f"Dynamic reconstruction (image warping) achieved a PSNR improvement of {improvement_wf:.2f} dB over static reconstruction."
+)
 
 
 # %%

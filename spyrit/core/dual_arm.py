@@ -932,7 +932,6 @@ class MotionFieldProjector(nn.Module):
         x2_new = (transformed_coords[1, :] / w).view_as(x2_sp)
 
         return x1_new, x2_new
-    
 
     def estim_motion_from_CMOS(self, warping: str, amp_max: int = 0) -> None:
         """
