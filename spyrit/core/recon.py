@@ -11,6 +11,7 @@ import torch.nn as nn
 import spyrit.core.meas as meas
 import spyrit.core.inverse as inverse
 import spyrit.core.prep as prep
+from spyrit.core.warp import DeformationField
 
 warnings.filterwarnings("ignore", ".*Sparse CSR tensor support is in beta state.*")
 
@@ -421,11 +422,16 @@ class PinvNet(_PrebuiltFullNet):
         denoi=nn.Identity(),  # I.e., defaults to no denosing.
         *,
         device: torch.device = torch.device("cpu"),
+        def_field=None,
         **pinv_kwargs,
-    ):
+        ):
 
         pinv = inverse.PseudoInverse(acqu, **pinv_kwargs)
-        acqu_modules = OrderedDict({"acqu": acqu})
+        if isinstance(acqu, meas.DynamicLinear):
+            assert isinstance(def_field, DeformationField), "def_field must be a DeformationField when acqu is a DynamicLinear"
+            acqu_modules = OrderedDict({"warp": def_field, "acqu": acqu})
+        else:
+            acqu_modules = OrderedDict({"acqu": acqu})
         recon_modules = OrderedDict({"prep": prep, "pinv": pinv, "denoi": denoi})
 
         super().__init__(acqu_modules, recon_modules, device=device)

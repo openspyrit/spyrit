@@ -2857,7 +2857,7 @@ class DynamicLinear(Linear):
         # unflatten the last dimension
         input = input.reshape(*input.shape[:-1], *unflattened_shape)
         # compare the dimensions
-        time_and_meas_dims = torch.Size(self.time_dim, self.meas_dims)
+        time_and_meas_dims = torch.Size([self.time_dim, *self.meas_dims])
         time_and_last_dims = torch.Size(list(range(-len(unflattened_shape) - 1, 0)))
         # move dimensions if necessary
         if time_and_meas_dims != time_and_last_dims:

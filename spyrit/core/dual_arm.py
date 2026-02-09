@@ -4,7 +4,13 @@ Module designed for the dual-arm single-pixel camera.
 This module contains several classes:
 1. KeyPoints: determines the key points between a CMOS camera and a single-pixel camera.
 2. ComputeHomography: computes the homography matrix between the two camera views.
+3. MotionFieldProjector: reads the CMOS motion fields from Nifti files and projects
+    them to the single-pixel camera point of view using the computed homography.
 
+Examples of usage can be found in the spyrit-examples repository (https://github.com/openspyrit/spyrit-examples/tree/dynamic_tip).
+In particular, scripts 'fig_07.py', 'fig_08.py', 'fig_09_10.py', 'fig_11_ablation_channels.py', 'fig_11_spectra.py', and 
+'fig_12.py' in the 2025_dynamic_TIP folder treat experimental data acquired with the dual-arm single-pixel camera and use the classes
+from this module for calibration and motion estimation.
 """
 
 import numpy as np
@@ -30,7 +36,7 @@ from spyrit.misc.disp import get_frame
 
 
 @dataclass
-class MouseState:
+class _MouseState:
     """State container for mouse interactions."""
 
     x: int = 0
@@ -39,11 +45,11 @@ class MouseState:
 
 
 # Global state for mouse callbacks (necessary for OpenCV callback system)
-_cmos_state = MouseState()
-_sp_state = MouseState()
+_cmos_state = _MouseState()
+_sp_state = _MouseState()
 
 
-def draw_circle(event: int, x: int, y: int, flags: int, param) -> None:
+def _draw_circle(event: int, x: int, y: int, flags: int, param) -> None:
     """Mouse callback for CMOS image interaction."""
     global _cmos_state
     if event == cv2.EVENT_LBUTTONDBLCLK and _cmos_state.img is not None:
@@ -51,7 +57,7 @@ def draw_circle(event: int, x: int, y: int, flags: int, param) -> None:
         _cmos_state.x, _cmos_state.y = x, y
 
 
-def draw_circle_2(event: int, x: int, y: int, flags: int, param) -> None:
+def _draw_circle_2(event: int, x: int, y: int, flags: int, param) -> None:
     """Mouse callback for single-pixel camera image interaction."""
     global _sp_state
     if event == cv2.EVENT_LBUTTONDBLCLK and _sp_state.img is not None:
@@ -60,19 +66,26 @@ def draw_circle_2(event: int, x: int, y: int, flags: int, param) -> None:
 
 
 class KeyPoints(nn.Module):
-    """Determines the key points between two images. Src: CMOS, Dest: SPC"""
+    """
+    Detects and manages keypoints between two camera views.
+    
+    This class provides multiple methods for keypoint detection and matching between
+    a source image (CMOS camera) and a destination image (Single-Pixel Camera). It
+    supports both automatic detection methods (SIFT) and manual placement.
+    
+    Detected keypoints are essential for computing the homography matrix that relates
+    the two camera coordinate systems (see :class:`ComputeHomography`).
+
+    Args:
+        :attr:`src_img` Source image array from CMOS camera
+        :attr:`dest_img` Destination image array from Single-Pixel Camera
+        :attr:`homo_folder` (optional) Folder where keypoint data and homography matrices are stored
+        
+    """
 
     def __init__(
         self, src_img: np.ndarray, dest_img: np.ndarray, homo_folder: str = ""
     ):
-        """
-        Initializes the KeyPoints class.
-
-        Args:
-            src_img: Source image (CMOS).
-            dest_img: Destination image (SPC).
-            homo_folder: Folder for saving homography data.
-        """
         super().__init__()
 
         self.src_img = src_img
@@ -86,7 +99,7 @@ class KeyPoints(nn.Module):
         Manually place keypoints on both images using mouse interaction.
 
         Args:
-            win_up_factor: Window upscaling factor for SP image display.
+            :attr:`win_up_factor` (optional): Window upscaling factor for the single-pixel image display.
 
         Returns:
             Tuple of (src_points, dest_points) as numpy arrays.
@@ -102,19 +115,19 @@ class KeyPoints(nn.Module):
 
         # Setup OpenCV windows
         cv2.namedWindow("CMOS", cv2.WINDOW_NORMAL)
-        cv2.setMouseCallback("CMOS", draw_circle)
+        cv2.setMouseCallback("CMOS", _draw_circle)
 
-        cv2.namedWindow("SP", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("SP", win_up_factor * n, win_up_factor * n)
-        cv2.setMouseCallback("SP", draw_circle_2)
+        cv2.namedWindow("SPC", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("SPC", win_up_factor * n, win_up_factor * n)
+        cv2.setMouseCallback("SPC", _draw_circle_2)
 
-        print("DOUBLE CLIC puis appuyer sur 'a' pour placer un point sur l'image CMOS")
-        print("DOUBLE CLIC puis appuyer sur 'z' pour placer un point sur l'image SP")
-        print("Appuyer sur 'q' pour quitter")
+        print("DOUBLE-CLICK and press 'a' to place a point on the CMOS image")
+        print("DOUBLE-CLICK and press 'z' to place a point on the SPC image")
+        print("Press 'q' to quit")
 
         while True:
             cv2.imshow("CMOS", _cmos_state.img)
-            cv2.imshow("SP", _sp_state.img)
+            cv2.imshow("SPC", _sp_state.img)
             key = cv2.waitKey(0) & 0xFF
 
             if key == ord("q"):
@@ -126,7 +139,7 @@ class KeyPoints(nn.Module):
                 print(f"Current src_points: {src_points}")
             elif key == ord("z"):
                 point = (_sp_state.x, _sp_state.y)
-                print(f"SP point: {point}")
+                print(f"SPC point: {point}")
                 dest_points.append(point)
                 print(f"Current dest_points: {dest_points}")
 
@@ -200,12 +213,15 @@ class KeyPoints(nn.Module):
         """
         Find corners using Shi-Tomasi corner detector.
 
-        TODO: This method doesn't match keypoints between images yet. Is it possible?
+        .. warning::
+            This method doesn't match keypoints between images yet. 
+            Feel free to contribute if you need this functionality.
+            Alternatively, you can use SIFT or manual placement for now.
 
         Args:
-            max_corners: Maximum number of corners to detect.
-            quality_level: Quality level for corner detection.
-            min_distance: Minimum distance between corners.
+            :attr:`max_corners`: Maximum number of corners to detect.
+            :attr:`quality_level`: Quality level for corner detection.
+            :attr:`min_distance`: Minimum distance between corners.
 
         Returns:
             Tuple of (src_points, dest_points) as numpy arrays.
@@ -246,7 +262,7 @@ class KeyPoints(nn.Module):
         Load keypoints from external files.
 
         Returns:
-            Tuple of (src_points, dest_points) as numpy arrays.
+            Tuple of (:attr:`src_points`, :attr:`dest_points`) as numpy arrays.
         """
         data_path = Path("../data/exp_data") / self.homo_folder
 
@@ -270,11 +286,11 @@ class KeyPoints(nn.Module):
         Main method to find keypoints using specified method.
 
         Args:
-            kp_method: Method to use ('hand', 'sift', 'shi-tomasi', 'external').
-            read_hand_kp: Whether to read existing hand-placed keypoints.
+            :attr:`kp_method`: Method to use ('hand', 'sift', 'shi-tomasi', 'external').
+            :attr:`read_hand_kp`: Whether to read existing hand-placed keypoints.
 
         Returns:
-            Tuple of (src_points, dest_points) as numpy arrays.
+            Tuple of (:attr:`src_points`, :attr:`dest_points`) as numpy arrays.
         """
         if kp_method == "hand":
             if read_hand_kp:
@@ -316,13 +332,13 @@ def recalibrate(
     Recalibrate tensor X using inverse homography transformation.
 
     Args:
-        X: Input tensor of shape (batch_size, n_wav, height, width).
-        shape: Target shape (n, m).
-        homography_inv: Inverse homography matrix (3x3).
-        amp_max: Maximum amplitude offset.
+        :attr:`X`: Input tensor of shape (batch_size, n_wav, height, width).
+        :attr:`shape`: Target shape (n, m).
+        :attr:`homography_inv`: Inverse homography matrix (3x3).
+        :attr:`amp_max`: Maximum amplitude offset.
 
     Returns:
-        Calibrated tensor.
+        Recalibrated tensor of shape (batch_size, n_wav, n, m).
     """
     n, m = shape
     batch_size, n_wav, height, width = X.shape
@@ -378,7 +394,22 @@ def recalibrate(
 
 
 class ComputeHomography(nn.Module):
-    """Computes the homography of an experimental acquisition using DLT. Src: CMOS, Dest: SPC"""
+    """
+    Computes the homography between the two arms of the hybrid single-pixel camera
+    using a Direct Linear Transform (DLT) [MaIsbi24]_. 
+
+    .. note::
+        By convention, we refer to the CMOS image as the "source" and the 
+        single-pixel camera reconstruction as the "destination".
+
+    Args:
+        :attr:`data_root`: Root directory of the data.
+        :attr:`data_folder`: Folder containing the data.
+        :attr:`data_file_prefix`: Prefix of the data files.
+        :attr:`n`: Size of the reconstructed image.
+        :attr:`n_acq`: Size of the acquisition.
+
+    """
 
     def __init__(
         self,
@@ -388,16 +419,6 @@ class ComputeHomography(nn.Module):
         n: int,
         n_acq: int,
     ):
-        """
-        Initializes the ComputeHomography class.
-
-        Args:
-            data_root: Root directory of the data.
-            data_folder: Folder containing the data.
-            data_file_prefix: Prefix of the data files.
-            n: Size of the reconstructed image.
-            n_acq: Size of the acquisition.
-        """
         super().__init__()
 
         self.data_root = Path(data_root)
@@ -439,8 +460,8 @@ class ComputeHomography(nn.Module):
         Construct matrix A for DLT algorithm.
 
         Args:
-            points_source: Source image keypoints.
-            points_target: Target image keypoints.
+            :attr:`points_source`: Source image keypoints.
+            :attr:`points_target`: Target image keypoints.
 
         Returns:
             A matrix for SVD decomposition.
@@ -485,13 +506,13 @@ class ComputeHomography(nn.Module):
         Compute the homography between the CMOS and single pixel cameras.
 
         Args:
-            kp_method: Keypoint detection method.
-            homo_folder: Folder for homography data.
-            read_homography: Whether to load existing homography.
-            save_homography: Whether to save computed homography.
-            read_hand_kp: Whether to read existing hand-placed keypoints.
-            snapshot: Whether to use snapshot or video for CMOS data.
-            show_calib: Whether to show calibration visualization.
+            :attr:`kp_method`: Keypoint detection method ('sift', 'hand' or 'external').
+            :attr:`homo_folder`: Folder for homography data.
+            :attr:`read_homography`: Whether to load existing homography.
+            :attr:`save_homography`: Whether to save computed homography.
+            :attr:`read_hand_kp`: Whether to read existing hand-placed keypoints.
+            :attr:`snapshot`: Whether to use a snapshot or a video for the CMOS data.
+            :attr:`show_calib`: Whether to show calibration visualization.
 
         Returns:
             Computed homography matrix as torch tensor.
@@ -693,11 +714,11 @@ class ComputeHomography(nn.Module):
 
 
 @dataclass
-class MotionConfig:
+class _MotionConfig:
     """Configuration for motion estimation parameters."""
 
     n: int  # Pattern size
-    M: int  # Number of measurement patterns
+    M: int  # Number of illumination patterns
     n_ppg: int  # Number of patterns per gate
     T: float  # Total acquisition time
     frame_ref: int = 0  # Reference frame index
@@ -706,14 +727,31 @@ class MotionConfig:
 
 class MotionFieldProjector(nn.Module):
     """
-    Projects motion fields from CMOS camera perspective to Single Pixel Camera (SPC) perspective.
+    Projects the motion fields from the CMOS camera perspective to the single-pixel camera (SPC) perspective.
 
     This class loads pre-computed motion fields from NIfTI files and performs:
         - Geometric transformation via homography (CMOS to SPC coordinate mapping)
-        - Temporal interpolation to match SPC acquisition timing for each illumination pattern
+        - Temporal interpolation to match the SPC acquisition timing for each illumination pattern
         - Reference frame definition
 
     The result is a motion field suitable for dynamic single-pixel imaging applications.
+
+    Args:
+        :attr:`deform_path`: Path to deformation field files.
+        :attr:`deform_prefix`: Prefix for deformation files.
+        :attr:`n`: Pattern size.
+        :attr:`M`: Number of illumination patterns.
+        :attr:`n_ppg`: Number of patterns per gate. A gate is defined as the set of patterns between two CMOS frames.
+        :attr:`T`: Total acquisition time.
+        :attr:`frame_ref` (optional): Reference frame index.
+        :attr:`homography` (optional): 3x3 homography transformation matrix.
+        :attr:`translation` (optional): Translation offset (x, y).
+        :attr:`dtype` (optional): Data type for computations (torch.float32, torch.float64, etc.).
+        :attr:`device` (optional): Device to use for computations ('cpu', 'cuda', etc.).
+
+    Raises:
+        FileNotFoundError: If deformation path doesn't exist.
+        ValueError: If homography matrix is not 3x3.
     """
 
     def __init__(
@@ -730,22 +768,6 @@ class MotionFieldProjector(nn.Module):
         dtype: Optional[torch.dtype] = torch.float64,
         device: Optional[Union[str, torch.device]] = torch.device("cpu"),
     ):
-        """
-        Initialize motion estimation module.
-
-        Args:
-            deform_path: Path to deformation field files.
-            deform_prefix: Prefix for deformation files.
-            n, M, n_ppg, T, frame_ref: Motion estimation parameters.
-            homography: 3x3 homography transformation matrix.
-            translation: Translation offset (x, y).
-            dtype: Data type for computations (torch.float32, torch.float64, etc.).
-            device: Device to use for computations ('cpu', 'cuda', etc.).
-
-        Raises:
-            FileNotFoundError: If deformation path doesn't exist.
-            ValueError: If homography matrix is not 3x3.
-        """
         super().__init__()
 
         self.deform_path = Path(deform_path)
@@ -753,7 +775,7 @@ class MotionFieldProjector(nn.Module):
             raise FileNotFoundError(f"Deformation path not found: {deform_path}")
 
         self.deform_prefix = deform_prefix
-        self.config = MotionConfig(
+        self.config = _MotionConfig(
             n=n, M=M, n_ppg=n_ppg, T=T, frame_ref=frame_ref, dtype=dtype
         )
 
@@ -789,8 +811,9 @@ class MotionFieldProjector(nn.Module):
         Load deformation field movies from NIfTI files.
 
         Args:
-            warping: If 'pattern', use 'direct' mode, if 'image' use 'inverse' mode.
-
+            :attr:`warping`: 'pattern' or 'image'. Matches the warping mode used in the Dynamic 
+            classes from :mod:`spyrit.core.meas`.
+        
         Returns:
             Tuple of (combined_motion_data, width, height, n_frames).
 
@@ -853,10 +876,10 @@ class MotionFieldProjector(nn.Module):
         Create coordinate grids for spatial transformations.
 
         Args:
-            l: Grid size for SP coordinates.
-            amp_max: Amplitude offset for the extended field of view.
-            width: CMOS image width.
-            height: CMOS image height.
+            :attr:`l`: Grid size for SP coordinates.
+            :attr:`amp_max`: Amplitude offset for the extended field of view.
+            :attr:`width`: CMOS image width.
+            :attr:`height`: CMOS image height.
 
         Returns:
             Tuple of (sp_grid, cmos_grid).
@@ -887,8 +910,8 @@ class MotionFieldProjector(nn.Module):
         Apply homography transformation using vectorized operations.
 
         Args:
-            x1_sp: X coordinates in SP space.
-            x2_sp: Y coordinates in SP space.
+            :attr:`x1_sp`: X coordinates in SP space.
+            :attr:`x2_sp`: Y coordinates in SP space.
 
         Returns:
             Tuple of transformed coordinates (x1_new, x2_new).
@@ -916,10 +939,9 @@ class MotionFieldProjector(nn.Module):
         Estimate motion field from CMOS camera data.
 
         Args:
-            warping: Whether to use direct or inverse motion field from MS motion
-            estimation software. It is the same warping parameter as in Dynamic classes
-            from `spyrit.core.meas`.
-            amp_max: Maximum amplitude for coordinate offset, due to the extended field of view.
+            :attr:`warping`: 'pattern' or 'image'. Matches the warping mode used in the Dynamic classes
+            from :mod:`spyrit.core.meas`.
+            :attr:`amp_max`: Amplitude for the extended field of view.
             
         Raises:
             FileNotFoundError: If required files are not found.
@@ -1012,7 +1034,7 @@ class MotionFieldProjector(nn.Module):
         Apply homography transformation to motion vectors.
 
         Args:
-            u: Motion vectors of shape (n_frames, 2, height, width).
+            :attr:`u`: Motion vectors of shape (n_frames, 2, height, width).
 
         Returns:
             Tuple of transformed motion components (u1_sp, u2_sp).
@@ -1140,10 +1162,10 @@ class MotionFieldProjector(nn.Module):
         Get timing and deformation data for frame interpolation.
 
         Args:
-            f: Current frame index.
-            n_frames: Total number of frames.
-            dt: Time step.
-            t_acq_cmos: CMOS acquisition time offset.
+            :attr:`f`: Current frame index.
+            :attr:`n_frames`: Total number of frames.
+            :attr:`dt`: Time step.
+            :attr:`t_acq_cmos`: CMOS acquisition time offset.
 
         Returns:
             Tuple of (t_f, t_fp1, u_f, u_fp1) - timing and deformation data.
@@ -1169,10 +1191,10 @@ class MotionFieldProjector(nn.Module):
         Get pattern indices for current frame.
 
         Args:
-            f: Current frame index.
-            n_frames: Total number of frames.
-            n_wppg: White patterns per group.
-            n_last_pat: Patterns in last frame.
+            :attr:`f`: Current frame index.
+            :attr:`n_frames`: Total number of frames.
+            :attr:`n_wppg`: White patterns per group.
+            :attr:`n_last_pat`: Patterns in last frame.
 
         Returns:
             Tuple of (g_beg, g_end) - start and end of Hadamard (SPC) pattern indices.
@@ -1193,11 +1215,10 @@ class MotionFieldProjector(nn.Module):
         Complete forward pass for motion estimation.
 
         Args:
-            warping: Whether to use direct or inverse motion field from MS motion
-            estimation software. It is the same warping parameter as in Dynamic classes
-            from `spyrit.core.meas`.
-            amp_max: Maximum amplitude of coordinate offset for the extended field of view.
-            show_deform_field: Whether to visualize the deformation field.
+            :attr:`warping`: 'pattern' or 'image'. Matches the warping mode used in the Dynamic classes
+            from :mod:`spyrit.core.meas`.
+            :attr:`amp_max`: Amplitude of the extended field of view.
+            :attr:`show_deform_field`: Whether to visualize the deformation field.
 
         Returns:
             SPC deformation field of shape (2*M, l, l, 2).
