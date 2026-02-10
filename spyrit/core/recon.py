@@ -424,11 +424,13 @@ class PinvNet(_PrebuiltFullNet):
         device: torch.device = torch.device("cpu"),
         def_field=None,
         **pinv_kwargs,
-        ):
+    ):
 
         pinv = inverse.PseudoInverse(acqu, **pinv_kwargs)
         if isinstance(acqu, meas.DynamicLinear):
-            assert isinstance(def_field, DeformationField), "def_field must be a DeformationField when acqu is a DynamicLinear"
+            assert isinstance(
+                def_field, DeformationField
+            ), "def_field must be a DeformationField when acqu is a DynamicLinear"
             acqu_modules = OrderedDict({"warp": def_field, "acqu": acqu})
         else:
             acqu_modules = OrderedDict({"acqu": acqu})

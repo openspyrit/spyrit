@@ -76,11 +76,11 @@ def _draw_circle_2(event: int, x: int, y: int, flags: int, param) -> None:
 class KeyPoints(nn.Module):
     """
     Detects and manages keypoints between two camera views.
-    
+
     This class provides multiple methods for keypoint detection and matching between
     a source image (CMOS camera) and a destination image (Single-Pixel Camera). It
     supports both automatic detection methods (SIFT) and manual placement.
-    
+
     Detected keypoints are essential for computing the homography matrix that relates
     the two camera coordinate systems (see :class:`ComputeHomography`).
 
@@ -88,7 +88,7 @@ class KeyPoints(nn.Module):
         :attr:`src_img` Source image array from CMOS camera
         :attr:`dest_img` Destination image array from Single-Pixel Camera
         :attr:`homo_folder` (optional) Folder where keypoint data and homography matrices are stored
-        
+
     """
 
     def __init__(
@@ -222,7 +222,7 @@ class KeyPoints(nn.Module):
         Find corners using Shi-Tomasi corner detector.
 
         .. warning::
-            This method doesn't match keypoints between images yet. 
+            This method doesn't match keypoints between images yet.
             Feel free to contribute if you need this functionality.
             Alternatively, you can use SIFT or manual placement for now.
 
@@ -407,7 +407,7 @@ class ComputeHomography(nn.Module):
     using a Direct Linear Transform (DLT) [Maitre2024_1]_. 
 
     .. note::
-        By convention, we refer to the CMOS image as the "source" and the 
+        By convention, we refer to the CMOS image as the "source" and the
         single-pixel camera reconstruction as the "destination".
 
     Args:
@@ -819,9 +819,9 @@ class MotionFieldProjector(nn.Module):
         Load deformation field movies from NIfTI files.
 
         Args:
-            :attr:`warping`: 'pattern' or 'image'. Matches the warping mode used in the Dynamic 
+            :attr:`warping`: 'pattern' or 'image'. Matches the warping mode used in the Dynamic
             classes from :mod:`spyrit.core.meas`.
-        
+
         Returns:
             Tuple of (combined_motion_data, width, height, n_frames).
 
@@ -949,7 +949,7 @@ class MotionFieldProjector(nn.Module):
             :attr:`warping`: 'pattern' or 'image'. Matches the warping mode used in the Dynamic classes
             from :mod:`spyrit.core.meas`.
             :attr:`amp_max`: Amplitude for the extended field of view.
-            
+
         Raises:
             FileNotFoundError: If required files are not found.
         """
