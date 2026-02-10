@@ -833,7 +833,7 @@ def stat_imagenet(
             - 'npy' for numpy (default),
 
             - 'pt' for pytorch,
-            
+
             - do not save files otherwise.
 
         :attr:`rcrop_kwargs`: Additional arguments for random crop

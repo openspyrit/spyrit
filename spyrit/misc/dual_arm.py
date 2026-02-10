@@ -9,7 +9,7 @@ This module contains several classes:
 Practical examples of usage can be found in the `spyrit-examples <https://github.com/openspyrit/spyrit-examples/tree/dynamic_tip>`_ repository.
 
 In particular, the following scripts in the ``2025_dynamic_TIP`` folder treat experimental data acquired with the dual-arm single-pixel camera and use the classes
-from this module for calibration and motion estimation: ``fig_07.py``, ``fig_08.py``, ``fig_09_10.py``, ``fig_11_ablation_channels.py``, ``fig_11_spectra.py``, and 
+from this module for calibration and motion estimation: ``fig_07.py``, ``fig_08.py``, ``fig_09_10.py``, ``fig_11_ablation_channels.py``, ``fig_11_spectra.py``, and
 ``fig_12.py``.
 
 References:
@@ -409,7 +409,7 @@ def recalibrate(
 class ComputeHomography(nn.Module):
     """
     Computes the homography between the two arms of the hybrid single-pixel camera
-    using a Direct Linear Transform (DLT) [Maitre2024_1]_. 
+    using a Direct Linear Transform (DLT) [Maitre2024_1]_.
 
     .. note::
         By convention, we refer to the CMOS image as the "source" and the

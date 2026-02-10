@@ -238,7 +238,7 @@ def generate_synthetic_tumors(
             - :attr:`amplitude`: Amplitude of the tumor
 
             - :attr:`channels`: List of channel indices to add the tumor to (if None, adds to all channels)
-            
+
             - :attr:`angle` (optional): Rotation angle in degrees (counter-clockwise). Default is 0.
 
     Returns:

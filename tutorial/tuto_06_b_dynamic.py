@@ -51,7 +51,7 @@ Key concepts:
     - Simulation of a **dynamic single-pixel acquisition** accounting for motion during the measurement process
 
     - Creation of a **dynamic forward operator** :math:`A_{\text{dyn}}` using motion compensation with pattern warping or image warping
-    
+
     - Numerical evidence that image warping is better suited for unbiased simulations
 
     - Regularized reconstruction with finite differences
