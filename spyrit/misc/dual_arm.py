@@ -14,8 +14,8 @@ from this module for calibration and motion estimation: ``fig_07.py``, ``fig_08.
 
 References:
     [Maitre2024_1]_ Maitre, T., Bretin, E., Mahieu-Williame, L., Sdika, M., & Ducros, N. (2024, May).
-	Hybrid single-pixel camera for dynamic hyperspectral imaging. In 2024 IEEE International Symposium
-	on Biomedical Imaging (ISBI) (pp. 1-5). IEEE. DOI:10.1109/ISBI56570.2024.10635884
+    Hybrid single-pixel camera for dynamic hyperspectral imaging. In 2024 IEEE International Symposium
+    on Biomedical Imaging (ISBI) (pp. 1-5). IEEE. DOI:10.1109/ISBI56570.2024.10635884
 
     [Maitre2026]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
     Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
@@ -23,7 +23,6 @@ References:
 
 import numpy as np
 import matplotlib.pyplot as plt
-import cv2
 import torch
 import torch.nn as nn
 import warnings
@@ -33,6 +32,13 @@ from pathlib import Path
 import torch.nn as nn
 import time
 import math
+
+try:
+    import cv2
+except ImportError:
+    warnings.warn(
+        "Please install OpenCV to use the dual-arm module (necessary for defining keypoints), e.g. via 'pip install opencv-python'."
+    )
 
 from spyrit.misc.disp import torch2numpy
 from spyrit.core.meas import HadamSplit2d
@@ -46,7 +52,6 @@ from spyrit.misc.disp import get_frame
 @dataclass
 class _MouseState:
     """State container for mouse interactions."""
-
     x: int = 0
     y: int = 0
     img: Optional[np.ndarray] = None

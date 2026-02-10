@@ -3020,7 +3020,7 @@ class DynamicLinearSplit(DynamicLinear):
           (noise_model): Identity()
         )
 
-    Reference:
+    References:
         [Maitre2024_2]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
         Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
         Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284).
