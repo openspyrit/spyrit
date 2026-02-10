@@ -2,15 +2,23 @@
 Module designed for the dual-arm single-pixel camera.
 
 This module contains several classes:
-1. KeyPoints: determines the key points between a CMOS camera and a single-pixel camera.
-2. ComputeHomography: computes the homography matrix between the two camera views.
-3. MotionFieldProjector: reads the CMOS motion fields from Nifti files and projects
-    them to the single-pixel camera point of view using the computed homography.
+    * :class:`KeyPoints`: determines the key points between a CMOS camera and a single-pixel camera.
+    * :class:`ComputeHomography`: computes the homography matrix between the two camera views.
+    * :class:`MotionFieldProjector`: reads the CMOS motion fields from Nifti files and projects them to the single-pixel camera point of view using the computed homography.
 
-Examples of usage can be found in the spyrit-examples repository (https://github.com/openspyrit/spyrit-examples/tree/dynamic_tip).
-In particular, scripts 'fig_07.py', 'fig_08.py', 'fig_09_10.py', 'fig_11_ablation_channels.py', 'fig_11_spectra.py', and 
-'fig_12.py' in the 2025_dynamic_TIP folder treat experimental data acquired with the dual-arm single-pixel camera and use the classes
-from this module for calibration and motion estimation.
+Practical examples of usage can be found in the `spyrit-examples <https://github.com/openspyrit/spyrit-examples/tree/dynamic_tip>`_ repository.
+
+In particular, the following scripts in the ``2025_dynamic_TIP`` folder treat experimental data acquired with the dual-arm single-pixel camera and use the classes
+from this module for calibration and motion estimation: ``fig_07.py``, ``fig_08.py``, ``fig_09_10.py``, ``fig_11_ablation_channels.py``, ``fig_11_spectra.py``, and 
+``fig_12.py``.
+
+References:
+    [MaIsbi24]_ Maitre, T., Bretin, E., Mahieu-Williame, L., Sdika, M., & Ducros, N. (2024, May).
+	Hybrid single-pixel camera for dynamic hyperspectral imaging. In 2024 IEEE International Symposium
+	on Biomedical Imaging (ISBI) (pp. 1-5). IEEE. DOI:10.1109/ISBI56570.2024.10635884
+
+    [MaTip26]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
+    Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 """
 
 import numpy as np
