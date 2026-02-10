@@ -1,12 +1,13 @@
 r"""
 06.b. Dynamic acquisitions + reconstruction
-==========================================
+===========================================
 .. _tuto_06b_dynamic:
 
 This tutorial shows how to simulate measurements of dynamic scenes
 using the :mod:`spyrit.core.meas` submodule. It also  demonstrates how to reconstruct a clean
 image of the scene through motion compensation.
-It based on the :class:`spyrit.core.meas.DynamicHadamSplit2d` class of the :mod:`spyrit.core.meas` submodule.
+
+It is based on the :class:`spyrit.core.meas.DynamicHadamSplit2d` class of the :mod:`spyrit.core.meas` submodule.
 
 .. image:: ../fig/tuto06b_network.png
    :width: 600
@@ -38,7 +39,7 @@ i.e. such that
 
 .. important::
     The theory behind dynamic single-pixel imaging with motion compensation is detailed in
-    [MaIsbi24]_, [MaMiccai24]_, [MaTip26]_.
+    [Maitre2024_1]_, [Maitre2024_2]_, [Maitre2026]_.
 
 .. warning::
     This tutorial assumes the reader is already familiar with the static measurements operators.
@@ -48,9 +49,25 @@ i.e. such that
 
 Key concepts:
     - Simulation of a **dynamic single-pixel acquisition** accounting for motion during the measurement process
+
     - Creation of a **dynamic forward operator** :math:`A_{\text{dyn}}` using motion compensation with pattern warping or image warping
+    
     - Numerical evidence that image warping is better suited for unbiased simulations
+
     - Regularized reconstruction with finite differences
+
+References:
+    - [Maitre2024_1]_ Maitre, T., Bretin, E., Mahieu-Williame, L., Sdika, M., & Ducros, N. (2024, May).
+	Hybrid single-pixel camera for dynamic hyperspectral imaging. In 2024 IEEE International Symposium
+	on Biomedical Imaging (ISBI) (pp. 1-5). IEEE. DOI:10.1109/ISBI56570.2024.10635884
+
+    - [Maitre2024_2]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
+    Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
+    Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284).
+    Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
+
+    - [Maitre2026]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
+    Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 
 """
 
@@ -160,7 +177,7 @@ plt.show()
 
 # %%
 # Define motion model and deformation fields
-# #############################################################################
+# ##########################################
 #
 # We simulate a pulsating motion using affine transformations (see :ref:`tutorial 6a <tuto_06a_warp>`).
 #
@@ -257,7 +274,7 @@ plt.show()
 
 # %%
 # Dynamic measurement simulation
-# #############################################################################
+# ##############################
 #
 # We simulate a dynamic single-pixel acquisition.
 #
@@ -310,7 +327,7 @@ print(f"  Processed measurements shape: {y2.shape}")
 
 # %%
 # Static reconstruction baseline
-# #############################################################################
+# ##############################
 #
 # Compute a static reconstruction for comparison.
 # This ignores motion and treats all measurements as from a static scene.
@@ -347,7 +364,7 @@ print(f"Regularization matrix shape: {D2.shape}")
 
 # %%
 # Build dynamic system matrix
-# #############################################################################
+# ###########################
 #
 # Construct the dynamic forward operator :math:`H_{\rm dyn}` that accounts for motion.
 # This matrix maps the reference image to measurements accounting for motion.
@@ -359,7 +376,7 @@ print(f"Regularization matrix shape: {D2.shape}")
 
 # %%
 # 1. Pattern warping
-# -----------------------------------------------------------------------------
+# ------------------
 
 # Build the dynamic system matrix
 print("Building H_dyn using pattern warping (inverse deformation)...")
@@ -375,16 +392,16 @@ print(
 # %%
 # .. note::
 #   In order to use the differential strategy with dynamic scenes, it is important to build the dynamic system matrix
-#   after motion compensation [MaTip26]_.
+#   after motion compensation [Maitre2026]_.
 #
 
 
 # %%
 # Verify forward model accuracy
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # Test the dynamic forward model by computing the residual of the forward model.
-# Without measurement noise and using dtype=float64, the residual should be very small (:math:`\approx` 1e-12) [MaMiccai24]_.
+# Without measurement noise and using dtype=float64, the residual should be very small (:math:`\approx` 1e-12) [Maitre2024_2]_.
 # When using the pattern warping approach, the forward model is non-zero, indicating a bias in the model.
 
 A_dyn_x = meas_op.forward_A_dyn(x)
@@ -433,7 +450,7 @@ plt.show()
 
 # %%
 # Analyze system conditioning
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # Move computations to CPU for optimized linear algebra.
 
@@ -460,7 +477,7 @@ print(f"  Condition number: {condition_number:.2e}")
 
 # %%
 # Solve the regularized least squares problem
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # .. math::
 #     \arg \min_x \frac{1}{2} \| y - H_{\rm dyn}^{\rm wp} x \|^2 + \frac{\tilde{\eta}}{2} \| D x \|^2
@@ -499,7 +516,7 @@ if n_wav == 1:
 
 # %%
 # 2. Image warping
-# -----------------------------------------------------------------------------
+# ----------------
 
 # Build the dynamic system matrix
 print("Building H_dyn using image warping (forward deformation)...")
@@ -514,10 +531,10 @@ print(
 
 # %%
 # Verify forward model accuracy
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # Test the dynamic forward model by computing the residual of the forward model.
-# Without measurement noise and using dtype=float64, the residual should be very small (:math:`\approx` 1e-12) [MaMiccai24]_.
+# Without measurement noise and using dtype=float64, the residual should be very small (:math:`\approx` 1e-12) [Maitre2024_2]_.
 # When using the image warping approach, the forward model is almost zero, indicating no bias in the model.
 
 A_dyn_x = meas_op.forward_A_dyn(x)
@@ -566,7 +583,7 @@ plt.show()
 
 # %%
 # Analyze system conditioning
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # Move computations to CPU for optimized linear algebra.
 
@@ -593,7 +610,7 @@ print(f"  Condition number: {condition_number:.2e}")
 
 # %%
 # Solve the regularized least squares problem
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
 # .. math::
 #     \arg \min_x \frac{1}{2} \| y - H_{\rm dyn}^{\rm wf} x \|^2 + \frac{\tilde{\eta}}{2} \| D x \|^2
@@ -632,7 +649,7 @@ if n_wav == 1:
 
 # %%
 # Results overview
-# #############################################################################
+# ################
 #
 # Compare the original image, static reconstruction, and dynamic reconstruction.
 # This shows the improvement gained by accounting for motion.

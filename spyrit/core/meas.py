@@ -1918,7 +1918,7 @@ class DynamicLinear(Linear):
         :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
         of two integers representing the height and width of the image. If not
         specified, the shape is taken as equal to `meas_shape`. Setting this
-        value is particularly useful when using an extended field of view [MaMiccai24]_.
+        value is particularly useful when using an extended field of view [Maitre2024_2]_.
 
         :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
         Defaults to `torch.nn.Identity()`.
@@ -1962,12 +1962,12 @@ class DynamicLinear(Linear):
         )
 
     References:
-        [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
+        [Maitre2024_2]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
         Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
         Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284).
         Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
 
-        [MaTip26]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
+        [Maitre2026]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
         Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 
     """
@@ -2212,12 +2212,12 @@ class DynamicLinear(Linear):
             torch.Size([400, 2500])
 
         References:
-            [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
+            [Maitre2024_2]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
             Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
             Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284).
             Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
 
-            [MaTip26]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
+            [Maitre2026]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
             Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 
         """
@@ -2966,7 +2966,7 @@ class DynamicLinearSplit(DynamicLinear):
         :attr:`img_shape` (tuple, optional): Shape of the image. Must be a tuple
         of two integers representing the height and width of the image. If not
         specified, the shape is taken as equal to `meas_shape`. Setting this
-        value is particularly useful when using an extended field of view [MaMiccai24]_.
+        value is particularly useful when using an extended field of view [Maitre2024_2]_.
 
         :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model :math:`\mathcal{N}`.
         Defaults to `torch.nn.Identity()`.
@@ -3021,12 +3021,12 @@ class DynamicLinearSplit(DynamicLinear):
         )
 
     Reference:
-        [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
+        [Maitre2024_2]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
         Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
         Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284).
         Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
 
-        [MaTip26]_(Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
+        [Maitre2026]_(Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
             Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 
     """
@@ -3293,12 +3293,12 @@ class DynamicLinearSplit(DynamicLinear):
             torch.Size([400, 2500])
 
         References:
-            [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
+            [Maitre2024_2]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
             Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
             Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284).
             Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
 
-            [MaTip26]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
+            [Maitre2026]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
             Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 
         """
@@ -3759,12 +3759,12 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         )
 
     Reference:
-        [MaMiccai24]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
+        [Maitre2024_2]_ Maitre, T., Bretin, E., Phan, R., Ducros, N., & Sdika, M. (2024, October).
         Dynamic single-pixel imaging on an extended field of view without warping the patterns. In International
         Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284).
         Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
 
-        [MaTip26]_(Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
+        [Maitre2026]_(Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
             Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 
 

@@ -11,9 +11,8 @@ import numpy as np
 import torch
 import math
 import numbers
-import cv2
 from pathlib import Path
-from typing import Tuple, List, Optional, Union
+from typing import Tuple, Union
 
 from spyrit.misc.color import wavelength_to_colormap
 from spyrit.core.warp import DeformationField
@@ -163,26 +162,37 @@ def imagesc(
     custom handling for the colormap and colorbar placement.
 
     Args:
-        Img (array-like): The 2D array or image data to be displayed.
-        title (str, optional): The title for the plot. Defaults to an empty string.
-        colormap (str, int, or Colormap, optional): The colormap to use.
+        :attr:`Img` (array-like): The 2D array or image data to be displayed.
+
+        :attr:`title` (str, optional): The title for the plot. Defaults to an empty string.
+
+        :attr:`colormap` (str, int, or Colormap, optional): The colormap to use.
+
             - If **None** (default), uses Matplotlib's default **'gray'** colormap.
+
             - If **str**, it should be a valid Matplotlib colormap name (e.g., 'plasma', 'jet', 'viridis').
+
             - If **int** or **float**, it is treated as a wavelength (in nm) and is passed
               to the function `wavelength_to_colormap(colormap, gamma=0.6)` from `spyrit.misc.color`
               to generate a custom colormap.
+
             - If a **Matplotlib Colormap object**, it is used directly.
-        show (bool, optional): If **True** (default), calls `plt.show()` to display the plot.
-        figsize (tuple, optional): A tuple (width, height) specifying the figure size
+
+        :attr:`show` (bool, optional): If **True** (default), calls `plt.show()` to display the plot.
+
+        :attr:`figsize` (tuple, optional): A tuple (width, height) specifying the figure size
         in inches. Passed to `plt.figure()`. Defaults to None.
 
-        cbar_pos (str, optional): Position of the colorbar.
+        :attr:`cbar_pos` (str, optional): Position of the colorbar.
             - If **"bottom"**, the colorbar is placed horizontally below the image.
             - If **None** (default) or any other value, the colorbar is placed
               vertically to the right of the image.
-        title_fontsize (int, optional): Font size for the plot title. Defaults to 16.
+
+        :attr:`title_fontsize` (int, optional): Font size for the plot title. Defaults to 16.
+
         **kwargs: Additional keyword arguments.
-            - gamma (float, optional): The gamma correction factor when `colormap` is a wavelength (numeric).
+            
+            - :attr:`gamma` (float, optional): The gamma correction factor when `colormap` is a wavelength (numeric).
               Defaults to 0.6.
 
     Returns:
@@ -349,7 +359,12 @@ def histogram(s):
 def vid2batch(root, img_dim, start_frame, end_frame):
     from imutils.video import FPS
     import imutils
-    import cv2
+    try:
+        import cv2
+    except ImportError:
+        raise ImportError(
+            "cv2 is required for vid2batch. Please install OpenCV (e.g., via 'pip install opencv-python')."
+        )
 
     stream = cv2.VideoCapture(root)
     fps = FPS().start()
@@ -372,7 +387,12 @@ def vid2batch(root, img_dim, start_frame, end_frame):
 
 
 def pre_process_video(video, crop_patch, kernel_size):
-    import cv2
+    try:
+        import cv2
+    except ImportError:
+        raise ImportError(
+            "cv2 is required for pre_process_video. Please install OpenCV (e.g., via 'pip install opencv-python')."
+        )
 
     batch_size, seq_length, c, h, w = video.shape
     batched_frames = video.reshape(batch_size * seq_length * c, h, w)
@@ -561,6 +581,13 @@ def get_frame(movie_path: Union[str, Path], frame_number: int = 0) -> np.ndarray
         FileNotFoundError: If video file doesn't exist.
         ValueError: If frame cannot be read or video is invalid.
     """
+    try:
+        import cv2
+    except ImportError:
+        raise ImportError(
+            "cv2 is required for get_frame. Please install OpenCV (e.g., via 'pip install opencv-python')."
+        )
+
     movie_path = Path(movie_path)
     if not movie_path.exists():
         raise FileNotFoundError(f"Video file not found: {movie_path}")
@@ -600,6 +627,13 @@ def save_motion_video(x_motion, out_path, amp_max=0, fps=820):
     r"""
     Save :attr:`x_motion` of shape (1, n_frames, c, h, w) as a video file.
     """
+    try:
+        import cv2
+    except ImportError:
+        raise ImportError(
+            "cv2 is required for save_motion_video. Please install OpenCV (e.g., via 'pip install opencv-python')."
+        )
+    
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -653,18 +687,27 @@ def save_field_video(
     Save deformation field as a quiver video.
 
     Args:
-        :attr:`def_field` : Deformation field object (see the :mod:`spyrit.core.warp` module).
-        :attr:`out_path`: Path-like to save the output video (mp4).
-        :attr:`n_frames`: Number of frames in the output video (int).
-        :attr:`step`: Step size for quiver grid (spatial subsampling).
-        :attr:`fps`: Frames per second for the output video.
-        :attr:`figsize`: Figure size for the quiver plot (width, height).
-        :attr:`dpi`: Output DPI for the saved video/frames.
-        :attr:`scale`: Quiver scale parameter for scaling the length of arrows.
-        :attr:`amp_max`: int, optional
-                Number of pixels inset from each border to draw a blue box (e.g. the SPC FOV). If 0, no box is drawn.
-        :attr:`box_color`: matplotlib color for the box edge.
-        :attr:`box_linewidth`: width of the box edge line.
+        :attr:`def_field` (DeformationField): Deformation field object (see the :mod:`spyrit.core.warp` module).
+
+        :attr:`out_path` (Path-like): Path-like to save the output video (mp4).
+
+        :attr:`n_frames` (int): Number of frames in the output video.
+
+        :attr:`step` (int): Step size for quiver grid (spatial subsampling).
+
+        :attr:`fps` (int): Frames per second for the output video.
+
+        :attr:`figsize` (tuple): Figure size for the quiver plot (width, height).
+
+        :attr:`dpi` (int): Output DPI for the saved video/frames.
+
+        :attr:`scale` (float): Quiver scale parameter for scaling the length of arrows.
+        
+        :attr:`amp_max` (int, optional): Number of pixels inset from each border to draw a blue box (e.g. the SPC FOV). If 0, no box is drawn.
+        
+        :attr:`box_color` (str, optional): matplotlib color for the box edge.
+
+        :attr:`box_linewidth` (float, optional): width of the box edge line.
     """
 
     out_path = Path(out_path)

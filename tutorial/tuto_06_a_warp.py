@@ -1,6 +1,6 @@
 r"""
 06.a. Deformation fields
-==========================================
+========================
 .. _tuto_06a_warp:
 
 This tutorial demonstrates how to create and apply deformation fields to
@@ -19,8 +19,11 @@ it computes the motion video x(t, :, :) by applying the deformation field to the
     x(t, :, :) = x(t_0, u(t, :, :)).
 
 Topics covered:
+
     - Creating affine deformation fields (translation, rotation, scaling)
+
     - Creating elastic deformation fields for realistic motion
+
     - Visualizing deformed image sequences
 
 """
@@ -104,7 +107,7 @@ plt.show()
 
 # %%
 # Affine deformation
-# #############################################################################
+# ##################
 #
 # Affine deformation examples:
 #   1. Translation (diagonal motion)
@@ -120,7 +123,7 @@ plt.show()
 
 # %%
 # 1. Translation (diagonal motion)
-# -----------------------------------------------------------------------------
+# --------------------------------
 
 T = 1000  # time of a period
 time_vector = torch.linspace(0, 2 * T, n_frames)
@@ -154,7 +157,7 @@ def_field = AffineDeformationField(
 
 # %%
 # Simulate motion
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~
 
 x_motion = def_field(x, 0, n_frames, mode=simu_interp)
 
@@ -164,7 +167,7 @@ print("x_motion.shape:", x_motion.shape)
 
 # %%
 # Display deformation within the FOV
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if thumbnail:
     # plot few frames as thumbnails
@@ -228,7 +231,7 @@ else:
 
 # %%
 # 2. Rotation (spinning motion)
-# -----------------------------------------------------------------------------
+# -----------------------------
 
 T = 1000  # time of a period
 time_vector = torch.linspace(0, 2 * T, n_frames)
@@ -253,7 +256,7 @@ def_field = AffineDeformationField(
 
 # %%
 # Simulate motion
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~
 
 x_motion = def_field(x, 0, n_frames, mode=simu_interp)
 
@@ -263,7 +266,7 @@ print("x_motion.shape:", x_motion.shape)
 
 # %%
 # Display deformation within the FOV
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if thumbnail:
     # plot few frames as thumbnails
@@ -328,7 +331,7 @@ else:
 
 # %%
 # 3. Surface-preserving (pulsating motion)
-# -----------------------------------------------------------------------------
+# ----------------------------------------
 
 T = 1000  # time of a period
 time_vector = torch.linspace(0, 2 * T, n_frames)
@@ -357,7 +360,7 @@ def_field = AffineDeformationField(
 
 # %%
 # Simulate motion
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~
 
 x_motion = def_field(x, 0, n_frames, mode=simu_interp)
 
@@ -367,7 +370,7 @@ print("x_motion.shape:", x_motion.shape)
 
 # %%
 # Display deformation within the FOV
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if thumbnail:
     # plot few frames as thumbnails
@@ -432,10 +435,9 @@ else:
 
 # %%
 # Random elastic deformation
-# #############################################################################
+# ##########################
 #
-# Elastic deformation creates a non-parametric motion that can
-# simulate tissue deformation or fluid motion.
+# Elastic deformation creates a non-parametric motion that can simulate tissue deformation or fluid motion.
 #
 # Parameters:
 #   - :attr:`magnitude_amp`: Controls magnitude of deformations (in pixels)
@@ -461,7 +463,7 @@ print(
 )
 
 # %% Simulate motion
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~
 
 x_motion = def_field(x, 0, n_frames, mode=simu_interp)
 x_motion = x_motion.moveaxis(time_dim, 1)
@@ -470,7 +472,7 @@ print("x_motion.shape:", x_motion.shape)
 
 # %%
 # Display deformation within the FOV
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 n_frames_display = 5
 
@@ -520,7 +522,7 @@ else:
 
 # %%
 # Visualize the deformation field with quiver arrows
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 interval = torch.linspace(0, img_size - 1, img_size, dtype=torch.float64)
 x1, x2 = torch.meshgrid(interval, interval, indexing="xy")

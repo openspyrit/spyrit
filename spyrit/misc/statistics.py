@@ -815,9 +815,13 @@ def stat_imagenet(
 
         :attr:`get_size`: specifies how images of size :attr:`img_size` are
         obtained (see :mod:`~spyrit.misc.statistics.data_loaders_imagenet`)
+
             - 'original': random crop with padding
+
             - 'resize': resize
+
             - 'ccrop': center crop
+
             - 'rcrop': random crop
 
         :attr:`n_loop` (int, optional): Number of loops across image database. Defaults to 1. n_loop > 1 is only relevant for dataloaders with random transforms (e.g., 'rcrop' resizing)
@@ -827,7 +831,9 @@ def stat_imagenet(
         :attr:`ext` (string): Extension of saved files:
 
             - 'npy' for numpy (default),
+
             - 'pt' for pytorch,
+            
             - do not save files otherwise.
 
         :attr:`rcrop_kwargs`: Additional arguments for random crop

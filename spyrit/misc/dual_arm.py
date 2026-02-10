@@ -13,11 +13,11 @@ from this module for calibration and motion estimation: ``fig_07.py``, ``fig_08.
 ``fig_12.py``.
 
 References:
-    [MaIsbi24]_ Maitre, T., Bretin, E., Mahieu-Williame, L., Sdika, M., & Ducros, N. (2024, May).
+    [Maitre2024_1]_ Maitre, T., Bretin, E., Mahieu-Williame, L., Sdika, M., & Ducros, N. (2024, May).
 	Hybrid single-pixel camera for dynamic hyperspectral imaging. In 2024 IEEE International Symposium
 	on Biomedical Imaging (ISBI) (pp. 1-5). IEEE. DOI:10.1109/ISBI56570.2024.10635884
 
-    [MaTip26]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
+    [Maitre2026]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
     Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 """
 
@@ -404,7 +404,7 @@ def recalibrate(
 class ComputeHomography(nn.Module):
     """
     Computes the homography between the two arms of the hybrid single-pixel camera
-    using a Direct Linear Transform (DLT) [MaIsbi24]_. 
+    using a Direct Linear Transform (DLT) [Maitre2024_1]_. 
 
     .. note::
         By convention, we refer to the CMOS image as the "source" and the 

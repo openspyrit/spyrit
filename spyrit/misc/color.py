@@ -252,21 +252,21 @@ def plot_hs(
     colormap generated from the actual wavelength values.
 
     Args:
-        strategy (str): Strategy type, either 'slice' or 'bin'. Used for labeling.
-        img (np.ndarray): 3D numpy array with shape (height, width, n_wav)
-            containing the hyperspectral data.
-        wav (array-like): Array of wavelength values in nanometers, length n_wav.
-        suptitle (str, optional): Super title for the entire figure.
-            Defaults to None.
-        save_fig (bool, optional): Whether to save the figure as PDF.
-            Defaults to False.
-        results_root (Path or str, optional): Root directory for saving figures.
-            Required if save_fig is True. Defaults to None.
-        data_folder (Path or str, optional): Data folder name for organizing
-            saved figures. Required if save_fig is True. Defaults to None.
-        colorbar_format (str, optional): printf-style format string used by
-            matplotlib colorbar to format tick labels (e.g. '%.1f').
-            Defaults to '%.1f'.
+        :attr:`strategy` (str): Strategy type, either 'slice' or 'bin'. Used for labeling.
+
+        :attr:`img` (np.ndarray): 3D numpy array with shape (height, width, n_wav) containing the hyperspectral data.
+
+        :attr:`wav` (array-like): Array of wavelength values in nanometers, length n_wav.
+
+        :attr:`suptitle` (str, optional): Super title for the entire figure. Defaults to None.
+
+        :attr:`save_fig` (bool, optional): Whether to save the figure as PDF. Defaults to False.
+
+        :attr:`results_root` (Path or str, optional): Root directory for saving figures. Required if save_fig is True. Defaults to None.
+
+        :attr:`data_folder` (Path or str, optional): Data folder name for organizing saved figures. Required if save_fig is True. Defaults to None.
+
+        :attr:`colorbar_format` (str, optional): printf-style format string used by matplotlib colorbar to format tick labels (e.g. '%.1f'). Defaults to '%.1f'.
 
     Raises:
         ValueError: If save_fig is True but results_root or data_folder is None.

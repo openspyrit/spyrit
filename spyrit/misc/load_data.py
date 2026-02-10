@@ -225,14 +225,21 @@ def generate_synthetic_tumors(
     Creates synthetic Gaussian tumors to a tensor of shape (batch, n_wav, *img_shape).
 
     Args:
-        x (torch.Tensor): Input tensor of shape (batch, n_wav, *img_shape)
-        tumor_params (List[dict]): List of tumor parameters. Each dict should contain:
-            - 'center': (row, col) center position of the tumor
-            - 'sigma_x': Standard deviation of the Gaussian in the x direction
-            - 'sigma_y': Standard deviation of the Gaussian in the y direction
-            - 'amplitude': Amplitude of the tumor
-            - 'channels': List of channel indices to add the tumor to (if None, adds to all channels)
-            - 'angle' (optional): Rotation angle in degrees (counter-clockwise). Default is 0.
+        :attr:`x` (torch.Tensor): Input tensor of shape (batch, n_wav, *img_shape)
+
+        :attr:`tumor_params` (List[dict]): List of tumor parameters. Each dict should contain:
+
+            - :attr:`center`: (row, col) center position of the tumor
+
+            - :attr:`sigma_x`: Standard deviation of the Gaussian in the x direction
+
+            - :attr:`sigma_y`: Standard deviation of the Gaussian in the y direction
+
+            - :attr:`amplitude`: Amplitude of the tumor
+
+            - :attr:`channels`: List of channel indices to add the tumor to (if None, adds to all channels)
+            
+            - :attr:`angle` (optional): Rotation angle in degrees (counter-clockwise). Default is 0.
 
     Returns:
         torch.Tensor: Tensor with synthetic tumors added
