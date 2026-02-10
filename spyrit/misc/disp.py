@@ -191,7 +191,7 @@ def imagesc(
         :attr:`title_fontsize` (int, optional): Font size for the plot title. Defaults to 16.
 
         **kwargs: Additional keyword arguments.
-            
+
             - :attr:`gamma` (float, optional): The gamma correction factor when `colormap` is a wavelength (numeric).
               Defaults to 0.6.
 
@@ -359,6 +359,7 @@ def histogram(s):
 def vid2batch(root, img_dim, start_frame, end_frame):
     from imutils.video import FPS
     import imutils
+
     try:
         import cv2
     except ImportError:
@@ -633,7 +634,7 @@ def save_motion_video(x_motion, out_path, amp_max=0, fps=820):
         raise ImportError(
             "cv2 is required for save_motion_video. Please install OpenCV (e.g., via 'pip install opencv-python')."
         )
-    
+
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -702,9 +703,9 @@ def save_field_video(
         :attr:`dpi` (int): Output DPI for the saved video/frames.
 
         :attr:`scale` (float): Quiver scale parameter for scaling the length of arrows.
-        
+
         :attr:`amp_max` (int, optional): Number of pixels inset from each border to draw a blue box (e.g. the SPC FOV). If 0, no box is drawn.
-        
+
         :attr:`box_color` (str, optional): matplotlib color for the box edge.
 
         :attr:`box_linewidth` (float, optional): width of the box edge line.

@@ -9,13 +9,13 @@ This module contains several classes:
 Practical examples of usage can be found in the `spyrit-examples <https://github.com/openspyrit/spyrit-examples/tree/dynamic_tip>`_ repository.
 
 In particular, the following scripts in the ``2025_dynamic_TIP`` folder treat experimental data acquired with the dual-arm single-pixel camera and use the classes
-from this module for calibration and motion estimation: ``fig_07.py``, ``fig_08.py``, ``fig_09_10.py``, ``fig_11_ablation_channels.py``, ``fig_11_spectra.py``, and 
+from this module for calibration and motion estimation: ``fig_07.py``, ``fig_08.py``, ``fig_09_10.py``, ``fig_11_ablation_channels.py``, ``fig_11_spectra.py``, and
 ``fig_12.py``.
 
 References:
     [Maitre2024_1]_ Maitre, T., Bretin, E., Mahieu-Williame, L., Sdika, M., & Ducros, N. (2024, May).
-	Hybrid single-pixel camera for dynamic hyperspectral imaging. In 2024 IEEE International Symposium
-	on Biomedical Imaging (ISBI) (pp. 1-5). IEEE. DOI:10.1109/ISBI56570.2024.10635884
+        Hybrid single-pixel camera for dynamic hyperspectral imaging. In 2024 IEEE International Symposium
+        on Biomedical Imaging (ISBI) (pp. 1-5). IEEE. DOI:10.1109/ISBI56570.2024.10635884
 
     [Maitre2026]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
     Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
@@ -404,7 +404,7 @@ def recalibrate(
 class ComputeHomography(nn.Module):
     """
     Computes the homography between the two arms of the hybrid single-pixel camera
-    using a Direct Linear Transform (DLT) [Maitre2024_1]_. 
+    using a Direct Linear Transform (DLT) [Maitre2024_1]_.
 
     .. note::
         By convention, we refer to the CMOS image as the "source" and the

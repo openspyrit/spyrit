@@ -84,7 +84,7 @@ Contents
    spyrit.core
    spyrit.misc
    spyrit.external
-   
+
 .. toctree::
    :maxdepth: 2
    :caption: References
