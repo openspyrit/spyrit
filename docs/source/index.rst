@@ -71,12 +71,6 @@ The list of contributors can be found `here <https://github.com/openspyrit/spyri
 
    external_libraries
 
-.. toctree::
-   :maxdepth: 2
-   :caption: References
-   :hidden:
-
-   refs
 
 Contents
 ========
@@ -90,3 +84,10 @@ Contents
    spyrit.core
    spyrit.misc
    spyrit.external
+   
+.. toctree::
+   :maxdepth: 2
+   :caption: References
+   :hidden:
+
+   refs
