@@ -52,6 +52,7 @@ from spyrit.misc.disp import get_frame
 @dataclass
 class _MouseState:
     """State container for mouse interactions."""
+
     x: int = 0
     y: int = 0
     img: Optional[np.ndarray] = None
