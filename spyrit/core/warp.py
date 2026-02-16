@@ -211,7 +211,7 @@ class DeformationField(nn.Module):
             >>> field = DeformationField(u)
             >>> image = torch.tensor([0., 0.3, 0.7, 1.]).view(1, 1, 2, 2)
             >>> print(image)
-            tensor([[[[0.0000, 0.3000], 
+            tensor([[[[0.0000, 0.3000],
                     [0.7000, 1.0000]]]])
             >>> deformed_image = field(image, 0, 1)
             >>> print(deformed_image)
@@ -709,14 +709,14 @@ class ElasticDeformation(DeformationField):
     Example:
         >>> import torch
         >>> from spyrit.core.warp import ElasticDeformation
-        >>>        
+        >>>
         >>> alpha = 100
         >>> sigma = 5
         >>> img_shape = (64, 64)
         >>> n_frames = 30
         >>> n_interpolation = 5
         >>> def_field = ElasticDeformation(alpha, sigma, img_shape, n_frames, n_interpolation)
-        >>> print(def_field.field.shape)  
+        >>> print(def_field.field.shape)
         torch.Size([30, 64, 64, 2])
 
     """
