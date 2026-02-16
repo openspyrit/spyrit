@@ -1951,14 +1951,13 @@ class DynamicLinear(Linear):
     Example:
         >>> import torch
         >>> from spyrit.core.meas import DynamicLinear
-        >>> from spyrit.core.noise import Poisson
         >>>
         >>> x = torch.rand([1, 400, 3, 50, 50])  # dummy RGB video with 400 frames of size 50x50
         >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
         >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50))
         >>> print(meas_op)
         DynamicLinear(
-        (noise_model): Identity()
+          (noise_model): Identity()
         )
 
     References:
@@ -2065,10 +2064,10 @@ class DynamicLinear(Linear):
             >>> H = torch.rand([400, 40*40])  # dummy static measurement matrix
             >>> alpha = 5  # noise level
             >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
-            >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50))
+            >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinear(
-            (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>> m = meas_op.measure(x)  # simulate noiseless dynamic measurements
             >>> print(m.shape)
@@ -2118,7 +2117,7 @@ class DynamicLinear(Linear):
             >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinear(
-            (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> m = meas_op(x)  # simulate noisy dynamic measurements
@@ -2204,7 +2203,7 @@ class DynamicLinear(Linear):
             >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinear(
-            (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> meas_op.build_dynamic_forward(def_field)
@@ -2666,7 +2665,7 @@ class DynamicLinear(Linear):
             >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinear(
-            (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> meas_op.build_dynamic_forward(def_field)
@@ -2719,7 +2718,7 @@ class DynamicLinear(Linear):
             >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinear(
-            (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> meas_op.build_dynamic_forward(def_field)
@@ -2777,7 +2776,7 @@ class DynamicLinear(Linear):
             >>> meas_op = DynamicLinear(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinear(
-            (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> meas_op.build_dynamic_forward(def_field)
@@ -3026,8 +3025,8 @@ class DynamicLinearSplit(DynamicLinear):
         Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284).
         Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
 
-        [Maitre2026]_(Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
-            Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
+        [Maitre2026]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
+        Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 
     """
 
@@ -3133,7 +3132,7 @@ class DynamicLinearSplit(DynamicLinear):
             >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinearSplit(
-                (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> y = meas_op.measure(x)  # simulate noiseless dynamic measurements
@@ -3190,7 +3189,7 @@ class DynamicLinearSplit(DynamicLinear):
             >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinearSplit(
-                (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> m = meas_op.measure_H(x)  # simulate noiseless dynamic measurements from matrix H
@@ -3283,7 +3282,7 @@ class DynamicLinearSplit(DynamicLinear):
             >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinearSplit(
-            (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> meas_op.build_dynamic_forward(def_field)
@@ -3350,7 +3349,7 @@ class DynamicLinearSplit(DynamicLinear):
             >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinearSplit(
-            (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> meas_op.build_dynamic_forward(def_field)
@@ -3410,7 +3409,7 @@ class DynamicLinearSplit(DynamicLinear):
             >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinearSplit(
-            (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> meas_op.build_dynamic_forward(def_field)
@@ -3465,7 +3464,7 @@ class DynamicLinearSplit(DynamicLinear):
             >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinearSplit(
-            (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> y = meas_op(x)  # simulate noisy dynamic measurements
@@ -3521,7 +3520,7 @@ class DynamicLinearSplit(DynamicLinear):
             >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinearSplit(
-            (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> m = meas_op.forward_H(x)  # simulate noisy dynamic measurements
@@ -3573,7 +3572,7 @@ class DynamicLinearSplit(DynamicLinear):
             >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinearSplit(
-            (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> meas_op.build_dynamic_forward(def_field)
@@ -3626,7 +3625,7 @@ class DynamicLinearSplit(DynamicLinear):
             >>> meas_op = DynamicLinearSplit(H, time_dim=1, meas_shape=(40, 40), img_shape=(50, 50), noise_model=noise_op)
             >>> print(meas_op)
             DynamicLinearSplit(
-            (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> meas_op.build_dynamic_forward(def_field)
@@ -3764,8 +3763,8 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 275-284).
         Cham: Springer Nature Switzerland. DOI: 10.1007/978-3-031-72104-5_27
 
-        [Maitre2026]_(Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
-            Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
+        [Maitre2026]_ (Submitted to TIP) Maitre, T., Bretin, E., Mahieu-Williame, L., Phan, R., Sdika, M., & Ducros, N. (2025).
+        Dual-arm motion-compensated single-pixel imaging. HAL Id: hal-05068181
 
 
     """
@@ -3908,11 +3907,11 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
             >>> x = torch.rand([1, 2 * 32**2, 3, 40, 40])  # dummy RGB video with 2 * 32**2 frames of size 40x40
             >>> alpha = 5  # noise level
             >>> noise_op = Poisson(alpha=alpha, g=1/alpha)
-            >>> meas_op = DynamicHadamSplit2d(time_dim=1, h=32, M=32**2, img_shape=(40, 40),
-            >>>                               noise_model=noise_op)  # acquisition with 2*M splitted Hadamard patterns of size hxh.
+            >>> meas_op = DynamicHadamSplit2d(time_dim=1, h=32, M=32**2, img_shape=(40, 40), \
+            ...                               noise_model=noise_op)  # acquisition with 2*M splitted Hadamard patterns of size hxh.
             >>> print(meas_op)
             DynamicHadamSplit2d(
-                (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> y = meas_op.measure(x)  # simulate noiseless dynamic measurements
@@ -3959,7 +3958,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
             >>> meas_op = DynamicHadamSplit2d(time_dim=1, h=32, M=32**2, img_shape=(40, 40), noise_model=noise_op)  # acquisition with 2*M splitted Hadamard patterns of size hxh.
             >>> print(meas_op)
             DynamicHadamSplit2d(
-                (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> m = meas_op.measure_H(x)  # simulate noiseless dynamic measurements from matrix H
@@ -4099,7 +4098,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
             >>> meas_op = DynamicHadamSplit2d(time_dim=1, h=32, M=32**2, img_shape=(40, 40), noise_model=noise_op)  # acquisition with 2*M splitted Hadamard patterns of size hxh.
             >>> print(meas_op)
             DynamicHadamSplit2d(
-                (noise_model): Poisson()
+              (noise_model): Poisson()
             )
             >>>
             >>> y = meas_op(x)  # simulate noisy dynamic measurements
@@ -4111,7 +4110,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
         return super().forward(x)
 
     def forward_H(self, x: torch.tensor) -> torch.tensor:
-        r""" "Simulates noisy measurements leveraging the Kronecker structure of the 2d Hadamard transform H.
+        r"""Simulates noisy measurements leveraging the Kronecker structure of the 2d Hadamard transform H.
 
         Each measurement is acquired as, for :math:`k \in \{1, ..., M\}`:
 
@@ -4143,7 +4142,7 @@ class DynamicHadamSplit2d(DynamicLinearSplit):
             >>> meas_op = DynamicHadamSplit2d(time_dim=1, h=32, M=32**2, img_shape=(40, 40), noise_model=noise_op)  # acquisition with 2*M splitted Hadamard patterns of size hxh.
             >>> print(meas_op)
             DynamicHadamSplit2d(
-                (noise_model): Identity()
+              (noise_model): Identity()
             )
             >>>
             >>> m = meas_op.forward_H(x)  # simulate noisy dynamic measurements from matrix H

@@ -1,6 +1,6 @@
 """
 This module contains classes that are used to warp images according to
-a deformation field. Let :math:`t_0 \in \mathbb{R_+}`,
+a deformation field. Let :math:`t_0 \in \mathbb{R}_+`,
 :math:`f(t_0, x, y): \mathbb{R}^2 \mapsto \mathbb{R}^2` be a reference scene
 and :math:`u(t, x, y): \mathbb{R}^3 \mapsto \mathbb{R}^2` be a deformation field.
 These classes compute the moving scene:
@@ -71,13 +71,17 @@ class DeformationField(nn.Module):
     Example:
         Storing a 90 degrees counter-clockwise rotation for 2x2 image.
 
+        >>> import torch
+        >>> from spyrit.core.warp import DeformationField
+        >>>
         >>> u = torch.tensor([[[[ 1, -1], [ 1, 1]], [[-1, -1], [-1, 1]]]])
         >>> field = DeformationField(u)
         >>> print(field.field)
         tensor([[[[ 1, -1],
                   [ 1,  1]],
+
                  [[-1, -1],
-                 [-1,  1]]]])
+                  [-1,  1]]]])
         >>> print(field.field.shape)
         torch.Size([1, 2, 2, 2])
 
@@ -201,6 +205,9 @@ class DeformationField(nn.Module):
         Example:
             Rotating a 2x2 grayscale image by 90 degrees counter-clockwise, using one frame:
 
+            >>> import torch
+            >>> from spyrit.core.warp import DeformationField
+            >>>
             >>> u = torch.tensor([[[[ 1., -1.], [ 1., 1.]], [[-1., -1.], [-1., 1.]]]])
             >>> field = DeformationField(u)
             >>> image = torch.tensor([0., 0.3, 0.7, 1.]).view(1, 1, 2, 2)
@@ -393,10 +400,6 @@ class AffineDeformationField(DeformationField):
         construction by setting the attribute :attr:`img_shape`, or the attributes
         :attr:`img_h` and :attr:`img_w`.
 
-    .. important::
-        TODO: Check with Nicolas: the function used to generate fields dynamically, I felt that it was unnecessary
-        and more ressource demanding.
-
     Args:
         :attr:`func` (Callable[[float], torch.tensor]): Function of one parameter (time) that returns a tensor
         of shape :math:`(3,3)` representing an affine homogeneous transformation matrix. This matrix corresponds
@@ -438,19 +441,28 @@ class AffineDeformationField(DeformationField):
         to ensure the corners of the image are aligned with the corners of the grid.
 
     Example 1: Progressive scaling
+        >>> import torch
+        >>> from spyrit.core.warp import AffineDeformationField
+        >>>
         >>> def scaling(t):
         ...     scale = 1 - t/10
         ...     return torch.tensor([[scale, 0, 0], [0, scale, 0], [0, 0, 1]])
+        >>>
         >>> time_vector = torch.linspace(0, 1, 10)
         >>> def_field = AffineDeformationField(scaling, time_vector, (64, 64))
         >>> print(def_field.n_frames)
         10
 
     Example 2: Rotation counter-clockwise at 1Hz frequency
+        >>> import torch
+        >>> import math
+        >>> from spyrit.core.warp import AffineDeformationField
+        >>>
         >>> def rotation(t):
-        ...     angle = 2 * np.pi * t  # 1Hz rotation
-        ...     c, s = np.cos(angle), np.sin(angle)
+        ...     angle = 2 * math.pi * t  # 1Hz rotation
+        ...     c, s = math.cos(angle), math.sin(angle)
         ...     return torch.tensor([[c, s, 0], [-s, c, 0], [0, 0, 1]], dtype=torch.float64)
+        >>>
         >>> time_vector = torch.linspace(0, 1, 30)  # 30 frames for 1 second
         >>> def_field = AffineDeformationField(rotation, time_vector, (128, 128))
         >>> print(def_field.field.shape)
