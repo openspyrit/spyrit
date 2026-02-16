@@ -11,7 +11,6 @@ import torch.nn as nn
 import spyrit.core.meas as meas
 import spyrit.core.inverse as inverse
 import spyrit.core.prep as prep
-from spyrit.core.warp import DeformationField
 
 warnings.filterwarnings("ignore", ".*Sparse CSR tensor support is in beta state.*")
 
@@ -236,6 +235,27 @@ class _PrebuiltFullNet(FullNet):
     def acqu(self):
         del self.acqu_modules.acqu
 
+    def acquire(self, x):
+        r"""Apply the measurement modules to the input signal.
+
+        When :attr:`acqu` is a :class:`~spyrit.core.meas.DynamicLinearSplit`,
+        this calls :meth:`~spyrit.core.meas.DynamicLinearSplit.forward_A_dyn`.
+        When :attr:`acqu` is a :class:`~spyrit.core.meas.DynamicLinear`,
+        this calls :meth:`~spyrit.core.meas.DynamicLinear.forward_H_dyn`.
+        Otherwise, the default sequential pipeline is used.
+
+        Args:
+            x (torch.tensor): Input tensor.
+
+        Returns:
+            torch.tensor: Measurement tensor.
+        """
+        if isinstance(self.acqu, meas.DynamicLinearSplit):
+            return self.acqu.forward_A_dyn(x)
+        elif isinstance(self.acqu, meas.DynamicLinear):
+            return self.acqu.forward_H_dyn(x)
+        return self.acqu_modules(x)
+
     @property
     def prep(self):
         return self.recon_modules.prep
@@ -422,18 +442,11 @@ class PinvNet(_PrebuiltFullNet):
         denoi=nn.Identity(),  # I.e., defaults to no denosing.
         *,
         device: torch.device = torch.device("cpu"),
-        def_field=None,
         **pinv_kwargs,
     ):
 
         pinv = inverse.PseudoInverse(acqu, **pinv_kwargs)
-        if isinstance(acqu, meas.DynamicLinear):
-            assert isinstance(
-                def_field, DeformationField
-            ), "def_field must be a DeformationField when acqu is a DynamicLinear"
-            acqu_modules = OrderedDict({"warp": def_field, "acqu": acqu})
-        else:
-            acqu_modules = OrderedDict({"acqu": acqu})
+        acqu_modules = OrderedDict({"acqu": acqu})
         recon_modules = OrderedDict({"prep": prep, "pinv": pinv, "denoi": denoi})
 
         super().__init__(acqu_modules, recon_modules, device=device)
