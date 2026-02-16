@@ -79,7 +79,6 @@ class DeformationField(nn.Module):
         >>> print(field.field)
         tensor([[[[ 1, -1],
                   [ 1,  1]],
-
                  [[-1, -1],
                   [-1,  1]]]])
         >>> print(field.field.shape)
@@ -212,7 +211,7 @@ class DeformationField(nn.Module):
             >>> field = DeformationField(u)
             >>> image = torch.tensor([0., 0.3, 0.7, 1.]).view(1, 1, 2, 2)
             >>> print(image)
-            tensor([[[[0.0000, 0.3000],
+            tensor([[[[0.0000, 0.3000], 
                     [0.7000, 1.0000]]]])
             >>> deformed_image = field(image, 0, 1)
             >>> print(deformed_image)
@@ -598,9 +597,13 @@ class AffineDeformationField(DeformationField):
             field* :math:`u`.
 
         **Example 1:** Progressive scaling
+            >>> import torch
+            >>> from spyrit.core.warp import AffineDeformationField
+            >>>
             >>> def scaling(t):
             ...     scale = 1 - t/10
             ...     return torch.tensor([[scale, 0, 0], [0, scale, 0], [0, 0, 1]])
+            >>>
             >>> time_vector = torch.linspace(0, 1, 10)
             >>> def_field = AffineDeformationField(scaling, time_vector, (64, 64))
             >>> images = torch.randn(16, 1, 64, 64)  # Batch of 16 grayscale image
@@ -609,10 +612,15 @@ class AffineDeformationField(DeformationField):
             torch.Size([16, 10, 1, 64, 64])
 
         **Example 2:** Rotation counter-clockwise at 1Hz frequency
+               >>> import torch
+            >>> import math
+            >>> from spyrit.core.warp import AffineDeformationField
+            >>>
             >>> def rotation(t):
-            ...     angle = 2 * np.pi * t  # 1Hz rotation
-            ...     c, s = np.cos(angle), np.sin(angle)
+            ...     angle = 2 * math.pi * t  # 1Hz rotation
+            ...     c, s = math.cos(angle), math.sin(angle)
             ...     return torch.tensor([[c, s, 0], [-s, c, 0], [0, 0, 1]], dtype=torch.float64)
+            >>>
             >>> time_vector = torch.linspace(0, 1, 30)  # 30 frames for 1 second
             >>> def_field = AffineDeformationField(rotation, time_vector, (128, 128), dtype=torch.float64)
             >>> image = torch.randn(3, 128, 128).to(dtype=torch.float64)  # a single RGB image
@@ -697,6 +705,20 @@ class ElasticDeformation(DeformationField):
         :attr:`ElasticTransform` (torchvision.transforms.v2.ElasticTransform): The
         random generator of static elastic deformation, with parameters :attr:`alpha`
         and :attr:`sigma`.
+
+    Example:
+        >>> import torch
+        >>> from spyrit.core.warp import ElasticDeformation
+        >>>        
+        >>> alpha = 100
+        >>> sigma = 5
+        >>> img_shape = (64, 64)
+        >>> n_frames = 30
+        >>> n_interpolation = 5
+        >>> def_field = ElasticDeformation(alpha, sigma, img_shape, n_frames, n_interpolation)
+        >>> print(def_field.field.shape)  
+        torch.Size([30, 64, 64, 2])
+
     """
 
     def __init__(
