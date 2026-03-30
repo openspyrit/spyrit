@@ -307,46 +307,65 @@ class PositiveParameters(nn.Module):
 
 # =============================================================================
 class PinvNet(_PrebuiltFullNet):
-    r"""Pre-built :class:`FullNet` that uses a pseudo inverse.
+    r"""A :class:`FullNet` with a pseudo inverse-based reconstruction module.
 
-    As a :class:`FullNet`, this network has two modules: one for measurements
-    and one for reconstruction.
+    It simulates noisy measurements
 
-    The measurement module only contains the acquisition operator. The
-    reconstruction module contains a preprocessing operator, a pseudo inverse
-    operator, and a denoising operator.
+    .. math::
+        y =\mathcal{N}\left(Ax\right),
 
-    The optional keyword arguments passed at initialization are fed in the
-    pseudo inverse operator. This way, the regularization can be controlled
-    directly from the :class:`PinvNet` constructor.
+    where :math:`\mathcal{N}` represents a noise operator (e.g., Gaussian), :math:`A` is the acquisition matrix, :math:`x` is the signal of interest.
+
+    It estimates the signal from the noisy measurements in three steps [1]_:
+
+    1. Preprocessing of the measurements:
+
+    .. math::
+        \tilde{m} = By,
+
+    where :math:`B` represents a preprocessing step.
+
+    2. Pseudo-inverse reconstruction
+
+    .. math::
+        x^\dagger = H^\dagger \tilde{m},
+
+    where :math:`H^\dagger` denotes the Moore-Penrose pseudo-inverse of :math:`H=BA`.
+
+    3. Denoising/artefact correction
+
+    .. math::
+        \hat{x} = \mathcal{G}_\theta(x^\dagger)
+
+    where :math:`\mathcal{G}_\theta` is a neural network with learnable parameters :math:`\theta`.
+
 
     Args:
-        :attr:`acqu` (:mod:`spyrit.core.meas`): Acquisition operator
+        :attr:`acqu` (:mod:`spyrit.core.meas`): Acquisition operator :math:`\mathcal{N}\circ A`.
 
-        :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator.
-        Defaults to no preprocesing (i.e., :class:`~spyrit.core.prep.Identity`).
+        :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator :math:`B`.
+        Defaults to no preprocessing (i.e., :class:`spyrit.core.prep.Identity`).
 
         :attr:`denoi` (:obj:`torch.nn.Module`, optional): Image denoising
-        operator. Defaults to no denoising (i.e., to :class:`~torch.nn.Identity`).
+        operator :math:`\mathcal{G}_\theta`. Defaults to no denoising (i.e., to :class:`torch.nn.Identity`).
 
-        **pinv_kwargs: Optional keyword arguments passed to the pseudo inverse
+        :attr:`**pinv_kwargs`: Optional keyword arguments passed to the pseudo inverse
         operator (see :class:`spyrit.core.inverse.PseudoInverse`).
 
     Attributes:
-        :attr:`acqu` (:mod:`spyrit.core.meas`): Acquisition operator.
+        :attr:`acqu` (:mod:`spyrit.core.meas`): Acquisition operator :math:`\mathcal{N}\circ A`.
 
-        :attr:`acqu_modules` (:obj:`torch.nn.Sequential`): Measurement modules. Only contains
-        the acquisition operator.
+        :attr:`acqu_modules` (:obj:`torch.nn.Sequential`): Acquisition modules. Contains only :attr:`acqu`.
 
-        :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator.
+        :attr:`prep` (:mod:`spyrit.core.prep`): Preprocessing operator :math:`B`.
 
-        :attr:`pinv` (:class:`spyrit.core.inverse.PseudoInverse`): Pseudo inverse operator.
+        :attr:`pinv` (:class:`spyrit.core.inverse.PseudoInverse`): Pseudo inverse operator :math:`H^\dagger`.
 
-        :attr:`denoi` (:obj:`torch.nn.Module`): Image denoising operator.
+        :attr:`denoi` (:obj:`torch.nn.Module`): Image denoising operator :math:`\mathcal{G}_\theta`.
 
-        :attr:`recon_modules` (:obj:`torch.nn.Sequential`): Reconstruction modules. Contains
+        :attr:`recon_modules` (:obj:`torch.nn.Sequential`): Reconstruction module. Contains
         the preprocessing operator, the pseudo inverse operator, and the denoising
-        operator.
+        operator, i.e., :math:`\mathcal{G}_\theta\circ H^\dagger \circ B`.
 
         :attr:`pinv_kwargs` (dict): Optional keyword arguments passed to the
         pseudo inverse operator.
@@ -358,17 +377,41 @@ class PinvNet(_PrebuiltFullNet):
 
         :attr:`output`: Reconstructed images with shape :math:`(b,c,h,w)`.
 
+
+    References:
+        .. [1] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros,
+           "SPyRiT 3.0: an open source package for single-pixel imaging based on
+           deep learning," *Optics Express*, Vol. 33, Issue 13, pp. 27988-28005 (2025).
+           https://doi.org/10.1364/OE.559227
+
     Example:
         >>> import spyrit.core.meas as meas
         >>> import spyrit.core.recon as recon
         >>> acqu = meas.HadamSplit2d(32)
         >>> pinv = recon.PinvNet(acqu)
+        >>> x = torch.rand(10, 1, 32, 32)
+        >>> y = pinv.acquire(x)
+        >>> z = pinv.reconstruct(y)
+        >>> print(y.shape)
+        torch.Size([10, 1, 2048])
+        >>> print(z.shape)
+        torch.Size([10, 1, 32, 32])
 
-    Example with a regularized pseudo inverse:
+        Same as above with preprocessing (unsplitting). Note the arguments that are passed to the pseudo inverse operator to work on the H matrix and reshape the output.
+
         >>> import spyrit.core.meas as meas
         >>> import spyrit.core.recon as recon
+        >>> import spyrit.core.prep as sprep
         >>> acqu = meas.HadamSplit2d(32)
-        >>> pinv = recon.PinvNet(acqu, use_fast_pinv=False, store_H_pinv=True, regularization='H1', eta=1e-6, img_shape=(32, 32))
+        >>> prep = sprep.Unsplit()
+        >>> pinv = recon.PinvNet(acqu, prep, use_fast_pinv=True, reshape_output=True)
+        >>> x = torch.rand(10, 1, 32, 32)
+        >>> y = pinv.acquire(x)
+        >>> z = pinv.reconstruct(y)
+        >>> print(y.shape)
+        torch.Size([10, 1, 2048])
+        >>> print(z.shape)
+        torch.Size([10, 1, 32, 32])
     """
 
     def __init__(
@@ -439,43 +482,79 @@ class PinvNet(_PrebuiltFullNet):
 
 # =============================================================================
 class DCNet(_PrebuiltFullNet):
-    r"""Pre-built :class:`FullNet` that uses a :class:`~spyrit.core.inverse.TikhonovMeasurementPriorDiag` reconstruction operator.
+    r"""A :class:`FullNet` with a Tikhonov-based reconstruction module.
 
-    As a :class:`FullNet`, this network has two modules: one for the measurements
-    and one for the reconstruction.
+    It simulates noisy measurements
 
-    The measurement module only contains the acquisition operator. The acquisition
-    operator must be a :class:`spyrit.core.meas.HadamSplit2d` operator.
-    The reconstruction module contains a preprocessing operator, a Tikhonov
-    regularization :class:`spyrit.core.inverse.TikhonovMeasurementPriorDiag` reconstruction
-    operator, and a denoising operator.
+    .. math::
+        y =\mathcal{N}\left(Ax\right),
+
+    where :math:`\mathcal{N}` represents a noise operator (e.g., Poisson), :math:`A` is the acquisition matrix, :math:`x` is the signal of interest.
+
+    It estimates the signal from the noisy measurements in three steps [1]_:
+
+    1. Preprocessing of the measurements:
+
+    .. math::
+        \tilde{m} = By,
+
+    where :math:`B` represents a preprocessing step.
+
+    2. Denoised completion:
+
+    .. math::
+        x^{\text{dc}} = R^{\text{dc}}(\Sigma,\Sigma_\alpha,x_0)(\tilde{m}).
+
+    where the linear reconstruction operator :math:`R^{\text{dc}}` depends on the covariance of the noise :math:`\Sigma_\alpha`, the covariance of the full measurements :math:`\Sigma` and the mean of the signal :math:`x_0`.
+
+    .. note::
+
+        We assume that the preprocessed measurements are obtained by subsampling a full transform, i.e., :math:`BA = GF` where :math:`F` is a "full" (e.g., Hadamard) transform and :math:`G` is a subsampling operator. Denoised completion approximates:
+
+        .. math::
+            \arg\min_x \|\tilde{m} - GFx \|^2_{\Sigma^{-1}_\alpha} + \|F(x - x_0)\|^2_{\Sigma^{-1}}.
+
+        For details, see :class:`~spyrit.core.inverse.TikhonovMeasurementPriorDiag` and the :meth:`~spyrit.core.inverse.TikhonovMeasurementPriorDiag.forward()` method.
+
+    3. Denoising/artefact correction
+
+    .. math::
+        \hat{x} = \mathcal{G}_\theta(x^{\text{dc}}),
+
+    where :math:`\mathcal{G}_\theta` is a neural network with learnable parameters :math:`\theta`.
+
+
+    References:
+        .. [1] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros,
+           "SPyRiT 3.0: an open source package for single-pixel imaging based on
+           deep learning," *Optics Express*, Vol. 33, Issue 13, pp. 27988-28005 (2025).
+           https://doi.org/10.1364/OE.559227
 
     Args:
-        :attr:`acqu`: Acquisition operator (see :class:`~spyrit.core.meas.HadamSplit2d`)
+        :attr:`acqu`: Acquisition operator :math:`\mathcal{N}\circ A` (e.g., see :class:`~spyrit.core.meas.HadamSplit2d`).
 
-        :attr:`prep`: Preprocessing operator (see :class:`~spyrit.core.prep`)
+        :attr:`prep`: Preprocessing operator :math:`B` (see :class:`~spyrit.core.prep`).
 
-        :attr:`sigma`: Measurement covariance prior (for details, see the
-        :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag()` class)
+        :attr:`sigma`: Measurement covariance :math:`\Sigma` (for details, see       :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag()`).
 
         :attr:`denoi` (optional): Image denoising operator
-        (see :class:`~spyrit.core.nnet`). Default :class:`~spyrit.core.nnet.Identity`
+        (see :class:`~spyrit.core.nnet`) :math:`\mathcal{G}_\theta`. Default :class:`~spyrit.core.nnet.Identity`.
 
     Attributes:
         :attr:`acqu`: Acquisition operator initialized as :attr:`acqu`
 
-        :attr:`acqu_modules` (nn.Sequential): Measurement modules. Only contains
-        the acquisition operator.
+        :attr:`acqu_modules` (nn.Sequential): Measurement module. Only contains
+        :attr:`acqu`.
 
         :attr:`prep`: Preprocessing operator initialized as :attr:`prep`
 
-        :attr:`tikho`: Tikhonv regularization operator initialized as a
+        :attr:`tikho`: Tikhonov regularization operator initialized as a
         :class:`~spyrit.core.recon.TikhonovMeasurementPriorDiag` operator.
 
         :attr:`denoi`: Image denoising operator initialized as :attr:`denoi`
 
         :attr:`recon_modules` (nn.Sequential): Reconstruction modules. Contains
-        the preprocessing operator, the Tikhonov regularizaiton operator, and
+        the preprocessing operator, the Tikhonov regularization operator, and
         the denoising operator.
 
     Input / Output:
@@ -605,9 +684,36 @@ class TikhoNet(_PrebuiltFullNet):
     reconstruction module contains a preprocessing operator, a Tikhonov inverse
     operator, and a denoising operator.
 
+    This is a two-step reconstruction method [1]_. The first step estimates the signal
+    :math:`\tilde{x}` from preprocessed measurements :math:`y` by minimizing
+
+    .. math::
+        \| y - Ax \|^2_{\Gamma^{-1}} + \|x\|^2_{\Sigma^{-1}}
+
+    where :math:`A` is the measurement matrix, :math:`\Gamma` is the covariance
+    of the noise, and :math:`\Sigma` is the signal covariance prior. The solution
+    is computed as
+
+    .. math::
+        \tilde{x} = \Sigma A^\top (A \Sigma A^\top + \Gamma)^{-1} y
+
+    The second step applies a learnable neural network :math:`\mathcal{G}_\theta`
+    to the output of the first step:
+
+    .. math::
+        \hat{x} = \mathcal{G}_\theta(\tilde{x})
+
+    where :math:`\theta` are the learnable parameters of the neural network.
+
     The optional keyword arguments passed at initialization are fed in the
     :class:`Tikhonov` operator. This way, the regularization can be controlled
     directly from the :class:`TikhoNet` constructor.
+
+    References:
+        .. [1] JFJP Abascal, T Baudier, R Phan, A Repetti, N Ducros,
+           "SPyRiT 3.0: an open source package for single-pixel imaging based on
+           deep learning," *Optics Express*, Vol. 33, Issue 13, pp. 27988-28005 (2025).
+           https://doi.org/10.1364/OE.559227
 
     Args:
         :attr:`acqu` (spyrit.core.meas): Acquisition operator (see :mod:`~spyrit.core.meas`)

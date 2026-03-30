@@ -6,7 +6,6 @@
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from PIL import Image
 import numpy as np
 from numpy import linalg as LA
 import time
@@ -25,7 +24,7 @@ def display_vid(video, fps, title="", colormap=plt.cm.gray):
     video is a numpy array of shape [nb_frames, 1, nx, ny]
     """
     plt.ion()
-    (nb_frames, channels, nx, ny) = video.shape
+    nb_frames, channels, nx, ny = video.shape
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     for i in range(nb_frames):
@@ -45,7 +44,7 @@ def display_rgb_vid(video, fps, title=""):
     video is a numpy array of shape [nb_frames, 3, nx, ny]
     """
     plt.ion()
-    (nb_frames, channels, nx, ny) = video.shape
+    nb_frames, channels, nx, ny = video.shape
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     for i in range(nb_frames):
@@ -148,7 +147,7 @@ def imagesc(
     Img,
     title="",
     colormap=None,
-    show=True,
+    show=False,
     figsize=None,
     fig=None,
     ax=None,
@@ -227,6 +226,7 @@ def imagecomp(
     title2="",
     colormap1=plt.cm.gray,
     colormap2=plt.cm.gray,
+    show=False,
 ):
     f, (ax1, ax2) = plt.subplots(1, 2)
     im1 = ax1.imshow(Img1, cmap=colormap1)
@@ -240,7 +240,9 @@ def imagecomp(
     cax = plt.axes([0.915, 0.3, 0.025, 0.4])
     plt.colorbar(im2, cax=cax)
     plt.subplots_adjust(left=0.08, wspace=0.5, top=0.9, right=0.9)
-    plt.show()
+
+    if show:
+        plt.show()
 
 
 def imagepanel(
@@ -257,6 +259,7 @@ def imagepanel(
     colormap2=plt.cm.gray,
     colormap3=plt.cm.gray,
     colormap4=plt.cm.gray,
+    show=False,
 ):
     fig, axarr = plt.subplots(2, 2, figsize=(20, 10))
     plt.suptitle(suptitle, fontsize=16)
@@ -282,7 +285,8 @@ def imagepanel(
     plt.colorbar(im4, cax=cax)
 
     plt.subplots_adjust(left=0.08, wspace=0.5, top=0.9, right=0.9)
-    plt.show()
+    if show:
+        plt.show()
 
 
 def plot(x, y, title="", xlabel="", ylabel="", color="black"):
@@ -352,7 +356,7 @@ def vid2batch(root, img_dim, start_frame, end_frame):
     frame_nb = 0
     output_batch = torch.zeros(1, end_frame - start_frame, 1, img_dim, img_dim)
     while True:
-        (grabbed, frame) = stream.read()
+        grabbed, frame = stream.read()
         if not grabbed:
             break
 

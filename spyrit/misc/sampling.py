@@ -25,7 +25,7 @@ def img2mask(Mat: np.ndarray, M: int):
             N-by-N sampling mask, where 1 indicates the measurements to sample
             and 0 that to discard.
     """
-    (nx, ny) = Mat.shape
+    nx, ny = Mat.shape
     Mask = np.ones((nx, ny))
     ranked_data = np.reshape(rankdata(-Mat, method="ordinal"), (nx, ny))
     Mask[np.absolute(ranked_data) > M] = 0

@@ -254,7 +254,6 @@ save_net(model_path, pinv_net.denoi)
 # Save training history
 import pickle
 
-
 if mode_run:
     from spyrit.core.train import Train_par
 
