@@ -6,7 +6,6 @@ import numpy as np
 from scipy.stats import rankdata
 from scipy.ndimage import label
 from spyrit.core.torch import walsh_matrix_2d
-#from pytorch_wavelets import DWTForward
 import ptwt
 
 
