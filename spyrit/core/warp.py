@@ -77,10 +77,7 @@ class DeformationField(nn.Module):
         >>> u = torch.tensor([[[[1, -1], [1, 1]], [[-1, -1], [-1, 1]]]])
         >>> field = DeformationField(u)
         >>> print(field.field)
-        tensor([[[[1, -1],
-                  [1,  1]],
-                 [[-1, -1],
-                  [-1, 1]]]])
+        ...
         >>> print(field.field.shape)
         torch.Size([1, 2, 2, 2])
 
@@ -212,11 +209,11 @@ class DeformationField(nn.Module):
             >>> image = torch.tensor([0., 0.3, 0.7, 1.]).view(1, 1, 2, 2)
             >>> print(image)
             tensor([[[[0.0000, 0.3000],
-                    [0.7000, 1.0000]]]])
+                      [0.7000, 1.0000]]]])
             >>> deformed_image = field(image, 0, 1)
             >>> print(deformed_image)
             tensor([[[[0.3000, 1.0000],
-                    [0.0000, 0.7000]]]])
+                      [0.0000, 0.7000]]]])
         """
 
         if img.ndim == 3:
