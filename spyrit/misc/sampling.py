@@ -483,8 +483,8 @@ def define_order(n: int, order: str, pdf: bool = False):
             patt = np.asarray(h[i])
             pos = (patt > 0).astype(int)
             neg = (patt < 0).astype(int)
-            _ , num_pos = label(pos)
-            _ , num_neg = label(neg)
+            _, num_pos = label(pos)
+            _, num_neg = label(neg)
             CC_values[i] = num_pos + num_neg
 
         score_CC = 1 / (CC_values + 1e-8)
@@ -648,7 +648,7 @@ def sampling_map_multilevel_VDS(
     N = n**2
     H = walsh_matrix_2d(n)
 
-    #dwt = DWTForward(J=J, wave=wave, mode=mode)
+    # dwt = DWTForward(J=J, wave=wave, mode=mode)
 
     lvl_sizes = torch.zeros(levels)  # number of elements in each level
     lvl_maps = torch.zeros(levels, n, n)
@@ -680,8 +680,12 @@ def sampling_map_multilevel_VDS(
         )  # Local coherences inside each level
 
         for i in range(int(lvl_sizes[k])):
-            coeffs = ptwt.wavedec2(H_k[i].reshape(n, n).unsqueeze(0).unsqueeze(0),
-                                   wavelet=wave,mode=mode,level=J)
+            coeffs = ptwt.wavedec2(
+                H_k[i].reshape(n, n).unsqueeze(0).unsqueeze(0),
+                wavelet=wave,
+                mode=mode,
+                level=J,
+            )
             mu_loc[i, 0] = torch.max(abs(coeffs[0]))
             for j in range(J):
                 mu_loc[i, j + 1] = torch.max(abs(coeffs[1][2 - j]))
