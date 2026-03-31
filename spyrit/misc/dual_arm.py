@@ -954,7 +954,7 @@ class MotionFieldProjector(nn.Module):
         Args:
             :attr:`warping`: 'pattern' or 'image'. Matches the warping mode used in the Dynamic classes
             from :mod:`spyrit.core.meas`.
-            
+
             :attr:`amp_max`: Amplitude for the extended field of view.
 
         Raises:
@@ -1222,16 +1222,14 @@ class MotionFieldProjector(nn.Module):
 
         return g_beg, g_end
 
-    def forward(
-        self, warping: str, amp_max: int = 0
-    ) -> torch.Tensor:
+    def forward(self, warping: str, amp_max: int = 0) -> torch.Tensor:
         """
         Complete forward pass for motion estimation.
 
         Args:
             :attr:`warping`: 'pattern' or 'image'. Matches the warping mode used in the Dynamic classes
             from :mod:`spyrit.core.meas`.
-            
+
             :attr:`amp_max`: Amplitude of the extended field of view.
 
         Returns:
@@ -1243,9 +1241,7 @@ class MotionFieldProjector(nn.Module):
         try:
             # Step 1: Convert motion from CMOS perspective to SPC
             print("Step 1: Convert motion from CMOS perspective to SPC...")
-            self.estim_motion_from_CMOS(
-                warping, amp_max=amp_max
-            )
+            self.estim_motion_from_CMOS(warping, amp_max=amp_max)
 
             # Step 2: Define reference frame
             print("Step 2: Defining reference frame...")

@@ -663,7 +663,7 @@ def save_motion_video(x_motion, out_path, amp_max=0, fps=820):
             frame8 = ((frame - mn) / (mx - mn) * 255.0).astype("uint8")
         else:
             frame8 = (frame * 0).astype("uint8")
-        
+
         if n_wav == 1:
             frame_bgr = cv2.cvtColor(frame8, cv2.COLOR_GRAY2BGR)
         else:

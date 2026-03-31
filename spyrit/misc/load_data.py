@@ -108,7 +108,7 @@ def download_girder(
         server. If None, all the names will be obtained from the server.
         Default is None. All names include the extension.
 
-        gc_type (str, optional): The type of Girder item to download. Must be either "file" or "folder". 
+        gc_type (str, optional): The type of Girder item to download. Must be either "file" or "folder".
         Default is "file".
 
     Raises:
