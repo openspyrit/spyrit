@@ -10,9 +10,6 @@ import warnings
 from typing import Tuple
 from matplotlib.colors import LinearSegmentedColormap
 
-import warnings
-from typing import Tuple
-
 import matplotlib.pyplot as plt
 import colorsys
 from pathlib import Path
@@ -284,10 +281,12 @@ def plot_hs(
     height, width, n_wav = img.shape
     n_rows, n_cols = n_wav // 4, 4
 
+    ratio = height / width
+
     fig, axes = plt.subplots(
         n_rows,
         n_cols,
-        figsize=(3 * n_cols, 3 * n_rows),
+        figsize=(3 * n_cols , 3 * n_rows * ratio),
         gridspec_kw={"wspace": 0.3, "hspace": 0.05},
     )
 

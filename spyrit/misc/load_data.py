@@ -108,6 +108,9 @@ def download_girder(
         server. If None, all the names will be obtained from the server.
         Default is None. All names include the extension.
 
+        gc_type (str, optional): The type of Girder item to download. Must be either "file" or "folder". 
+        Default is "file".
+
     Raises:
         ValueError: If the number of file names provided does not match the
         number of files to download.
@@ -118,6 +121,8 @@ def download_girder(
     # leave import in function, so that the module can be used without
     # girder_client
     import girder_client
+
+    assert gc_type in ["file", "folder"], "gc_type must be 'file' or 'folder'"
 
     # check the local folder exists
     if not os.path.exists(local_folder):
@@ -220,7 +225,7 @@ def read_acquisition(
 def generate_synthetic_tumors(
     x: torch.Tensor,
     tumor_params: List[dict],
-) -> torch.Tensor:
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Creates synthetic Gaussian tumors to a tensor of shape (batch, n_wav, *img_shape).
 
@@ -242,7 +247,11 @@ def generate_synthetic_tumors(
             - :attr:`angle` (optional): Rotation angle in degrees (counter-clockwise). Default is 0.
 
     Returns:
-        torch.Tensor: Tensor with synthetic tumors added
+        Tuple of (tumors, x_with_tumors):
+
+            - :attr:`tumors` (torch.Tensor): Tensor of the same shape as `x` containing only the tumor contributions.
+
+            - :attr:`x_with_tumors` (torch.Tensor): Tensor of the same shape as `x` with the tumors added and values clamped to [0, 1].
     """
     dtype = x.dtype
     device = x.device
