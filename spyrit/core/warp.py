@@ -74,13 +74,13 @@ class DeformationField(nn.Module):
         >>> import torch
         >>> from spyrit.core.warp import DeformationField
         >>>
-        >>> u = torch.tensor([[[[ 1, -1], [ 1, 1]], [[-1, -1], [-1, 1]]]])
+        >>> u = torch.tensor([[[[1, -1], [1, 1]], [[-1, -1], [-1, 1]]]])
         >>> field = DeformationField(u)
         >>> print(field.field)
-        tensor([[[[ 1, -1],
-                  [ 1,  1]],
+        tensor([[[[1, -1],
+                  [1,  1]],
                  [[-1, -1],
-                  [-1,  1]]]])
+                  [-1, 1]]]])
         >>> print(field.field.shape)
         torch.Size([1, 2, 2, 2])
 
