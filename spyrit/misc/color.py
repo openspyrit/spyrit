@@ -286,7 +286,7 @@ def plot_hs(
     fig, axes = plt.subplots(
         n_rows,
         n_cols,
-        figsize=(3 * n_cols , 3 * n_rows * ratio),
+        figsize=(3 * n_cols, 3 * n_rows * ratio),
         gridspec_kw={"wspace": 0.3, "hspace": 0.05},
     )
 
