@@ -235,6 +235,27 @@ class _PrebuiltFullNet(FullNet):
     def acqu(self):
         del self.acqu_modules.acqu
 
+    def acquire(self, x):
+        r"""Apply the measurement modules to the input signal.
+
+        When :attr:`acqu` is a :class:`~spyrit.core.meas.DynamicLinearSplit`,
+        this calls :meth:`~spyrit.core.meas.DynamicLinearSplit.forward_A_dyn`.
+        When :attr:`acqu` is a :class:`~spyrit.core.meas.DynamicLinear`,
+        this calls :meth:`~spyrit.core.meas.DynamicLinear.forward_H_dyn`.
+        Otherwise, the default sequential pipeline is used.
+
+        Args:
+            x (torch.tensor): Input tensor.
+
+        Returns:
+            torch.tensor: Measurement tensor.
+        """
+        if isinstance(self.acqu, meas.DynamicLinearSplit):
+            return self.acqu.forward_A_dyn(x)
+        elif isinstance(self.acqu, meas.DynamicLinear):
+            return self.acqu.forward_H_dyn(x)
+        return self.acqu_modules(x)
+
     @property
     def prep(self):
         return self.recon_modules.prep
@@ -729,9 +750,11 @@ class TikhoNet(_PrebuiltFullNet):
         :attr:`kwargs` (dict): Optional keyword arguments passed to the
         :class:`~spyrit.core.recon.Tikhonov()` constructor. May contain
         the following keys:
-            - `approx` (bool): If True, the Tikhonov inversion step is approximated
+
+            - :attr:`approx` (bool): If True, the Tikhonov inversion step is approximated
             using a diagonal matrix. Default is False.
-            - `reshape_output` (bool): If True, the output of the Tikhonov
+
+            - :attr:`reshape_output` (bool): If True, the output of the Tikhonov
             inversion step is reshaped to match the acquisition operator input
             shape. Default is True.
 
@@ -942,6 +965,7 @@ class LearnedPGD(nn.Module):
         :attr:`step` (float): Step size of the LPGD algorithm. Default is None,
         and it is estimated as the inverse of the Lipschitz constant of the gradient of the
         data fidelity term.
+
             - If :attr:`meas_op.N` is available, the step size is estimated as
               :math:`\gamma=1/N` which is true for Hadamard operators.
             - If not, the step size is estimated by computing

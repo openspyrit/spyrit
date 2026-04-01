@@ -238,6 +238,33 @@ def transform_gray_norm(img_size, normalize=True):
     return transform
 
 
+def transform_norm(img_size, normalize=True):
+    """
+    Args:
+        img_size=int, image size
+
+    Create torchvision transform for natural images:
+    resize, then to tensor, and normalize (center reduced in [0, 1])
+    """
+    transform = torchvision.transforms.Compose(
+        [
+            torchvision.transforms.Resize(
+                img_size,
+                interpolation=torchvision.transforms.InterpolationMode.BILINEAR,
+            ),
+            # torchvision.transforms.CenterCrop(img_size),
+            CenterCrop(img_size),
+            torchvision.transforms.ToTensor(),
+            (
+                torchvision.transforms.Normalize([0.5], [0.5])
+                if normalize
+                else torch.nn.Identity()
+            ),
+        ]
+    )
+    return transform
+
+
 def data_loaders_stl10(
     data_root,
     img_size=64,
@@ -788,9 +815,13 @@ def stat_imagenet(
 
         :attr:`get_size`: specifies how images of size :attr:`img_size` are
         obtained (see :mod:`~spyrit.misc.statistics.data_loaders_imagenet`)
+
             - 'original': random crop with padding
+
             - 'resize': resize
+
             - 'ccrop': center crop
+
             - 'rcrop': random crop
 
         :attr:`n_loop` (int, optional): Number of loops across image database. Defaults to 1. n_loop > 1 is only relevant for dataloaders with random transforms (e.g., 'rcrop' resizing)
@@ -800,7 +831,9 @@ def stat_imagenet(
         :attr:`ext` (string): Extension of saved files:
 
             - 'npy' for numpy (default),
+
             - 'pt' for pytorch,
+
             - do not save files otherwise.
 
         :attr:`rcrop_kwargs`: Additional arguments for random crop

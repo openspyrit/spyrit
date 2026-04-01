@@ -10,10 +10,10 @@ import warnings
 from typing import Tuple
 from matplotlib.colors import LinearSegmentedColormap
 
-import warnings
-from typing import Tuple
-
-import numpy as np
+import matplotlib.pyplot as plt
+import colorsys
+from pathlib import Path
+from matplotlib.colors import ListedColormap
 
 
 # %%
@@ -192,3 +192,151 @@ def wavelength_to_colormap(wav, gamma=0.6):
     custom_cmap = LinearSegmentedColormap.from_list("DarkToColor", color_list)
 
     return custom_cmap
+
+
+def generate_colormap(
+    wavelength: float, img_size: int = 256, gamma: float = 0.8
+) -> np.ndarray:
+    """Generates colormap for a wavelength.
+
+    Args:
+        wavelength (float):
+            Single wavelength used for colormap generation.
+        img_size (int):
+            Reconstructed image size.
+        gamma (float):
+            Gamma correction.
+
+    Returns:
+        np.ndarray:
+            Array with dimensions (img_size,4). Each column corresponds to the
+            RGBA values. A stands for alpha or transparency and is currently
+            set to 1.
+    """
+
+    saturation = np.arange(0, 1, 1 / img_size)
+
+    r, g, b = wavelength_to_rgb(wavelength, gamma)
+
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+
+    # Creating colormap RGBA (A stands for alpha or transparency)
+    colormap = np.ones((img_size, 4))
+
+    for i in range(img_size):
+        r, g, b = colorsys.hsv_to_rgb(h, v, saturation[i])
+        colormap[i, 0] = r
+        colormap[i, 1] = g
+        colormap[i, 2] = b
+
+    return colormap
+
+
+def plot_hs(
+    strategy,
+    img,
+    wav,
+    suptitle=None,
+    save_fig=False,
+    results_root=None,
+    data_folder=None,
+    colorbar_format=None,
+):
+    r"""Plot hyperspectral data with wavelength-aware colormaps.
+
+    Creates a grid of subplots showing each spectral band with a colormap that
+    corresponds to the wavelength color. Each band is displayed with a custom
+    colormap generated from the actual wavelength values.
+
+    Args:
+        :attr:`strategy` (str): Strategy type, either 'slice' or 'bin'. Used for labeling.
+
+        :attr:`img` (np.ndarray): 3D numpy array with shape (height, width, n_wav) containing the hyperspectral data.
+
+        :attr:`wav` (array-like): Array of wavelength values in nanometers, length n_wav.
+
+        :attr:`suptitle` (str, optional): Super title for the entire figure. Defaults to None.
+
+        :attr:`save_fig` (bool, optional): Whether to save the figure as PDF. Defaults to False.
+
+        :attr:`results_root` (Path or str, optional): Root directory for saving figures. Required if save_fig is True. Defaults to None.
+
+        :attr:`data_folder` (Path or str, optional): Data folder name for organizing saved figures. Required if save_fig is True. Defaults to None.
+
+        :attr:`colorbar_format` (str, optional): printf-style format string used by matplotlib colorbar to format tick labels (e.g. '%.1f'). Defaults to '%.1f'.
+
+    Raises:
+        ValueError: If save_fig is True but results_root or data_folder is None.
+
+    Returns:
+        None: Displays the plot and optionally saves it.
+
+    """
+    # Validate save parameters
+    if save_fig and (results_root is None or data_folder is None):
+        raise ValueError(
+            "results_root and data_folder must be provided when save_fig=True"
+        )
+
+    height, width, n_wav = img.shape
+    n_rows, n_cols = n_wav // 4, 4
+
+    ratio = height / width
+
+    fig, axes = plt.subplots(
+        n_rows,
+        n_cols,
+        figsize=(3 * n_cols, 3 * n_rows * ratio),
+        gridspec_kw={"wspace": 0.3, "hspace": 0.05},
+    )
+
+    # Handle single row case
+    if n_rows == 1:
+        axes = axes.reshape(1, -1)
+
+    for i in range(n_wav):
+        ax = axes[i // n_cols, i % n_cols]
+
+        # Generate spectral-aware colormap for this wavelength
+        wavelength_nm = float(wav[i])  # Convert from tensor to float
+        spectral_cmap_data = generate_colormap(wavelength_nm, img_size=height * width)
+        spectral_cmap = ListedColormap(spectral_cmap_data)
+
+        # Display the grayscale image with spectral colormap
+        im = ax.imshow(img[:, :, i], cmap=spectral_cmap)
+        ax.set_title(f"{wavelength_nm:.0f} nm")
+        ax.axis("off")
+
+        if save_fig:
+            path_fig = Path(results_root) / data_folder / Path(f"{n_wav}_slices")
+            Path(path_fig).mkdir(parents=True, exist_ok=True)
+
+            plt.imsave(
+                path_fig / f"{strategy}_lambda_{int(wavelength_nm)}nm.pdf",
+                img[:, :, i],
+                cmap=spectral_cmap,
+            )
+
+        # Add colorbar with spectral colormap, closer to the axis
+        cax = fig.add_axes(
+            [
+                ax.get_position().x1 + 0.005,
+                ax.get_position().y0,
+                0.01,
+                ax.get_position().height,
+            ]
+        )
+        if colorbar_format is None:
+            plt.colorbar(im, cax=cax)
+        else:
+            plt.colorbar(im, cax=cax, format=colorbar_format)
+
+    # Hide unused subplots
+    for i in range(n_wav, n_rows * n_cols):
+        axes[i // n_cols, i % n_cols].axis("off")
+
+    if save_fig:
+        plt.savefig(path_fig / f"hs_{strategy}_{suptitle}.pdf", bbox_inches="tight")
+
+    plt.suptitle(suptitle, fontsize=16) if suptitle else None
+    plt.show()

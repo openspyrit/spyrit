@@ -56,7 +56,7 @@ imagesc(x[i_plot, 0, :, :], r"$x$ in (0, 1)")
 # -----------------------------------------------------------------------------
 
 ###############################################################################
-# We consider additive Gaussiane noise,
+# We consider additive Gaussian noise,
 #
 # .. math::
 #       y \sim z + \mathcal{N}(0,\sigma^2),

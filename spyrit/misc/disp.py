@@ -5,18 +5,17 @@
 # -----------------------------------------------------------------------------
 
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
-from numpy import linalg as LA
-import time
-from scipy import signal
-from scipy import misc
-from scipy import sparse
 import torch
 import math
 import numbers
+from pathlib import Path
+from typing import Tuple, Union
 
 from spyrit.misc.color import wavelength_to_colormap
+from spyrit.core.warp import DeformationField
 
 
 def display_vid(video, fps, title="", colormap=plt.cm.gray):
@@ -163,26 +162,37 @@ def imagesc(
     custom handling for the colormap and colorbar placement.
 
     Args:
-        Img (array-like): The 2D array or image data to be displayed.
-        title (str, optional): The title for the plot. Defaults to an empty string.
-        colormap (str, int, or Colormap, optional): The colormap to use.
+        :attr:`Img` (array-like): The 2D array or image data to be displayed.
+
+        :attr:`title` (str, optional): The title for the plot. Defaults to an empty string.
+
+        :attr:`colormap` (str, int, or Colormap, optional): The colormap to use.
+
             - If **None** (default), uses Matplotlib's default **'gray'** colormap.
+
             - If **str**, it should be a valid Matplotlib colormap name (e.g., 'plasma', 'jet', 'viridis').
+
             - If **int** or **float**, it is treated as a wavelength (in nm) and is passed
               to the function `wavelength_to_colormap(colormap, gamma=0.6)` from `spyrit.misc.color`
               to generate a custom colormap.
+
             - If a **Matplotlib Colormap object**, it is used directly.
-        show (bool, optional): If **True** (default), calls `plt.show()` to display the plot.
-        figsize (tuple, optional): A tuple (width, height) specifying the figure size
+
+        :attr:`show` (bool, optional): If **True** (default), calls `plt.show()` to display the plot.
+
+        :attr:`figsize` (tuple, optional): A tuple (width, height) specifying the figure size
         in inches. Passed to `plt.figure()`. Defaults to None.
 
-        cbar_pos (str, optional): Position of the colorbar.
+        :attr:`cbar_pos` (str, optional): Position of the colorbar.
             - If **"bottom"**, the colorbar is placed horizontally below the image.
             - If **None** (default) or any other value, the colorbar is placed
               vertically to the right of the image.
-        title_fontsize (int, optional): Font size for the plot title. Defaults to 16.
+
+        :attr:`title_fontsize` (int, optional): Font size for the plot title. Defaults to 16.
+
         **kwargs: Additional keyword arguments.
-            - gamma (float, optional): The gamma correction factor when `colormap` is a wavelength (numeric).
+
+            - :attr:`gamma` (float, optional): The gamma correction factor when `colormap` is a wavelength (numeric).
               Defaults to 0.6.
 
     Returns:
@@ -349,7 +359,13 @@ def histogram(s):
 def vid2batch(root, img_dim, start_frame, end_frame):
     from imutils.video import FPS
     import imutils
-    import cv2
+
+    try:
+        import cv2
+    except ImportError:
+        raise ImportError(
+            "cv2 is required for vid2batch. Please install OpenCV (e.g., via 'pip install opencv-python')."
+        )
 
     stream = cv2.VideoCapture(root)
     fps = FPS().start()
@@ -372,7 +388,12 @@ def vid2batch(root, img_dim, start_frame, end_frame):
 
 
 def pre_process_video(video, crop_patch, kernel_size):
-    import cv2
+    try:
+        import cv2
+    except ImportError:
+        raise ImportError(
+            "cv2 is required for pre_process_video. Please install OpenCV (e.g., via 'pip install opencv-python')."
+        )
 
     batch_size, seq_length, c, h, w = video.shape
     batched_frames = video.reshape(batch_size * seq_length * c, h, w)
@@ -385,3 +406,406 @@ def pre_process_video(video, crop_patch, kernel_size):
         output_batch[i, :, :] = torch.Tensor(median_frame)
     output_batch = output_batch.reshape(batch_size, seq_length, c, h, w)
     return output_batch
+
+
+def contrib_map(
+    H_dyn: np.ndarray,
+    n: int,
+    save_figs: bool = False,
+    path_fig: Union[str, Path] = "",
+    show_fig: bool = True,
+) -> np.ndarray:
+    """
+    Generate a contribution map showing measurement pattern coverage.
+
+    Args:
+        H_dyn: Dynamic measurement matrix.
+        n: Image size (assuming square images).
+        save_figs: Whether to save the figure.
+        path_fig: Path to save the figure.
+        show_fig: Whether to display the figure.
+
+    Returns:
+        Contribution map as numpy array.
+    """
+    _, L = H_dyn.shape
+    l = int(np.sqrt(L))
+
+    if l * l != L:
+        raise ValueError(f"Matrix dimension L={L} is not a perfect square")
+
+    # Create contribution map
+    contrib = np.where(H_dyn != 0, 1, 0)
+    contrib_image = np.sum(contrib, axis=0)
+    contrib_image = contrib_image.reshape((l, l)) / (n**2)
+    contrib_image = np.rot90(contrib_image, 2)  # Account for rotation in SP POV
+
+    # Create visualization
+    plt.figure(figsize=(8, 6))
+    plt.imshow(contrib_image, cmap="hot")
+    cbar = plt.colorbar(fraction=0.047, pad=0.01, format="%.1f")
+    cbar.ax.tick_params(labelsize=15)
+    plt.title("Contribution Map", fontsize=16)
+
+    if save_figs and path_fig:
+        plt.axis("off")
+        plt.savefig(str(path_fig), bbox_inches="tight", dpi=300)
+
+    if show_fig:
+        plt.show()
+    else:
+        plt.close()
+
+    return contrib_image
+
+
+def error_map(
+    img1: np.ndarray,
+    img2: np.ndarray,
+    save_figs: bool = False,
+    path_fig: Union[str, Path] = "",
+    show_fig: bool = True,
+    title: str = "Error Map",
+) -> np.ndarray:
+    """
+    Compute and visualize error map between two images.
+
+    Args:
+        img1: First image.
+        img2: Second image.
+        save_figs: Whether to save the figure.
+        path_fig: Path to save the figure.
+        show_fig: Whether to display the figure.
+        title: Title for the plot.
+
+    Returns:
+        Error map as numpy array.
+
+    Raises:
+        ValueError: If images have different shapes.
+    """
+    if img1.shape != img2.shape:
+        raise ValueError(f"Image shapes don't match: {img1.shape} vs {img2.shape}")
+
+    # Normalize images to [0, 1]
+    img1_normalized = (
+        (img1 - img1.min()) / (img1.max() - img1.min())
+        if img1.max() != img1.min()
+        else np.zeros_like(img1)
+    )
+    img2_normalized = (
+        (img2 - img2.min()) / (img2.max() - img2.min())
+        if img2.max() != img2.min()
+        else np.zeros_like(img2)
+    )
+
+    error = img1_normalized - img2_normalized
+
+    plt.figure(figsize=(8, 6))
+    plt.imshow(error, cmap="Spectral")
+    cbar = plt.colorbar(fraction=0.047, pad=0.01, format="%.2f")
+    cbar.ax.tick_params(labelsize=15)
+    plt.title(title, fontsize=16)
+    plt.axis("off")
+
+    if save_figs and path_fig:
+        plt.savefig(str(path_fig), bbox_inches="tight", dpi=300)
+
+    if show_fig:
+        plt.show()
+    else:
+        plt.close()
+
+    return error
+
+
+def blue_box(
+    f: np.ndarray, amp_max: int = 0, box_color: Tuple[int, int, int] = (0, 0, 255)
+) -> np.ndarray:
+    """
+    Add a colored box overlay to an image for visualization purposes.
+
+    Args:
+        f: Input grayscale or RGB image.
+        amp_max: Offset from image borders for the box.
+        box_color: RGB color for the box (default: blue).
+
+    Returns:
+        RGB image with colored box overlay.
+
+    Raises:
+        ValueError: If amp_max is too large for the image size.
+    """
+    if amp_max * 2 >= min(f.shape[0], f.shape[1]):
+        raise ValueError(f"amp_max={amp_max} is too large for image shape {f.shape}")
+
+    # Normalize to 8-bit and create RGB image
+    f_normalized = (
+        (f - f.min()) / (f.max() - f.min()) if f.max() != f.min() else np.zeros_like(f)
+    )
+    f_255 = (f_normalized * 255).astype(np.uint8)
+
+    if len(f.shape) == 2:
+        f_rgb = np.stack([f_255] * 3, axis=2)
+    elif len(f.shape) == 3:
+        f_rgb = f_255
+
+    if amp_max == 0:
+        return f_rgb
+
+    r, g, b = box_color
+
+    # Draw box borders
+    # Top and bottom borders
+    f_rgb[amp_max, amp_max:-amp_max] = [r, g, b]
+    f_rgb[-amp_max - 1, amp_max:-amp_max] = [r, g, b]
+
+    # Left and right borders
+    f_rgb[amp_max:-amp_max, amp_max] = [r, g, b]
+    f_rgb[amp_max:-amp_max, -amp_max - 1] = [r, g, b]
+
+    return f_rgb
+
+
+def get_frame(movie_path: Union[str, Path], frame_number: int = 0) -> np.ndarray:
+    """
+    Extract a specific frame from a video file.
+
+    Args:
+        movie_path: Path to the video file.
+        frame_number: Frame number to extract (0-indexed).
+
+    Returns:
+        Grayscale frame as numpy array.
+
+    Raises:
+        FileNotFoundError: If video file doesn't exist.
+        ValueError: If frame cannot be read or video is invalid.
+    """
+    try:
+        import cv2
+    except ImportError:
+        raise ImportError(
+            "cv2 is required for get_frame. Please install OpenCV (e.g., via 'pip install opencv-python')."
+        )
+
+    movie_path = Path(movie_path)
+    if not movie_path.exists():
+        raise FileNotFoundError(f"Video file not found: {movie_path}")
+
+    cap = cv2.VideoCapture(str(movie_path))
+
+    if not cap.isOpened():
+        raise ValueError(f"Error opening video file: {movie_path}")
+
+    # Get total frame count for validation
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    if frame_number >= total_frames:
+        cap.release()
+        raise ValueError(
+            f"Frame {frame_number} not available. Video has {total_frames} frames."
+        )
+
+    # Set frame position directly (more efficient than iterating)
+    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+
+    ret, frame = cap.read()
+    cap.release()
+
+    if not ret:
+        raise ValueError(f"Could not read frame {frame_number} from video")
+
+    # Convert to grayscale
+    if len(frame.shape) == 3:
+        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    else:
+        gray_frame = frame
+
+    return gray_frame
+
+
+def save_motion_video(x_motion, out_path, amp_max=0, fps=820):
+    r"""
+    Save :attr:`x_motion` of shape (1, n_frames, c, h, w) as a video file.
+    """
+    try:
+        import cv2
+    except ImportError:
+        raise ImportError(
+            "cv2 is required for save_motion_video. Please install OpenCV (e.g., via 'pip install opencv-python')."
+        )
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    n_batch, n_frames, n_wav, h, w = x_motion.shape
+
+    h_crop, w_crop = torch.tensor((h, w)) - 2 * amp_max
+    h_crop, w_crop = int(h_crop.item()), int(w_crop.item())
+
+    if n_batch > 1:
+        raise ValueError(f"save_motion_video expects a single batch, got {n_batch}")
+    if n_wav != 1 and n_wav != 3:
+        raise ValueError(f"save_motion_video expects 1 or 3 channels, got {n_wav}")
+
+    fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+    writer = cv2.VideoWriter(str(out_path), fourcc, fps, (w_crop, h_crop), True)
+    if not writer.isOpened():
+        raise RuntimeError("cv2 VideoWriter failed to open")
+    for t in range(n_frames):
+        frame_wide = x_motion[0, t].moveaxis(0, -1).cpu().numpy()
+
+        mn, mx = frame_wide.min(), frame_wide.max()
+
+        frame = frame_wide[amp_max : h_crop + amp_max, amp_max : w_crop + amp_max]
+
+        if mx > mn:
+            frame8 = ((frame - mn) / (mx - mn) * 255.0).astype("uint8")
+        else:
+            frame8 = (frame * 0).astype("uint8")
+
+        if n_wav == 1:
+            frame_bgr = cv2.cvtColor(frame8, cv2.COLOR_GRAY2BGR)
+        else:
+            frame_bgr = cv2.cvtColor(frame8, cv2.COLOR_RGB2BGR)
+        writer.write(frame_bgr)
+    writer.release()
+    print(f"Saved motion video to {out_path}")
+
+
+def save_field_video(
+    def_field,
+    out_path,
+    n_frames,
+    step=5,
+    fps=30,
+    figsize=(6, 6),
+    dpi=200,
+    scale=1,
+    fs=16,
+    amp_max=0,
+    box_color="blue",
+    box_linewidth=2,
+):
+    r"""
+    Save deformation field as a quiver video.
+
+    Args:
+        :attr:`def_field` (DeformationField): Deformation field object (see the :mod:`spyrit.core.warp` module).
+
+        :attr:`out_path` (Path-like): Path-like to save the output video (mp4).
+
+        :attr:`n_frames` (int): Number of frames in the output video.
+
+        :attr:`step` (int): Step size for quiver grid (spatial subsampling).
+
+        :attr:`fps` (int): Frames per second for the output video.
+
+        :attr:`figsize` (tuple): Figure size for the quiver plot (width, height).
+
+        :attr:`dpi` (int): Output DPI for the saved video/frames.
+
+        :attr:`scale` (float): Quiver scale parameter for scaling the length of arrows.
+
+        :attr:`amp_max` (int, optional): Number of pixels inset from each border to draw a blue box (e.g. the SPC FOV). If 0, no box is drawn.
+
+        :attr:`box_color` (str, optional): matplotlib color for the box edge.
+
+        :attr:`box_linewidth` (float, optional): width of the box edge line.
+    """
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Basic validation
+    if int(n_frames) < 1:
+        raise ValueError("n_frames must be >= 1")
+    if int(step) < 1:
+        raise ValueError("step must be >= 1")
+    if fps <= 0:
+        raise ValueError("fps must be > 0")
+
+    if not isinstance(def_field, DeformationField):
+        raise ValueError("def_field must be a DeformationField object")
+
+    # Load and validate field
+    field_full = torch2numpy(def_field.field)
+
+    n_patterns = def_field.n_frames
+    l = int(def_field.img_shape[0])
+    n = l - 2 * amp_max
+
+    # Validate amp_max
+    if amp_max < 0:
+        raise ValueError("amp_max must be >= 0")
+    if amp_max * 2 >= l:
+        raise ValueError(f"amp_max={amp_max} is too large for image size {l}")
+
+    # Temporal indices: guarantee exactly n_frames samples
+    indices = np.linspace(0, n_patterns - 1, int(n_frames)).round().astype(int)
+
+    # Spatial subsampling using absolute pixel coordinates (0 .. l-1)
+    interval = np.arange(0, l)
+    x1_sp, x2_sp = np.meshgrid(interval, interval, indexing="xy")
+    x1 = x1_sp[::step, ::step]
+    x2 = x2_sp[::step, ::step]
+
+    field = field_full[indices][:, ::step, ::step, :]
+
+    # normalize to absolute pixel coordinates
+    scale_factor = np.array(def_field.img_shape) - 1
+    field = (field + 1) / 2 * scale_factor
+
+    # rotate field to 180 degrees to match our SP convention (np.rot90 only reorders samples)
+    field[..., 0] = (l - 1) - field[..., 0]
+    field[..., 1] = (l - 1) - field[..., 1]
+    x1 = (l - 1) - x1
+    x2 = (l - 1) - x2
+
+    # Prepare figure and initial quiver (use absolute pixel coords)
+    fig_q, ax_q = plt.subplots(figsize=figsize)
+    ax_q.set_aspect("equal")
+    ax_q.set_xlim([0, l - 1])
+    ax_q.set_ylim([0, l - 1])
+    ax_q.invert_yaxis()
+
+    # displacement vectors: target - source (in pixel coordinates)
+    U0 = field[0, ..., 0] - x1
+    V0 = field[0, ..., 1] - x2
+    Q = ax_q.quiver(x1, x2, U0, V0, angles="xy", scale_units="xy", scale=scale)
+
+    # Draw blue box (if requested) in absolute pixel coordinates
+    if amp_max and amp_max > 0:
+        from matplotlib.patches import Rectangle
+
+        x_min = amp_max
+        x_max = l - amp_max - 1
+        y_min = amp_max
+        y_max = l - amp_max - 1
+
+        width = x_max - x_min
+        height = y_max - y_min
+
+        rect = Rectangle(
+            (x_min, y_min),
+            width,
+            height,
+            fill=False,
+            edgecolor=box_color,
+            linewidth=box_linewidth,
+        )
+        ax_q.add_patch(rect)
+
+    # Try writing MP4
+    try:
+        writer = animation.FFMpegWriter(fps=fps)
+        with writer.saving(fig_q, str(out_path), dpi=dpi):
+            for i, idx in enumerate(indices):
+                U = field[i, ..., 0] - x1
+                V = field[i, ..., 1] - x2
+                Q.set_UVC(U, V)
+                ax_q.set_title(f"frame {idx}", fontsize=fs)
+                writer.grab_frame()
+        plt.close(fig_q)
+    except Exception as e:
+        raise RuntimeError(f"FFMpegWriter failed: {e}")
