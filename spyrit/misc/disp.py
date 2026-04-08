@@ -520,7 +520,11 @@ def error_map(
 
 
 def blue_box(
-    f: np.ndarray, amp_max: int = 0, box_color: Tuple[int, int, int] = (0, 0, 255)
+    f: np.ndarray,
+    amp_max: int = 0,
+    box_color: Tuple[int, int, int] = (0, 0, 255),
+    clip: bool = False,
+    thickness: int = 1,
 ) -> np.ndarray:
     """
     Add a colored box overlay to an image for visualization purposes.
@@ -529,6 +533,8 @@ def blue_box(
         f: Input grayscale or RGB image.
         amp_max: Offset from image borders for the box.
         box_color: RGB color for the box (default: blue).
+        clip: If True, clip input image in [0, 1] before conversion to 8-bit.
+        thickness: Border thickness in pixels.
 
     Returns:
         RGB image with colored box overlay.
@@ -539,10 +545,16 @@ def blue_box(
     if amp_max * 2 >= min(f.shape[0], f.shape[1]):
         raise ValueError(f"amp_max={amp_max} is too large for image shape {f.shape}")
 
-    # Normalize to 8-bit and create RGB image
-    f_normalized = (
-        (f - f.min()) / (f.max() - f.min()) if f.max() != f.min() else np.zeros_like(f)
-    )
+    if thickness < 1:
+        raise ValueError(f"thickness must be >= 1, got {thickness}")
+
+    if clip:
+        f_normalized = np.clip(f, 0, 1)
+    else:
+        # Normalize to 8-bit and create RGB image
+        f_normalized = (
+            (f - f.min()) / (f.max() - f.min()) if f.max() != f.min() else np.zeros_like(f)
+        )
     f_255 = (f_normalized * 255).astype(np.uint8)
 
     if len(f.shape) == 2:
@@ -555,14 +567,37 @@ def blue_box(
 
     r, g, b = box_color
 
-    # Draw box borders
-    # Top and bottom borders
-    f_rgb[amp_max, amp_max:-amp_max] = [r, g, b]
-    f_rgb[-amp_max - 1, amp_max:-amp_max] = [r, g, b]
+    h, w = f_rgb.shape[:2]
+    t = int(thickness)
 
-    # Left and right borders
-    f_rgb[amp_max:-amp_max, amp_max] = [r, g, b]
-    f_rgb[amp_max:-amp_max, -amp_max - 1] = [r, g, b]
+    # Rectangle reference lines (for thickness=1) are at amp_max and -(amp_max+1).
+    top_ref = amp_max
+    bottom_ref = h - amp_max - 1
+    left_ref = amp_max
+    right_ref = w - amp_max - 1
+
+    if top_ref > bottom_ref or left_ref > right_ref:
+        raise ValueError(f"Invalid rectangle for amp_max={amp_max} and image shape {f.shape}")
+
+    # Center thickness around each reference line: [-outer, +inner].
+    inner = t // 2
+    outer = t - 1 - inner
+
+    # Draw thick top and bottom borders.
+    top_start = max(0, top_ref - outer)
+    top_end = min(h, top_ref + inner + 1)
+    bottom_start = max(0, bottom_ref - inner)
+    bottom_end = min(h, bottom_ref + outer + 1)
+    f_rgb[top_start:top_end, left_ref : right_ref + 1] = [r, g, b]
+    f_rgb[bottom_start:bottom_end, left_ref : right_ref + 1] = [r, g, b]
+
+    # Draw thick left and right borders.
+    left_start = max(0, left_ref - outer)
+    left_end = min(w, left_ref + inner + 1)
+    right_start = max(0, right_ref - inner)
+    right_end = min(w, right_ref + outer + 1)
+    f_rgb[top_ref : bottom_ref + 1, left_start:left_end] = [r, g, b]
+    f_rgb[top_ref : bottom_ref + 1, right_start:right_end] = [r, g, b]
 
     return f_rgb
 
