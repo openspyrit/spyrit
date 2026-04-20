@@ -12,16 +12,17 @@ Created on Wed Jan 15 17:06:19 2020
 @author: crombez
 """
 
-import os
 import glob
-import numpy as np
-import matplotlib.pyplot as plt
 import math
-
-import torch
+import os
 from pathlib import Path
-from typing import Tuple, List, Optional, Union
-from dataclasses import dataclass
+from typing import List, Tuple, Union
+
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+
+from spyrit.misc.matrix_tools import Sum_coll
 
 
 def Files_names(Path, name_type):
