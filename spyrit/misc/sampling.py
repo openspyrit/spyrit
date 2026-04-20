@@ -6,7 +6,7 @@ import numpy as np
 from scipy.stats import rankdata
 from scipy.ndimage import label
 from spyrit.core.torch import walsh_matrix_2d
-from pytorch_wavelets import DWTForward
+import ptwt
 
 
 # from /misc/statistics.py
@@ -481,11 +481,11 @@ def define_order(n: int, order: str, pdf: bool = False):
         for i in range(N):
 
             patt = np.asarray(h[i])
-            binary = (patt > 0).astype(int)
-            labeled, num = label(binary)
-            if i == 0:
-                num = 0
-            CC_values[i] = num
+            pos = (patt > 0).astype(int)
+            neg = (patt < 0).astype(int)
+            _, num_pos = label(pos)
+            _, num_neg = label(neg)
+            CC_values[i] = num_pos + num_neg
 
         score_CC = 1 / (CC_values + 1e-8)
         score_CC[0] = 1
@@ -613,7 +613,7 @@ def sampling_map_multilevel_VDS(
     levels: int,
     J: int = 3,
     wave: str = "sym8",
-    mode: str = "periodization",
+    mode: str = "periodic",
     seed: int = 0,
 ):
     """
@@ -648,7 +648,7 @@ def sampling_map_multilevel_VDS(
     N = n**2
     H = walsh_matrix_2d(n)
 
-    dwt = DWTForward(J=J, wave=wave, mode=mode)
+    # dwt = DWTForward(J=J, wave=wave, mode=mode)
 
     lvl_sizes = torch.zeros(levels)  # number of elements in each level
     lvl_maps = torch.zeros(levels, n, n)
@@ -680,7 +680,12 @@ def sampling_map_multilevel_VDS(
         )  # Local coherences inside each level
 
         for i in range(int(lvl_sizes[k])):
-            coeffs = dwt(H_k[i].reshape(n, n).unsqueeze(0).unsqueeze(0))
+            coeffs = ptwt.wavedec2(
+                H_k[i].reshape(n, n).unsqueeze(0).unsqueeze(0),
+                wavelet=wave,
+                mode=mode,
+                level=J,
+            )
             mu_loc[i, 0] = torch.max(abs(coeffs[0]))
             for j in range(J):
                 mu_loc[i, j + 1] = torch.max(abs(coeffs[1][2 - j]))
