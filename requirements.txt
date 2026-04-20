@@ -5,9 +5,9 @@ torch
 torchvision
 opencv-python
 imutils
-PyWavelets
 wget
 sympy
+ptwt
 tensorboard
 sphinx_gallery
 sphinx_rtd_theme
