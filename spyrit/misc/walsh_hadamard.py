@@ -423,7 +423,7 @@ def walsh_G_matrix(n, H=None):
     """Return Walsh-ordered Hadamard G-matrix of order n
 
     Args:
-        n (int): Matrix order. n+1 should be a power of two.
+        n (int): Matrix order. n+1 should be a multiple of four.
         H (np.ndarray, optional): Hadamard matrix of order n+1.
 
     Returns:
@@ -442,10 +442,25 @@ def walsh_G_matrix(n, H=None):
          [-1  1 -1 -1  1 -1  1]
          [-1  1 -1  1 -1  1 -1]]
     """
-    assert math.log2(n + 1) % 1 == 0, f"{n}+1 must be a power of two"
+    #assert math.log2(n + 1) % 1 == 0, f"{n}+1 must be a power of two"
+    assert (n + 1) % 4 == 0, f"{n}+1 must be a multiple of four"
 
+    
     if H is None:
-        H = walsh_matrix(n + 1)
+        # Build Hadamard matrix when n+1 is a powers of two
+        if math.log2(n + 1) % 1 == 0:
+            H = walsh_matrix(n + 1)
+        
+        # load Hadamrd matrix for arbitrary orders. This will download tabulated matrices.
+        else:
+            H = load_matrix(order=n+1)
+    
+    else:
+        nn = H.shape[0]
+        mm = H.shape[1]
+        assert nn == mm, "Matris H must be square"
+        assert nn == n+1, f"Matris H must be {n+1}-by-{n+1}"
+        
     return H[1:, 1:]
 
 
