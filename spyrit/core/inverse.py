@@ -268,8 +268,8 @@ class Tikhonov(nn.Module):
     where we assume that both covariance matrices are positive definite. The
     class is constructed from :math:`A` and :math:`\Sigma`, while
     :math:`\Gamma` is passed as an argument to :meth:`forward()`. Passing
-    :math:`\Gamma` to :meth:`forward()` is useful in the presence of signal-
-    dependent noise.
+    :math:`\Gamma` to :meth:`forward()` is useful in the presence of 
+    signal-dependent noise.
 
     .. note::
         * :math:`x` can be a 1d signal or a vectorized image/volume. This can
@@ -286,7 +286,7 @@ class Tikhonov(nn.Module):
         :attr:`approx` : A boolean indicating whether to set
         the non-diagonal elements of :math:`A \Sigma A^T` to zero. Default is
         False. If True, this speeds up the computation of the inverse
-        :math:`(A \Sigma A^T + \Sigma_\alpha)^{-1}`.
+        :math:`(A \Sigma A^T + \Gamma)^{-1}`.
 
         :attr:`reshape_output` : A boolean indicating whether to reshape the
         output to the shape of the image. Default is True.
@@ -305,12 +305,10 @@ class Tikhonov(nn.Module):
 
         :attr:`sigma_meas` : Measurement covariance prior initialized as
         :math:`A \Sigma A^T`. If :attr:`approx` is True, the non-diagonal elements
-        are set to zero. It is pre-computed at initialization to speed up future
-        computations.
+        are set to zero.
 
         :attr:`sigma_A_T` : Covariance of the missing measurements initialized
-        as :math:`\Sigma A^T`. It is computed at initialization to speed up future
-        computations.
+        as :math:`\Sigma A^T`.
 
     Example:
         >>> from spyrit.core.meas import Linear
@@ -358,13 +356,12 @@ class Tikhonov(nn.Module):
         self.register_buffer("sigma_A_T", sigma_A_T)
 
     def divide(self, y: torch.tensor, gamma: torch.tensor) -> torch.tensor:
-        r"""Computes the division :math:`y \cdot (\Sigma \alpha + (A \Sigma A^T))^{-1}`.
+        r"""Computes :math:`\cdot (A \Sigma A^T + \Gamma)^{-1} y`.
 
-        Measurements `y` are divided by the sum of the measurement covariance.
-
-        If :attr:`self.approx` is True, the inverse is approximated as
-        a diagonal matrix, speeding up the computation. Otherwise, the
-        inverse is computed with the whole matrix.
+        If :attr:`self.approx` is True, the non-diagonal elements of 
+        :math:`A \Sigma A^T` are set to zero, and the operation is computed 
+        as division between two vectors. Otherwise, the operation required the 
+        resolution of a linear system of equations.
 
         Args:
             :attr:`y` (torch.tensor): Input measurement tensor. Shape :math:`(*, M)`.
@@ -418,7 +415,7 @@ class Tikhonov(nn.Module):
 
         Returns:
             (torch.tensor): A batch of reconstructed images of shape :math:`(*, N)`
-            or the :math:`meas\_op.unvectorize` version of the image shape.
+            or the unvectorized version of the image shape (see :meth:`spyrit.core.meas.Linear.unvectorize`).
 
         Example 1: With reshape_output = True
             >>> from spyrit.core.meas import Linear
