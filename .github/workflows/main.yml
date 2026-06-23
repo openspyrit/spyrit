@@ -163,3 +163,16 @@ jobs:
           cd tutorial
           cp wip/tuto_a00_connect_deepinv.py .
           python tuto_a00_connect_deepinv.py || exit -1
+
+  analyze-metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Run RsMetaCheck
+        uses: SoftwareUnderstanding/rs-metacheck-action@0.3.1
+        with:
+          input: https://github.com/openspyrit/spyrit
+          pitfalls_output: "./pitfalls_outputs"
+          verbose: "true"
