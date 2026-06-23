@@ -28,7 +28,7 @@ version = "3.1.1"
 dynamic = ["readme"]
 authors = [{name = "Nicolas Ducros", email = "Nicolas.Ducros@insa-lyon.fr"}]
 description = "Toolbox for deep image reconstruction"
-license = {file = "LICENSE.md"}
+license = {text = "https://spdx.org/licenses/LGPL-3.0"}
 classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.9",
