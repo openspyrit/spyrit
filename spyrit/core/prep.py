@@ -220,6 +220,44 @@ class UnsplitRescale(Rescale):
 
     Attributes:
         :attr:`\alpha` (float): Measurement intensity :math:`\alpha`.
+
+    Example:
+        >>> import torch
+        >>> from spyrit.core.prep import UnsplitRescale
+        >>> y = torch.rand([10,400])
+        >>> prep = UnsplitRescale(10.0)
+        >>> m = prep(y)
+        >>> print(m.shape)
+        torch.Size([10, 200])
+
+    Example 2:
+        >>> import torch
+        >>> from spyrit.core.prep import UnsplitRescale, Unsplit
+        >>> y = torch.rand([10,400])
+        >>> alpha = 10.
+        >>> prep1 = UnsplitRescale(alpha)
+        >>> prep2 = Unsplit()
+        >>> m1 = prep1(y)
+        >>> m2 = prep2(y)
+        >>> print(torch.norm(m1-m2))
+        tensor(...)
+        >>> print(torch.norm(m1-m2/alpha))
+        tensor(0.)
+
+    Example 3:
+        >>> import torch
+        >>> from spyrit.core.meas import LinearSplit
+        >>> from spyrit.core.prep import UnsplitRescale
+        >>> H = torch.rand([400,32])
+        >>> img = torch.rand([10,32])
+        >>> meas = LinearSplit(H)
+        >>> prep = UnsplitRescale(10.)
+        >>> y = meas(img)
+        >>> m = prep(y)
+        >>> print(y.shape)
+        torch.Size([10, 800])
+        >>> print(m.shape)
+        torch.Size([10, 400])
     """
 
     def __init__(self, alpha=1.0):
