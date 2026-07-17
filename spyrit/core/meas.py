@@ -774,69 +774,25 @@ class FreeformSmatrix(FreeformLinear):
     r"""Simulate linear measurements in a freeform region of interest,
     using an S-matrix as the acquisition matrix.
 
-    This class plays the same role as :class:`FreeformLinear`, but instead
-    of accepting an arbitrary, generic measurement matrix :math:`H`, it
-    builds :math:`H` from an S-matrix (see
-    :func:`spyrit.misc.walsh_hadamard.walsh_S_matrix`).
-
-    Unlike :class:`HadamSmatrix2d`, a freeform region generally does not
-    form a rectangular grid, so there is no 2D-separable (Kronecker)
-    structure to exploit: the S-matrix acts as a single, full :math:`N
-    \times N` matrix (subsampled to :math:`M\times N` if :math:`M<N`) on
-    the flat vector of :math:`N` masked pixels.
-
     .. math::
-        m =\mathcal{N}\left(S_M x\right), \quad \text{where }x = \text{mask}(\tilde{x}),
+        m =\mathcal{N}\left(Hx\right), \quad \text{where }x = \text{mask}(\tilde{x})
 
-    where :math:`S_M \in \{0,1\}^{M\times N}` denotes the first :math:`M`
-    rows (reordered according to :attr:`order`) of the :math:`N\times N`
-    S-matrix.
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents 
+    a noise operator (e.g., Gaussian), :math:`S\in\mathbb{R}^{M\times N}` is a
+    S matrix, :math:`x \in \mathbb{R}^N` is the signal in the region 
+    of interest, :math:`M` is the number of measurements, :math:`N` is the 
+    number of pixels in the region of interest, 
+    :math:`\text{mask} \colon\, \mathbb{R}^\tilde{N} \to \mathbb{R}^N` 
+    represents the masking operation, 
+    :math:`\tilde{x} \in \mathbb{R}^\tilde{N}` is the full signal, and 
+    :math:`\tilde{N}\ge N` is the dimension of the full signal :math:`\tilde{x}`.
 
-    The S-matrix is built from a Hadamard matrix of order :math:`N+1`, so
-    :math:`N+1` (:math:`N` being the number of masked pixels, not the
-    number of measurements :math:`M`) must be a power of two.
-
-    .. note::
-        **Choosing** :attr:`computation`. Two ways of applying the
-        S-matrix are available, trading off differently depending on
-        :math:`N` and the sampling ratio :math:`M/N`:
-
-        - `"dense"`: builds and stores the S-matrix explicitly (an
-          :math:`M\times N` matrix for :attr:`H`, plus an :math:`N\times N`
-          matrix :attr:`T` for the pseudo-inverse), and applies it via a
-          plain matrix-vector product. Cost scales as :math:`O(MN)` per
-          measurement/reconstruction. This is the only option available
-          for acquisition matrices that are not built from a power-of-two
-          Hadamard matrix (e.g. a generic, non-dyadic :math:`H`); it also
-          becomes memory-heavy for large :math:`N` (an :math:`N\times N`
-          float32 matrix already exceeds 1 GB around :math:`N=16000`, and
-          building it can itself fail with an out-of-memory error before
-          any measurement is even taken).
-
-        - `"dyadic"` (**default**): uses the fast Walsh-Hadamard-based
-          transform (:func:`spyrit.misc.walsh_hadamard.fwalsh_S_torch` /
-          :func:`~spyrit.misc.walsh_hadamard.ifwalsh_S_torch`) instead of
-          a matrix-vector product. This requires no :math:`N\times N` (or
-          :math:`M\times N`) matrix to ever be stored, and costs
-          :math:`O(N\log N)` regardless of :math:`M` -- but that "regardless
-          of :math:`M`" is also its main limitation: unlike the dense
-          path, it cannot skip work when subsampling, since it always
-          computes all :math:`N` outputs (or requires all :math:`N`
-          inputs for the inverse) before the top-:math:`M` measurements
-          are selected. It relies on the dyadic (power-of-two) recursive
-          structure of the Hadamard transform, so it is only applicable
-          when :math:`N+1` is a power of two -- which is always the case
-          for :class:`FreeformSmatrix`, but would not be for a
-          hypothetical S-matrix-like class built on some other Hadamard
-          matrix whose order is not a power of two.
-
-        In practice (see benchmarks in the development notes), the
-        crossover is around :math:`M/N \approx 0.15`-`0.20`, fairly stable
-        across :math:`N` from about 1,000 to 16,000: below that sampling
-        ratio, `"dense"` is faster; above it, `"dyadic"` is faster (and,
-        for large :math:`N`, is often the only option that fits in
-        memory at all). If in doubt, benchmark both on your actual
-        :math:`N` and :math:`M`.
+    This class plays the same role as :class:`FreeformLinear`, but instead
+    of accepting an arbitrary measurement matrix :math:`H`, it
+    sets :math:`H` as an S-matrix (see
+    :func:`spyrit.misc.walsh_hadamard.walsh_S_matrix`). The S-matrix is built 
+    from a Hadamard matrix of order :math:`N+1`, so :math:`N+1` must be
+    a power of two.
 
     Args:
         :attr:`meas_shape` (tuple): Shape of the underlying
@@ -896,6 +852,48 @@ class FreeformSmatrix(FreeformLinear):
 
         :attr:`indices` (:class:`torch.tensor`): Indices used to reorder
         the measurement vector.
+        
+    .. note::
+        **Choosing** :attr:`computation`. Two ways of applying the
+        S-matrix are available, trading off differently depending on
+        :math:`N` and the sampling ratio :math:`M/N`:
+
+        - `"dense"`: builds and stores the S-matrix explicitly (an
+          :math:`M\times N` matrix for :attr:`H`, plus an :math:`N\times N`
+          matrix :attr:`T` for the pseudo-inverse), and applies it via a
+          plain matrix-vector product. Cost scales as :math:`O(MN)` per
+          measurement/reconstruction. This is the only option available
+          for acquisition matrices that are not built from a power-of-two
+          Hadamard matrix (e.g. a generic, non-dyadic :math:`H`); it also
+          becomes memory-heavy for large :math:`N` (an :math:`N\times N`
+          float32 matrix already exceeds 1 GB around :math:`N=16000`, and
+          building it can itself fail with an out-of-memory error before
+          any measurement is even taken).
+
+        - `"dyadic"` (**default**): uses the fast Walsh-Hadamard-based
+          transform (:func:`spyrit.misc.walsh_hadamard.fwalsh_S_torch` /
+          :func:`~spyrit.misc.walsh_hadamard.ifwalsh_S_torch`) instead of
+          a matrix-vector product. This requires no :math:`N\times N` (or
+          :math:`M\times N`) matrix to ever be stored, and costs
+          :math:`O(N\log N)` regardless of :math:`M` -- but that "regardless
+          of :math:`M`" is also its main limitation: unlike the dense
+          path, it cannot skip work when subsampling, since it always
+          computes all :math:`N` outputs (or requires all :math:`N`
+          inputs for the inverse) before the top-:math:`M` measurements
+          are selected. It relies on the dyadic (power-of-two) recursive
+          structure of the Hadamard transform, so it is only applicable
+          when :math:`N+1` is a power of two -- which is always the case
+          for :class:`FreeformSmatrix`, but would not be for a
+          hypothetical S-matrix-like class built on some other Hadamard
+          matrix whose order is not a power of two.
+
+        In practice (see benchmarks in the development notes), the
+        crossover is around :math:`M/N \approx 0.15`-`0.20`, fairly stable
+        across :math:`N` from about 1,000 to 16,000: below that sampling
+        ratio, `"dense"` is faster; above it, `"dyadic"` is faster (and,
+        for large :math:`N`, is often the only option that fits in
+        memory at all). If in doubt, benchmark both on your actual
+        :math:`N` and :math:`M`.
 
     .. note::
         As with :class:`HadamSmatrix2d`, the S-matrix is not orthogonal:
@@ -908,6 +906,7 @@ class FreeformSmatrix(FreeformLinear):
     images (N=15, N+1=16=2**4). With full sampling (the default, M=N),
     :meth:`fast_pinv` exactly recovers the masked pixels, regardless of
     :attr:`computation`.
+
         >>> h = 32
         >>> mask = torch.tensor([[i, i] for i in range(15)]).T
         >>> meas_op = FreeformSmatrix(meas_shape=(h, h), index_mask=mask)
@@ -927,6 +926,7 @@ class FreeformSmatrix(FreeformLinear):
     Example 2: With :attr:`vectorize` = False (the default), the
     reconstruction is expanded back to the full image shape instead,
     with unmasked pixels set to :attr:`fill_value` (0 by default).
+
         >>> x_hat_img = meas_op.fast_pinv(y, vectorize=False)
         >>> print(x_hat_img.shape)
         torch.Size([4, 32, 32])
@@ -935,6 +935,7 @@ class FreeformSmatrix(FreeformLinear):
 
     Example 3: With subsampling (:attr:`M` < N), the reconstruction is
     only approximate (see the note above).
+
         >>> meas_op_sub = FreeformSmatrix(meas_shape=(h, h), M=10, index_mask=mask)
         >>> y_sub = meas_op_sub(images)
         >>> print(y_sub.shape)
@@ -945,6 +946,7 @@ class FreeformSmatrix(FreeformLinear):
 
     Example 4: The two :attr:`computation` modes give the same result
     (up to floating-point precision), as expected.
+
         >>> meas_op_dense = FreeformSmatrix(meas_shape=(h, h), index_mask=mask, computation="dense")
         >>> y_dense = meas_op_dense(images)
         >>> print(torch.allclose(y, y_dense, atol=1e-4))
