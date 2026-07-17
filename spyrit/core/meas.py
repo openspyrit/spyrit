@@ -1,20 +1,22 @@
 """
 Measurement operators, static and dynamic.
 
-There are six classes contained in this module, each representing a different
-type of measurement operator. Three of them are static, i.e. they are used to
+There are 10 classes contained in this module, each representing a different
+type of measurement operator. Seven of them are static, i.e. they are used to
 simulate measurements of still images, and three are dynamic, i.e. they are used
 to simulate measurements of moving objects, represented as a sequence of images.
 The inheritance tree is as follows::
 
-      Linear -------> DynamicLinear
-        |                   |
-        |-----> HadamSmatrix2d
-        V                   V
-    LinearSplit     DynamicLinearSplit
-        |                   |
-        V                   V
-    HadamSplit2d    DynamicHadamSplit2d
+      Linear --------------------------------------> DynamicLinear
+        |----> FreeformLinear                              |
+        |      |---> FreeformSmatrix                       |
+        |                                                  |
+        |----> HadamSmatrix2d                              | 
+        V                                                  V
+    LinearSplit                                    DynamicLinearSplit
+        |----> FreeformLinearSplit                         |
+        V                                                  V
+    HadamSplit2d                                   DynamicHadamSplit2d
 
 """
 
@@ -518,7 +520,7 @@ class FreeformLinear(Linear):
 
         Only tested for measurements in 2D using mask indices.
 
-    Example: Select one every second point on the diagonal of a batch of images
+    Example: Select one every second pixel on the diagonal of a batch of images
         >>> images = torch.rand(17, 3, 40, 40)
         >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
         >>> H = torch.randn(13, 20)
@@ -614,7 +616,7 @@ class FreeformLinear(Linear):
             :class:`torch.tensor`: A tensor of shape (\*, self.N) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
             >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
             >>> H = torch.randn(13, 20)
@@ -656,7 +658,7 @@ class FreeformLinear(Linear):
             :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
 
             >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
@@ -686,7 +688,7 @@ class FreeformLinear(Linear):
             :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinear
             >>> import torch
             >>> images = torch.rand(17, 3, 40, 40)
@@ -852,7 +854,7 @@ class FreeformSmatrix(FreeformLinear):
 
         :attr:`indices` (:class:`torch.tensor`): Indices used to reorder
         the measurement vector.
-        
+
     .. note::
         **Choosing** :attr:`computation`. Two ways of applying the
         S-matrix are available, trading off differently depending on
@@ -902,8 +904,8 @@ class FreeformSmatrix(FreeformLinear):
         is an approximation. This holds for both values of
         :attr:`computation`.
 
-    Example 1: Select the first 15 points on the diagonal of a batch of
-    images (N=15, N+1=16=2**4). With full sampling (the default, M=N),
+    Example 1: Select the first 15 pixels on the diagonal of a batch of
+    images (:attr:`N`=15, :attr:`N`+1=16=2**4). With full sampling (the default, :attr:`M`=:attr:`N`),
     :meth:`fast_pinv` exactly recovers the masked pixels, regardless of
     :attr:`computation`.
 
@@ -923,7 +925,7 @@ class FreeformSmatrix(FreeformLinear):
         >>> print(torch.allclose(x_true, x_hat, atol=1e-4))
         True
 
-    Example 2: With :attr:`vectorize` = False (the default), the
+    Example 2: With :attr:`vectorize` = :attr:`False` (the default), the
     reconstruction is expanded back to the full image shape instead,
     with unmasked pixels set to :attr:`fill_value` (0 by default).
 
@@ -933,7 +935,7 @@ class FreeformSmatrix(FreeformLinear):
         >>> print(x_hat_img[0, 20, 20].item())  # (20, 20) is not in the mask
         0.0
 
-    Example 3: With subsampling (:attr:`M` < N), the reconstruction is
+    Example 3: With subsampling (:attr:`M` < :attr:`N`), the reconstruction is
     only approximate (see the note above).
 
         >>> meas_op_sub = FreeformSmatrix(meas_shape=(h, h), M=10, index_mask=mask)
@@ -1617,7 +1619,7 @@ class FreeformLinearSplit(LinearSplit):
 
     where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`A\in\mathbb{R}_+^{2M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal in the region of interest, :math:`2M` is the number of measurements, :math:`N` is the number of pixels in the region of interest, :math:`\text{mask} \colon\, \mathbb{R}^\tilde{N} \to \mathbb{R}^N` represents the masking operation, :math:`\tilde{x} \in \mathbb{R}^\tilde{N}` is the full signal, and :math:`\tilde{N}\ge N` is the dimension of the full signal :math:`\tilde{x}`.
 
-    Example: Select one every second point on the diagonal of a batch of images
+    Example: Select one every second pixel on the diagonal of a batch of images
         >>> from spyrit.core.meas import FreeformLinearSplit
         >>> import torch
         >>> images = torch.rand(17, 3, 40, 40)
@@ -1715,7 +1717,7 @@ class FreeformLinearSplit(LinearSplit):
             :class:`torch.tensor`: A tensor of shape (\*, self.N) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
             >>> images = torch.rand(17, 3, 40, 40)
@@ -1759,7 +1761,7 @@ class FreeformLinearSplit(LinearSplit):
             :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
             >>> images = torch.rand(17, 3, 40, 40)
@@ -1790,7 +1792,7 @@ class FreeformLinearSplit(LinearSplit):
             :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
             >>> images = torch.rand(17, 3, 40, 40)
@@ -1821,7 +1823,7 @@ class FreeformLinearSplit(LinearSplit):
             :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
             >>> images = torch.rand(17, 3, 40, 40)
@@ -1853,7 +1855,7 @@ class FreeformLinearSplit(LinearSplit):
             :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
             >>> images = torch.rand(17, 3, 40, 40)
