@@ -9,6 +9,7 @@ The inheritance tree is as follows::
 
       Linear -------> DynamicLinear
         |                   |
+        |-----> HadamSmatrix2d
         V                   V
     LinearSplit     DynamicLinearSplit
         |                   |
@@ -17,17 +18,20 @@ The inheritance tree is as follows::
 
 """
 
+import math
 import warnings
 from typing import Any, Union
 from collections.abc import Iterable
 
 # import memory_profiler as mprof
 
+import numpy as np
 import torch
 import torch.nn as nn
 
 from spyrit.core.warp import DeformationField
 import spyrit.core.torch as spytorch
+import spyrit.misc.walsh_hadamard as wh
 
 
 # =============================================================================
@@ -91,6 +95,12 @@ class Linear(nn.Module):
         )
     """
 
+    # Subclasses that expose H as a computed @property instead of storing it
+    # as an nn.Parameter (typically to avoid materializing a very large
+    # matrix, e.g. HadamSplit2d, HadamSmatrix2d) should override this to
+    # False.
+    _store_H_as_parameter = True
+
     def __init__(
         self,
         H: torch.tensor,
@@ -116,8 +126,11 @@ class Linear(nn.Module):
             meas_dims = [meas_dims]
         self.meas_dims = torch.Size(meas_dims)
 
-        # don't store H if we use a HadamSplit
-        if not isinstance(self, HadamSplit2d):
+        # don't store H as a Parameter for subclasses that expose H as a
+        # computed property instead (e.g. HadamSplit2d, HadamSmatrix2d),
+        # typically to avoid materializing a very large matrix. Such
+        # subclasses set the class attribute _store_H_as_parameter = False.
+        if self._store_H_as_parameter:
             self.H = nn.Parameter(H, requires_grad=False).to(dtype=dtype, device=device)
         self.noise_model = noise_model
 
@@ -1545,6 +1558,10 @@ class HadamSplit2d(LinearSplit):
         400
     """
 
+    # H is exposed as a computed @property (see below) to avoid
+    # materializing the full h**2 x h**2 measurement matrix.
+    _store_H_as_parameter = False
+
     def __init__(
         self,
         h: int,
@@ -1872,6 +1889,459 @@ class HadamSplit2d(LinearSplit):
     def fast_H_pinv(self) -> torch.tensor:
         r"""Return the pseudo inverse of the matrix H"""
         return self.H.T / self.N
+
+
+# =============================================================================
+class HadamSmatrix2d(Linear):
+    r"""Simulate 2D S-matrix acquisitions.
+
+    This class plays the same role as :class:`HadamSplit2d`, but replaces
+    the 2D Hadamard transform used there by a 2D S-matrix transform.
+    Considering the acquisition of :math:`M` square DMD patterns of size
+    :math:`h`, it computes
+
+    .. math::
+        y =\mathcal{N}\left(\mathcal{S}\left(S_{1d} X S_{1d}^T\right)\right),
+
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^{M} \to \mathbb{R}^{M}`
+    represents a noise operator (e.g., Gaussian), :math:`\mathcal{S} \colon\,
+    \mathbb{R}^{h\times h} \to \mathbb{R}^{M}` is a subsampling operator,
+    :math:`S_{1d} \in \{0,1\}^{h\times h}` is the (1D) Walsh-ordered
+    S-matrix (see :func:`spyrit.misc.walsh_hadamard.walsh_S_matrix`), and
+    :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image.
+
+    Unlike the Hadamard matrix used by :class:`HadamSplit2d`, the S-matrix
+    :math:`S_{1d}` only takes values in :math:`\{0, 1\}`. It is therefore
+    already directly realizable as a set of DMD patterns, and there is no
+    need to split it into positive and negative components as
+    :class:`LinearSplit`-based classes do. For this reason,
+    :class:`HadamSmatrix2d` inherits directly from :class:`Linear` (not
+    :class:`LinearSplit`), and any preprocessing needed downstream reduces
+    to a scaling of the raw measurements (no "unsplitting" step is
+    required).
+
+    The S-matrix is built from a Hadamard matrix of order :math:`h+1`, so
+    :math:`h+1` (not :math:`h`) must be a power of two.
+
+    .. note::
+        :attr:`order` and :attr:`scramble` both rely on permutations, but
+        they act on different things and serve different purposes -- do
+        not confuse them:
+
+        - :attr:`order` permutes the **rows** of the (subsampled) 2D
+          system matrix :math:`H = S_{1d}\otimes S_{1d}`, i.e. it reorders
+          the :math:`M` **measurements** in the output vector :math:`y`
+          (and selects which :math:`M` of the :math:`h^2` possible
+          measurements are kept, if :math:`M<h^2`). It does not change
+          what any individual measurement pattern looks like, only the
+          sequence in which the measurements appear (e.g. by decreasing
+          variance/significance, via :attr:`order`).
+
+        - :attr:`scramble` permutes the **columns** of the 1D S-matrix
+          :math:`S_{1d}` -- i.e. of the acquisition matrix itself, before
+          any row reordering/subsampling happens. This changes which
+          pixels of the image each individual measurement pattern probes,
+          not the order in which measurements are returned.
+
+        In short: :attr:`scramble` acts on the acquisition matrix
+        :math:`S_{1d}` (columns), :attr:`order` acts on the sequence of
+        measurements in :math:`y` (rows of :math:`H`, built from
+        :math:`S_{1d}` after scrambling has already been applied, if any).
+        The two options are independent and can be combined.
+
+    If :attr:`scramble` is True, the columns of :math:`S_{1d}` are randomly
+    permuted (with a fixed :attr:`seed` for reproducibility). This is useful
+    e.g. to decorrelate the acquisition order from the natural Walsh
+    ordering. Because permuting columns destroys the symmetry of
+    :math:`S_{1d}`, its inverse is no longer given directly by
+    :func:`~spyrit.misc.walsh_hadamard.iwalsh_S_matrix`; instead, it is
+    obtained exactly (with no extra matrix inversion) using
+    :func:`spyrit.core.torch.reindex` (see :attr:`T1d` and the note below),
+    and the adjoint operator is computed using :math:`S_{1d}^T` explicitly
+    rather than relying on :math:`S_{1d}` being symmetric.
+
+    .. note::
+        :math:`S_{1d}` is not orthogonal: unlike the Hadamard matrix,
+        :math:`S_{1d}^{-1} \neq S_{1d}^T / h`. The adjoint (transpose) of
+        the measurement operator and its pseudo-inverse are therefore
+        genuinely different operators here, computed respectively from
+        :math:`S_{1d}^T` and from :math:`T_{1d}` (see :attr:`T1d`).
+
+    .. note::
+        Let :attr:`column_perm` be the random permutation used to scramble
+        the columns of :math:`S_{1d}` : :math:`S_{1d}^{\text{scrambled}} =
+        S_{1d} P`, where :math:`P` is the corresponding (orthogonal)
+        permutation matrix. Since :math:`P` is orthogonal,
+        :math:`(S_{1d}P)^{-1} = P^{-1}S_{1d}^{-1} = P^TS_{1d}^{-1}`. Building
+        :math:`S_{1d}P` gathers the *columns* of :math:`S_{1d}` directly by
+        :attr:`column_perm`; by the structure of permutation matrices,
+        gathering the *rows* of :math:`S_{1d}^{-1}` with that very same
+        (non-inverted) :attr:`column_perm` array already computes
+        :math:`P^TS_{1d}^{-1}` -- no separate inverse-permutation array is
+        needed at the indexing level, since transposing :math:`P` is
+        already accounted for by switching which axis (rows vs. columns) is
+        gathered, not by inverting the indices themselves. Concretely, this
+        means the same :attr:`column_perm` array is passed to
+        :func:`~spyrit.core.torch.reindex` for both matrices, but with
+        different arguments: `reindex(S1d, column_perm, axis="cols",
+        inverse_permutation=True)` for :math:`S_{1d}`, and
+        `reindex(T1d, column_perm, axis="rows", inverse_permutation=False)`
+        for :math:`T_{1d}` -- using :attr:`column_perm`'s argsort (the
+        literal "inverse indices") in either of these two calls would
+        silently compute the wrong matrix.
+
+    Args:
+        :attr:`h` (int): Image size :math:`h`. :math:`h+1` must be a power
+        of 2.
+
+        :attr:`M` (int, optional): Number of measurements. Defaults to
+        :math:`h^2` (no subsampling).
+
+        :attr:`order` (:class:`torch.tensor`, optional): Order matrix
+        :math:`O` that defines the measurements to keep. The first
+        component of :math:`y` will correspond to the index where
+        :attr:`order` is the highest. Permutes the **rows** of the system
+        matrix :math:`H` (i.e. the sequence of measurements in :math:`y`).
+        Not to be confused with :attr:`scramble`, which permutes the
+        **columns** of :math:`S_{1d}` (the acquisition matrix itself).
+
+        :attr:`fast` (bool, optional): Whether to use the fast, separable
+        computation of the 2D S-transform. If False, it uses (memory-heavy)
+        matrix-vector products with the full measurement matrix. Defaults
+        to True.
+
+        :attr:`reshape_output` (bool, optional): Whether to reshape the
+        output of the adjoint and pseudo-inverse methods to images. If
+        False, outputs are vectors.
+
+        :attr:`scramble` (bool, optional): If True, the **columns** of
+        :math:`S_{1d}` (the acquisition matrix) are randomly permuted.
+        Defaults to False. Not to be confused with :attr:`order`, which
+        permutes the **rows** of the system matrix :math:`H` (i.e. the
+        sequence of measurements in :math:`y`), applied after scrambling.
+
+        :attr:`seed` (int, optional): Seed used to generate the random
+        column permutation when :attr:`scramble` is True, ensuring
+        reproducibility. Defaults to 0.
+
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model
+        :math:`\mathcal{N}`. Defaults to `torch.nn.Identity()`.
+
+        :attr:`dtype` (:class:`torch.dtype`, optional): Data type of the
+        measurement matrix. Defaults to `torch.float32`.
+
+        :attr:`device` (:obj:`torch.device`, optional): Device of the
+        measurement matrix. Defaults to `torch.device("cpu")`.
+
+    Attributes:
+
+        :attr:`S1d` (:class:`torch.tensor`): 1D S-matrix of shape
+        :math:`(h,h)`, values in :math:`\{0,1\}`. Its **columns** are
+        permuted if :attr:`scramble` is True (see :attr:`column_perm`).
+
+        :attr:`T1d` (:class:`torch.tensor`): Inverse of :attr:`S1d`, of
+        shape :math:`(h,h)`. When :attr:`scramble` is True, obtained exactly
+        by permuting the rows of the unscrambled inverse with
+        :attr:`column_perm` (see :meth:`__init__`), since the closed-form
+        inverse from :func:`spyrit.misc.walsh_hadamard.iwalsh_S_matrix` only
+        applies directly to the unscrambled matrix.
+
+        :attr:`column_perm` (:class:`torch.tensor`, optional): The random
+        column permutation applied to :math:`S_{1d}`. Only set as an
+        attribute when :attr:`scramble` is True.
+
+        :attr:`H` (:class:`torch.tensor`): The 2D measurement matrix given
+        by :math:`S_{1d}\otimes S_{1d}`, subsampled to :attr:`self.M` rows.
+        Computed on the fly (not stored) to avoid materializing a
+        :math:`h^2 \times h^2` matrix.
+
+        :attr:`M` (int): Number of measurements :math:`M`.
+
+        :attr:`N` (int): Number of pixels in the image, equal to :math:`h^2`.
+
+        :attr:`meas_shape` (torch.Size): Shape of the measurement patterns.
+        Equal to :math:`(h, h)`.
+
+        :attr:`meas_dims` (torch.Size): Dimensions of the image the
+        acquisition matrix applies to. Equal to `(-2, -1)`.
+
+        :attr:`order` (:class:`torch.tensor`): Order matrix :math:`O`. Only
+        affects the **row** order (sequence) of the measurements in
+        :math:`y`; unrelated to :attr:`scramble`, which affects the
+        **columns** of :math:`S_{1d}` instead.
+
+        :attr:`indices` (:class:`torch.tensor`): Indices used to reorder
+        the measurement vector (derived from :attr:`order`). Used by the
+        method :meth:`reindex`.
+
+    Example:
+        >>> h = 63  # h + 1 = 64 = 2**6
+        >>> meas_op = HadamSmatrix2d(h, 2000)
+        >>> print(meas_op.S1d.shape)
+        torch.Size([63, 63])
+        >>> print(meas_op.M)
+        2000
+        >>> x = torch.rand(4, h, h)
+        >>> y = meas_op(x)
+        >>> print(y.shape)
+        torch.Size([4, 2000])
+
+        >>> meas_op_scrambled = HadamSmatrix2d(h, 2000, scramble=True, seed=42)
+        >>> y2 = meas_op_scrambled(x)
+        >>> x_rec = meas_op_scrambled.fast_pinv(y2)
+    """
+
+    # H is exposed as a computed @property (see below) to avoid
+    # materializing the full h**2 x h**2 measurement matrix.
+    _store_H_as_parameter = False
+
+    def __init__(
+        self,
+        h: int,
+        M: int = None,
+        order: torch.tensor = None,
+        fast: bool = True,
+        reshape_output: bool = False,
+        scramble: bool = False,
+        seed: int = 0,
+        *,
+        noise_model=nn.Identity(),
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu"),
+    ):
+        if not float(math.log2(h + 1)).is_integer():
+            raise ValueError(
+                f"h+1 must be a power of two for the S-matrix construction "
+                f"(got h={h}, h+1={h + 1})."
+            )
+
+        meas_dims = (-2, -1)
+        meas_shape = (h, h)
+        if M is None:
+            M = h**2
+
+        # call Linear constructor (avoid setting H as a Parameter, see
+        # Linear._store_H_as_parameter)
+        super().__init__(
+            torch.empty(h**2, h**2),
+            meas_shape,
+            meas_dims,
+            noise_model=noise_model,
+            dtype=dtype,
+            device=device,
+        )
+
+        if order is None:
+            order = torch.ones(h, h)
+
+        # 1D S-matrix, built with spyrit.misc.walsh_hadamard as requested.
+        S1d = torch.from_numpy(wh.walsh_S_matrix(h).astype(np.float32))
+        T1d = torch.from_numpy(wh.iwalsh_S_matrix(h).astype(np.float32))
+
+        self.scramble = scramble
+        self.seed = seed
+        if scramble:
+            # Randomly permute the columns of S1d. A fixed seed guarantees
+            # the same permutation is produced every time, for
+            # reproducibility.
+            generator = torch.Generator().manual_seed(seed)
+            self.column_perm = torch.randperm(h, generator=generator)
+
+            # S_scrambled = S @ P, where P is the permutation matrix that
+            # gathers columns according to column_perm, i.e.
+            # S_scrambled[:, j] = S[:, column_perm[j]]. Using
+            # spytorch.reindex with axis="cols" requires
+            # inverse_permutation=True to reproduce this direct gather (see
+            # class docstring note below for why).
+            S1d = spytorch.reindex(
+                S1d, self.column_perm, axis="cols", inverse_permutation=True
+            )
+
+            # Since P is a permutation matrix (orthogonal), S_scrambled^{-1}
+            # = P^{-1} @ S^{-1} = P^T @ S^{-1}. For a permutation matrix
+            # built by gathering columns via column_perm, its transpose
+            # satisfies (P^T @ T)[j, :] = T[column_perm[j], :]: gathering
+            # T1d's ROWS with the *same* column_perm array (not its
+            # argsort/inverse) already computes P^T @ T1d directly -- this
+            # is what reindex with axis="rows" and inverse_permutation=False
+            # reproduces (see class docstring note). This is an exact, O(h)
+            # reindexing; no matrix inversion is needed, and it was verified
+            # numerically against torch.linalg.inv as a sanity check.
+            T1d = spytorch.reindex(
+                T1d, self.column_perm, axis="rows", inverse_permutation=False
+            )
+
+        self.S1d = nn.Parameter(S1d, requires_grad=False).to(dtype=dtype, device=device)
+        self.T1d = nn.Parameter(T1d, requires_grad=False).to(dtype=dtype, device=device)
+
+        self.M = M  # supercharged self.M
+        self.order = order
+        self.indices = torch.argsort(-order.flatten(), stable=True).to(
+            dtype=torch.int32, device=self.device
+        )
+        self.fast = fast
+        self.reshape_output = reshape_output
+
+    @property
+    def dtype(self) -> torch.dtype:
+        return self.S1d.dtype
+
+    @property
+    def device(self) -> torch.device:
+        return self.S1d.device
+
+    @property
+    def H(self):
+        r"""The full (subsampled) 2D S measurement matrix, computed on the
+        fly as :math:`S_{1d}\otimes S_{1d}`, reindexed and truncated to the
+        first :attr:`self.M` rows (by decreasing :attr:`self.order`)."""
+        H = torch.kron(self.S1d, self.S1d)
+        H = self.reindex(H, "rows", False)
+        return H[: self.M, :]
+
+    @property
+    def matrix_to_inverse(self):
+        return self.H
+
+    def reindex(
+        self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
+    ) -> torch.tensor:
+        """Sorts a tensor along a specified axis using :attr:`self.indices`.
+        See :meth:`HadamSplit2d.reindex` for details."""
+        return spytorch.reindex(x, self.indices.to(x.device), axis, inverse_permutation)
+
+    def measure(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulate noiseless measurements.
+
+        It computes :math:`y = \mathcal{S}(S_{1d} X S_{1d}^T)`.
+
+        Args:
+            :attr:`x` (:class:`torch.tensor`): Image :math:`X` whose
+            dimensions :attr:`self.meas_dims` must have shape
+            :attr:`self.meas_shape`.
+
+        Returns:
+            Measurement vector :math:`y \in \mathbb{R}^{M}`.
+        """
+        if self.fast:
+            return self.fast_measure(x)
+        else:
+            return super().measure(x)
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulate noisy measurements :math:`y = \mathcal{N}(\mathcal{S}(S_{1d} X S_{1d}^T))`."""
+        x = self.measure(x)
+        x = self.noise_model(x)
+        return x
+
+    def fast_measure(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulate noiseless measurements using the separability of the
+        2D S-transform (only multiplications with the 1D S-matrix
+        :attr:`self.S1d` are required)."""
+        x = spytorch.mult_2d_separable(self.S1d, x)
+        x = self.vectorize(x)
+        x = x.index_select(dim=-1, index=self.indices)
+        return x[..., : self.M]
+
+    def adjoint(self, m: torch.tensor, unvectorize: bool = False) -> torch.tensor:
+        r"""Apply the adjoint (transpose) of the measurement matrix.
+
+        It computes :math:`x = H^Tm`, where :math:`H` is the (subsampled)
+        2D S measurement matrix.
+
+        .. note::
+            This is the literal adjoint, not the pseudo-inverse: use
+            :meth:`fast_pinv` for the pseudo-inverse solution. Unlike
+            :class:`HadamSplit2d`, this does **not** assume :math:`S_{1d}`
+            is symmetric (it is not, when :attr:`scramble` is True), and
+            explicitly applies :math:`S_{1d}^T`.
+
+        Args:
+            :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` of
+            length :attr:`self.M`.
+
+            :attr:`unvectorize` (bool): whether to apply
+            :meth:`~spyrit.core.meas.Linear.unvectorize` at the end of the
+            computation.
+
+        Returns:
+            A batch of signals :math:`x`.
+        """
+        if self.fast:
+            return self.fast_adjoint(m, unvectorize)
+        else:
+            return super().adjoint(m, unvectorize)
+
+    def fast_adjoint(self, m: torch.tensor, unvectorize: bool = False) -> torch.tensor:
+        r"""Apply the adjoint of the measurement matrix using the
+        separability of the 2D S-transform.
+
+        The forward map is :math:`Y = S_{1d} X S_{1d}^T`, i.e.
+        :math:`\mathrm{vec}(Y) = (S_{1d}\otimes S_{1d})\,\mathrm{vec}(X)`.
+        Its adjoint is therefore :math:`X = S_{1d}^T Y S_{1d}`, which is why
+        :math:`S_{1d}^T` (not :math:`S_{1d}`) is used below. When
+        :attr:`scramble` is False, :math:`S_{1d}` is symmetric and this is
+        equivalent to applying :math:`S_{1d}` directly.
+        """
+        if self.N != self.M:
+            m = torch.cat(
+                (m, torch.zeros(*m.shape[:-1], self.N - self.M, device=m.device, dtype=m.dtype)),
+                -1,
+            )
+        m = self.reindex(m, "cols", False)
+        m = self.unvectorize(m)
+        m = spytorch.mult_2d_separable(self.S1d.T, m)
+        if not unvectorize:
+            m = self.vectorize(m)
+        return m
+
+    def fast_pinv(self, m: torch.tensor, vectorize: bool = False) -> torch.tensor:
+        r"""Apply the pseudo-inverse of the measurement matrix.
+
+        Args:
+            :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` of
+            length :attr:`self.M`.
+
+            :attr:`vectorize` (bool): Whether to apply
+            :meth:`~spyrit.core.meas.Linear.vectorize` after computation of
+            the pseudo-inverse.
+
+        Returns:
+            :class:`torch.tensor`: Vectorized (or image-shaped) signal
+            :math:`x` of length :attr:`self.N`.
+
+        .. note::
+            We use the separability of the 2D S-transform: the forward map
+            is :math:`Y = S_{1d} X S_{1d}^T`, so the exact inverse is
+            :math:`X = T_{1d} Y T_{1d}^T`, where :math:`T_{1d} =
+            S_{1d}^{-1}` (see :attr:`T1d`). Only multiplications with
+            :math:`T_{1d}` are required. If the number of measurements is
+            smaller than the number of pixels, the measurement vector is
+            zero-padded before inversion, exactly as done in
+            :meth:`HadamSplit2d.fast_pinv`.
+
+            Unlike the Hadamard matrix used by :class:`HadamSplit2d`, whose
+            rows remain exactly orthogonal after any subsampling (making
+            zero-pad-then-invert an exact pseudo-inverse for any
+            :attr:`self.M`), the S-matrix does not have this property in
+            general. This reconstruction is therefore exact only when
+            :attr:`self.M` equals :attr:`self.N` (no subsampling); with
+            subsampling, it is an approximation, consistent with the
+            convention used throughout :class:`HadamSplit2d`. This holds
+            whether or not :attr:`scramble` is used.
+        """
+        if self.N != self.M:
+            m = torch.cat(
+                (m, torch.zeros(*m.shape[:-1], self.N - self.M, device=m.device, dtype=m.dtype)),
+                -1,
+            )
+        m = self.reindex(m, "cols", False)
+        m = self.unvectorize(m)
+        m = spytorch.mult_2d_separable(self.T1d, m)
+
+        if vectorize:
+            m = self.vectorize(m)
+        return m
 
 
 # =============================================================================
