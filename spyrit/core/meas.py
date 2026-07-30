@@ -2364,15 +2364,13 @@ class HadamSplit2d(LinearSplit):
 class HadamSmatrix2d(Linear):
     r"""Simulate 2D S-matrix acquisitions.
 
-    The goal of this class is to compute the S-transform of a (vectorized)
-    image :math:`f`:
+    An S matrix of order :math:`n-1` can obtained from any Hadamard matrix of order :math:`n`. Therefore, we define a "2D" S-transform from a 2D Hadamard transform that can be represented by a matrix :math:`H` of order :math:`n = h^2`, such that :math:`H = H_{1d}\otimes H_{1d}` with :math:`H_{1d}` a Hadamard matrix of order :math:`h`.
 
+    Considering the acquisition of :math:`M` DMD patterns of size :math:`h \times h = N`, the class computes [CHECK what is the correct formula here!]
     .. math::
-        m = Af,
+        y =\mathcal{N}\left(\mathcal{S}\left(AXA^T\right)\right),
 
-    where :math:`A` is an S-matrix and :math:`f` is a (vectorized) image.
-    Classical S-matrices of order :math:`n` exist whenever a Hadamard
-    matrix of order :math:`n+1` exists.
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`\mathcal{S} \colon\, \mathbb{R}^{h\times h} \to \mathbb{R}^M` is a subsampling operator, :math:`A \in \mathbb{R}_+^{h\times h}` contains negative components of a Hadamard matrix, :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image. The matrix :math:`A` is obtained as :math:`A = \max(0,-H)`, where :math:`H\in\mathbb{R}^{h\times h}` is a Hadamard matrix.
 
     **From Hadamard to S-matrix.** Let :math:`H_{1d}` be a (normalized)
     Hadamard matrix of order :math:`n+1` and :math:`J` the all-ones matrix
@@ -2412,19 +2410,6 @@ class HadamSmatrix2d(Linear):
     (the 2D extension of :math:`R_{1d}`), not the trimmed order-
     :math:`(h-1)` S-matrix :math:`S`: it keeps the trivial all-zero
     row/column instead of dropping them (see the warning below).
-
-    Considering the acquisition of :math:`M` square DMD patterns of size
-    :math:`h`, it computes
-
-    .. math::
-        y =\mathcal{N}\left(\mathcal{S}\left(\mathrm{vec}^{-1}\left(H
-        \,\mathrm{vec}(X)\right)\right)\right),
-
-    where :math:`\mathcal{N} \colon\, \mathbb{R}^{M} \to \mathbb{R}^{M}`
-    represents a noise operator (e.g., Gaussian), :math:`\mathcal{S} \colon\,
-    \mathbb{R}^{h\times h} \to \mathbb{R}^{M}` is a subsampling operator,
-    :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image, and :math:`H \in
-    \{0,1\}^{h^2\times h^2}` is the 2D S-matrix.
 
     :math:`H` is built exactly as :meth:`HadamSplit2d.fast_measure` builds
     the negative component of its 2D Hadamard split, i.e. from
@@ -2559,7 +2544,6 @@ class HadamSmatrix2d(Linear):
         measurement matrix. Defaults to `torch.device("cpu")`.
 
     Attributes:
-
         :attr:`H1d` (:class:`torch.tensor`): 1D Walsh-ordered Hadamard
         matrix of shape :math:`(h,h)`, values in :math:`\{-1,+1\}` (the
         same matrix as :attr:`HadamSplit2d.H1d`). Its **columns** are
@@ -2600,10 +2584,11 @@ class HadamSmatrix2d(Linear):
         the measurement vector (derived from :attr:`order`). Used by the
         method :meth:`reindex`.
 
-    Example 1: Basic construction and simulated (subsampled) measurements.
-    The very first measurement is always (up to floating-point error) 0,
-    since it corresponds to the trivial all-zero row of :math:`H` (see the
-    warning above).
+    Example 1: 
+        Basic construction and simulated (subsampled) measurements.
+        The very first measurement is always (up to floating-point error) 0,
+        since it corresponds to the trivial all-zero row of :math:`H` (see the
+        warning above).
 
         >>> h = 64  # h must be a power of two
         >>> meas_op = HadamSmatrix2d(h, 2000)
@@ -2618,10 +2603,11 @@ class HadamSmatrix2d(Linear):
         >>> print(torch.allclose(y[:, 0], torch.zeros(4), atol=1e-2))
         True
 
-    Example 2: With full sampling (:attr:`M` = :math:`h^2`, the default),
-    :meth:`fast_pinv` recovers the image exactly, except for the single
-    unrecoverable pixel :attr:`zero_index`, which is reconstructed as 0
-    (see the warning above and the note in :meth:`fast_pinv`).
+    Example 2: 
+        With full sampling (:attr:`M` = :math:`h^2`, the default),
+        :meth:`fast_pinv` recovers the image exactly, except for the single
+        unrecoverable pixel :attr:`zero_index`, which is reconstructed as 0
+        (see the warning above and the note in :meth:`fast_pinv`).
 
         >>> h = 16
         >>> meas_op = HadamSmatrix2d(h)  # M defaults to h**2 (full sampling)
@@ -2637,9 +2623,10 @@ class HadamSmatrix2d(Linear):
         >>> print(torch.allclose(x_expected, x_hat, atol=1e-4))
         True
 
-    Example 3: With subsampling (:attr:`M` < :math:`h^2`), :meth:`fast_pinv`
-    only approximates the image (see the note in :meth:`fast_pinv`), unlike
-    the exact recovery obtained above with full sampling.
+    Example 3: 
+        With subsampling (:attr:`M` < :math:`h^2`), :meth:`fast_pinv`
+        only approximates the image (see the note in :meth:`fast_pinv`), unlike
+        the exact recovery obtained above with full sampling.
 
         >>> meas_op_sub = HadamSmatrix2d(h, M=100)
         >>> y_sub = meas_op_sub.measure(x)
@@ -2647,10 +2634,11 @@ class HadamSmatrix2d(Linear):
         >>> print(torch.allclose(x, x_hat_sub, atol=1e-4))
         False
 
-    Example 4: :attr:`scramble` permutes the columns of :attr:`H1d`,
-    breaking its symmetry and moving :attr:`zero_index` away from 0, but
-    full-sampling recovery via :meth:`fast_pinv` remains exact everywhere
-    except at :attr:`zero_index`.
+    Example 4: 
+        :attr:`scramble` permutes the columns of :attr:`H1d`,
+        breaking its symmetry and moving :attr:`zero_index` away from 0, but
+        full-sampling recovery via :meth:`fast_pinv` remains exact everywhere
+        except at :attr:`zero_index`.
 
         >>> meas_op_scrambled = HadamSmatrix2d(h, scramble=True, seed=42)
         >>> print(torch.allclose(meas_op.H1d, meas_op.H1d.T))       # unscrambled: symmetric
@@ -2667,9 +2655,10 @@ class HadamSmatrix2d(Linear):
         >>> print(torch.allclose(x_expected2, x_hat2, atol=1e-4))
         True
 
-    Example 5: :attr:`order` and :attr:`scramble` act independently (see
-    note above): changing :attr:`order` selects/reorders which measurements
-    are kept, but does not affect :attr:`H1d` itself.
+    Example 5: 
+        :attr:`order` and :attr:`scramble` act independently (see
+        note above): changing :attr:`order` selects/reorders which measurements
+        are kept, but does not affect :attr:`H1d` itself.
 
         >>> order = torch.rand(h, h)
         >>> meas_op_ordered = HadamSmatrix2d(h, M=100, order=order)
@@ -2809,9 +2798,23 @@ class HadamSmatrix2d(Linear):
         :math:`J\,\mathrm{vec}(X) = \mathrm{sum}(X)\cdot\mathbf{1}`, this
         only requires a global sum of :math:`X` and multiplications with
         the 1D matrix :attr:`self.H1d` (applied to both the rows and the
-        columns of :math:`X`)."""
+        columns of :math:`X`).
+
+        .. note::
+            :math:`\mathrm{sum}(X)` is read off :math:`Hx[0,0]` (the DC
+            term of the transform) rather than computed independently via
+            a separate reduction over :math:`X`. Both are mathematically
+            equal, but computing them independently (via two different
+            floating-point code paths -- a direct sum vs. a chain of
+            matrix products) does not generally give bit-identical
+            results; the resulting (tiny) discrepancy would otherwise leak
+            into every entry of :math:`y` as a uniform bias, occasionally
+            making an entry that should be a small positive number (or
+            exactly 0) come out slightly negative. Reading :math:`x_{sum}`
+            off :math:`Hx` itself avoids this, exactly as
+            :meth:`HadamSplit2d.fast_measure` does."""
         Hx = spytorch.mult_2d_separable(self.H1d, x)
-        s = x.sum(dim=(-2, -1), keepdim=True)
+        s = Hx[..., 0:1, 0:1]
         y = (s - Hx) / 2
         y = self.vectorize(y)
         y = y.index_select(dim=-1, index=self.indices)
@@ -2856,11 +2859,22 @@ class HadamSmatrix2d(Linear):
         trick" as :meth:`fast_measure` applies, using :math:`H_{1d}^T`
         (not :math:`H_{1d}`) on both axes. When :attr:`scramble` is False,
         :math:`H_{1d}` is symmetric and this is equivalent to applying
-        :math:`H_{1d}` directly. Note that, unlike :meth:`fast_pinv`, no
-        manual zeroing of :attr:`zero_index` is needed here: the same "sum
-        trick" that makes :math:`y[0]` always (numerically) zero in
-        :meth:`fast_measure` also makes the corresponding entry of the
-        adjoint's output vanish on its own.
+        :math:`H_{1d}` directly.
+
+        .. note::
+            As in :meth:`fast_measure`, :math:`\mathrm{sum}(m)` is read
+            off the transform :math:`H_{1d}^Tm H_{1d}^T` itself rather
+            than computed independently, to avoid floating-point
+            cancellation noise. Here, however, the relevant entry sits at
+            :attr:`self.zero_index` (not always index 0): applying
+            :math:`H_{1d}^T` to both axes means the row/column that is
+            all-ones shifts from 0 to :attr:`self.zero_index` whenever
+            :attr:`scramble` is True (see the class docstring). Reading
+            :math:`\mathrm{sum}(m)` off that exact entry also guarantees,
+            by construction (not merely numerically), that the adjoint's
+            output is exactly 0 at :math:`(k,k)`, :math:`k` =
+            :attr:`self.zero_index` -- unlike :meth:`fast_pinv`, no manual
+            zeroing is needed here.
         """
         if self.N != self.M:
             m = torch.cat(
@@ -2869,8 +2883,9 @@ class HadamSmatrix2d(Linear):
             )
         m = self.reindex(m, "cols", False)
         m = self.unvectorize(m)
-        s = m.sum(dim=(-2, -1), keepdim=True)
         Htm = spytorch.mult_2d_separable(self.H1d.T, m)
+        k = self.zero_index
+        s = Htm[..., k : k + 1, k : k + 1]
         m = (s - Htm) / 2
         if not unvectorize:
             m = self.vectorize(m)
@@ -2930,24 +2945,24 @@ class HadamSmatrix2d(Linear):
             zero-padded before inversion, exactly as done in
             :meth:`HadamSplit2d.fast_pinv`.
 
-            .. note::
-                Applying :meth:`fast_pinv` to the (noiseless, full-sampling)
-                measurement of an image returns that same image back
-                *exactly*, at every pixel **except** :math:`X[k,k]`
-                (:math:`k` = :attr:`self.zero_index`, see the warning in
-                the class docstring): that single pixel is fundamentally
-                unrecoverable (it never affects any measurement), so this
-                method arbitrarily sets it to 0 -- the block-diagonal
-                :math:`R_{1d}^+` above shows this convention is exact, not
-                an approximation: :math:`X[k,k]` is genuinely a free
-                parameter of the formula above, which the top-left 0
-                block of :math:`R_{1d}^+` fixes at 0 (the minimum-norm,
-                Moore-Penrose choice). Note that :func:`torch.linalg.pinv`
-                applied directly to :attr:`self.H` is *not* a reliable way
-                to check this: :math:`H`'s highly degenerate singular
-                spectrum (many repeated singular values) makes generic
-                SVD-based pinv numerically unstable here, unlike this
-                closed-form expression.
+        .. note::
+            Applying :meth:`fast_pinv` to the (noiseless, full-sampling)
+            measurement of an image returns that same image back
+            *exactly*, at every pixel **except** :math:`X[k,k]`
+            (:math:`k` = :attr:`self.zero_index`, see the warning in
+            the class docstring): that single pixel is fundamentally
+            unrecoverable (it never affects any measurement), so this
+            method arbitrarily sets it to 0 -- the block-diagonal
+            :math:`R_{1d}^+` above shows this convention is exact, not
+            an approximation: :math:`X[k,k]` is genuinely a free
+            parameter of the formula above, which the top-left 0
+            block of :math:`R_{1d}^+` fixes at 0 (the minimum-norm,
+            Moore-Penrose choice). Note that :func:`torch.linalg.pinv`
+            applied directly to :attr:`self.H` is *not* a reliable way
+            to check this: :math:`H`'s highly degenerate singular
+            spectrum (many repeated singular values) makes generic
+            SVD-based pinv numerically unstable here, unlike this
+            closed-form expression.
 
             Because :math:`H` is rank-deficient even without subsampling,
             this reconstruction is exact (up to :math:`X[k,k]`) only when
