@@ -268,7 +268,7 @@ class Tikhonov(nn.Module):
     where we assume that both covariance matrices are positive definite. The
     class is constructed from :math:`A` and :math:`\Sigma`, while
     :math:`\Gamma` is passed as an argument to :meth:`forward()`. Passing
-    :math:`\Gamma` to :meth:`forward()` is useful in the presence of 
+    :math:`\Gamma` to :meth:`forward()` is useful in the presence of
     signal-dependent noise.
 
     .. note::
@@ -358,9 +358,9 @@ class Tikhonov(nn.Module):
     def divide(self, y: torch.tensor, gamma: torch.tensor) -> torch.tensor:
         r"""Computes :math:`\cdot (A \Sigma A^T + \Gamma)^{-1} y`.
 
-        If :attr:`self.approx` is True, the non-diagonal elements of 
-        :math:`A \Sigma A^T` are set to zero, and the operation is computed 
-        as division between two vectors. Otherwise, the operation required the 
+        If :attr:`self.approx` is True, the non-diagonal elements of
+        :math:`A \Sigma A^T` are set to zero, and the operation is computed
+        as division between two vectors. Otherwise, the operation required the
         resolution of a linear system of equations.
 
         Args:

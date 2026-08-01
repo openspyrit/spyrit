@@ -11,7 +11,7 @@ The inheritance tree is as follows::
         |----> FreeformLinear                              |
         |      |---> FreeformSmatrix                       |
         |                                                  |
-        |----> HadamSmatrix2d                              | 
+        |----> HadamSmatrix2d                              |
         V                                                  V
     LinearSplit                                    DynamicLinearSplit
         |----> FreeformLinearSplit                         |
@@ -779,20 +779,20 @@ class FreeformSmatrix(FreeformLinear):
     .. math::
         m =\mathcal{N}\left(Hx\right), \quad \text{where }x = \text{mask}(\tilde{x})
 
-    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents 
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents
     a noise operator (e.g., Gaussian), :math:`S\in\mathbb{R}^{M\times N}` is a
-    S matrix, :math:`x \in \mathbb{R}^N` is the signal in the region 
-    of interest, :math:`M` is the number of measurements, :math:`N` is the 
-    number of pixels in the region of interest, 
-    :math:`\text{mask} \colon\, \mathbb{R}^\tilde{N} \to \mathbb{R}^N` 
-    represents the masking operation, 
-    :math:`\tilde{x} \in \mathbb{R}^\tilde{N}` is the full signal, and 
+    S matrix, :math:`x \in \mathbb{R}^N` is the signal in the region
+    of interest, :math:`M` is the number of measurements, :math:`N` is the
+    number of pixels in the region of interest,
+    :math:`\text{mask} \colon\, \mathbb{R}^\tilde{N} \to \mathbb{R}^N`
+    represents the masking operation,
+    :math:`\tilde{x} \in \mathbb{R}^\tilde{N}` is the full signal, and
     :math:`\tilde{N}\ge N` is the dimension of the full signal :math:`\tilde{x}`.
 
     This class plays the same role as :class:`FreeformLinear`, but instead
     of accepting an arbitrary measurement matrix :math:`H`, it
     sets :math:`H` as an S-matrix (see
-    :func:`spyrit.misc.walsh_hadamard.walsh_S_matrix`). The S-matrix is built 
+    :func:`spyrit.misc.walsh_hadamard.walsh_S_matrix`). The S-matrix is built
     from a Hadamard matrix of order :math:`N+1`, so :math:`N+1` must be
     a power of two.
 
@@ -1015,9 +1015,9 @@ class FreeformSmatrix(FreeformLinear):
             S = torch.from_numpy(wh.walsh_S_matrix(N).astype(np.float32))
             T = torch.from_numpy(wh.iwalsh_S_matrix(N).astype(np.float32))
             # H = the top M rows of S, reordered by decreasing order.
-            H_init = spytorch.reindex(S, indices, axis="rows", inverse_permutation=False)[
-                :M, :
-            ]
+            H_init = spytorch.reindex(
+                S, indices, axis="rows", inverse_permutation=False
+            )[:M, :]
         else:
             # dyadic: a tiny placeholder, used only for shape validation and
             # attribute setup in FreeformLinear.__init__/Linear.__init__ --
@@ -1173,7 +1173,10 @@ class FreeformSmatrix(FreeformLinear):
                     (
                         m,
                         torch.zeros(
-                            *m.shape[:-1], self.N - self.M, device=m.device, dtype=m.dtype
+                            *m.shape[:-1],
+                            self.N - self.M,
+                            device=m.device,
+                            dtype=m.dtype,
                         ),
                     ),
                     -1,
@@ -2378,15 +2381,15 @@ class HadamSmatrix2d(Linear):
     :math:`H_h \in \{-1,+1\}^{h\times h}` is the same 1D Walsh-ordered Hadamard matrix
     used by :class:`HadamSplit2d` (see :attr:`HadamSplit2d.H1d`).
 
-    Equivalently, 
-    
+    Equivalently,
+
     .. math::
 
         y = \mathcal{N}\left(\mathcal{S}(A\,\mathrm{vec}(X))\right), \quad
-        A = \max(0,-(H_h\otimes H_h)), 
-        
-    where :math:`A \in \{0,1\}^{h^2 \times h^2}` is the acquisition matrix -- see :attr:`A`. 
-    
+        A = \max(0,-(H_h\otimes H_h)),
+
+    where :math:`A \in \{0,1\}^{h^2 \times h^2}` is the acquisition matrix -- see :attr:`A`.
+
     .. note::
         By definition, the first row and column of :math:`H_h \in \{-1,+1\}^{h\times h}`
         are all-ones. Therefore, :math:`A = \max(0, -(H_h\otimes H_h))` has an
@@ -2597,7 +2600,7 @@ class HadamSmatrix2d(Linear):
         >>> print(torch.allclose(x, x_hat2, atol=1e-4))
         True
 
-    Example 5: 
+    Example 5:
         :attr:`order` and :attr:`scramble` act independently (see
         note above): changing :attr:`order` selects/reorders which measurements
         are kept, but does not affect :attr:`H1d` itself.
@@ -2660,9 +2663,7 @@ class HadamSmatrix2d(Linear):
             # H1d_scrambled[:, j] = H1d[:, column_perm[j]].
             generator = torch.Generator().manual_seed(seed)
             perm_rest = torch.randperm(h - 1, generator=generator) + 1
-            self.column_perm = torch.cat(
-                (torch.zeros(1, dtype=torch.int64), perm_rest)
-            )
+            self.column_perm = torch.cat((torch.zeros(1, dtype=torch.int64), perm_rest))
             H1d = H1d[:, self.column_perm]
 
         self.H1d = nn.Parameter(H1d, requires_grad=False).to(dtype=dtype, device=device)
@@ -2847,7 +2848,12 @@ class HadamSmatrix2d(Linear):
         """
         if self.N != self.M:
             m = torch.cat(
-                (m, torch.zeros(*m.shape[:-1], self.N - self.M, device=m.device, dtype=m.dtype)),
+                (
+                    m,
+                    torch.zeros(
+                        *m.shape[:-1], self.N - self.M, device=m.device, dtype=m.dtype
+                    ),
+                ),
                 -1,
             )
         m = self.reindex(m, "cols", False)
@@ -2936,7 +2942,12 @@ class HadamSmatrix2d(Linear):
         """
         if self.N != self.M:
             m = torch.cat(
-                (m, torch.zeros(*m.shape[:-1], self.N - self.M, device=m.device, dtype=m.dtype)),
+                (
+                    m,
+                    torch.zeros(
+                        *m.shape[:-1], self.N - self.M, device=m.device, dtype=m.dtype
+                    ),
+                ),
                 -1,
             )
         m = self.reindex(m, "cols", False)
