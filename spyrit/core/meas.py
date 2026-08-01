@@ -2364,73 +2364,39 @@ class HadamSplit2d(LinearSplit):
 class HadamSmatrix2d(Linear):
     r"""Simulate 2D S-matrix acquisitions.
 
-    An S matrix of order :math:`n-1` can obtained from any Hadamard matrix of order :math:`n`. Therefore, we define a "2D" S-transform from a 2D Hadamard transform that can be represented by a matrix :math:`H` of order :math:`n = h^2`, such that :math:`H = H_{1d}\otimes H_{1d}` with :math:`H_{1d}` a Hadamard matrix of order :math:`h`.
-
-    Considering the acquisition of :math:`M` DMD patterns of size :math:`h \times h = N`, the class computes [CHECK what is the correct formula here!]
-    .. math::
-        y =\mathcal{N}\left(\mathcal{S}\left(AXA^T\right)\right),
-
-    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`\mathcal{S} \colon\, \mathbb{R}^{h\times h} \to \mathbb{R}^M` is a subsampling operator, :math:`A \in \mathbb{R}_+^{h\times h}` contains negative components of a Hadamard matrix, :math:`X \in \mathbb{R}^{h\times h}` is the (2D) image. The matrix :math:`A` is obtained as :math:`A = \max(0,-H)`, where :math:`H\in\mathbb{R}^{h\times h}` is a Hadamard matrix.
-
-    **From Hadamard to S-matrix.** Let :math:`H_{1d}` be a (normalized)
-    Hadamard matrix of order :math:`n+1` and :math:`J` the all-ones matrix
-    of the same order. The central relationship between the Hadamard
-    matrix and the S-matrix is
-
-    .. math::
-        R_{1d} = \max(0,\, -H_{1d}) = \frac{J - H_{1d}}{2}
-        = \begin{pmatrix} 0 & 0 \\ 0 & S \end{pmatrix},
-
-    where :math:`R_{1d}` is the **negative component** of :math:`H_{1d}`.
-    Because :math:`H_{1d}`'s first row and column are both all-ones (the
-    usual normalized/Walsh-ordering convention), :math:`R_{1d}`'s first
-    row and column are *entirely* zero, and its remaining :math:`n\times
-    n` bottom-right block is exactly the S-matrix :math:`S`. Computing the
-    S-transform therefore reduces to computing a Hadamard transform:
-    whenever the Hadamard transform can be computed fast at order
-    :math:`n+1` (i.e. :math:`n+1` is a power of two), the S-transform can
-    also be computed fast at order :math:`n` -- by embedding :math:`f` as
-    :math:`[0,f]`, taking the negative component of its Hadamard
-    transform, and dropping the (always 0) leading entry.
-
-    This class plays the same role as :class:`HadamSplit2d`, but only
-    returns the **negative** component of the 2D Hadamard split, as a
+    An S-matrix of order :math:`n-1` can be obtained from any Hadamard
+    matrix of order :math:`n`: taking the negative component of the
+    Hadamard matrix and dropping its (always zero) first row and column
+    leaves exactly the S-matrix. This class implements the 2D analogue of
+    that construction directly on a square :math:`h\times h` image
+    :math:`X`, at order :math:`h` (instead of :math:`n=h-1`) -- keeping
+    :math:`h` itself, rather than :math:`h+1`, a power of two, and the
+    trivial first row/column (see the warning below) instead of dropping
+    them. This plays the same role as :class:`HadamSplit2d`, but returns
+    only the **negative** component of the 2D Hadamard split, as a
     standalone (non-interleaved) 0/1-valued measurement operator -- so it
     is directly realizable as a set of DMD patterns without any
-    "unsplitting" step downstream. To get a *fast* transform when
-    :math:`f` is a square :math:`h\times h` image :math:`X`, we implement
-    the 2D transform in a similar manner as a **negative 2D Hadamard
-    transform**, applied directly at order :math:`h` (the image size)
-    rather than at order :math:`n+1` with :math:`n=h-1`. This keeps
-    :math:`h` itself (rather than :math:`h+1`) a power of two -- more
-    convenient for square images, e.g. :math:`h=64` -- and computation
-    times remain short by exploiting the separability across rows and
-    columns, exactly as :class:`HadamSplit2d` does. The price is that this
-    class computes the full order-:math:`h` negative-component matrix
-    (the 2D extension of :math:`R_{1d}`), not the trimmed order-
-    :math:`(h-1)` S-matrix :math:`S`: it keeps the trivial all-zero
-    row/column instead of dropping them (see the warning below).
+    "unsplitting" step downstream -- and, like :class:`HadamSplit2d`,
+    stays fast by exploiting the separability of the transform across
+    rows and columns.
 
-    :math:`H` is built exactly as :meth:`HadamSplit2d.fast_measure` builds
-    the negative component of its 2D Hadamard split, i.e. from
-    :math:`H_{1d} = \texttt{spyrit.core.torch.walsh\_matrix}(h) \in
-    \{-1,+1\}^{h\times h}` -- the same 1D Walsh-ordered Hadamard matrix
-    used by :class:`HadamSplit2d` (see :attr:`HadamSplit2d.H1d`):
+    Considering the acquisition of :math:`M` DMD patterns of size
+    :math:`h\times h`, the class computes
 
     .. math::
-        H = \max\left(0,\, -\left(H_{1d}\otimes H_{1d}\right)\right)
-        = \frac{J - H_{1d}\otimes H_{1d}}{2},
+        y = \mathcal{N}\left(\mathcal{S}\left(Y\right)\right), \quad
+        Y = \frac{\mathrm{sum}(X)\cdot J_h - H_{1d}\,X\,H_{1d}^T}{2},
 
-    where :math:`J` is now the :math:`h^2\times h^2` all-ones matrix (the
-    2D counterpart of the :math:`R_{1d} = (J-H_{1d})/2` relationship
-    above -- note that :math:`H` is *not* :math:`R_{1d}\otimes R_{1d}`,
-    since the negative-component split does not distribute over the
-    Kronecker product). Because :math:`H_{1d}\otimes H_{1d}` only takes
-    values in :math:`\{-1,+1\}`,
-    :math:`H` only takes values in :math:`\{0,1\}`, i.e. :math:`H` is a
-    genuine 2D S-matrix -- unlike simply taking the Kronecker product of
-    two 1D S-matrices, since :math:`\mathrm{relu}(-a)\,\mathrm{relu}(-b)
-    \neq \mathrm{relu}(-ab)` in general.
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M`
+    represents a noise operator (e.g., Gaussian), :math:`\mathcal{S}
+    \colon\, \mathbb{R}^{h\times h} \to \mathbb{R}^M` is a subsampling
+    operator, :math:`J_h` is the :math:`h\times h` all-ones matrix, and
+    :math:`H_{1d} = \texttt{spyrit.core.torch.walsh\_matrix}(h) \in
+    \{-1,+1\}^{h\times h}` is the same 1D Walsh-ordered Hadamard matrix
+    used by :class:`HadamSplit2d` (see :attr:`HadamSplit2d.H1d`).
+    Equivalently, :math:`y = \mathcal{S}(H\,\mathrm{vec}(X))` where
+    :math:`H = \max(0,-(H_{1d}\otimes H_{1d}))` is the explicit 0/1
+    S-matrix -- see :attr:`H`.
 
     Since :math:`H_{1d}` is a genuine :math:`h\times h` Hadamard matrix,
     :math:`h` itself (e.g. :math:`h=64`) must be a power of two -- unlike
@@ -2440,9 +2406,7 @@ class HadamSmatrix2d(Linear):
     .. warning::
         Because :math:`H_{1d}`'s first row and column are both all-ones
         (the usual Walsh-ordering convention), :math:`H` has an all-zero
-        row *and* an all-zero column -- the 2D counterpart of
-        :math:`R_{1d}`'s :math:`\begin{pmatrix}0&0\\0&S\end{pmatrix}`
-        block structure described above:
+        row *and* an all-zero column:
 
         - :math:`H`'s all-zero row means one measurement is trivially
           always zero: at natural-order index 0 (the position
@@ -2480,11 +2444,7 @@ class HadamSmatrix2d(Linear):
           :attr:`zero_index`), not the order in which measurements are
           returned.
 
-        In short: :attr:`scramble` acts on :math:`H_{1d}` (columns),
-        :attr:`order` acts on the sequence of measurements in :math:`y`
-        (rows of :math:`H`, built from :math:`H_{1d}` after scrambling has
-        already been applied, if any). The two options are independent and
-        can be combined.
+        The two options are independent and can be combined.
 
     If :attr:`scramble` is True, the columns of :math:`H_{1d}` are randomly
     permuted (with a fixed :attr:`seed` for reproducibility). This is useful
@@ -2745,7 +2705,13 @@ class HadamSmatrix2d(Linear):
         r"""The full (subsampled) 2D S measurement matrix, computed on the
         fly as :math:`\max(0, -(H_{1d}\otimes H_{1d}))`, reindexed and
         truncated to the first :attr:`self.M` rows (by decreasing
-        :attr:`self.order`)."""
+        :attr:`self.order`). Note that this is *not* the same matrix as
+        the Kronecker product of two 1D S-matrices
+        (:math:`\max(0,-H_{1d})\otimes\max(0,-H_{1d})`): since
+        :math:`\mathrm{relu}(-a)\,\mathrm{relu}(-b) \neq
+        \mathrm{relu}(-ab)` in general, the negative-component split must
+        be taken on the full 2D Kronecker product to remain a genuine
+        (0/1-valued) S-matrix."""
         H2D = torch.kron(self.H1d, self.H1d)
         H = nn.functional.relu(-H2D)
         H = self.reindex(H, "rows", False)
@@ -2907,11 +2873,15 @@ class HadamSmatrix2d(Linear):
             :math:`x` of length :attr:`self.N`.
 
         .. note::
-            Since :math:`H` plays the role of the 2D extension of
-            :math:`R_{1d}` (see the class docstring), and
-            :math:`R_{1d}=\begin{pmatrix}0&0\\0&S\end{pmatrix}` is exactly
-            block-diagonal, its pseudo-inverse is also exactly
-            block-diagonal:
+            :math:`H` plays the role of the 2D extension of
+            :math:`R_{1d} = \max(0,-H_{1d})`, the negative component of a
+            1D Hadamard matrix :math:`H_{1d}` of order :math:`n+1`.
+            Because :math:`H_{1d}`'s first row and column are both
+            all-ones, :math:`R_{1d}`'s first row and column are entirely
+            zero, so :math:`R_{1d}` is exactly block-diagonal,
+            :math:`R_{1d}=\begin{pmatrix}0&0\\0&S\end{pmatrix}`, where
+            :math:`S` is the classical (order-:math:`n`) S-matrix. Its
+            pseudo-inverse is therefore also exactly block-diagonal:
 
             .. math::
                 R_{1d}^+ = \begin{pmatrix} 0 & 0 \\ 0 & S^{-1} \end{pmatrix}.
