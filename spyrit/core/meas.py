@@ -1,33 +1,39 @@
 """
 Measurement operators, static and dynamic.
 
-There are six classes contained in this module, each representing a different
-type of measurement operator. Three of them are static, i.e. they are used to
+There are 10 classes contained in this module, each representing a different
+type of measurement operator. Seven of them are static, i.e. they are used to
 simulate measurements of still images, and three are dynamic, i.e. they are used
 to simulate measurements of moving objects, represented as a sequence of images.
 The inheritance tree is as follows::
 
-      Linear -------> DynamicLinear
-        |                   |
-        V                   V
-    LinearSplit     DynamicLinearSplit
-        |                   |
-        V                   V
-    HadamSplit2d    DynamicHadamSplit2d
+      Linear --------------------------------------> DynamicLinear
+        |----> FreeformLinear                              |
+        |      |---> FreeformSmatrix                       |
+        |                                                  |
+        |----> HadamSmatrix2d                              |
+        V                                                  V
+    LinearSplit                                    DynamicLinearSplit
+        |----> FreeformLinearSplit                         |
+        V                                                  V
+    HadamSplit2d                                   DynamicHadamSplit2d
 
 """
 
+import math
 import warnings
 from typing import Any, Union
 from collections.abc import Iterable
 
 # import memory_profiler as mprof
 
+import numpy as np
 import torch
 import torch.nn as nn
 
 from spyrit.core.warp import DeformationField
 import spyrit.core.torch as spytorch
+import spyrit.misc.walsh_hadamard as wh
 
 
 # =============================================================================
@@ -80,16 +86,64 @@ class Linear(nn.Module):
 
         :attr:`M` (int): Number of measurements :math:`M`.
 
-    Example: (to be updated!)
-        Example 1:
+    .. note::
+        The full matrix :math:`H` might not actually be stored in memory
+        as an :class:`torch.nn.Parameter`. Some subclasses (e.g.
+        :class:`HadamSplit2d`, :class:`HadamSmatrix2d`) instead expose
+        :attr:`H` as a computed property, built on the fly from a much
+        smaller matrix by exploiting a separable structure, to avoid
+        materializing a potentially very large :math:`M\times N` matrix
+        (e.g. :math:`h^2\times h^2` for an :math:`h\times h` image). This
+        is controlled by the class attribute :attr:`_store_H_as_parameter`
+        (True by default in :class:`Linear`); subclasses that compute
+        :attr:`H` on the fly instead set it to False.
 
-        >>> H = torch.rand([400, 1600])
+    Example 1: :meth:`measure` applies the matrix :math:`H` to a batch of
+    flat signals, computing :math:`y = Hx`.
+        >>> H = torch.randn(10, 15)
         >>> meas_op = Linear(H)
-        >>> print(meas_op)
-        Linear(
-          (noise_model): Identity()
-        )
+        >>> x = torch.randn(3, 15)
+        >>> y = meas_op.measure(x)
+        >>> print(y.shape)
+        torch.Size([3, 10])
+        >>> print(torch.allclose(y, torch.einsum("mn,bn->bm", H, x)))
+        True
+
+    Example 2: :meth:`forward` additionally applies :attr:`noise_model` to
+    the measurements; with the default (:class:`torch.nn.Identity`), it is
+    equivalent to :meth:`measure`. To simulate realistic acquisitions with
+    noise, pass a noise model from :mod:`spyrit.core.noise`.
+        >>> H = torch.randn(10, 15)
+        >>> meas_op = Linear(H)  # noise_model defaults to nn.Identity()
+        >>> x = torch.randn(3, 15)
+        >>> print(torch.equal(meas_op(x), meas_op.measure(x)))
+        True
+
+    Example 3: With :attr:`meas_shape`, :math:`H` is applied to a
+    multi-dimensional (e.g. image) signal instead of a flat vector -- the
+    dimensions in :attr:`meas_dims` (the last two by default) are
+    flattened internally before multiplying by :math:`H`.
+        >>> H = torch.randn(20, 12 * 8)
+        >>> meas_op = Linear(H, meas_shape=(12, 8))
+        >>> img = torch.rand(5, 12, 8)
+        >>> y = meas_op(img)
+        >>> print(y.shape)
+        torch.Size([5, 20])
+
+    Example 4: :meth:`adjoint` returns a flat vector of length :math:`N`
+    by default. Passing :attr:`unvectorize` = True reshapes it back to the
+    original signal shape (:attr:`meas_shape`, placed at :attr:`meas_dims`)
+    instead, using :meth:`unvectorize`.
+        >>> x_hat = meas_op.adjoint(y, unvectorize=True)
+        >>> print(x_hat.shape)
+        torch.Size([5, 12, 8])
     """
+
+    # Subclasses that expose H as a computed @property instead of storing it
+    # as an nn.Parameter (typically to avoid materializing a very large
+    # matrix, e.g. HadamSplit2d, HadamSmatrix2d) should override this to
+    # False.
+    _store_H_as_parameter = True
 
     def __init__(
         self,
@@ -116,8 +170,11 @@ class Linear(nn.Module):
             meas_dims = [meas_dims]
         self.meas_dims = torch.Size(meas_dims)
 
-        # don't store H if we use a HadamSplit
-        if not isinstance(self, HadamSplit2d):
+        # don't store H as a Parameter for subclasses that expose H as a
+        # computed property instead (e.g. HadamSplit2d, HadamSmatrix2d),
+        # typically to avoid materializing a very large matrix. Such
+        # subclasses set the class attribute _store_H_as_parameter = False.
+        if self._store_H_as_parameter:
             self.H = nn.Parameter(H, requires_grad=False).to(dtype=dtype, device=device)
         self.noise_model = noise_model
 
@@ -463,7 +520,7 @@ class FreeformLinear(Linear):
 
         Only tested for measurements in 2D using mask indices.
 
-    Example: Select one every second point on the diagonal of a batch of images
+    Example: Select one every second pixel on the diagonal of a batch of images
         >>> images = torch.rand(17, 3, 40, 40)
         >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
         >>> H = torch.randn(13, 20)
@@ -559,7 +616,7 @@ class FreeformLinear(Linear):
             :class:`torch.tensor`: A tensor of shape (\*, self.N) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
             >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
             >>> H = torch.randn(13, 20)
@@ -601,7 +658,7 @@ class FreeformLinear(Linear):
             :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
 
             >>> images = torch.rand(17, 3, 40, 40)
             >>> mask = torch.tensor([[i, i] for i in range(0,40,2)]).T
@@ -631,7 +688,7 @@ class FreeformLinear(Linear):
             :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinear
             >>> import torch
             >>> images = torch.rand(17, 3, 40, 40)
@@ -712,6 +769,434 @@ class FreeformLinear(Linear):
             )
 
         return torch.movedim(output, self.last_dims, self.meas_dims)
+
+
+# =============================================================================
+class FreeformSmatrix(FreeformLinear):
+    r"""Simulate linear measurements in a freeform region of interest,
+    using an S-matrix as the acquisition matrix.
+
+    .. math::
+        m =\mathcal{N}\left(Hx\right), \quad \text{where }x = \text{mask}(\tilde{x})
+
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents
+    a noise operator (e.g., Gaussian), :math:`S\in\mathbb{R}^{M\times N}` is a
+    S matrix, :math:`x \in \mathbb{R}^N` is the signal in the region
+    of interest, :math:`M` is the number of measurements, :math:`N` is the
+    number of pixels in the region of interest,
+    :math:`\text{mask} \colon\, \mathbb{R}^\tilde{N} \to \mathbb{R}^N`
+    represents the masking operation,
+    :math:`\tilde{x} \in \mathbb{R}^\tilde{N}` is the full signal, and
+    :math:`\tilde{N}\ge N` is the dimension of the full signal :math:`\tilde{x}`.
+
+    This class plays the same role as :class:`FreeformLinear`, but instead
+    of accepting an arbitrary measurement matrix :math:`H`, it
+    sets :math:`H` as an S-matrix (see
+    :func:`spyrit.misc.walsh_hadamard.walsh_S_matrix`). The S-matrix is built
+    from a Hadamard matrix of order :math:`N+1`, so :math:`N+1` must be
+    a power of two.
+
+    Args:
+        :attr:`meas_shape` (tuple): Shape of the underlying
+        multi-dimensional array :math:`X`. See :class:`FreeformLinear`.
+
+        :attr:`M` (int, optional): Number of measurements. Defaults to
+        :math:`N` (no subsampling), where :math:`N` is the number of
+        masked pixels (deduced from :attr:`index_mask` or
+        :attr:`bool_mask`).
+
+        :attr:`index_mask` (:class:`torch.tensor`, optional): See
+        :class:`FreeformLinear`.
+
+        :attr:`bool_mask` (:class:`torch.tensor`, optional): See
+        :class:`FreeformLinear`.
+
+        :attr:`order` (:class:`torch.tensor`, optional): Length-:math:`N`
+        order vector that defines the measurements to keep (one value per
+        masked pixel). The first component of :math:`y` will correspond to
+        the index where :attr:`order` is the highest. Defaults to `None`
+        (keeps the natural S-matrix row order).
+
+        :attr:`computation` (str, optional): Either `"dense"` or
+        `"dyadic"`. See the note above for the tradeoff. Defaults to
+        `"dyadic"`.
+
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model
+        :math:`\mathcal{N}`. Defaults to `torch.nn.Identity()`.
+
+        :attr:`dtype` (:class:`torch.dtype`, optional): Data type of the
+        measurement matrix. Defaults to `torch.float32`.
+
+        :attr:`device` (:obj:`torch.device`, optional): Device of the
+        measurement matrix. Defaults to `torch.device("cpu")`.
+
+    Attributes:
+        :attr:`H` (:class:`torch.tensor`): The (subsampled) :math:`M\times
+        N` S measurement matrix. When :attr:`computation` is `"dense"`,
+        this is precomputed and stored; when `"dyadic"`, it is built on
+        the fly if accessed (e.g. by code expecting the generic
+        :class:`Linear` interface), which can be memory-heavy for large
+        :math:`N` -- prefer :meth:`measure` and :meth:`fast_pinv`, which
+        never require it.
+
+        :attr:`T` (:class:`torch.tensor` or `None`): Exact inverse of the
+        full :math:`N\times N` S-matrix, used by :meth:`fast_pinv` when
+        :attr:`computation` is `"dense"`. `None` when `"dyadic"` (not
+        needed: the fast transform is used instead).
+
+        :attr:`computation` (str): `"dense"` or `"dyadic"`.
+
+        :attr:`M` (int): Number of measurements :math:`M`.
+
+        :attr:`N` (int): Number of masked pixels.
+
+        :attr:`order` (:class:`torch.tensor`): Order vector.
+
+        :attr:`indices` (:class:`torch.tensor`): Indices used to reorder
+        the measurement vector.
+
+    .. note::
+        **Choosing** :attr:`computation`. Two ways of applying the
+        S-matrix are available, trading off differently depending on
+        :math:`N` and the sampling ratio :math:`M/N`:
+
+        - `"dense"`: builds and stores the S-matrix explicitly (an
+          :math:`M\times N` matrix for :attr:`H`, plus an :math:`N\times N`
+          matrix :attr:`T` for the pseudo-inverse), and applies it via a
+          plain matrix-vector product. Cost scales as :math:`O(MN)` per
+          measurement/reconstruction. This is the only option available
+          for acquisition matrices that are not built from a power-of-two
+          Hadamard matrix (e.g. a generic, non-dyadic :math:`H`); it also
+          becomes memory-heavy for large :math:`N` (an :math:`N\times N`
+          float32 matrix already exceeds 1 GB around :math:`N=16000`, and
+          building it can itself fail with an out-of-memory error before
+          any measurement is even taken).
+
+        - `"dyadic"` (**default**): uses the fast Walsh-Hadamard-based
+          transform (:func:`spyrit.misc.walsh_hadamard.fwalsh_S_torch` /
+          :func:`~spyrit.misc.walsh_hadamard.ifwalsh_S_torch`) instead of
+          a matrix-vector product. This requires no :math:`N\times N` (or
+          :math:`M\times N`) matrix to ever be stored, and costs
+          :math:`O(N\log N)` regardless of :math:`M` -- but that "regardless
+          of :math:`M`" is also its main limitation: unlike the dense
+          path, it cannot skip work when subsampling, since it always
+          computes all :math:`N` outputs (or requires all :math:`N`
+          inputs for the inverse) before the top-:math:`M` measurements
+          are selected. It relies on the dyadic (power-of-two) recursive
+          structure of the Hadamard transform, so it is only applicable
+          when :math:`N+1` is a power of two -- which is always the case
+          for :class:`FreeformSmatrix`, but would not be for a
+          hypothetical S-matrix-like class built on some other Hadamard
+          matrix whose order is not a power of two.
+
+        In practice (see benchmarks in the development notes), the
+        crossover is around :math:`M/N \approx 0.15`-`0.20`, fairly stable
+        across :math:`N` from about 1,000 to 16,000: below that sampling
+        ratio, `"dense"` is faster; above it, `"dyadic"` is faster (and,
+        for large :math:`N`, is often the only option that fits in
+        memory at all). If in doubt, benchmark both on your actual
+        :math:`N` and :math:`M`.
+
+    .. note::
+        As with :class:`HadamSmatrix2d`, the S-matrix is not orthogonal:
+        the exact inverse used by :meth:`fast_pinv` is only exact when
+        :attr:`M` equals :attr:`N` (no subsampling); with subsampling, it
+        is an approximation. This holds for both values of
+        :attr:`computation`.
+
+    Example 1: Select the first 15 pixels on the diagonal of a batch of
+    images (:attr:`N`=15, :attr:`N`+1=16=2**4). With full sampling (the default, :attr:`M`=:attr:`N`),
+    :meth:`fast_pinv` exactly recovers the masked pixels, regardless of
+    :attr:`computation`.
+
+        >>> h = 32
+        >>> mask = torch.tensor([[i, i] for i in range(15)]).T
+        >>> meas_op = FreeformSmatrix(meas_shape=(h, h), index_mask=mask)
+        >>> print(meas_op.computation)
+        dyadic
+        >>> print(meas_op.N, meas_op.M)
+        15 15
+        >>> images = torch.rand(4, h, h)
+        >>> y = meas_op(images)
+        >>> print(y.shape)
+        torch.Size([4, 15])
+        >>> x_hat = meas_op.fast_pinv(y, vectorize=True)
+        >>> x_true = meas_op.vectorize(images)
+        >>> print(torch.allclose(x_true, x_hat, atol=1e-4))
+        True
+
+    Example 2: With :attr:`vectorize` = :attr:`False` (the default), the
+    reconstruction is expanded back to the full image shape instead,
+    with unmasked pixels set to :attr:`fill_value` (0 by default).
+
+        >>> x_hat_img = meas_op.fast_pinv(y, vectorize=False)
+        >>> print(x_hat_img.shape)
+        torch.Size([4, 32, 32])
+        >>> print(x_hat_img[0, 20, 20].item())  # (20, 20) is not in the mask
+        0.0
+
+    Example 3: With subsampling (:attr:`M` < :attr:`N`), the reconstruction is
+    only approximate (see the note above).
+
+        >>> meas_op_sub = FreeformSmatrix(meas_shape=(h, h), M=10, index_mask=mask)
+        >>> y_sub = meas_op_sub(images)
+        >>> print(y_sub.shape)
+        torch.Size([4, 10])
+        >>> x_hat_sub = meas_op_sub.fast_pinv(y_sub, vectorize=True)
+        >>> print(torch.allclose(x_true, x_hat_sub, atol=1e-4))
+        False
+
+    Example 4: The two :attr:`computation` modes give the same result
+    (up to floating-point precision), as expected.
+
+        >>> meas_op_dense = FreeformSmatrix(meas_shape=(h, h), index_mask=mask, computation="dense")
+        >>> y_dense = meas_op_dense(images)
+        >>> print(torch.allclose(y, y_dense, atol=1e-4))
+        True
+    """
+
+    # H is exposed as a computed @property (see below): stored explicitly
+    # when computation="dense", built on the fly (and not cached) when
+    # computation="dyadic", to avoid materializing a potentially very
+    # large N x N matrix by default.
+    _store_H_as_parameter = False
+
+    def __init__(
+        self,
+        meas_shape: Union[int, torch.Size, Iterable[int]] = None,
+        M: int = None,
+        index_mask: torch.tensor = None,
+        bool_mask: torch.tensor = None,
+        order: torch.tensor = None,
+        computation: str = "dyadic",
+        *,
+        noise_model: nn.Module = nn.Identity(),
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu"),
+    ):
+        if computation not in ("dense", "dyadic"):
+            raise ValueError(
+                f"computation must be 'dense' or 'dyadic', got {computation!r}."
+            )
+
+        # Determine N (number of masked pixels) before building H, mirroring
+        # the validation done inside FreeformLinear.__init__.
+        if index_mask is not None:
+            if index_mask.ndim != 2:
+                raise ValueError("index_mask must have 2 dimensions.")
+            N = index_mask.shape[1]
+        elif bool_mask is not None:
+            N = int(bool_mask.sum().item())
+        else:
+            raise ValueError("Either index_mask or bool_mask must be specified.")
+
+        if not float(math.log2(N + 1)).is_integer():
+            raise ValueError(
+                f"N+1 must be a power of two for the S-matrix construction "
+                f"(got N={N}, N+1={N + 1}), where N is the number of masked "
+                f"pixels (not the number of measurements)."
+            )
+
+        if M is None:
+            M = N
+
+        if order is None:
+            order = torch.ones(N)
+        elif order.numel() != N:
+            raise ValueError(
+                f"order must have {N} elements (one per masked pixel), "
+                f"got {order.numel()}."
+            )
+        indices = torch.argsort(-order.flatten(), stable=True).to(torch.int32)
+
+        if computation == "dense":
+            # S-matrix and its exact inverse, built with
+            # spyrit.misc.walsh_hadamard as requested.
+            S = torch.from_numpy(wh.walsh_S_matrix(N).astype(np.float32))
+            T = torch.from_numpy(wh.iwalsh_S_matrix(N).astype(np.float32))
+            # H = the top M rows of S, reordered by decreasing order.
+            H_init = spytorch.reindex(
+                S, indices, axis="rows", inverse_permutation=False
+            )[:M, :]
+        else:
+            # dyadic: a tiny placeholder, used only for shape validation and
+            # attribute setup in FreeformLinear.__init__/Linear.__init__ --
+            # never stored, and never the actual S-matrix (which is what we
+            # are avoiding materializing here).
+            H_init = torch.empty(M, N)
+            T = None
+
+        super().__init__(
+            H_init,
+            meas_shape=meas_shape,
+            index_mask=index_mask,
+            bool_mask=bool_mask,
+            noise_model=noise_model,
+            dtype=dtype,
+            device=device,
+        )
+
+        self.computation = computation
+        self.order = order
+        # kept as a plain (int32) tensor, not a Parameter, consistent with
+        # HadamSmatrix2d's convention; .indices does not automatically
+        # follow subsequent .to(device) calls (matching that same
+        # pre-existing convention).
+        self.indices = indices.to(device=device)
+
+        if computation == "dense":
+            self._H_dense = nn.Parameter(H_init, requires_grad=False).to(
+                dtype=dtype, device=device
+            )
+            self.T = nn.Parameter(T, requires_grad=False).to(dtype=dtype, device=device)
+            self.walsh_ind = None
+        else:
+            self._H_dense = None
+            self.T = None
+            # Cache the permutation indices used internally by
+            # fwalsh_S_torch/ifwalsh_S_torch: measured to matter
+            # meaningfully (recomputing them every call was 20-40% slower
+            # in benchmarks). This is a plain Python list (not a tensor),
+            # so no device placement is needed for it.
+            self.walsh_ind = wh.sequency_perm_ind(N + 1)
+
+        self._dtype = dtype
+
+    @property
+    def dtype(self) -> torch.dtype:
+        return self._dtype
+
+    @property
+    def device(self) -> torch.device:
+        return self.indices.device
+
+    @property
+    def H(self):
+        r"""The (subsampled) :math:`M\times N` S measurement matrix.
+
+        .. warning::
+            When :attr:`computation` is `"dyadic"`, this builds the full
+            :math:`N\times N` S-matrix on the fly (not cached), which can
+            be memory-heavy for large :math:`N`. Prefer :meth:`measure`
+            and :meth:`fast_pinv`, which never require it.
+        """
+        if self.computation == "dense":
+            return self._H_dense
+        S = torch.from_numpy(wh.walsh_S_matrix(self.N).astype(np.float32)).to(
+            dtype=self.dtype, device=self.device
+        )
+        H = spytorch.reindex(S, self.indices, axis="rows", inverse_permutation=False)[
+            : self.M, :
+        ]
+        return H
+
+    def measure(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulate noiseless measurements using the S-matrix.
+
+        The mask is first applied to the input tensor, selecting the
+        :math:`N` masked pixels; the result is then transformed by the
+        (subsampled) S measurement matrix :math:`S_M`, either as a dense
+        matrix-vector product or via the fast Walsh-Hadamard-based
+        transform, depending on :attr:`self.computation` (see the class
+        docstring note for the tradeoff).
+
+        .. math::
+            m = S_M x, \quad \text{where }x = \text{mask}(\tilde{x})
+
+        .. note::
+            This method does not include the noise model. See
+            :meth:`forward` for noisy measurements.
+
+        Args:
+            :attr:`x` (:class:`torch.tensor`): A tensor where the
+            dimensions indexed by `self.meas_dims` match the measurement
+            shape `self.meas_shape`.
+
+        Returns:
+            :class:`torch.tensor`: A tensor of shape (\*, self.M) where \*
+            denotes all the dimensions of the input tensor not included in
+            `self.meas_dims`.
+        """
+        x = self.vectorize(x)
+
+        if self.computation == "dense":
+            return torch.einsum("mn,...n->...m", self.H, x)
+        else:
+            # Fast transform always computes all N outputs; select/reorder
+            # the top M of them (by self.order) afterward.
+            y_full = wh.fwalsh_S_torch(x, self.walsh_ind)
+            return y_full[..., self.indices[: self.M].long()]
+
+    def fast_pinv(
+        self, m: torch.tensor, vectorize: bool = False, fill_value: Any = 0
+    ) -> torch.tensor:
+        r"""Apply the pseudo-inverse of the S measurement matrix.
+
+        Depending on :attr:`self.computation`, this uses either a dense
+        matrix-vector product with the exact inverse S-matrix, or the fast
+        (inverse) Walsh-Hadamard-based transform (see the class docstring
+        note for the tradeoff).
+
+        Args:
+            :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` of
+            length :attr:`self.M`.
+
+            :attr:`vectorize` (bool, optional): If True, returns the flat
+            vector of :attr:`self.N` reconstructed masked pixels. If False
+            (default), returns the reconstruction expanded back to the
+            full :attr:`self.meas_shape` via :meth:`unvectorize`, with
+            unmasked pixels set to :attr:`fill_value`.
+
+            :attr:`fill_value` (Any, optional): Fill value for pixels
+            outside the mask, used only when :attr:`vectorize` is False.
+            Defaults to 0.
+
+        Returns:
+            :class:`torch.tensor`: The reconstructed signal, either as a
+            flat vector of length :attr:`self.N` (:attr:`vectorize` =
+            True) or expanded to :attr:`self.meas_shape` (:attr:`vectorize`
+            = False).
+
+        .. note::
+            If the number of measurements is smaller than the number of
+            masked pixels, the measurement vector is zero-padded (dense)
+            or zero-scattered into the correct positions (dyadic) before
+            inversion -- the two are mathematically equivalent. As with
+            :meth:`HadamSmatrix2d.fast_pinv`, this reconstruction is exact
+            only when :attr:`self.M` equals :attr:`self.N` (no
+            subsampling); with subsampling, it is an approximation. This
+            holds for both values of :attr:`computation`.
+        """
+        if self.computation == "dense":
+            if self.N != self.M:
+                m = torch.cat(
+                    (
+                        m,
+                        torch.zeros(
+                            *m.shape[:-1],
+                            self.N - self.M,
+                            device=m.device,
+                            dtype=m.dtype,
+                        ),
+                    ),
+                    -1,
+                )
+            m = spytorch.reindex(
+                m, self.indices.to(m.device), axis="cols", inverse_permutation=False
+            )
+            x = torch.einsum("nm,...m->...n", self.T, m)
+        else:
+            # Scatter m into its correct (order-defined) positions in a
+            # length-N vector, zero elsewhere, then apply the fast inverse
+            # transform. Mathematically equivalent to the dense path's
+            # zero-pad + reindex (verified numerically).
+            m_full = torch.zeros(*m.shape[:-1], self.N, device=m.device, dtype=m.dtype)
+            m_full[..., self.indices[: self.M].long()] = m
+            x = wh.ifwalsh_S_torch(m_full, self.walsh_ind)
+
+        if not vectorize:
+            x = self.unvectorize(x, fill_value=fill_value)
+        return x
 
 
 # =============================================================================
@@ -1137,7 +1622,7 @@ class FreeformLinearSplit(LinearSplit):
 
     where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M` represents a noise operator (e.g., Gaussian), :math:`A\in\mathbb{R}_+^{2M\times N}` is the acquisition matrix, :math:`x \in \mathbb{R}^N` is the signal in the region of interest, :math:`2M` is the number of measurements, :math:`N` is the number of pixels in the region of interest, :math:`\text{mask} \colon\, \mathbb{R}^\tilde{N} \to \mathbb{R}^N` represents the masking operation, :math:`\tilde{x} \in \mathbb{R}^\tilde{N}` is the full signal, and :math:`\tilde{N}\ge N` is the dimension of the full signal :math:`\tilde{x}`.
 
-    Example: Select one every second point on the diagonal of a batch of images
+    Example: Select one every second pixel on the diagonal of a batch of images
         >>> from spyrit.core.meas import FreeformLinearSplit
         >>> import torch
         >>> images = torch.rand(17, 3, 40, 40)
@@ -1235,7 +1720,7 @@ class FreeformLinearSplit(LinearSplit):
             :class:`torch.tensor`: A tensor of shape (\*, self.N) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
             >>> images = torch.rand(17, 3, 40, 40)
@@ -1279,7 +1764,7 @@ class FreeformLinearSplit(LinearSplit):
             :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
             >>> images = torch.rand(17, 3, 40, 40)
@@ -1310,7 +1795,7 @@ class FreeformLinearSplit(LinearSplit):
             :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
             >>> images = torch.rand(17, 3, 40, 40)
@@ -1341,7 +1826,7 @@ class FreeformLinearSplit(LinearSplit):
             :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
             >>> images = torch.rand(17, 3, 40, 40)
@@ -1373,7 +1858,7 @@ class FreeformLinearSplit(LinearSplit):
             :class:`torch.tensor`: A tensor of shape (\*, self.M) where \* denotes
             all the dimensions of the input tensor not included in `self.meas_dims`.
 
-        Example: Select one every second point on the diagonal of a batch of images
+        Example: Select one every second pixel on the diagonal of a batch of images
             >>> from spyrit.core.meas import FreeformLinearSplit
             >>> import torch
             >>> images = torch.rand(17, 3, 40, 40)
@@ -1544,6 +2029,10 @@ class HadamSplit2d(LinearSplit):
         >>> print(meas_op.M)
         400
     """
+
+    # H is exposed as a computed @property (see below) to avoid
+    # materializing the full h**2 x h**2 measurement matrix.
+    _store_H_as_parameter = False
 
     def __init__(
         self,
@@ -1872,6 +2361,607 @@ class HadamSplit2d(LinearSplit):
     def fast_H_pinv(self) -> torch.tensor:
         r"""Return the pseudo inverse of the matrix H"""
         return self.H.T / self.N
+
+
+# =============================================================================
+class HadamSmatrix2d(Linear):
+    r"""Simulate 2D S-matrix acquisitions.
+
+    Considering the acquisition of :math:`M` DMD patterns of size
+    :math:`h\times h`, the class computes
+
+    .. math::
+        y = \mathcal{N}\left(\mathcal{S}\left(Y\right)\right), \quad
+        Y = \frac{\mathrm{sum}(X)\cdot J_h - H_h\,X\,H_h^T}{2},
+
+    where :math:`\mathcal{N} \colon\, \mathbb{R}^M \to \mathbb{R}^M`
+    represents a noise operator (e.g., Gaussian), :math:`\mathcal{S}
+    \colon\, \mathbb{R}^{h\times h} \to \mathbb{R}^M` is a subsampling
+    operator, :math:`J_h` is the :math:`h\times h` all-ones matrix, and
+    :math:`H_h \in \{-1,+1\}^{h\times h}` is the same 1D Walsh-ordered Hadamard matrix
+    used by :class:`HadamSplit2d` (see :attr:`HadamSplit2d.H1d`).
+
+    Equivalently,
+
+    .. math::
+
+        y = \mathcal{N}\left(\mathcal{S}(A\,\mathrm{vec}(X))\right), \quad
+        A = \max(0,-(H_h\otimes H_h)),
+
+    where :math:`A \in \{0,1\}^{h^2 \times h^2}` is the acquisition matrix -- see :attr:`A`.
+
+    .. note::
+        By definition, the first row and column of :math:`H_h \in \{-1,+1\}^{h\times h}`
+        are all-ones. Therefore, :math:`A = \max(0, -(H_h\otimes H_h))` has an
+        all-zero first row and an all-zero first column, which correspond to the
+        trivial measurement and the unrecoverable top-left pixel.
+
+    .. warning::
+        Because :math:`H_h`'s first row and column are both all-ones (the
+        usual Walsh-ordering convention), :math:`A` has an all-zero row
+        *and* an all-zero column. :attr:`scramble`, when used, only
+        permutes columns :math:`1,\dots,h-1` of :math:`H_h`, leaving
+        column 0 fixed (see :attr:`column_perm`), so both of the
+        following hold regardless of :attr:`scramble`:
+
+        - :math:`A`'s all-zero row means the very first measurement is
+          always exactly 0 (at natural-order index 0, the position
+          :attr:`order` keeps first by default), regardless of :math:`X`
+          -- the "all DMD micromirrors off" pattern.
+
+        - :math:`A`'s all-zero column means the top-left pixel,
+          :math:`X[0,0]`, has *no* effect whatsoever on any measurement,
+          and is therefore fundamentally unrecoverable. By convention,
+          input images are expected to have :math:`X[0,0]=0` (see
+          :meth:`fast_measure`); :meth:`fast_pinv` always reconstructs it
+          as exactly 0.
+
+    .. note::
+        :attr:`order` and :attr:`scramble` both rely on permutations, but
+        they act on different things and serve different purposes -- do
+        not confuse them:
+
+        - :attr:`order` permutes the **rows** of the (subsampled) 2D
+          system matrix :math:`A`, i.e. it reorders the :math:`M`
+          **measurements** in the output vector :math:`y` (and selects
+          which :math:`M` of the :math:`h^2` possible measurements are
+          kept, if :math:`M<h^2`). It does not change what any individual
+          measurement pattern looks like, only the sequence in which the
+          measurements appear (e.g. by decreasing variance/significance,
+          via :attr:`order`).
+
+        - :attr:`scramble` permutes the **columns** :math:`1,\dots,h-1`
+          of :math:`H_h` -- i.e. of the (1D) matrix used to build the
+          acquisition matrix, before any row reordering/subsampling
+          happens. This changes which pixels of the image each individual
+          measurement pattern probes, not the order in which measurements
+          are returned.
+
+        The two options are independent and can be combined.
+
+    If :attr:`scramble` is True, columns :math:`1,\dots,h-1` of
+    :math:`H_h` are randomly permuted (with a fixed :attr:`seed` for
+    reproducibility; column 0 is always left fixed, see the warning
+    above). This is useful e.g. to decorrelate the acquisition order from
+    the natural Walsh ordering.
+
+    .. note::
+        :math:`A` is not orthogonal, so the adjoint (transpose) of the
+        measurement operator and its pseudo-inverse are genuinely different
+        operators here. Both, however, admit a closed form expressed only
+        in terms of :math:`H_h` (and its transpose), so both remain
+        fast and separable across rows and columns -- no :math:`h^2\times
+        h^2` matrix and no explicit matrix inversion is ever needed, even
+        when :attr:`scramble` is True (see :meth:`fast_adjoint` and
+        :meth:`fast_pinv` for the exact formulas).
+
+    Args:
+        :attr:`h` (int): Image size :math:`h`, which must be a power of 2.
+
+        :attr:`M` (int, optional): Number of measurements. Defaults to
+        :math:`h^2` (no subsampling).
+
+        :attr:`order` (:class:`torch.tensor`, optional): Order matrix
+        :math:`O` that defines the measurements to keep. The first
+        component of :math:`y` will correspond to the index where
+        :attr:`order` is the highest. Permutes the **rows** of the system
+        matrix :math:`A` (i.e. the sequence of measurements in :math:`y`).
+        Not to be confused with :attr:`scramble`, which permutes the
+        **columns** of :math:`H_h`.
+
+        :attr:`fast` (bool, optional): Whether to use the fast, separable
+        computation of the 2D S-transform. If False, it uses (memory-heavy)
+        matrix-vector products with the full measurement matrix. Defaults
+        to True.
+
+        :attr:`reshape_output` (bool, optional): Whether to reshape the
+        output of the adjoint and pseudo-inverse methods to images. If
+        False, outputs are vectors.
+
+        :attr:`scramble` (bool, optional): If True, the **columns** of
+        :math:`H_h` are randomly permuted. Defaults to False. Not to be
+        confused with :attr:`order`, which permutes the **rows** of the
+        system matrix :math:`A` (i.e. the sequence of measurements in
+        :math:`y`), applied after scrambling.
+
+        :attr:`seed` (int, optional): Seed used to generate the random
+        column permutation when :attr:`scramble` is True, ensuring
+        reproducibility. Defaults to 0.
+
+        :attr:`noise_model` (see :mod:`spyrit.core.noise`): Noise model
+        :math:`\mathcal{N}`. Defaults to `torch.nn.Identity()`.
+
+        :attr:`dtype` (:class:`torch.dtype`, optional): Data type of the
+        measurement matrix. Defaults to `torch.float32`.
+
+        :attr:`device` (:obj:`torch.device`, optional): Device of the
+        measurement matrix. Defaults to `torch.device("cpu")`.
+
+    Attributes:
+        :attr:`H1d` (:class:`torch.tensor`): 1D Walsh-ordered Hadamard
+        matrix of shape :math:`(h,h)`, values in :math:`\{-1,+1\}` (the
+        same matrix as :attr:`HadamSplit2d.H1d`). Columns
+        :math:`1,\dots,h-1` are permuted if :attr:`scramble` is True (see
+        :attr:`column_perm`); column 0 is always left fixed.
+
+        :attr:`column_perm` (:class:`torch.tensor`, optional): The random
+        column permutation applied to :math:`H_h`; `column_perm[0] == 0`
+        always. Only set as an attribute when :attr:`scramble` is True.
+
+        :attr:`h` (int): Image size :math:`h`.
+
+        :attr:`A` (:class:`torch.tensor`): The 2D measurement matrix given
+        by :math:`\max(0, -(H_h\otimes H_h))`, subsampled to
+        :attr:`self.M` rows. Computed on the fly (not stored) to avoid
+        materializing a :math:`h^2 \times h^2` matrix.
+
+        :attr:`H` (:class:`torch.tensor`): Alias for :attr:`A`, kept for
+        compatibility with code that expects a measurement operator to
+        expose `H` (see :attr:`A`'s docstring).
+
+        :attr:`M` (int): Number of measurements :math:`M`.
+
+        :attr:`N` (int): Number of pixels in the image, equal to :math:`h^2`.
+
+        :attr:`meas_shape` (torch.Size): Shape of the measurement patterns.
+        Equal to :math:`(h, h)`.
+
+        :attr:`meas_dims` (torch.Size): Dimensions of the image the
+        acquisition matrix applies to. Equal to `(-2, -1)`.
+
+        :attr:`order` (:class:`torch.tensor`): Order matrix :math:`O`. Only
+        affects the **row** order (sequence) of the measurements in
+        :math:`y`; unrelated to :attr:`scramble`, which affects the
+        **columns** of :math:`H_h` instead.
+
+        :attr:`indices` (:class:`torch.tensor`): Indices used to reorder
+        the measurement vector (derived from :attr:`order`). Used by the
+        method :meth:`reindex`.
+
+    Example 1:
+        Basic construction and simulated (subsampled) measurements.
+        The very first measurement is always (up to floating-point error) 0,
+        since it corresponds to the trivial all-zero row of :math:`A` (see the
+        warning above).
+
+        >>> h = 64  # h must be a power of two
+        >>> meas_op = HadamSmatrix2d(h, 2000)
+        >>> print(meas_op.H1d.shape)
+        torch.Size([64, 64])
+        >>> print(meas_op.M)
+        2000
+        >>> x = torch.rand(4, h, h)
+        >>> y = meas_op(x)
+        >>> print(y.shape)
+        torch.Size([4, 2000])
+        >>> print(torch.allclose(y[:, 0], torch.zeros(4), atol=1e-2))
+        True
+
+    Example 2:
+        With full sampling (:attr:`M` = :math:`h^2`, the default) and the
+        top-left pixel set to 0 (see the warning above), :meth:`fast_pinv`
+        recovers the image exactly.
+
+        >>> h = 16
+        >>> meas_op = HadamSmatrix2d(h)  # M defaults to h**2 (full sampling)
+        >>> print(meas_op.M == meas_op.N)
+        True
+        >>> x = torch.rand(2, h, h)
+        >>> x[:, 0, 0] = 0  # convention: top-left pixel carries no information
+        >>> y = meas_op.measure(x)
+        >>> x_hat = meas_op.fast_pinv(y, vectorize=False)
+        >>> print(torch.allclose(x, x_hat, atol=1e-4))
+        True
+
+    Example 3:
+        With subsampling (:attr:`M` < :math:`h^2`), :meth:`fast_pinv`
+        only approximates the image (see the note in :meth:`fast_pinv`), unlike
+        the exact recovery obtained above with full sampling.
+
+        >>> meas_op_sub = HadamSmatrix2d(h, M=100)
+        >>> y_sub = meas_op_sub.measure(x)
+        >>> x_hat_sub = meas_op_sub.fast_pinv(y_sub, vectorize=False)
+        >>> print(torch.allclose(x, x_hat_sub, atol=1e-4))
+        False
+
+    Example 4:
+        :attr:`scramble` permutes columns :math:`1,\dots,h-1` of
+        :attr:`H1d` (never column 0), breaking its symmetry -- but
+        full-sampling recovery via :meth:`fast_pinv` remains exact,
+        including at the top-left pixel, exactly as in Example 2.
+
+        >>> meas_op_scrambled = HadamSmatrix2d(h, scramble=True, seed=42)
+        >>> print(torch.allclose(meas_op.H1d, meas_op.H1d.T))       # unscrambled: symmetric
+        True
+        >>> print(torch.allclose(meas_op_scrambled.H1d, meas_op_scrambled.H1d.T))  # scrambled: not symmetric
+        False
+        >>> y2 = meas_op_scrambled.measure(x)
+        >>> x_hat2 = meas_op_scrambled.fast_pinv(y2, vectorize=False)
+        >>> print(torch.allclose(x, x_hat2, atol=1e-4))
+        True
+
+    Example 5:
+        :attr:`order` and :attr:`scramble` act independently (see
+        note above): changing :attr:`order` selects/reorders which measurements
+        are kept, but does not affect :attr:`H1d` itself.
+
+        >>> order = torch.rand(h, h)
+        >>> meas_op_ordered = HadamSmatrix2d(h, M=100, order=order)
+        >>> print(torch.equal(meas_op_ordered.H1d, meas_op.H1d))
+        True
+    """
+
+    # A (and its alias H) is exposed as a computed @property (see below)
+    # to avoid materializing the full h**2 x h**2 measurement matrix.
+    _store_H_as_parameter = False
+
+    def __init__(
+        self,
+        h: int,
+        M: int = None,
+        order: torch.tensor = None,
+        fast: bool = True,
+        reshape_output: bool = False,
+        scramble: bool = False,
+        seed: int = 0,
+        *,
+        noise_model=nn.Identity(),
+        dtype: torch.dtype = torch.float32,
+        device: torch.device = torch.device("cpu"),
+    ):
+        meas_dims = (-2, -1)
+        meas_shape = (h, h)
+        if M is None:
+            M = h**2
+
+        # call Linear constructor (avoid setting H as a Parameter, see
+        # Linear._store_H_as_parameter)
+        super().__init__(
+            torch.empty(h**2, h**2),
+            meas_shape,
+            meas_dims,
+            noise_model=noise_model,
+            dtype=dtype,
+            device=device,
+        )
+
+        if order is None:
+            order = torch.ones(h, h)
+
+        # 1D Walsh-ordered Hadamard matrix, same as HadamSplit2d.H1d.
+        # spytorch.walsh_matrix raises if h is not a power of two.
+        H1d = spytorch.walsh_matrix(h)
+
+        self.h = h
+        self.scramble = scramble
+        self.seed = seed
+        if scramble:
+            # Randomly permute columns 1..h-1 of H1d, leaving column 0
+            # fixed (it is the all-ones column, see the class docstring).
+            # A fixed seed guarantees the same permutation is produced
+            # every time, for reproducibility.
+            # H1d_scrambled[:, j] = H1d[:, column_perm[j]].
+            generator = torch.Generator().manual_seed(seed)
+            perm_rest = torch.randperm(h - 1, generator=generator) + 1
+            self.column_perm = torch.cat((torch.zeros(1, dtype=torch.int64), perm_rest))
+            H1d = H1d[:, self.column_perm]
+
+        self.H1d = nn.Parameter(H1d, requires_grad=False).to(dtype=dtype, device=device)
+
+        self.M = M  # supercharged self.M
+        self.order = order
+        self.indices = torch.argsort(-order.flatten(), stable=True).to(
+            dtype=torch.int32, device=self.device
+        )
+        self.fast = fast
+        self.reshape_output = reshape_output
+
+    @property
+    def dtype(self) -> torch.dtype:
+        return self.H1d.dtype
+
+    @property
+    def device(self) -> torch.device:
+        return self.H1d.device
+
+    @property
+    def A(self):
+        r"""The full (subsampled) 2D S measurement matrix, computed on the
+        fly as :math:`\max(0, -(H_h\otimes H_h))`, reindexed and
+        truncated to the first :attr:`self.M` rows (by decreasing
+        :attr:`self.order`). Note that this is *not* the same matrix as
+        the Kronecker product of two 1D S-matrices
+        (:math:`\max(0,-H_h)\otimes\max(0,-H_h)`): since
+        :math:`\mathrm{relu}(-a)\,\mathrm{relu}(-b) \neq
+        \mathrm{relu}(-ab)` in general, the negative-component split must
+        be taken on the full 2D Kronecker product to remain a genuine
+        (0/1-valued) S-matrix."""
+        A2D = torch.kron(self.H1d, self.H1d)
+        A = nn.functional.relu(-A2D)
+        A = self.reindex(A, "rows", False)
+        return A[: self.M, :]
+
+    @property
+    def H(self):
+        r"""Alias for :attr:`A`. Kept only for compatibility with code
+        that expects a measurement operator to expose an attribute named
+        `H` -- namely :class:`Linear`'s own generic (non-fast, ``fast=
+        False``) :meth:`measure`/:meth:`adjoint`, and downstream code such
+        as :meth:`~spyrit.core.recon.LearnedPGD.hessian_sv`. Does not
+        duplicate any memory: both :attr:`A` and :attr:`H` are computed
+        on the fly, so this simply forwards to :attr:`A`."""
+        return self.A
+
+    @property
+    def matrix_to_inverse(self):
+        return self.A
+
+    def reindex(
+        self, x: torch.tensor, axis: str = "rows", inverse_permutation: bool = False
+    ) -> torch.tensor:
+        """Sorts a tensor along a specified axis using :attr:`self.indices`.
+        See :meth:`HadamSplit2d.reindex` for details."""
+        return spytorch.reindex(x, self.indices.to(x.device), axis, inverse_permutation)
+
+    def measure(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulate noiseless measurements.
+
+        It computes :math:`y = \mathcal{S}(\mathrm{vec}^{-1}(A\,\mathrm{vec}(X)))`.
+
+        Args:
+            :attr:`x` (:class:`torch.tensor`): Image :math:`X` whose
+            dimensions :attr:`self.meas_dims` must have shape
+            :attr:`self.meas_shape`.
+
+        Returns:
+            Measurement vector :math:`y \in \mathbb{R}^{M}`.
+        """
+        if self.fast:
+            return self.fast_measure(x)
+        else:
+            return super().measure(x)
+
+    def forward(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulate noisy measurements :math:`y = \mathcal{N}(\mathcal{S}(\mathrm{vec}^{-1}(A\,\mathrm{vec}(X))))`."""
+        x = self.measure(x)
+        x = self.noise_model(x)
+        return x
+
+    def fast_measure(self, x: torch.tensor) -> torch.tensor:
+        r"""Simulate noiseless measurements using the separability of the
+        2D S-transform.
+
+        :math:`A` is the negative component of the 2D Hadamard split built
+        from :math:`H_h\otimes H_h` -- exactly like
+        :meth:`HadamSplit2d.fast_measure` computes its own "y_neg" half,
+        but returned here on its own (not interleaved with the positive
+        component). Since :math:`A = (J - H_h\otimes H_h)/2` and
+        :math:`J\,\mathrm{vec}(X) = \mathrm{sum}(X)\cdot\mathbf{1}`, this
+        only requires a global sum of :math:`X` and multiplications with
+        the 1D matrix :attr:`self.H1d` (applied to both the rows and the
+        columns of :math:`X`).
+
+        .. note::
+            :math:`\mathrm{sum}(X)` is read off :math:`Hx[0,0]` (the DC
+            term of the transform) rather than computed independently via
+            a separate reduction over :math:`X`. Both are mathematically
+            equal, but computing them independently (via two different
+            floating-point code paths -- a direct sum vs. a chain of
+            matrix products) does not generally give bit-identical
+            results; the resulting (tiny) discrepancy would otherwise leak
+            into every entry of :math:`y` as a uniform bias, occasionally
+            making an entry that should be a small positive number (or
+            exactly 0) come out slightly negative. Reading :math:`x_{sum}`
+            off :math:`Hx` itself avoids this, exactly as
+            :meth:`HadamSplit2d.fast_measure` does.
+
+        .. note::
+            By convention (see the warning in the class docstring), input
+            images are expected to have :math:`X[0,0]=0`. No code enforces
+            this, and none is needed: :math:`X[0,0]`'s coefficient is
+            exactly 1 in both :math:`\mathrm{sum}(X)` (trivially) and in
+            every entry of :math:`H_h\,X\,H_h^T` (since column 0 of
+            :math:`H_h` is all-ones too), so it always cancels out of
+            :math:`y` -- whatever value :math:`X[0,0]` holds is silently
+            ignored, at no extra cost."""
+        Hx = spytorch.mult_2d_separable(self.H1d, x)
+        s = Hx[..., 0:1, 0:1]
+        y = (s - Hx) / 2
+        y = self.vectorize(y)
+        y = y.index_select(dim=-1, index=self.indices)
+        return y[..., : self.M]
+
+    def adjoint(self, m: torch.tensor, unvectorize: bool = False) -> torch.tensor:
+        r"""Apply the adjoint (transpose) of the measurement matrix.
+
+        It computes :math:`x = A^Tm`, where :math:`A` is the (subsampled)
+        2D S measurement matrix.
+
+        .. note::
+            This is the literal adjoint, not the pseudo-inverse: use
+            :meth:`fast_pinv` for the pseudo-inverse solution. Unlike
+            :class:`HadamSplit2d`, this does **not** assume :math:`H_h`
+            is symmetric (it is not, when :attr:`scramble` is True), and
+            explicitly applies :math:`H_h^T`.
+
+        Args:
+            :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` of
+            length :attr:`self.M`.
+
+            :attr:`unvectorize` (bool): whether to apply
+            :meth:`~spyrit.core.meas.Linear.unvectorize` at the end of the
+            computation.
+
+        Returns:
+            A batch of signals :math:`x`.
+        """
+        if self.fast:
+            return self.fast_adjoint(m, unvectorize)
+        else:
+            return super().adjoint(m, unvectorize)
+
+    def fast_adjoint(self, m: torch.tensor, unvectorize: bool = False) -> torch.tensor:
+        r"""Apply the adjoint of the measurement matrix using the
+        separability of the 2D S-transform.
+
+        The forward map is :math:`A = (J - H_h\otimes H_h)/2`, and
+        :math:`J` and (elementwise) division are self-adjoint, so
+        :math:`A^T = (J - H_h^T\otimes H_h^T)/2`: the same "sum
+        trick" as :meth:`fast_measure` applies, using :math:`H_h^T`
+        (not :math:`H_h`) on both axes. When :attr:`scramble` is False,
+        :math:`H_h` is symmetric and this is equivalent to applying
+        :math:`H_h` directly.
+
+        .. note::
+            As in :meth:`fast_measure`, :math:`\mathrm{sum}(m)` is read
+            off the transform :math:`H_h^Tm H_h^T` itself rather than
+            computed independently, to avoid floating-point cancellation
+            noise. Since :attr:`scramble` only ever permutes columns
+            :math:`1,\dots,h-1` of :math:`H_h` (column 0 is always left
+            fixed, see the class docstring), row 0 of :math:`H_h^T`
+            (= column 0 of :math:`H_h`) is all-ones regardless of
+            :attr:`scramble`, so the relevant entry always sits at index
+            0. Reading :math:`\mathrm{sum}(m)` off that entry also
+            guarantees, by construction (not merely numerically), that
+            the adjoint's output is exactly 0 at :math:`(0,0)` -- unlike
+            :meth:`fast_pinv`, no manual zeroing is needed here.
+        """
+        if self.N != self.M:
+            m = torch.cat(
+                (
+                    m,
+                    torch.zeros(
+                        *m.shape[:-1], self.N - self.M, device=m.device, dtype=m.dtype
+                    ),
+                ),
+                -1,
+            )
+        m = self.reindex(m, "cols", False)
+        m = self.unvectorize(m)
+        Htm = spytorch.mult_2d_separable(self.H1d.T, m)
+        s = Htm[..., 0:1, 0:1]
+        m = (s - Htm) / 2
+        if not unvectorize:
+            m = self.vectorize(m)
+        return m
+
+    def fast_pinv(self, m: torch.tensor, vectorize: bool = False) -> torch.tensor:
+        r"""Apply the pseudo-inverse of the measurement matrix.
+
+        Args:
+            :attr:`m` (:class:`torch.tensor`): Measurement :math:`m` of
+            length :attr:`self.M`.
+
+            :attr:`vectorize` (bool): Whether to apply
+            :meth:`~spyrit.core.meas.Linear.vectorize` after computation of
+            the pseudo-inverse.
+
+        Returns:
+            :class:`torch.tensor`: Vectorized (or image-shaped) signal
+            :math:`x` of length :attr:`self.N`.
+
+        .. note::
+            :math:`A` is given by
+            :math:`A=\begin{pmatrix}0&0\\0&S\end{pmatrix}`, where
+            :math:`S` is the classical (order-:math:`(h^2-1)`) S-matrix
+            derived from the genuine order-:math:`N` Hadamard matrix
+            :math:`H_N=H_h\otimes H_h` introduced below (the Kronecker
+            product of two Hadamard matrices is itself Hadamard). Being
+            block-diagonal, :math:`A`'s pseudo-inverse is therefore also
+            block-diagonal:
+
+            .. math::
+                A^+ = \begin{pmatrix} 0 & 0 \\ 0 & S^{-1} \end{pmatrix}.
+
+            **How it works.** Writing :math:`H_N = H_h\otimes H_h`
+            (order :math:`N=h^2`, the full, non-separable Hadamard-like
+            matrix such that :math:`A = (J_N - H_N)/2`), :math:`A^+` can
+            be computed *without* ever forming :math:`S^{-1}` explicitly:
+
+            .. math::
+                A^+ y = -\frac{2}{N}\, H_N^T y,
+
+            applied to a measurement vector :math:`y` (padded with a
+            leading 0). This is exact at every entry except the leading
+            one (always 0 for :math:`y` in the range of :math:`A`, but
+            not automatically 0 in this formula -- see below).
+
+            **How it is implemented.** Since :math:`H_N = H_h\otimes
+            H_h`, applying :math:`H_N^T` to a vector is the same as
+            applying :math:`H_h^T` to both axes of its :math:`h\times h`
+            reshaping: for a (zero-padded) measurement image :math:`Y`,
+
+            .. math::
+                X = -\frac{2}{N}\, H_h^T\, Y\, H_h,
+
+            which only requires multiplications with the 1D matrix
+            :math:`H_h` (applied to the rows and columns of :math:`Y`)
+            -- no matrix inversion, and no :math:`h^2\times h^2` matrix
+            is ever materialized. If the number of measurements is
+            smaller than the number of pixels, the measurement vector is
+            zero-padded before inversion, exactly as done in
+            :meth:`HadamSplit2d.fast_pinv`.
+
+        .. note::
+            Applying :meth:`fast_pinv` to the (noiseless, full-sampling)
+            measurement of an image returns that same image back
+            *exactly*, at every pixel **except** the top-left one,
+            :math:`X[0,0]` (see the warning in the class docstring): that
+            single pixel is fundamentally unrecoverable (it never affects
+            any measurement), so this method arbitrarily sets it to 0 --
+            the block-diagonal :math:`A^+` above shows this convention
+            is exact, not an approximation: :math:`X[0,0]` is genuinely a
+            free parameter of the formula above, which the top-left 0
+            block of :math:`A^+` fixes at 0 (the minimum-norm,
+            Moore-Penrose choice).
+
+        .. note::
+            When :attr:`self.M` equals :attr:`self.N`, this reconstruction is
+            exact (up to :math:`X[0,0]`). This holds whether or not
+            :attr:`scramble` is used.
+        """
+        if self.N != self.M:
+            m = torch.cat(
+                (
+                    m,
+                    torch.zeros(
+                        *m.shape[:-1], self.N - self.M, device=m.device, dtype=m.dtype
+                    ),
+                ),
+                -1,
+            )
+        m = self.reindex(m, "cols", False)
+        Y = self.unvectorize(m)
+
+        Z = spytorch.mult_2d_separable(self.H1d.T, Y)
+        X = -2 * Z / self.N
+        # X[..., 0, 0] can never be recovered from Y (see the note above):
+        # set it to 0, the minimum-norm convention.
+        X[..., 0, 0] = 0
+
+        if vectorize:
+            X = self.vectorize(X)
+        return X
 
 
 # =============================================================================
