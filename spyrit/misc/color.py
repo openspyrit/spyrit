@@ -241,6 +241,8 @@ def plot_hs(
     results_root=None,
     data_folder=None,
     colorbar_format=None,
+    vmin=None,
+    vmax=None
 ):
     r"""Plot hyperspectral data with wavelength-aware colormaps.
 
@@ -287,7 +289,7 @@ def plot_hs(
         n_rows,
         n_cols,
         figsize=(3 * n_cols, 3 * n_rows * ratio),
-        gridspec_kw={"wspace": 0.3, "hspace": 0.05},
+        gridspec_kw={"wspace": 0.5, "hspace": 0.02},
     )
 
     # Handle single row case
@@ -303,18 +305,20 @@ def plot_hs(
         spectral_cmap = ListedColormap(spectral_cmap_data)
 
         # Display the grayscale image with spectral colormap
-        im = ax.imshow(img[:, :, i], cmap=spectral_cmap)
+        im = ax.imshow(img[:, :, i], cmap=spectral_cmap, vmin=vmin, vmax=vmax)
         ax.set_title(f"{wavelength_nm:.0f} nm")
         ax.axis("off")
 
         if save_fig:
-            path_fig = Path(results_root) / data_folder / Path(f"{n_wav}_slices")
+            path_fig = Path(results_root) / data_folder / Path(f"{n_wav}_channels")
             Path(path_fig).mkdir(parents=True, exist_ok=True)
 
             plt.imsave(
-                path_fig / f"{strategy}_lambda_{int(wavelength_nm)}nm.pdf",
+                path_fig / f"{strategy}_lambda_{int(wavelength_nm)}nm.png",
                 img[:, :, i],
                 cmap=spectral_cmap,
+                vmin=vmin,
+                vmax=vmax
             )
 
         # Add colorbar with spectral colormap, closer to the axis
@@ -334,6 +338,8 @@ def plot_hs(
     # Hide unused subplots
     for i in range(n_wav, n_rows * n_cols):
         axes[i // n_cols, i % n_cols].axis("off")
+
+    plt.tight_layout()
 
     if save_fig:
         plt.savefig(path_fig / f"hs_{strategy}_{suptitle}.pdf", bbox_inches="tight")
