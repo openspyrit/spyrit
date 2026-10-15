@@ -338,3 +338,169 @@ def compare_nets_unsupervised(net_list, testloader, device):
 
 def print_mean_std(x, tag=""):
     print("{}psnr = {} +/- {}".format(tag, np.mean(x), np.std(x)))
+
+
+
+# ==== Pansharpening metrics ====
+def SAM(X, Y):
+    r"""
+    Average spectral angle mapper (SAM), in radians:
+
+    .. math::
+
+        \text{SAM}(X, Y) = \frac{1}{N} \sum_{i=1}^N \arccos \left( \frac{\langle X_{i,:}, Y_{i,:} \rangle}{\|X_{i,:}\|_2 \, \|Y_{i,:}\|_2} \right),
+
+    where :math:`X, Y \in \mathbb{R}^{N \times L}` are the reconstructed and reference images (pixels in rows, wavelengths in columns).
+    """
+    # Flatten spatial dimensions
+    X = X.reshape(-1, X.shape[-1])  # Shape: [N, n_wav]
+    Y = Y.reshape(-1, Y.shape[-1])  # Shape: [N, n_wav]
+
+    # Compute norms
+    norm_X = torch.linalg.norm(X, dim=1)  # Shape: [N]
+    norm_Y = torch.linalg.norm(Y, dim=1)  # Shape: [N]
+
+    # Compute cosine of angles
+    cosang = torch.sum(X * Y, dim=1) / (norm_X * norm_Y + 1e-10)  # Shape: [N]
+    cosang = torch.clamp(cosang, -1, 1)
+
+    # Compute angles and average
+    sam = torch.acos(cosang).mean()  # Average SAM
+    return sam
+
+
+def SAM_map(X, Y):
+    r"""
+    Spectral angle mapper (SAM) of each pixel, in radians:
+
+    .. math::
+
+        \text{SAM}_i(X, Y) = \arccos \left( \frac{\langle X_{i,:}, Y_{i,:} \rangle}{\|X_{i,:}\|_2 \, \|Y_{i,:}\|_2} \right),
+
+    where :math:`X, Y \in \mathbb{R}^{N \times L}` are the reconstructed and reference images (pixels in rows, wavelengths in columns).
+    """
+    # Compute norms
+    norm_X = torch.linalg.norm(X, dim=-1)  # Shape: [H, W]
+    norm_Y = torch.linalg.norm(Y, dim=-1)  # Shape: [H, W]
+
+    # Compute cosine of angles
+    cosang = torch.sum(X * Y, dim=-1) / (norm_X * norm_Y + 1e-10)  # Shape: [H, W]
+    cosang = torch.clamp(cosang, -1, 1)
+
+    # Compute angles
+    sam_map = torch.acos(cosang)  # Shape: [H, W]
+    return sam_map
+
+
+def CC(X, Y):
+    r"""
+    Average cross-correlation (CC) between wavebands:
+
+    .. math::
+
+        \text{CC}(X, Y) = \frac{1}{L} \sum_{\ell=1}^L \frac{\langle X_{:,\ell} - \bar{X}_{:,\ell}, \, Y_{:,\ell} - \bar{Y}_{:,\ell} \rangle}{\|X_{:,\ell} - \bar{X}_{:,\ell}\|_2 \, \|Y_{:,\ell} - \bar{Y}_{:,\ell}\|_2},
+
+    where :math:`X, Y \in \mathbb{R}^{N \times L}` are the reconstructed and reference images (pixels in rows, wavelengths in columns), and :math:`\bar{X}_{:,\ell}, \bar{Y}_{:,\ell}` the means of their columns.
+    """
+    # Flatten spatial dimensions
+    X = X.reshape(-1, X.shape[-1])  # Shape: [N, n_wav]
+    Y = Y.reshape(-1, Y.shape[-1])  # Shape: [N, n_wav]
+
+    # Compute means
+    mu_X = torch.mean(X, dim=0)  # Shape: [n_wav]
+    mu_Y = torch.mean(Y, dim=0)  # Shape: [n_wav]
+
+    # Compute numerator and denominator
+    num = torch.sum((X - mu_X) * (Y - mu_Y), dim=0)  # Shape: [n_wav]
+    denom = torch.sqrt(
+        torch.sum((X - mu_X) ** 2, dim=0) * torch.sum((Y - mu_Y) ** 2, dim=0)
+    )  # Shape: [n_wav]
+
+    # Compute CC for each waveband and average
+    cc = torch.mean(num / (denom + 1e-10))  # Average CC
+    return cc
+
+
+def CC_vec(X, Y):
+    r"""
+    Vector of the cross-correlation (CC), where the $\ell$-th element corresponds to the cross-correlation between the $\ell$-th channels of :math:`X` and :math:`Y`:
+
+    .. math::
+
+        \text{CC}_\ell(X, Y) = \frac{\langle X_{:,\ell} - \bar{X}_{:,\ell}, \, Y_{:,\ell} - \bar{Y}_{:,\ell} \rangle}{\|X_{:,\ell} - \bar{X}_{:,\ell}\|_2 \, \|Y_{:,\ell} - \bar{Y}_{:,\ell}\|_2},
+
+    where :math:`X, Y \in \mathbb{R}^{N \times L}` are the reconstructed and reference images (pixels in rows, wavelengths in columns), and :math:`\bar{X}_{:,\ell}, \bar{Y}_{:,\ell}` the means of their columns.
+    """
+    # Flatten spatial dimensions
+    X = X.reshape(-1, X.shape[-1])  # Shape: [N, n_wav]
+    Y = Y.reshape(-1, Y.shape[-1])  # Shape: [N, n_wav]
+
+    # Compute means
+    mu_X = torch.mean(X, dim=0)  # Shape: [n_wav]
+    mu_Y = torch.mean(Y, dim=0)  # Shape: [n_wav]
+
+    # Compute numerator and denominator
+    num = torch.sum((X - mu_X) * (Y - mu_Y), dim=0)  # Shape: [n_wav]
+    denom = torch.sqrt(
+        torch.sum((X - mu_X) ** 2, dim=0) * torch.sum((Y - mu_Y) ** 2, dim=0)
+    )  # Shape: [n_wav]
+
+    # Compute CC for each waveband
+    cc_vec = num / (denom + 1e-10)  # Shape: [n_wav]
+    return cc_vec
+
+
+def RMSE(X, Y):
+    r"""
+    Root mean square error (RMSE):
+
+    .. math::
+
+        \text{RMSE}(X, Y) = \frac{\|X - Y\|_F}{\sqrt{N L}},
+
+    where :math:`X, Y \in \mathbb{R}^{N \times L}` are the reconstructed and reference images.
+    """
+    rmse = torch.sqrt(torch.mean((X - Y) ** 2))
+    return rmse
+
+
+
+def PSNR(X, Y):
+    r"""
+    Peak signal-to-noise ratio (PSNR), in dB:
+
+    .. math::
+
+        \text{PSNR}(X, Y) = 20 \, \log_{10} \left( \frac{\max(Y)}{\text{RMSE}(X, Y)} \right),
+
+    where :math:`X` is the reconstructed image and :math:`Y` the reference image.
+    """
+    rmse = RMSE(X, Y)
+    if rmse == 0:
+        return float('inf')
+    max_val = torch.max(Y)
+    psnr = 20 * torch.log10(max_val / (rmse + 1e-10))
+    return psnr
+
+
+def ERGAS(X, Y, d):
+    r"""
+    Relative dimensionless global error in synthesis (ERGAS):
+
+    .. math::
+
+        \text{ERGAS}(X, Y) = 100 \, d \, \sqrt{\frac{1}{L} \sum_{\ell=1}^L \left( \frac{\text{RMSE}(X_{:,\ell}, Y_{:,\ell})}{\bar{Y}_{:,\ell}} \right)^2},
+
+    where :math:`X, Y \in \mathbb{R}^{N \times L}` are the reconstructed and reference images (pixels in rows, wavelengths in columns), :math:`\bar{Y}_{:,\ell}` the mean of column :math:`\ell`, and :math:`d < 1` the low- to high-resolution size ratio (e.g. :math:`d = 64/256`).
+    """
+    # Flatten spatial dimensions
+    X = X.reshape(-1, X.shape[-1])  # [N, n_wav]
+    Y = Y.reshape(-1, Y.shape[-1])  # [N, n_wav]
+
+    # Compute RMSE for each band
+    rmse = torch.sqrt(torch.mean((X - Y) ** 2, dim=0))  # [n_wav]
+    mu = torch.mean(Y, dim=0)  # [n_wav]
+
+    # Compute ERGAS
+    ergas = 100 * d * torch.sqrt(torch.mean((rmse / mu) ** 2))
+    return ergas
