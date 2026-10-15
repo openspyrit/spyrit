@@ -5,6 +5,7 @@ This module contains several classes:
     * :class:`KeyPoints`: determines the key points between a CMOS camera and a single-pixel camera.
     * :class:`ComputeHomography`: computes the homography matrix between the two camera views.
     * :class:`MotionFieldProjector`: reads the CMOS motion fields from Nifti files and projects them to the single-pixel camera point of view using the computed homography.
+    * :class:`Calibration`: calibration operator that maps a CMOS image onto the single-pixel camera grid using the computed homography.
 
 Practical examples of usage can be found in the `spyrit-examples <https://github.com/openspyrit/spyrit-examples/tree/dynamic_tip>`_ repository.
 
@@ -1256,3 +1257,295 @@ class MotionFieldProjector(nn.Module):
 
         except Exception as e:
             raise RuntimeError(f"Motion estimation failed: {e}") from e
+
+
+
+
+class Calibration(nn.Module):
+    r"""
+    Calibration operator :math:`G` that maps a CMOS image onto the single-pixel camera (SPC) grid, i.e.
+
+    .. math::
+        x_{spc} = G x_{cmos}
+
+    It accounts for the geometric transformation and the change of resolution between the two arms of the system, using the homography from :class:`ComputeHomography`.
+    Each row of :math:`G` corresponds to an SPC pixel and each column to a CMOS
+    pixel, i.e. :math:`G \in \mathbb{R}^{N \times \hat{N}}` with :math:`N = n \cdot m`
+    and :math:`\hat{N} = h \cdot w`.
+
+    Two interpolation schemes are available:
+        - ``order=1`` (recommended): bilinear interpolation between the four neighbouring CMOS pixels.
+        - ``order=0``: each SPC pixel takes the value of the CMOS pixel at the floor of its mapped coordinates (this is not a nearest-neighbour interpolation).
+
+    .. important::
+        The SPC field of view must lie inside the CMOS image, i.e. all SPC pixels, once
+        mapped into the CMOS view, must fall within the CMOS image. Interpolation
+        neighbours outside the CMOS image contribute zero, so SPC pixels mapped near or
+        beyond the CMOS border would be attenuated or set to zero.
+
+    .. note::
+        This class reimplements bilinear resampling by hand. 
+        In future release, it may be rewritten with :func:`torch.nn.functional.grid_sample` using
+        ``mode='bilinear'``, ``padding_mode='zeros'`` and ``align_corners=True``, whose
+        automatic differentiation gives the adjoint.
+
+    Args:
+        :attr:`order`: Interpolation order, 0 or 1.
+        :attr:`spc_shape`: Shape :math:`(n, m)` of the SPC image (rows of :math:`G`).
+        :attr:`cmos_shape`: Shape :math:`(h, w)` of the CMOS image (columns of :math:`G`).
+        :attr:`homography` (optional): 3x3 homography that maps CMOS pixel coordinates to SPC pixel coordinates, as estimated by :class:`ComputeHomography`. Its dtype and device set those of the operator. Default: identity.
+
+    Example:
+        >>> n, m = 64, 64  # spatial dimensions of the SPC image
+        >>> height, width = 256, 256 # spatial dimensions of the CMOS image
+        >>> homography = torch.diag(torch.tensor([n / width, n / height, 1.0]))  # a simple scaling 
+        >>> calib_op = Calibration(order=1, spc_shape=(n, m), cmos_shape=(height, width), homography=homography)
+        >>> x = torch.rand(height * width, 3)   # random RGB image sampled on the CMOS grid
+        >>> y = calib_op.vfast_prod_G_vec(x)   
+        >>> y.shape
+        torch.Size([4096, 3])
+        >>> calib_op.vfast_prod_Gt_vec(y).shape
+        torch.Size([65536, 3])
+    """
+
+    def __init__(self, order: int, spc_shape: tuple, cmos_shape: tuple, homography: torch.tensor = torch.eye(3)):
+
+        super().__init__()
+
+        self.order = order
+        self.spc_shape = spc_shape
+        self.cmos_shape = cmos_shape
+
+        self.homography = homography
+        self.homography_inv = torch.linalg.inv(homography)
+
+        self.dtype = homography.dtype
+        self.device = homography.device
+
+        # Precompute meshgrid for input and output shapes
+        self.x1, self.x2 = self._create_meshgrid(spc_shape)
+        self.x1_new, self.x2_new = self._apply_homography(self.x1, self.x2)
+
+    def _create_meshgrid(self, shape):
+        r"""Return the column (``x1``) and row (``x2``) pixel coordinates of a grid of the given shape."""
+        n, m = shape
+        interval_1 = torch.linspace(0, m - 1, m, dtype=self.dtype, device=self.device)
+        interval_2 = torch.linspace(0, n - 1, n, dtype=self.dtype, device=self.device)
+        return torch.meshgrid(interval_1, interval_2, indexing='xy')
+    
+    def _apply_homography(self, x1, x2):
+        r"""Map SPC grid coordinates into the CMOS view with the inverse homography."""
+        coords = torch.stack([x1.flatten(), x2.flatten(), torch.ones_like(x1.flatten(), device=self.device)], dim=0)
+        transformed_coords = self.homography_inv @ coords
+        w = transformed_coords[2, :]
+        x1_new = (transformed_coords[0, :] / w).reshape(x1.shape)
+        x2_new = (transformed_coords[1, :] / w).reshape(x2.shape)
+        return x1_new, x2_new
+
+    def pad(self, cond1: torch.tensor, cond2: torch.tensor, cond3: torch.tensor, cond4: torch.tensor, val: torch.tensor, cval=0):
+        r"""
+        Set the entries of ``val`` to ``cval``, in place, wherever one of the masks is true.
+
+        This is used to discard the contributions of CMOS pixels outside the image.
+
+        Args:
+            :attr:`cond1`, :attr:`cond2`, :attr:`cond3`, :attr:`cond4`: Boolean masks of shape :math:`(N,)` that index the first dimension of ``val``.
+            :attr:`val`: Tensor to pad, modified in place.
+            :attr:`cval` (optional): Padding value. Default: 0.
+
+        Returns:
+            torch.Tensor: ``val``, after modification.
+        """
+        val[cond1] = cval
+        val[cond2] = cval
+        val[cond3] = cval
+        val[cond4] = cval
+
+        return val
+
+    def calibration_matrix(self):
+        r"""
+        Build the dense calibration matrix :math:`G`.
+
+        This is a reference implementation written for clarity, not speed: it
+        loops over every pixel in Python and stores :math:`N \hat{N}` entries. It
+        always runs on the CPU, whatever the device of the homography. For
+        actual computations, use :meth:`vfast_prod_G_vec` and
+        :meth:`vfast_prod_Gt_vec` instead.
+
+        Returns:
+            torch.Tensor: Matrix of shape :math:`(N, \hat{N})`.
+        """
+        homography_inv = torch.linalg.inv(self.homography)
+
+        n, m = self.spc_shape
+        height, width = self.cmos_shape
+
+        interval_1, interval_2 = torch.linspace(0, m - 1, m, dtype=self.dtype), torch.linspace(0, n - 1, n, dtype=self.dtype)
+        x1, x2 = torch.meshgrid(interval_1, interval_2, indexing='xy')
+
+        # apply inverse homography on mesh
+        x2_new, x1_new = x2.clone().detach(), x1.clone().detach()
+        for i in range(n):
+            for j in range(m):
+                coord = torch.tensor([x1[i, j], x2[i, j], 1], dtype=self.dtype)
+                w = homography_inv[2] @ coord
+                x1_new[i, j] = homography_inv[0] @ coord / w
+                x2_new[i, j] = homography_inv[1] @ coord / w
+
+        N = n * m
+        N_hat = width * height
+        G = torch.zeros((N, N_hat), dtype=self.dtype)
+
+        x1_new, x2_new = x1_new.flatten(), x2_new.flatten()
+
+        for i in range(N):
+            y_low = math.floor(x2_new[i])
+            x_low = math.floor(x1_new[i])
+            y_high = y_low + 1
+            x_high = x_low + 1
+
+            dx = x1_new[i] - x_low
+            dy = x2_new[i] - y_low
+
+            if self.order == 1:
+                # bilinear interpolation
+                if 0 <= x_low < width and 0 <= y_low < height:
+                    G[i, x_low + width * y_low] = (1 - dx) * (1 - dy)
+
+                if 0 <= x_low < width and 0 <= y_high < height:
+                    G[i, x_low + width * y_high] = (1 - dx) * dy
+
+                if 0 <= x_high < width and 0 <= y_low < height:
+                    G[i, x_high + width * y_low] = dx * (1 - dy)
+
+                if 0 <= x_high < width and 0 <= y_high < height:
+                    G[i, x_high + width * y_high] = dx * dy
+
+            elif self.order == 0:
+                # not nearest neighbour, just take the neareast inferior
+                if 0 <= x_low < width and 0 <= y_low < height:
+                    G[i, x_low + width * y_low] = 1
+
+            else:
+                print('Order of interpolation not implemented')
+                exit(1)
+
+        return G
+
+    def vfast_prod_G_vec(self, vec: torch.tensor):
+        r"""
+        Compute :math:`G x` without building :math:`G`.
+
+        Args:
+            :attr:`vec`: CMOS image of shape :math:`(\hat{N}, C)`, flattened in row-major order, where :math:`C` is the number of channels (e.g. wavelengths). It must be 2D, even when :math:`C = 1`.
+
+        Returns:
+            torch.Tensor: Image on the SPC grid, of shape :math:`(N, C)`.
+        """
+        height, width = self.cmos_shape
+
+        x1_new, x2_new = self.x1_new.flatten(), self.x2_new.flatten()
+
+        y_low = torch.floor(x2_new)
+        x_low = torch.floor(x1_new)
+        y_high = y_low + 1
+        x_high = x_low + 1
+
+        dx = x1_new - x_low
+        dy = x2_new - y_low
+
+        dx, dy = dx.reshape((-1, 1)), dy.reshape((-1, 1))
+
+        if self.order == 1:
+            # bilinear interpolation
+            ind_low_low = self.pad(x_low < 0, x_low >= width, y_low < 0, y_low >= height, x_low + width * y_low).to(torch.int64)  # just in order not to have out of range errors, but no problem with padding to 0 because values are also 0
+            val_low_low = vec[ind_low_low] * (1 - dx) * (1 - dy)
+            val_low_low = self.pad(x_low < 0, x_low >= width, y_low < 0, y_low >= height, val_low_low)
+
+            ind_low_high = self.pad(x_low < 0, x_low >= width, y_high < 0, y_high >= height, x_low + width * y_high).to(torch.int64)
+            val_low_high = vec[ind_low_high] * (1 - dx) * dy
+            val_low_high = self.pad(x_low < 0, x_low >= width, y_high < 0, y_high >= height, val_low_high)
+
+            ind_high_low = self.pad(x_high < 0, x_high >= width, y_low < 0, y_low >= height, x_high + width * y_low).to(torch.int64)
+            val_high_low = vec[ind_high_low] * dx * (1 - dy)
+            val_high_low = self.pad(x_high < 0, x_high >= width, y_low < 0, y_low >= height, val_high_low)
+
+            ind_high_high = self.pad(x_high < 0, x_high >= width, y_high < 0, y_high >= height, x_high + width * y_high).to(torch.int64)
+            val_high_high = vec[ind_high_high] * dx * dy
+            val_high_high = self.pad(x_high < 0, x_high >= width, y_high < 0, y_high >= height, val_high_high)
+
+            res = val_low_low + val_low_high + val_high_low + val_high_high
+
+        elif self.order == 0:
+            ind_low_low = self.pad(x_low < 0, x_low >= width, y_low < 0, y_low >= height, x_low + width * y_low).to(torch.int64)
+            val_low_low = vec[ind_low_low]
+            res = self.pad(x_low < 0, x_low >= width, y_low < 0, y_low >= height, val_low_low)
+
+        else:
+            print("No implementation for this vfast interpolation")
+            exit(1)
+
+        return res
+
+    def vfast_prod_Gt_vec(self, vec: torch.tensor):
+        r"""
+        Compute the adjoint product :math:`G^\top y` without building :math:`G`.
+
+        Args:
+            :attr:`vec`: Image on the SPC grid, of shape :math:`(N, C)`, flattened in row-major order. It must be on the same device and have the same dtype as the homography.
+
+        Returns:
+            torch.Tensor: Image on the CMOS grid, of shape :math:`(\hat{N}, C)`.
+        """
+        height, width = self.cmos_shape
+
+        N_hat = width * height
+        n_wav = vec.shape[1]
+
+        res = torch.zeros((N_hat, n_wav), dtype=self.dtype, device=self.device)
+
+        x1_new, x2_new = self.x1_new.flatten(), self.x2_new.flatten()
+
+        y_low = torch.floor(x2_new)
+        x_low = torch.floor(x1_new)
+        y_high = y_low + 1
+        x_high = x_low + 1
+
+        dx = x1_new - x_low
+        dy = x2_new - y_low
+
+        dx, dy = dx.reshape((-1, 1)), dy.reshape((-1, 1))
+
+        if self.order == 1:
+            val_low_low = vec * (1 - dx) * (1 - dy)
+            val_low_low = self.pad(x_low < 0, x_low >= width, y_low < 0, y_low >= height, val_low_low)
+            ind_low_low = self.pad(x_low < 0, x_low >= width, y_low < 0, y_low >= height, x_low + width * y_low).to(torch.int64)   # just in order not to have out of range errors, but no problem with padding to 0 because values are also 0
+            res.index_add_(0, ind_low_low, val_low_low)  
+
+            val_low_high = vec * (1 - dx) * dy
+            val_low_high = self.pad(x_low < 0, x_low >= width, y_high < 0, y_high >= height, val_low_high)
+            ind_low_high = self.pad(x_low < 0, x_low >= width, y_high < 0, y_high >= height, x_low + width * y_high).to(torch.int64)
+            res.index_add_(0, ind_low_high, val_low_high)
+
+            val_high_low = vec * dx * (1 - dy)
+            val_high_low = self.pad(x_high < 0, x_high >= width, y_low < 0, y_low >= height, val_high_low)
+            ind_high_low = self.pad(x_high < 0, x_high >= width, y_low < 0, y_low >= height, x_high + width * y_low).to(torch.int64)
+            res.index_add_(0, ind_high_low, val_high_low)
+
+            val_high_high = vec * dx * dy
+            val_high_high = self.pad(x_high < 0, x_high >= width, y_high < 0, y_high >= height, val_high_high)
+            ind_high_high = self.pad(x_high < 0, x_high >= width, y_high < 0, y_high >= height, x_high + width * y_high).to(torch.int64)
+            res.index_add_(0, ind_high_high, val_high_high)
+
+        elif self.order == 0:
+            val_low_low = vec
+            val_low_low = self.pad(x_low < 0, x_low >= width, y_low < 0, y_low >= height, val_low_low)
+            ind_low_low = self.pad(x_low < 0, x_low >= width, y_low < 0, y_low >= height, x_low + width * y_low).to(torch.int64)
+            res.index_add_(0, ind_low_low, val_low_low)
+
+        else:
+            print("No vfast product implemented for this interpolation")
+            exit(1)
+
+        return res
