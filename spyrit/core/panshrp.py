@@ -3,8 +3,6 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 
-from IPython.display import clear_output
-
 from spyrit.core.meas import DynamicLinearSplit, Linear, LinearSplit, HadamSplit2d, DynamicLinear
 from spyrit.core.noise import Poisson
 from spyrit.core.prep import Unsplit
@@ -330,6 +328,153 @@ def adjust_kernel(kernel: torch.tensor):
 
 
 
+# =================== PGD CLASS FOR REGULARIZED SINGLE-PIXEL RECONSTRUCTION ====================
+# TODO: move in spyrit.core.inverse as soon as I get Nicolas approval for the dependencies handling and file structure I have in mind.
+
+class PGD(nn.Module):
+    r"""
+    Proximal gradient descent for single-pixel reconstruction:
+
+    .. math::
+
+        \min_X \frac{\eta_1}{2} \| Y - H X \|_F^2 + \eta_3 \, R(X),
+
+    where :math:`H` is the acquisition matrix of :attr:`meas_op` (or the identity), :math:`Y` the preprocessed measurements and :math:`R` the regularization selected by :attr:`type_reg` ('tv', 'h1', 'h1-3d', 'indic', or '' for none).
+    """
+
+    def __init__(self, meas_op, spectrum = None, verbose: bool = False):
+        super().__init__()
+
+        self.meas_op = meas_op
+        self.prep_op = Unsplit() if isinstance(meas_op, LinearSplit) else torch.nn.Identity()
+
+        self.spectrum = spectrum
+
+        self.verbose = verbose
+
+        if isinstance(meas_op, LinearSplit):
+            self.fwd = meas_op.measure_H
+            self.adj = meas_op.adjoint_H
+        elif isinstance(meas_op, Linear):
+            self.fwd = meas_op.measure
+            self.adj = meas_op.adjoint
+        elif isinstance(meas_op, torch.nn.Identity):
+            self.fwd = torch.nn.Identity()
+            self.adj = torch.nn.Identity()
+
+    def _preprocess(self, HS: torch.Tensor):
+        HS = self.prep_op(HS)
+
+        if isinstance(getattr(self.meas_op, 'noise_model', None), Poisson):
+            alpha = self.meas_op.noise_model.alpha
+            HS = HS / alpha
+
+        return HS
+
+    def display_image(self, X: torch.Tensor, k: int = 0, step_show: int = None):
+        # X of shape (1, n_wav, n, m)
+        if step_show is not None and k % step_show == 0:
+            from IPython.display import clear_output  # hotfix for the import, TODO: talk to Nicolas and Thomas about dependencies
+            clear_output(wait=True)
+            if X.shape[1] != 3:
+                plt.imshow(tensor2img(hs_to_rgb(X, self.spectrum)))
+            else:
+                plt.imshow(tensor2img(X))
+
+            plt.title('Itération %d' % k)
+            plt.pause(0.1)
+
+    def loss(self, X: torch.Tensor, HS: torch.Tensor, type_reg: str, eta_1: float, eta_3: float):
+        # 0.5 * eta_1 * ||H X - Y||^2 and eta_3 * R(X)
+        l1 = 0.5 * eta_1 * torch.linalg.norm(self.fwd(X) - HS).item() ** 2
+
+        l3 = 0.
+        if type_reg == 'tv':
+            grad = derivative_spat(X)
+            l3 = eta_3 * torch.sum((grad[0] ** 2 + grad[1] ** 2) ** 0.5).item()
+        elif type_reg == 'h1':
+            grad = derivative_spat(X)
+            l3 = 0.5 * eta_3 * torch.linalg.norm(grad.flatten()).item() ** 2
+
+        return l1, l3
+
+    def prox(self, X: torch.Tensor, type_reg: str, tau: float, eta_3: float, eta_4: float):
+        # X of shape (1, n_wav, n, m)
+        if type_reg == 'tv':
+            from deepinv.models.tv import TVDenoiser  # hotfix for the import, TODO: talk to Nicolas and Thomas about dependencies
+            tv_prox = TVDenoiser(verbose=False, n_it_max=1000)
+            X = tv_prox(X, ths=tau * eta_3)
+
+        elif type_reg == 'h1':
+            X = prox_h1_2d(X.squeeze(0).moveaxis(0, -1), tau, eta_3).moveaxis(-1, 0).unsqueeze(0)
+
+        elif type_reg == 'h1-3d':
+            X = prox_h1_3d(X.squeeze(0).moveaxis(0, -1), tau, eta_3, eta_4).moveaxis(-1, 0).unsqueeze(0)
+
+        elif type_reg == 'indic':
+            X = prox_indic(X)
+
+        return X
+
+    def forward(self, HS: torch.Tensor, type_reg: str = '', eta_1: float = 1., eta_3: float = 1., eta_4: float = 1., n_iter: int = 250,
+                tau: float = None, step_show: int = None, tol: float = 1e-5):
+        r"""Reconstructs an image of shape :math:`(1, L, n, m)` from raw measurements :math:`HS` of shape :math:`(1, L, 2M)`, or from an image of shape :math:`(1, L, n, m)` if :attr:`meas_op` is the identity."""
+        HS = self._preprocess(HS)
+
+        # image shape and squared spectral norm of H
+        if isinstance(self.meas_op, torch.nn.Identity):
+            im_shape = HS.shape
+            L_H = 1.
+        else:
+            im_shape = (*HS.shape[:-1], *self.meas_op.meas_shape)
+            L_H = self.meas_op.N if isinstance(self.meas_op, HadamSplit2d) else torch.linalg.matrix_norm(self.meas_op.H, ord=2).item() ** 2
+
+        if tau is None:
+            tau = 1 / (eta_1 * L_H) - 1e-5
+
+        X = self.adj(HS).reshape(im_shape) / L_H  # equals the pseudo-inverse for Hadamard
+
+        self.display_image(X, 0, step_show)
+
+        l1, l3 = self.loss(X, HS, type_reg, eta_1, eta_3)
+        loss_1, loss_3 = [l1], [l3]
+
+        # n_iter counts the initial point, hence n_iter - 1 gradient steps
+        for k in range(1, n_iter):
+            X_old = X
+            grad = self.adj(self.fwd(X) - HS).reshape(im_shape)
+            X = self.prox(X - tau * eta_1 * grad, type_reg, tau, eta_3, eta_4)
+
+            self.display_image(X, k, step_show)
+
+            l1, l3 = self.loss(X, HS, type_reg, eta_1, eta_3)
+            loss_1.append(l1)
+            loss_3.append(l3)
+
+            if step_show is not None and k % step_show == 0:
+                print("itération %d / %d, loss = %.9f" % (k, n_iter, l1 + l3))
+
+            if torch.linalg.norm(X - X_old) < tol:
+                if self.verbose:
+                    print("Convergence reached at iteration %d" % k)
+                break
+
+        if step_show is not None:
+            plt.show()
+
+        if self.verbose:
+            print('tau_spc = ', tau)
+
+        metadata = {'loss': {'loss_1': np.array(loss_1), 'loss_3': np.array(loss_3)}, 'tau': tau}
+
+        return X, metadata
+
+# =================== END OF PGD CLASS ====================
+
+
+
+
+
 # =================== PANSHARPENING PGD CLASS ====================
 
 
@@ -412,6 +557,7 @@ class Pan_PGD(nn.Module):
             
     def display_image(self, X: torch.Tensor, X_im_shape: tuple, k: int = 0, step_show: int = None):
         if step_show is not None and k % step_show == 0:
+            from IPython.display import clear_output  # hotfix for the import, TODO: talk to Nicolas and Thomas about dependencies
             clear_output(wait=True)
             if self.n_wav != 3:
                 plt.imshow(tensor2img(hs_to_rgb(X.reshape(X_im_shape).unsqueeze(0).moveaxis(-1, 1), self.spectrum)))
@@ -850,6 +996,7 @@ class Pan_PGD(nn.Module):
         metadata['W'] = W if weighted else None
         
         return X, metadata
+    
 
 
 class Pan_PGD_LR(Pan_PGD):
